@@ -1,4 +1,4 @@
-export interface WeeklyRow { week: string; repo: string; author: string; commits: number }
+export interface WeeklyRow { week: string; repo: string; author: string; commits: number; weekend: number; night: number }
 export interface MonthlyRow { month: string; repo: string; author: string; commits: number }
 export interface HeatmapRow { author: string; repo: string; weekday: number; hour: number; commits: number }
 

@@ -12,6 +12,7 @@ import WeeklyChampions from './components/WeeklyChampions.vue'
 import AuthorMonthHeatmap from './components/AuthorMonthHeatmap.vue'
 import PaceAlert from './components/PaceAlert.vue'
 import DevDetail from './components/DevDetail.vue'
+import BurnoutWatch from './components/BurnoutWatch.vue'
 
 onMounted(loadStats)
 
@@ -48,6 +49,7 @@ function fmtDate(iso: string) {
       <WeeklyChampions />
       <PaceAlert />
     </div>
+    <BurnoutWatch />
     <AuthorMonthHeatmap />
     <RepoMonthHeatmap />
     <DevTable />

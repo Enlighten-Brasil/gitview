@@ -138,3 +138,41 @@ export const pace = computed<PaceRow[]>(() => {
     .filter(r => r.prevAvg >= 2 || r.recent > 0)
     .sort((a, b) => (a.ratio ?? 0) - (b.ratio ?? 0))
 })
+
+// ---------------------------------------------------------------------------
+// burnout watch — commits fora do horário (fds + madrugada), últimas 8 semanas
+// ---------------------------------------------------------------------------
+export interface BurnoutRow {
+  author: string
+  weekend: number        // commits sáb/dom nas últimas 8 sem
+  night: number          // commits 22h–6h nas últimas 8 sem
+  total: number          // commits totais nas últimas 8 sem
+  offHoursPct: number    // (weekend + night) / total
+  weekendsActive: number // dos últimos 4 fins de semana, em quantos commitou
+}
+
+export const burnout = computed<BurnoutRow[]>(() => {
+  const rows = (stats.value?.weekly ?? []).filter(r => selectedRepo(r.repo) && selectedAuthor(r.author))
+  const weeks = lastNWeekKeys(8)
+  const last4 = new Set(weeks.slice(-4))
+  const byAuthor = new Map<string, { weekend: number; night: number; total: number; weekendsActive: number }>()
+
+  for (const r of rows) {
+    if (!weeks.includes(r.week)) continue
+    if (!byAuthor.has(r.author)) byAuthor.set(r.author, { weekend: 0, night: 0, total: 0, weekendsActive: 0 })
+    const b = byAuthor.get(r.author)!
+    b.weekend += r.weekend
+    b.night += r.night
+    b.total += r.commits
+    if (last4.has(r.week) && r.weekend > 0) b.weekendsActive++
+  }
+
+  return [...byAuthor.entries()]
+    .map(([author, b]) => ({
+      author,
+      ...b,
+      offHoursPct: b.total > 0 ? (b.weekend + b.night) / b.total : 0,
+    }))
+    .filter(b => b.total > 0 && (b.weekend > 0 || b.night > 0))
+    .sort((a, b) => (b.weekend + b.night) - (a.weekend + a.night))
+})
