@@ -4,7 +4,8 @@
   "version": "0.12.0",
   "type": "module",
   "scripts": {
-    "collect": "tsx scripts/collect.ts",
+    "collect": "tsx scripts/collect.ts && tsx scripts/collect-github.ts",
+    "collect:github": "tsx scripts/collect-github.ts",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",

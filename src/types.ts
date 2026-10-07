@@ -20,3 +20,28 @@ export interface Stats {
   monthly: MonthlyRow[]
   heatmap: HeatmapRow[]
 }
+
+export interface PrReview { author: string; state: string; submittedAt: string }
+
+export interface PullRequest {
+  repo: string
+  number: number
+  title: string
+  url: string
+  state: 'OPEN' | 'MERGED'
+  draft: boolean
+  author: string
+  createdAt: string
+  mergedAt: string | null
+  additions: number
+  deletions: number
+  changedFiles: number
+  reviews: PrReview[]
+}
+
+export interface GitHubData {
+  generatedAt: string
+  /** login do GitHub -> nome canônico do time + flag de bot */
+  users: Record<string, { name: string; bot: boolean }>
+  prs: PullRequest[]
+}

@@ -11,7 +11,7 @@ import { filters, selectedDev, stats } from './data'
  */
 
 export const activeTab = ref('overview')
-const TABS = ['overview', 'team', 'health', 'repos']
+const TABS = ['overview', 'team', 'health', 'repos', 'prs']
 const RANGES = [3, 6, 12]
 
 function parseUrl(reset = false) {

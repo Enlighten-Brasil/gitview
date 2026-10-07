@@ -10,5 +10,19 @@
     "João Fernando": ["106031518+joao-f3rnando@users.noreply.github.com"],
     "João Prado": ["joaosouzaprado@gmail.com", "joao.prado@be-enlighten.com"],
     "João Oliveira": ["joao.oliveira@be-enlighten.com", "joao.oliveira@be.enspace.io"]
-  }
+  },
+  "githubUsers": {
+    "hardeath950": "Raul Domingues",
+    "JulioCezarbc": "Júlio Cordeiro",
+    "Joao-F3rnando": "João Fernando",
+    "gbarros1994": "Gerson Barros",
+    "gbarros1994Dev": "Gerson Barros",
+    "Prado-joao": "João Prado",
+    "BrayanEnlighten": "Brayan M. Barros",
+    "DavidOliveirax": "David Oliveira",
+    "FlacorLopes": "Flávio Lopes",
+    "flromano": "Fernando Romano",
+    "Ana150": "Ana150"
+  },
+  "githubBots": ["dependabot", "copilot-pull-request-reviewer", "copilot-swe-agent", "cursor", "github-code-quality"]
 }

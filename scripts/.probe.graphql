@@ -1,0 +1,15 @@
+query {
+  repo: repository(owner: "Enlighten-Brasil", name: "enlighten-api") {
+    pullRequests(first: 15, states: [MERGED], orderBy: { field: UPDATED_AT, direction: DESC }) {
+      totalCount
+      nodes {
+        number
+        mergedAt
+        createdAt
+        author { login }
+        reviews(first: 10) { totalCount nodes { author { login } state submittedAt } }
+      }
+    }
+  }
+  rateLimit { remaining }
+}
