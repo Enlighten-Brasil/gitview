@@ -64,7 +64,7 @@ function exportCsv() {
   <div class="panel">
     <h2>
       Ranking do time (histórico completo)
-      <button class="range-btn" style="float: right" @click="exportCsv">exportar CSV</button>
+      <button class="range-btn" style="margin-left: auto" @click="exportCsv">exportar CSV</button>
     </h2>
     <table>
       <thead>

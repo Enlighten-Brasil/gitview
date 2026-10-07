@@ -40,7 +40,7 @@ function exportPng() {
 
 <style scoped>
 .panel-actions {
-  float: right;
+  margin-left: auto;
   display: inline-flex;
   gap: 6px;
 }
