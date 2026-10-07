@@ -38,7 +38,9 @@ Re-rodar `pnpm collect` é **incremental** (INSERT OR IGNORE por repo+hash): só
 - Heatmap dia da semana × hora (frequência/horário de trabalho)
 - Donut de distribuição por repositório
 - Campeão da semana 🏆 + ranking de títulos no período
-- Ranking do time: commits, linhas, repos tocados, dias ativos, streak 🔥 (atual e recorde), último commit (ordenável)
+- Ritmo da equipe: últimas 4 semanas vs média das 8 anteriores (📉 queda / 🚀 acelerando)
+- Ranking do time: commits, linhas, repos tocados, dias ativos, commits/dia ativo, streak 🔥, último commit (ordenável, exportável em CSV)
+- Visão individual por dev: clique na linha do ranking para drilldown (timeline, repos, heatmap pessoal)
 - Filtros globais: período (3M/6M/12M/tudo), repositórios, devs
 - Bots (`*[bot]`, ex.: dependabot) ficam fora por padrão — toggle "incluir bots" na barra de filtros.
   Autores extras podem ser marcados como bot via `"bots": ["nome"]` no `config.json`.
