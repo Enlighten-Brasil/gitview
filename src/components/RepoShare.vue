@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import type { EChartsOption } from 'echarts'
 import { commitsByRepo } from '../data'
+import ChartPanel from './ChartPanel.vue'
 
 const option = computed<EChartsOption>(() => ({
   tooltip: { trigger: 'item', formatter: '{b}: {c} commits ({d}%)' },
@@ -18,8 +19,5 @@ const option = computed<EChartsOption>(() => ({
 </script>
 
 <template>
-  <div class="panel">
-    <h2>Distribuição por repositório (período filtrado)</h2>
-    <VChart :option="option" class="chart" autoresize />
-  </div>
+  <ChartPanel title="Distribuição por repositório (período filtrado)" :option="option" />
 </template>
