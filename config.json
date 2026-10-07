@@ -1,0 +1,14 @@
+{
+  "reposRoot": "C:/Users/Raul/Documents/GitHub/enspace",
+  "exclude": [],
+  "authors": {
+    "Raul Domingues": ["raaaaul@live.com", "hardeath950@localhost.localdomain", "raul@be-enlighten.com"],
+    "Gerson Barros": ["55881896+gbarros1994@users.noreply.github.com", "gerson.barros.dev@gmail.com"],
+    "Flávio Lopes": ["flavioloppes@outlook.com"],
+    "Júlio Cordeiro": ["julio04.cordeiro@gmail.com", "125289241+juliocezarbc@users.noreply.github.com"],
+    "Brayan M. Barros": ["brayan.barros@be-enlighten.com", "brayan.barros@be.enspace.io"],
+    "João Fernando": ["106031518+joao-f3rnando@users.noreply.github.com"],
+    "João Prado": ["joaosouzaprado@gmail.com", "joao.prado@be-enlighten.com"],
+    "João Oliveira": ["joao.oliveira@be-enlighten.com", "joao.oliveira@be.enspace.io"]
+  }
+}
