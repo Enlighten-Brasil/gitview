@@ -11,6 +11,7 @@ import DevTable from './components/DevTable.vue'
 import WeeklyChampions from './components/WeeklyChampions.vue'
 import AuthorMonthHeatmap from './components/AuthorMonthHeatmap.vue'
 import PaceAlert from './components/PaceAlert.vue'
+import DevDetail from './components/DevDetail.vue'
 
 onMounted(loadStats)
 
@@ -36,6 +37,7 @@ function fmtDate(iso: string) {
 
   <template v-else-if="stats">
     <FilterBar />
+    <DevDetail />
     <SummaryCards />
     <CommitsTimeline />
     <div class="grid-2">

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { filters, isBot, stats } from '../data'
+import { filters, isBot, selectedDev, stats } from '../data'
 
 type Key = 'commits' | 'additions' | 'deletions' | 'repos' | 'activeDays' | 'lastCommit' | 'streak'
 const sortKey = ref<Key>('commits')
@@ -81,7 +81,13 @@ function exportCsv() {
         </tr>
       </thead>
       <tbody>
-        <tr v-for="a in visibleAuthors" :key="a.author">
+        <tr
+          v-for="a in visibleAuthors"
+          :key="a.author"
+          class="dev-row"
+          :class="{ selected: selectedDev === a.author }"
+          @click="selectedDev = selectedDev === a.author ? null : a.author"
+        >
           <td>{{ a.author }}</td>
           <td class="num">{{ fmt(a.commits) }}</td>
           <td class="num add">{{ fmt(a.additions) }}</td>
@@ -96,3 +102,15 @@ function exportCsv() {
     </table>
   </div>
 </template>
+
+<style scoped>
+.dev-row {
+  cursor: pointer;
+}
+.dev-row:hover {
+  background: #ffffff08;
+}
+.dev-row.selected {
+  background: #4f8cff22;
+}
+</style>
