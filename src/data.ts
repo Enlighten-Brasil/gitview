@@ -4,6 +4,9 @@ import type { Stats } from './types'
 export const stats = ref<Stats | null>(null)
 export const loadError = ref<string | null>(null)
 
+/** dev selecionado para drilldown (clique no ranking) */
+export const selectedDev = ref<string | null>(null)
+
 export const filters = reactive({
   repos: [] as string[],      // vazio = todos
   authors: [] as string[],    // vazio = todos
