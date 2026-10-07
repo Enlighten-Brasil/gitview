@@ -25,6 +25,20 @@ function clearSelection() {
   filters.repos = []
   filters.authors = []
 }
+
+type ListKey = 'repos' | 'authors'
+function allOf(list: ListKey): string[] {
+  return list === 'repos' ? (stats.value?.repos ?? []) : visibleAuthors.value.map(a => a.name)
+}
+function selectAll(list: ListKey) {
+  filters[list] = allOf(list)
+}
+function invert(list: ListKey) {
+  filters[list] = allOf(list).filter(v => !filters[list].includes(v))
+}
+function clearList(list: ListKey) {
+  filters[list] = []
+}
 </script>
 
 <template>
@@ -52,9 +66,20 @@ function clearSelection() {
       <span class="filter-label flex items-center gap-1.5">
         <UIcon name="i-lucide-git-branch" class="size-3.5" />
         Repos
-        <UBadge v-if="filters.repos.length" color="primary" variant="soft" size="sm" class="ml-auto">
+        <UBadge v-if="filters.repos.length" color="primary" variant="soft" size="sm">
           {{ filters.repos.length }}
         </UBadge>
+        <span class="ml-auto flex items-center">
+          <UTooltip text="selecionar todos">
+            <UButton icon="i-lucide-check-check" color="neutral" variant="ghost" size="xs" @click="selectAll('repos')" />
+          </UTooltip>
+          <UTooltip text="inverter seleção">
+            <UButton icon="i-lucide-arrow-left-right" color="neutral" variant="ghost" size="xs" @click="invert('repos')" />
+          </UTooltip>
+          <UTooltip text="limpar">
+            <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" @click="clearList('repos')" />
+          </UTooltip>
+        </span>
       </span>
       <div class="flex flex-wrap gap-1.5">
         <UButton
@@ -76,9 +101,20 @@ function clearSelection() {
       <span class="filter-label flex items-center gap-1.5">
         <UIcon name="i-lucide-users" class="size-3.5" />
         Devs
-        <UBadge v-if="filters.authors.length" color="primary" variant="soft" size="sm" class="ml-auto">
+        <UBadge v-if="filters.authors.length" color="primary" variant="soft" size="sm">
           {{ filters.authors.length }}
         </UBadge>
+        <span class="ml-auto flex items-center">
+          <UTooltip text="selecionar todos">
+            <UButton icon="i-lucide-check-check" color="neutral" variant="ghost" size="xs" @click="selectAll('authors')" />
+          </UTooltip>
+          <UTooltip text="inverter seleção">
+            <UButton icon="i-lucide-arrow-left-right" color="neutral" variant="ghost" size="xs" @click="invert('authors')" />
+          </UTooltip>
+          <UTooltip text="limpar">
+            <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" @click="clearList('authors')" />
+          </UTooltip>
+        </span>
       </span>
       <div class="flex flex-wrap gap-1.5">
         <UButton

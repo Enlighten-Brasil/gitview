@@ -29,16 +29,11 @@ const periodCards = computed(() => {
   ]
 })
 
-const historyCards = computed(() => {
+/** totais históricos em linha discreta (contexto, sem duplicar o grid) */
+const historyLine = computed(() => {
   const t = stats.value?.totals
-  if (!t) return []
-  return [
-    { value: fmt(t.commits), label: 'commits', icon: 'i-lucide-history' },
-    { value: fmt(t.additions), label: 'linhas +', icon: 'i-lucide-plus', color: 'text-success' },
-    { value: fmt(t.deletions), label: 'linhas −', icon: 'i-lucide-minus', color: 'text-error' },
-    { value: String(t.authors), label: 'devs', icon: 'i-lucide-users' },
-    { value: String(t.repos), label: 'repositórios', icon: 'i-lucide-git-branch' },
-  ]
+  if (!t) return ''
+  return `histórico total: ${fmt(t.commits)} commits · ${fmt(t.additions)} linhas + · ${fmt(t.deletions)} linhas − · ${t.authors} devs · ${t.repos} repos`
 })
 </script>
 
@@ -77,22 +72,8 @@ const historyCards = computed(() => {
           </div>
         </div>
       </div>
-    </div>
-
-    <div>
-      <div class="cards-label">
-        histórico completo
-      </div>
-      <div class="cards-grid">
-        <div v-for="c in historyCards" :key="c.label" class="stat-card">
-          <div class="flex items-center gap-2">
-            <UIcon :name="c.icon" class="size-4" :class="c.color ?? 'text-muted'" />
-            <span class="text-2xl font-bold tracking-tight truncate">{{ c.value }}</span>
-          </div>
-          <div class="text-xs text-muted mt-1">
-            {{ c.label }}
-          </div>
-        </div>
+      <div class="text-xs text-dimmed mt-2">
+        {{ historyLine }}
       </div>
     </div>
   </div>
