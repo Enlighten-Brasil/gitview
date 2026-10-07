@@ -109,7 +109,7 @@ const heatOption = computed<EChartsOption>(() => {
     <h2 style="text-transform: none; font-size: 16px; color: var(--text)">
       👤 {{ selectedDev }}
       <span style="color: var(--text-dim); font-weight: 400; font-size: 12px">— histórico completo</span>
-      <button class="range-btn" style="float: right" @click="selectedDev = null">fechar ✕</button>
+      <button class="range-btn" style="margin-left: auto" @click="selectedDev = null">fechar ✕</button>
     </h2>
 
     <div class="cards" style="margin-top: 8px">
