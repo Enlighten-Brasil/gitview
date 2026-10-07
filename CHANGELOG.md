@@ -1,5 +1,11 @@
 # gitview
 
+## 0.11.1
+
+### Patch Changes
+
+- 4308467: Integra a faixa de abas à moldura do layout: full-bleed, colada sob o navbar (sem padding do body), sticky no scroll com fundo sólido, e label da primeira aba alinhado ao título do navbar/botão de colapso. Detalhe do dev só ocupa espaço quando visível.
+
 ## 0.11.0
 
 ### Minor Changes
