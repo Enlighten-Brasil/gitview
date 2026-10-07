@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import type { EChartsOption } from 'echarts'
 import { filteredMonthly, filteredWeekly } from '../data'
+import ChartPanel from './ChartPanel.vue'
 
 const granularity = ref<'week' | 'month'>('week')
 
@@ -41,14 +42,14 @@ const option = computed<EChartsOption>(() => {
 </script>
 
 <template>
-  <div class="panel">
-    <h2>
-      Commits por {{ granularity === 'week' ? 'semana' : 'mês' }} (por dev)
-      <span class="range-group" style="float: right">
-        <button class="range-btn" :class="{ active: granularity === 'week' }" @click="granularity = 'week'">semana</button>
-        <button class="range-btn" :class="{ active: granularity === 'month' }" @click="granularity = 'month'">mês</button>
-      </span>
-    </h2>
-    <VChart :option="option" class="chart-tall" autoresize />
-  </div>
+  <ChartPanel
+    :title="`Commits por ${granularity === 'week' ? 'semana' : 'mês'} (por dev)`"
+    :option="option"
+    tall
+  >
+    <template #actions>
+      <button class="range-btn" :class="{ active: granularity === 'week' }" @click="granularity = 'week'">semana</button>
+      <button class="range-btn" :class="{ active: granularity === 'month' }" @click="granularity = 'month'">mês</button>
+    </template>
+  </ChartPanel>
 </template>

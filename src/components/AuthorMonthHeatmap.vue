@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import type { EChartsOption } from 'echarts'
 import { filteredMonthly } from '../data'
+import ChartPanel from './ChartPanel.vue'
 
 const option = computed<EChartsOption>(() => {
   const rows = filteredMonthly.value
@@ -55,8 +56,5 @@ const option = computed<EChartsOption>(() => {
 </script>
 
 <template>
-  <div class="panel">
-    <h2>Dev × mês (comparação)</h2>
-    <VChart :option="option" class="chart-tall" autoresize />
-  </div>
+  <ChartPanel title="Dev × mês (comparação)" :option="option" tall />
 </template>

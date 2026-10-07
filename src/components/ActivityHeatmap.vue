@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import type { EChartsOption } from 'echarts'
 import { filteredHeatmap } from '../data'
+import ChartPanel from './ChartPanel.vue'
 
 const WEEKDAYS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
 
@@ -51,8 +52,5 @@ const option = computed<EChartsOption>(() => {
 </script>
 
 <template>
-  <div class="panel">
-    <h2>Frequência — dia da semana × hora</h2>
-    <VChart :option="option" class="chart" autoresize />
-  </div>
+  <ChartPanel title="Frequência — dia da semana × hora" :option="option" />
 </template>
