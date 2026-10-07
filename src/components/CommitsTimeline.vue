@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import type { EChartsOption } from 'echarts'
 import { filteredMonthly, filteredWeekly } from '../data'
+import { axisLabel, legendText, PALETTE, splitLine, tooltipBase } from '../chartTheme'
 import ChartPanel from './ChartPanel.vue'
 
 const granularity = ref<'week' | 'month'>('week')
@@ -30,11 +31,12 @@ const option = computed<EChartsOption>(() => {
   })
 
   return {
-    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-    legend: { type: 'scroll', textStyle: { color: '#9aa3b2' } },
+    color: PALETTE,
+    tooltip: tooltipBase({ trigger: 'axis', axisPointer: { type: 'shadow' } }),
+    legend: { type: 'scroll', textStyle: legendText() },
     grid: { left: 50, right: 20, top: 40, bottom: 60 },
-    xAxis: { type: 'category', data: periods, axisLabel: { color: '#9aa3b2' } },
-    yAxis: { type: 'value', axisLabel: { color: '#9aa3b2' }, splitLine: { lineStyle: { color: '#262b36' } } },
+    xAxis: { type: 'category', data: periods, axisLabel: axisLabel() },
+    yAxis: { type: 'value', axisLabel: axisLabel(), splitLine: splitLine() },
     dataZoom: [{ type: 'inside' }, { type: 'slider', height: 18, bottom: 8 }],
     series,
   }

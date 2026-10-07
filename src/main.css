@@ -100,3 +100,23 @@ body {
   background-clip: text;
   color: transparent;
 }
+
+/* ---------- divisores de seção ---------- */
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  color: var(--ui-text-dimmed);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--ui-border-muted);
+}

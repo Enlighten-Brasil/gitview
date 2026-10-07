@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import type { EChartsOption } from 'echarts'
 import { filteredMonthly } from '../data'
+import { axisLabel, ct, heatRamp, tooltipBase } from '../chartTheme'
 import ChartPanel from './ChartPanel.vue'
 
 const option = computed<EChartsOption>(() => {
@@ -31,15 +32,15 @@ const option = computed<EChartsOption>(() => {
   }
 
   return {
-    tooltip: {
+    tooltip: tooltipBase({
       formatter: (p: unknown) => {
         const d = (p as { data: [number, number, number] }).data
         return `${authors[d[1]]} — ${months[d[0]]}: <b>${d[2]}</b> commits`
       },
-    },
+    }),
     grid: { left: 130, right: 60, top: 10, bottom: 60 },
-    xAxis: { type: 'category', data: months, axisLabel: { color: '#9aa3b2', rotate: 45 } },
-    yAxis: { type: 'category', data: authors, axisLabel: { color: '#9aa3b2' } },
+    xAxis: { type: 'category', data: months, axisLabel: axisLabel({ rotate: 45 }) },
+    yAxis: { type: 'category', data: authors, axisLabel: axisLabel() },
     visualMap: {
       min: 0,
       max: Math.max(max, 1),
@@ -47,8 +48,8 @@ const option = computed<EChartsOption>(() => {
       orient: 'vertical',
       right: 0,
       top: 'center',
-      inRange: { color: ['#171a21', '#4a2c6e', '#a855f7', '#e9d5ff'] },
-      textStyle: { color: '#9aa3b2' },
+      inRange: { color: heatRamp('violet') },
+      textStyle: { color: ct.text },
     },
     series: [{ type: 'heatmap', data }],
   }

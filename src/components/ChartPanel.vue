@@ -2,6 +2,7 @@
 import * as echarts from 'echarts/core'
 import { ref } from 'vue'
 import type { EChartsOption } from 'echarts'
+import { ct } from '../chartTheme'
 
 const props = defineProps<{
   title: string
@@ -16,7 +17,7 @@ function exportPng() {
   const dom = wrap.value?.querySelector('[_echarts_instance_]') as HTMLElement | null
   const instance = dom ? echarts.getInstanceByDom(dom) : undefined
   if (!instance) return
-  const url = instance.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#0f172a' })
+  const url = instance.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: ct.bg })
   const a = document.createElement('a')
   a.href = url
   a.download = `gitview-${props.title.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}.png`
@@ -25,7 +26,7 @@ function exportPng() {
 </script>
 
 <template>
-  <UCard class="mb-4" :ui="{ body: 'p-2 sm:p-2', header: 'py-3 px-4 sm:px-4' }">
+  <UCard :ui="{ body: 'p-2 sm:p-2', header: 'py-3 px-4 sm:px-4' }">
     <template #header>
       <div class="flex items-center gap-2 flex-wrap">
         <UIcon v-if="icon" :name="icon" class="size-4 text-primary" />
