@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { filters, loadError, loadStats, stats } from './data'
+import { onMounted, ref } from 'vue'
+import { loadError, loadStats, rangeLabel, stats } from './data'
 import { version } from '../package.json'
 import FilterBar from './components/FilterBar.vue'
 import SummaryCards from './components/SummaryCards.vue'
@@ -22,9 +22,7 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleString('pt-BR')
 }
 
-const rangeText = computed(() =>
-  filters.rangeMonths ? `últimos ${filters.rangeMonths} meses` : 'histórico completo',
-)
+const rangeText = rangeLabel
 
 // desktop: botão no navbar recolhe a sidebar com 1 clique
 // (o UDashboardSidebarCollapse nativo só cobre mobile; no desktop o default é arrastar a borda)
@@ -73,7 +71,7 @@ const sidebarCollapsed = ref(false)
         <template #header>
           <UDashboardNavbar :title="rangeText">
             <template #leading>
-              <UDashboardSidebarCollapse />
+              <UDashboardSidebarCollapse class="lg:hidden" />
               <UButton
                 :icon="sidebarCollapsed ? 'i-lucide-panel-left-open' : 'i-lucide-panel-left-close'"
                 color="neutral"

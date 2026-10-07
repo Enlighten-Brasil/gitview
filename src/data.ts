@@ -69,6 +69,28 @@ export const filteredCommitCount = computed(() =>
   filteredMonthly.value.reduce((acc, r) => acc + r.commits, 0),
 )
 
+/** label do período selecionado (navbar + cards) */
+export const rangeLabel = computed(() =>
+  filters.rangeMonths ? `últimos ${filters.rangeMonths} meses` : 'histórico completo',
+)
+
+/** totais do período filtrado (cards "no período") */
+export const filteredTotals = computed(() => {
+  let additions = 0
+  let deletions = 0
+  for (const r of filteredMonthly.value) {
+    additions += r.additions
+    deletions += r.deletions
+  }
+  return {
+    commits: filteredCommitCount.value,
+    additions,
+    deletions,
+    authors: commitsByAuthor.value.length,
+    repos: commitsByRepo.value.length,
+  }
+})
+
 /** commits por repo no filtro atual (para o donut) */
 export const commitsByRepo = computed(() => {
   const map = new Map<string, number>()
