@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, ref } from 'vue'
 import { loadError, loadStats, rangeLabel, selectedDev, stats } from './data'
+import { activeTab, initUrlState } from './urlState'
 import { version } from '../package.json'
 import FilterBar from './components/FilterBar.vue'
 import SummaryCards from './components/SummaryCards.vue'
@@ -35,8 +36,9 @@ const tabs = [
   { label: 'Repos', icon: 'i-lucide-git-branch', slot: 'repos' as const, value: 'repos' },
 ]
 
-const activeTab = ref(localStorage.getItem('gitview:tab') ?? 'overview')
-watch(activeTab, v => localStorage.setItem('gitview:tab', v))
+// aba + filtros sincronizados com a URL (initUrlState lê a query string no boot
+// e passa a gravar toda mudança de volta na URL via replaceState)
+initUrlState()
 </script>
 
 <template>
