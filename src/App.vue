@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { loadError, loadStats, rangeLabel, stats } from './data'
 import { version } from '../package.json'
 import FilterBar from './components/FilterBar.vue'
@@ -27,6 +27,16 @@ const rangeText = rangeLabel
 // desktop: botão no navbar recolhe a sidebar com 1 clique
 // (o UDashboardSidebarCollapse nativo só cobre mobile; no desktop o default é arrastar a borda)
 const sidebarCollapsed = ref(false)
+
+const tabs = [
+  { label: 'Visão geral', icon: 'i-lucide-layout-dashboard', slot: 'overview' as const, value: 'overview' },
+  { label: 'Time', icon: 'i-lucide-users', slot: 'team' as const, value: 'team' },
+  { label: 'Saúde', icon: 'i-lucide-heart-pulse', slot: 'health' as const, value: 'health' },
+  { label: 'Repos', icon: 'i-lucide-git-branch', slot: 'repos' as const, value: 'repos' },
+]
+
+const activeTab = ref(localStorage.getItem('gitview:tab') ?? 'overview')
+watch(activeTab, v => localStorage.setItem('gitview:tab', v))
 </script>
 
 <template>
@@ -98,34 +108,44 @@ const sidebarCollapsed = ref(false)
               </template>
             </UAlert>
 
-            <div v-else-if="stats" class="flex flex-col gap-4">
+            <template v-else-if="stats">
               <DevDetail />
-              <SummaryCards />
-              <CommitsTimeline />
-              <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <ActivityHeatmap />
-                <RepoShare />
-              </div>
-              <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <WeeklyChampions />
-                <PaceAlert />
-              </div>
 
-              <h2 class="section-title">
-                <UIcon name="i-lucide-heart-pulse" class="size-3.5" />
-                saúde do time
-              </h2>
-              <BurnoutWatch />
-              <BusFactor />
+              <UTabs v-model="activeTab" :items="tabs" variant="link" class="w-full">
+                <template #overview>
+                  <div class="flex flex-col gap-4 pt-4">
+                    <SummaryCards />
+                    <CommitsTimeline />
+                    <ActivityHeatmap />
+                  </div>
+                </template>
 
-              <h2 class="section-title">
-                <UIcon name="i-lucide-calendar-clock" class="size-3.5" />
-                histórico
-              </h2>
-              <AuthorMonthHeatmap />
-              <RepoMonthHeatmap />
-              <DevTable />
-            </div>
+                <template #team>
+                  <div class="flex flex-col gap-4 pt-4">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      <WeeklyChampions />
+                      <PaceAlert />
+                    </div>
+                    <AuthorMonthHeatmap />
+                    <DevTable />
+                  </div>
+                </template>
+
+                <template #health>
+                  <div class="flex flex-col gap-4 pt-4">
+                    <BurnoutWatch />
+                    <BusFactor />
+                  </div>
+                </template>
+
+                <template #repos>
+                  <div class="flex flex-col gap-4 pt-4">
+                    <RepoShare />
+                    <RepoMonthHeatmap />
+                  </div>
+                </template>
+              </UTabs>
+            </template>
           </div>
         </template>
       </UDashboardPanel>
