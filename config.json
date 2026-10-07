@@ -1,0 +1,14 @@
+{
+  "reposRoot": "C:/Users/dev/Documents/GitHub/example",
+  "exclude": [],
+  "authors": {
+    "Raul Domingues": ["21207498+hardeath950@users.noreply.github.com", "hardeath950@localhost.localdomain", "raul@example.com"],
+    "Dev G": ["dev2@example.com", "dev1@example.com"],
+    "Dev F": ["dev3@example.com"],
+    "Dev J": ["dev4@example.com", "dev5@example.com"],
+    "Dev B": ["dev6@example.com", "dev7@example.com"],
+    "Dev E": ["dev8@example.com"],
+    "Dev P": ["dev9@example.com", "dev10@example.com"],
+    "Dev O": ["dev11@example.com", "dev12@example.com"]
+  }
+}
