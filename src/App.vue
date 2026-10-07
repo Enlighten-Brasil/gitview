@@ -13,6 +13,7 @@ import AuthorMonthHeatmap from './components/AuthorMonthHeatmap.vue'
 import PaceAlert from './components/PaceAlert.vue'
 import DevDetail from './components/DevDetail.vue'
 import BurnoutWatch from './components/BurnoutWatch.vue'
+import BusFactor from './components/BusFactor.vue'
 
 onMounted(loadStats)
 
@@ -50,6 +51,7 @@ function fmtDate(iso: string) {
       <PaceAlert />
     </div>
     <BurnoutWatch />
+    <BusFactor />
     <AuthorMonthHeatmap />
     <RepoMonthHeatmap />
     <DevTable />
