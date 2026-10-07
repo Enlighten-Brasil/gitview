@@ -12,8 +12,10 @@ import {
 } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import VChart from 'vue-echarts'
+import { createRouter, createWebHistory } from 'vue-router'
+import ui from '@nuxt/ui/vue-plugin'
 import App from './App.vue'
-import './style.css'
+import './main.css'
 
 use([
   BarChart, HeatmapChart, LineChart, PieChart,
@@ -22,4 +24,14 @@ use([
   CanvasRenderer,
 ])
 
-createApp(App).component('VChart', VChart).mount('#app')
+// Nuxt UI (ULink etc.) espera um vue-router registrado, mesmo sem rotas
+const router = createRouter({
+  routes: [],
+  history: createWebHistory(),
+})
+
+createApp(App)
+  .use(router)
+  .use(ui)
+  .component('VChart', VChart)
+  .mount('#app')

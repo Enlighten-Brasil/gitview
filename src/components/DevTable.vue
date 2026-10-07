@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, ref } from 'vue'
 import { filters, isBot, selectedDev, stats } from '../data'
 
@@ -61,23 +61,34 @@ function exportCsv() {
 </script>
 
 <template>
-  <div class="panel">
-    <h2>
-      Ranking do time (histórico completo)
-      <button class="range-btn" style="margin-left: auto" @click="exportCsv">exportar CSV</button>
-    </h2>
-    <table>
+  <UCard>
+    <template #header>
+      <div class="flex items-center justify-between gap-2">
+        <h2 class="font-semibold text-highlighted">
+          Ranking do time (histórico completo)
+        </h2>
+        <UButton
+          icon="i-lucide-download"
+          label="CSV"
+          color="neutral"
+          variant="soft"
+          size="xs"
+          @click="exportCsv"
+        />
+      </div>
+    </template>
+    <table class="data-table">
       <thead>
         <tr>
           <th>Dev</th>
-          <th class="num" @click="toggleSort('commits')">commits</th>
-          <th class="num" @click="toggleSort('additions')">+ linhas</th>
-          <th class="num" @click="toggleSort('deletions')">− linhas</th>
-          <th class="num" @click="toggleSort('repos')">repos</th>
-          <th class="num" @click="toggleSort('activeDays')">dias ativos</th>
+          <th class="num sortable" @click="toggleSort('commits')">commits</th>
+          <th class="num sortable" @click="toggleSort('additions')">+ linhas</th>
+          <th class="num sortable" @click="toggleSort('deletions')">− linhas</th>
+          <th class="num sortable" @click="toggleSort('repos')">repos</th>
+          <th class="num sortable" @click="toggleSort('activeDays')">dias ativos</th>
           <th class="num">commits/dia ativo</th>
-          <th class="num" @click="toggleSort('streak')">streak 🔥</th>
-          <th class="num" @click="toggleSort('lastCommit')">último commit</th>
+          <th class="num sortable" @click="toggleSort('streak')">streak 🔥</th>
+          <th class="num sortable" @click="toggleSort('lastCommit')">último commit</th>
         </tr>
       </thead>
       <tbody>
@@ -95,12 +106,23 @@ function exportCsv() {
           <td class="num">{{ a.repos }}</td>
           <td class="num">{{ a.activeDays }}</td>
           <td class="num">{{ (a.commits / Math.max(a.activeDays, 1)).toFixed(1) }}</td>
-          <td class="num">{{ a.streak }} <span style="color: var(--text-dim)">(máx {{ a.longestStreak }})</span></td>
+          <td class="num">
+            <div class="flex items-center justify-end gap-1.5">
+              <UBadge
+                icon="i-lucide-flame"
+                :label="String(a.streak)"
+                :color="a.streak > 0 ? 'warning' : 'neutral'"
+                :variant="a.streak > 0 ? 'subtle' : 'outline'"
+                size="sm"
+              />
+              <span class="text-xs text-dimmed">máx {{ a.longestStreak }}</span>
+            </div>
+          </td>
           <td class="num">{{ fmtDate(a.lastCommit) }}</td>
         </tr>
       </tbody>
     </table>
-  </div>
+  </UCard>
 </template>
 
 <style scoped>
@@ -108,9 +130,9 @@ function exportCsv() {
   cursor: pointer;
 }
 .dev-row:hover {
-  background: #ffffff08;
+  background: var(--ui-bg-elevated);
 }
 .dev-row.selected {
-  background: #4f8cff22;
+  background: color-mix(in oklab, var(--ui-primary) 12%, transparent);
 }
 </style>
