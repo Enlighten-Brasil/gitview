@@ -10,6 +10,7 @@ import RepoShare from './components/RepoShare.vue'
 import DevTable from './components/DevTable.vue'
 import WeeklyChampions from './components/WeeklyChampions.vue'
 import AuthorMonthHeatmap from './components/AuthorMonthHeatmap.vue'
+import PaceAlert from './components/PaceAlert.vue'
 
 onMounted(loadStats)
 
@@ -43,8 +44,9 @@ function fmtDate(iso: string) {
     </div>
     <div class="grid-2">
       <WeeklyChampions />
-      <AuthorMonthHeatmap />
+      <PaceAlert />
     </div>
+    <AuthorMonthHeatmap />
     <RepoMonthHeatmap />
     <DevTable />
   </template>
