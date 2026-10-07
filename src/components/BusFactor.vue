@@ -38,7 +38,7 @@ function risk(r: RepoRisk): { color: 'error' | 'warning' | 'success'; label: str
 </script>
 
 <template>
-  <UCard class="mb-4">
+  <UCard>
     <template #header>
       <div class="flex items-center gap-2">
         <UIcon name="i-lucide-bus" class="size-4 text-error" />

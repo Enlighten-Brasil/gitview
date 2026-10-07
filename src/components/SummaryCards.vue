@@ -25,7 +25,7 @@ const cards = computed(() => {
 </script>
 
 <template>
-  <div class="grid gap-3 mb-4" style="grid-template-columns: repeat(auto-fit, minmax(160px, 1fr))">
+  <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(160px, 1fr))">
     <div v-for="c in cards" :key="c.label" class="stat-card">
       <div class="flex items-center gap-2">
         <UIcon :name="c.icon" class="size-4" :class="c.color ?? 'text-muted'" />

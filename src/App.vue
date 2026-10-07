@@ -52,23 +52,35 @@ function fmtDate(iso: string) {
       </UAlert>
 
       <template v-else-if="stats">
-        <FilterBar />
-        <DevDetail />
-        <SummaryCards />
-        <CommitsTimeline />
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <ActivityHeatmap />
-          <RepoShare />
+        <div class="flex flex-col gap-4">
+          <FilterBar />
+          <DevDetail />
+          <SummaryCards />
+          <CommitsTimeline />
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <ActivityHeatmap />
+            <RepoShare />
+          </div>
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <WeeklyChampions />
+            <PaceAlert />
+          </div>
+
+          <h2 class="section-title">
+            <UIcon name="i-lucide-heart-pulse" class="size-3.5" />
+            saúde do time
+          </h2>
+          <BurnoutWatch />
+          <BusFactor />
+
+          <h2 class="section-title">
+            <UIcon name="i-lucide-calendar-clock" class="size-3.5" />
+            histórico
+          </h2>
+          <AuthorMonthHeatmap />
+          <RepoMonthHeatmap />
+          <DevTable />
         </div>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <WeeklyChampions />
-          <PaceAlert />
-        </div>
-        <BurnoutWatch />
-        <BusFactor />
-        <AuthorMonthHeatmap />
-        <RepoMonthHeatmap />
-        <DevTable />
       </template>
     </div>
   </UApp>

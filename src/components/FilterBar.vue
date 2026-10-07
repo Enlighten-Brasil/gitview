@@ -28,7 +28,7 @@ function clearSelection() {
 </script>
 
 <template>
-  <div class="sticky top-3 z-20 mb-4 rounded-xl border border-default bg-elevated/90 backdrop-blur-md shadow-xl p-4 flex flex-col gap-3">
+  <div class="sticky top-3 z-20 rounded-xl border border-default bg-elevated/90 backdrop-blur-md shadow-xl p-4 flex flex-col gap-3">
     <div class="flex items-center gap-2 flex-wrap">
       <span class="w-14 text-[11px] font-bold uppercase tracking-wider text-muted">Período</span>
       <UButton

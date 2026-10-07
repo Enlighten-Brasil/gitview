@@ -29,7 +29,7 @@ const data = computed(() => {
 </script>
 
 <template>
-  <UCard class="mb-4">
+  <UCard>
     <template #header>
       <div class="flex items-center gap-2">
         <UIcon name="i-lucide-trophy" class="size-4 text-warning" />

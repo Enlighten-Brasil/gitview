@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import type { EChartsOption } from 'echarts'
 import { selectedDev, stats } from '../data'
+import { axisLabel, ct, heatRamp, legendText, PALETTE, splitLine, tooltipBase } from '../chartTheme'
 
 const WEEKDAYS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
 
@@ -36,12 +37,12 @@ const timelineOption = computed<EChartsOption>(() => {
   const weeks = [...byWeek.keys()].sort()
 
   return {
-    tooltip: { trigger: 'axis' },
+    tooltip: tooltipBase({ trigger: 'axis' }),
     grid: { left: 50, right: 20, top: 20, bottom: 60 },
-    xAxis: { type: 'category', data: weeks, axisLabel: { color: '#9aa3b2' } },
-    yAxis: { type: 'value', axisLabel: { color: '#9aa3b2' }, splitLine: { lineStyle: { color: '#262b36' } } },
+    xAxis: { type: 'category', data: weeks, axisLabel: axisLabel() },
+    yAxis: { type: 'value', axisLabel: axisLabel(), splitLine: splitLine() },
     dataZoom: [{ type: 'inside' }, { type: 'slider', height: 18, bottom: 8 }],
-    series: [{ type: 'bar', data: weeks.map(w => byWeek.get(w) ?? 0), itemStyle: { color: '#4f8cff' } }],
+    series: [{ type: 'bar', data: weeks.map(w => byWeek.get(w) ?? 0), itemStyle: { color: ct.primary } }],
   }
 })
 
@@ -54,13 +55,14 @@ const repoOption = computed<EChartsOption>(() => {
   const data = [...map.entries()].map(([repo, commits]) => ({ name: repo, value: commits })).sort((a, b) => b.value - a.value)
 
   return {
-    tooltip: { trigger: 'item', formatter: '{b}: {c} commits ({d}%)' },
-    legend: { type: 'scroll', orient: 'vertical', right: 0, top: 'middle', textStyle: { color: '#9aa3b2' } },
+    color: PALETTE,
+    tooltip: tooltipBase({ trigger: 'item', formatter: '{b}: {c} commits ({d}%)' }),
+    legend: { type: 'scroll', orient: 'vertical', right: 0, top: 'middle', textStyle: legendText() },
     series: [{
       type: 'pie',
       radius: ['45%', '75%'],
       center: ['38%', '50%'],
-      itemStyle: { borderColor: '#171a21', borderWidth: 2 },
+      itemStyle: { borderColor: ct.bg, borderWidth: 2 },
       label: { show: false },
       data,
     }],
@@ -84,20 +86,20 @@ const heatOption = computed<EChartsOption>(() => {
   }
 
   return {
-    tooltip: {
+    tooltip: tooltipBase({
       formatter: (p: unknown) => {
         const d = (p as { data: [number, number, number] }).data
         return `${WEEKDAYS[d[1]]} ${String(d[0]).padStart(2, '0')}h: <b>${d[2]}</b> commits`
       },
-    },
+    }),
     grid: { left: 50, right: 20, top: 10, bottom: 30 },
-    xAxis: { type: 'category', data: Array.from({ length: 24 }, (_, h) => `${h}h`), axisLabel: { color: '#9aa3b2' } },
-    yAxis: { type: 'category', data: WEEKDAYS, axisLabel: { color: '#9aa3b2' } },
+    xAxis: { type: 'category', data: Array.from({ length: 24 }, (_, h) => `${h}h`), axisLabel: axisLabel() },
+    yAxis: { type: 'category', data: WEEKDAYS, axisLabel: axisLabel() },
     visualMap: {
       min: 0,
       max: Math.max(max, 1),
       show: false,
-      inRange: { color: ['#171a21', '#143d2b', '#22c55e', '#a7f3d0'] },
+      inRange: { color: heatRamp('success') },
     },
     series: [{ type: 'heatmap', data }],
   }

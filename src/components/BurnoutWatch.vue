@@ -10,7 +10,7 @@ function status(b: BurnoutRow): { color: 'error' | 'warning' | 'success'; label:
 </script>
 
 <template>
-  <UCard class="mb-4">
+  <UCard>
     <template #header>
       <div class="flex items-center gap-2">
         <UIcon name="i-lucide-moon" class="size-4 text-secondary" />
