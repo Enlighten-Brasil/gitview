@@ -244,7 +244,7 @@ async function main() {
   `).all() as { repo: string; author: string; email: string; date: string; additions: number; deletions: number }[]
 
   const emailsByAuthor = new Map<string, Set<string>>()
-  const weekly = new Map<string, number>()      // week|repo|author
+  const weekly = new Map<string, { commits: number; weekend: number; night: number }>() // week|repo|author
   const monthly = new Map<string, number>()     // month|repo|author
   const heatmap = new Map<string, number>()     // author|repo|weekday|hour
   const perAuthor = new Map<string, { commits: number; additions: number; deletions: number; repos: Set<string>; days: Set<string>; last: string }>()
@@ -261,7 +261,11 @@ async function main() {
     emailsByAuthor.get(r.author)!.add(r.email)
 
     const wk = `${isoWeekKey(d)}|${r.repo}|${r.author}`
-    weekly.set(wk, (weekly.get(wk) ?? 0) + 1)
+    const wkCur = weekly.get(wk) ?? { commits: 0, weekend: 0, night: 0 }
+    wkCur.commits++
+    if (d.getDay() === 0 || d.getDay() === 6) wkCur.weekend++
+    if (d.getHours() >= 22 || d.getHours() < 6) wkCur.night++
+    weekly.set(wk, wkCur)
 
     const mk = `${monthKey(d)}|${r.repo}|${r.author}`
     monthly.set(mk, (monthly.get(mk) ?? 0) + 1)
@@ -313,9 +317,9 @@ async function main() {
     perAuthor: [...perAuthor.entries()]
       .map(([author, v]) => ({ author, commits: v.commits, additions: v.additions, deletions: v.deletions, repos: v.repos.size, activeDays: v.days.size, lastCommit: v.last, ...calcStreaks(v.days) }))
       .sort((a, b) => b.commits - a.commits),
-    weekly: [...weekly.entries()].map(([k, commits]) => {
+    weekly: [...weekly.entries()].map(([k, v]) => {
       const [week, repo, author] = k.split('|')
-      return { week, repo, author, commits }
+      return { week, repo, author, commits: v.commits, weekend: v.weekend, night: v.night }
     }),
     monthly: [...monthly.entries()].map(([k, commits]) => {
       const [month, repo, author] = k.split('|')
