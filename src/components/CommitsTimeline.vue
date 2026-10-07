@@ -45,11 +45,16 @@ const option = computed<EChartsOption>(() => {
   <ChartPanel
     :title="`Commits por ${granularity === 'week' ? 'semana' : 'mês'} (por dev)`"
     :option="option"
+    icon="i-lucide-chart-column-stacked"
     tall
   >
     <template #actions>
-      <button class="range-btn" :class="{ active: granularity === 'week' }" @click="granularity = 'week'">semana</button>
-      <button class="range-btn" :class="{ active: granularity === 'month' }" @click="granularity = 'month'">mês</button>
+      <UButton size="xs" :color="granularity === 'week' ? 'primary' : 'neutral'" :variant="granularity === 'week' ? 'solid' : 'ghost'" @click="granularity = 'week'">
+        semana
+      </UButton>
+      <UButton size="xs" :color="granularity === 'month' ? 'primary' : 'neutral'" :variant="granularity === 'month' ? 'solid' : 'ghost'" @click="granularity = 'month'">
+        mês
+      </UButton>
     </template>
   </ChartPanel>
 </template>

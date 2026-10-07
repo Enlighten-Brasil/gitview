@@ -12,49 +12,52 @@ function pct(ratio: number): string {
 </script>
 
 <template>
-  <div class="panel">
-    <h2>Ritmo — últimas 4 semanas vs 8 anteriores</h2>
+  <UCard class="mb-4">
+    <template #header>
+      <div class="flex items-center gap-2">
+        <UIcon name="i-lucide-activity" class="size-4 text-primary" />
+        <span class="text-sm font-semibold text-highlighted">Ritmo — últimas 4 semanas vs 8 anteriores</span>
+      </div>
+    </template>
 
-    <p v-if="falling.length === 0 && rising.length === 0" style="color: var(--text-dim); font-size: 13px">
+    <p v-if="falling.length === 0 && rising.length === 0" class="text-muted text-sm">
       Todo mundo no ritmo habitual. 👍
     </p>
 
     <template v-if="falling.length">
-      <h3 class="group-title down">📉 abaixo do ritmo</h3>
-      <table>
+      <h3 class="flex items-center gap-1.5 text-sm font-semibold text-error mt-1 mb-1.5">
+        <UIcon name="i-lucide-trending-down" class="size-4" /> abaixo do ritmo
+      </h3>
+      <table class="data-table">
         <tbody>
           <tr v-for="r in falling" :key="r.author">
             <td>{{ r.author }}</td>
             <td class="num">{{ r.recent }} commits / 4 sem</td>
-            <td class="num" style="color: var(--text-dim)">média {{ r.prevAvg.toFixed(1) }}/sem</td>
-            <td class="num del">{{ pct(r.ratio!) }}</td>
+            <td class="num text-muted">média {{ r.prevAvg.toFixed(1) }}/sem</td>
+            <td class="num">
+              <UBadge color="error" variant="soft">{{ pct(r.ratio!) }}</UBadge>
+            </td>
           </tr>
         </tbody>
       </table>
     </template>
 
     <template v-if="rising.length">
-      <h3 class="group-title up">🚀 acelerando</h3>
-      <table>
+      <h3 class="flex items-center gap-1.5 text-sm font-semibold text-success mt-3 mb-1.5">
+        <UIcon name="i-lucide-trending-up" class="size-4" /> acelerando
+      </h3>
+      <table class="data-table">
         <tbody>
           <tr v-for="r in rising" :key="r.author">
             <td>{{ r.author }}</td>
             <td class="num">{{ r.recent }} commits / 4 sem</td>
-            <td class="num" style="color: var(--text-dim)">média {{ r.prevAvg.toFixed(1) }}/sem</td>
-            <td class="num add">{{ pct(r.ratio!) }}</td>
+            <td class="num text-muted">média {{ r.prevAvg.toFixed(1) }}/sem</td>
+            <td class="num">
+              <UBadge color="success" variant="soft">{{ pct(r.ratio!) }}</UBadge>
+            </td>
           </tr>
         </tbody>
       </table>
     </template>
-  </div>
+  </UCard>
 </template>
-
-<style scoped>
-.group-title {
-  font-size: 13px;
-  margin: 12px 0 6px;
-  font-weight: 600;
-}
-.group-title.down { color: #f87171; }
-.group-title.up { color: #4ade80; }
-</style>

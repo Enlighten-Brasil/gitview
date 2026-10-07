@@ -24,39 +24,52 @@ function fmtDate(iso: string) {
 </script>
 
 <template>
-  <header class="app-header">
-    <h1>gitview <span class="version">v{{ version }}</span></h1>
-    <p class="subtitle">
-      <template v-if="stats">
-        gerado em {{ fmtDate(stats.generatedAt) }} · rode <code>pnpm collect</code> para atualizar
+  <UApp>
+    <div class="max-w-[1320px] mx-auto px-5 pt-7 pb-14">
+      <header class="flex items-baseline gap-4 flex-wrap mb-5">
+        <h1 class="app-title flex items-center gap-3">
+          gitview
+          <UBadge color="primary" variant="soft">v{{ version }}</UBadge>
+        </h1>
+        <p class="text-muted text-sm">
+          <template v-if="stats">
+            gerado em {{ fmtDate(stats.generatedAt) }} · rode <code class="bg-accented px-1.5 py-0.5 rounded text-xs">pnpm collect</code> para atualizar
+          </template>
+          <template v-else>carregando…</template>
+        </p>
+      </header>
+
+      <UAlert
+        v-if="loadError"
+        color="error"
+        variant="subtle"
+        icon="i-lucide-triangle-alert"
+        title="Não consegui carregar os dados"
+      >
+        <template #description>
+          {{ loadError }} — rode <code>pnpm collect</code> para gerar o <code>public/data/stats.json</code> a partir dos seus repos git.
+        </template>
+      </UAlert>
+
+      <template v-else-if="stats">
+        <FilterBar />
+        <DevDetail />
+        <SummaryCards />
+        <CommitsTimeline />
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <ActivityHeatmap />
+          <RepoShare />
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <WeeklyChampions />
+          <PaceAlert />
+        </div>
+        <BurnoutWatch />
+        <BusFactor />
+        <AuthorMonthHeatmap />
+        <RepoMonthHeatmap />
+        <DevTable />
       </template>
-      <template v-else>carregando…</template>
-    </p>
-  </header>
-
-  <div v-if="loadError" class="error-box">
-    <p><b>Não consegui carregar os dados.</b></p>
-    <p>{{ loadError }}</p>
-    <p>Rode <code>pnpm collect</code> para gerar o <code>public/data/stats.json</code> a partir dos seus repos git.</p>
-  </div>
-
-  <template v-else-if="stats">
-    <FilterBar />
-    <DevDetail />
-    <SummaryCards />
-    <CommitsTimeline />
-    <div class="grid-2">
-      <ActivityHeatmap />
-      <RepoShare />
     </div>
-    <div class="grid-2">
-      <WeeklyChampions />
-      <PaceAlert />
-    </div>
-    <BurnoutWatch />
-    <BusFactor />
-    <AuthorMonthHeatmap />
-    <RepoMonthHeatmap />
-    <DevTable />
-  </template>
+  </UApp>
 </template>

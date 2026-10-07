@@ -105,30 +105,41 @@ const heatOption = computed<EChartsOption>(() => {
 </script>
 
 <template>
-  <div v-if="selectedDev" class="panel dev-detail">
-    <h2 style="text-transform: none; font-size: 16px; color: var(--text)">
-      👤 {{ selectedDev }}
-      <span style="color: var(--text-dim); font-weight: 400; font-size: 12px">— histórico completo</span>
-      <button class="range-btn" style="margin-left: auto" @click="selectedDev = null">fechar ✕</button>
-    </h2>
+  <UCard v-if="selectedDev" class="ring-primary/50!">
+    <template #header>
+      <div class="flex items-center gap-2">
+        <UIcon name="i-lucide-user" class="size-5 text-primary" />
+        <h2 class="font-semibold text-highlighted">
+          {{ selectedDev }}
+        </h2>
+        <span class="text-xs text-dimmed">— histórico completo</span>
+        <UButton
+          icon="i-lucide-x"
+          label="fechar"
+          color="neutral"
+          variant="ghost"
+          size="xs"
+          class="ml-auto"
+          @click="selectedDev = null"
+        />
+      </div>
+    </template>
 
-    <div class="cards" style="margin-top: 8px">
-      <div v-for="c in cards" :key="c.label" class="card">
-        <div class="value" style="font-size: 20px">{{ c.value }}</div>
-        <div class="label">{{ c.label }}</div>
+    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mb-4">
+      <div
+        v-for="c in cards"
+        :key="c.label"
+        class="rounded-lg bg-elevated/50 px-3 py-2.5"
+      >
+        <div class="text-lg font-bold text-highlighted leading-tight">{{ c.value }}</div>
+        <div class="text-[11px] text-dimmed uppercase tracking-wide">{{ c.label }}</div>
       </div>
     </div>
 
     <VChart :option="timelineOption" class="chart" autoresize />
-    <div class="grid-2">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <VChart :option="repoOption" class="chart" autoresize />
       <VChart :option="heatOption" class="chart" autoresize />
     </div>
-  </div>
+  </UCard>
 </template>
-
-<style scoped>
-.dev-detail {
-  border-color: var(--accent);
-}
-</style>

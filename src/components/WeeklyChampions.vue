@@ -29,43 +29,40 @@ const data = computed(() => {
 </script>
 
 <template>
-  <div class="panel">
-    <h2>Campeão da semana 🏆</h2>
-    <div class="champions">
-      <table>
+  <UCard class="mb-4">
+    <template #header>
+      <div class="flex items-center gap-2">
+        <UIcon name="i-lucide-trophy" class="size-4 text-warning" />
+        <span class="text-sm font-semibold text-highlighted">Campeão da semana</span>
+      </div>
+    </template>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <table class="data-table">
         <thead>
           <tr><th>semana</th><th>dev</th><th class="num">commits</th></tr>
         </thead>
         <tbody>
           <tr v-for="w in data.recent" :key="w.week">
-            <td>{{ w.week }}</td>
+            <td class="text-muted">{{ w.week }}</td>
             <td>{{ w.champion }}</td>
-            <td class="num">{{ w.commits }}</td>
+            <td class="num font-semibold">{{ w.commits }}</td>
           </tr>
         </tbody>
       </table>
-      <table>
+      <table class="data-table">
         <thead>
           <tr><th>títulos (período)</th><th class="num">🏆</th></tr>
         </thead>
         <tbody>
           <tr v-for="t in data.titleRank" :key="t.author">
             <td>{{ t.author }}</td>
-            <td class="num">{{ t.count }}</td>
+            <td class="num">
+              <UBadge color="warning" variant="soft">{{ t.count }}</UBadge>
+            </td>
           </tr>
         </tbody>
       </table>
     </div>
-  </div>
+  </UCard>
 </template>
-
-<style scoped>
-.champions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-@media (max-width: 700px) {
-  .champions { grid-template-columns: 1fr; }
-}
-</style>
