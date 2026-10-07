@@ -1,5 +1,11 @@
 # gitview
 
+## 0.6.0
+
+### Minor Changes
+
+- a9a843c: Migra o design system para Nuxt UI v4 + Tailwind v4: componentes nativos (UCard, UButton, UBadge, USwitch, UTooltip) em todo o dashboard, tabelas com classes semânticas do tema, ícones Lucide e tokens de cor semânticos. Adiciona vue-router (peer do Nuxt UI) com rotas vazias.
+
 ## 0.5.0
 
 ### Minor Changes
