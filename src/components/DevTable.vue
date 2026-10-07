@@ -33,11 +33,39 @@ function fmtDate(iso: string) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('pt-BR')
 }
+
+function exportCsv() {
+  const header = ['dev', 'commits', 'linhas_adicionadas', 'linhas_removidas', 'repos', 'dias_ativos', 'commits_por_dia_ativo', 'streak_atual', 'streak_max', 'ultimo_commit']
+  const lines = visibleAuthors.value.map(a => [
+    a.author,
+    a.commits,
+    a.additions,
+    a.deletions,
+    a.repos,
+    a.activeDays,
+    (a.commits / Math.max(a.activeDays, 1)).toFixed(2),
+    a.streak,
+    a.longestStreak,
+    a.lastCommit.slice(0, 10),
+  ].join(';'))
+  const BOM = String.fromCharCode(0xFEFF) // BOM p/ Excel abrir UTF-8 corretamente
+  const csv = BOM + header.join(';') + '\n' + lines.join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `ranking-time-${new Date().toISOString().slice(0, 10)}.csv`
+  link.click()
+  URL.revokeObjectURL(url)
+}
 </script>
 
 <template>
   <div class="panel">
-    <h2>Ranking do time (histórico completo)</h2>
+    <h2>
+      Ranking do time (histórico completo)
+      <button class="range-btn" style="float: right" @click="exportCsv">exportar CSV</button>
+    </h2>
     <table>
       <thead>
         <tr>
@@ -47,6 +75,7 @@ function fmtDate(iso: string) {
           <th class="num" @click="toggleSort('deletions')">− linhas</th>
           <th class="num" @click="toggleSort('repos')">repos</th>
           <th class="num" @click="toggleSort('activeDays')">dias ativos</th>
+          <th class="num">commits/dia ativo</th>
           <th class="num" @click="toggleSort('streak')">streak 🔥</th>
           <th class="num" @click="toggleSort('lastCommit')">último commit</th>
         </tr>
@@ -59,6 +88,7 @@ function fmtDate(iso: string) {
           <td class="num del">{{ fmt(a.deletions) }}</td>
           <td class="num">{{ a.repos }}</td>
           <td class="num">{{ a.activeDays }}</td>
+          <td class="num">{{ (a.commits / Math.max(a.activeDays, 1)).toFixed(1) }}</td>
           <td class="num">{{ a.streak }} <span style="color: var(--text-dim)">(máx {{ a.longestStreak }})</span></td>
           <td class="num">{{ fmtDate(a.lastCommit) }}</td>
         </tr>
