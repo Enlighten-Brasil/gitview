@@ -245,7 +245,7 @@ async function main() {
 
   const emailsByAuthor = new Map<string, Set<string>>()
   const weekly = new Map<string, { commits: number; weekend: number; night: number }>() // week|repo|author
-  const monthly = new Map<string, number>()     // month|repo|author
+  const monthly = new Map<string, { commits: number; additions: number; deletions: number }>() // month|repo|author
   const heatmap = new Map<string, number>()     // author|repo|weekday|hour
   const perAuthor = new Map<string, { commits: number; additions: number; deletions: number; repos: Set<string>; days: Set<string>; last: string }>()
   const perRepo = new Map<string, { commits: number; additions: number; deletions: number; authors: Set<string>; last: string }>()
@@ -268,7 +268,11 @@ async function main() {
     weekly.set(wk, wkCur)
 
     const mk = `${monthKey(d)}|${r.repo}|${r.author}`
-    monthly.set(mk, (monthly.get(mk) ?? 0) + 1)
+    const mCur = monthly.get(mk) ?? { commits: 0, additions: 0, deletions: 0 }
+    mCur.commits++
+    mCur.additions += r.additions
+    mCur.deletions += r.deletions
+    monthly.set(mk, mCur)
 
     const hk = `${r.author}|${r.repo}|${d.getDay()}|${d.getHours()}`
     heatmap.set(hk, (heatmap.get(hk) ?? 0) + 1)
@@ -321,9 +325,9 @@ async function main() {
       const [week, repo, author] = k.split('|')
       return { week, repo, author, commits: v.commits, weekend: v.weekend, night: v.night }
     }),
-    monthly: [...monthly.entries()].map(([k, commits]) => {
+    monthly: [...monthly.entries()].map(([k, v]) => {
       const [month, repo, author] = k.split('|')
-      return { month, repo, author, commits }
+      return { month, repo, author, commits: v.commits, additions: v.additions, deletions: v.deletions }
     }),
     heatmap: [...heatmap.entries()].map(([k, commits]) => {
       const [author, repo, weekday, hour] = k.split('|')
