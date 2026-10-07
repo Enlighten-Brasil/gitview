@@ -10,5 +10,19 @@
     "Dev E": ["dev8@example.com"],
     "Dev P": ["dev9@example.com", "dev10@example.com"],
     "Dev O": ["dev11@example.com", "dev12@example.com"]
-  }
+  },
+  "githubUsers": {
+    "hardeath950": "Raul Domingues",
+    "devlogin-f": "Dev J",
+    "devlogin-d": "Dev E",
+    "devlogin-b": "Dev G",
+    "devlogin-bDev": "Dev G",
+    "devlogin-o": "Dev P",
+    "devlogin-k": "Dev B",
+    "devlogin-l": "Dev D",
+    "devlogin-n": "Dev F",
+    "devlogin-m": "Dev R",
+    "Dev A": "Dev A"
+  },
+  "githubBots": ["dependabot", "copilot-pull-request-reviewer", "copilot-swe-agent", "cursor", "github-code-quality"]
 }

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { loadError, loadStats, rangeLabel, selectedDev, stats } from './data'
+import { github, githubError, loadGithub } from './github'
 import { activeTab, initUrlState } from './urlState'
 import { version } from '../package.json'
 import FilterBar from './components/FilterBar.vue'
@@ -16,8 +17,13 @@ import PaceAlert from './components/PaceAlert.vue'
 import DevDetail from './components/DevDetail.vue'
 import BurnoutWatch from './components/BurnoutWatch.vue'
 import BusFactor from './components/BusFactor.vue'
+import PrSummaryCards from './components/PrSummaryCards.vue'
+import PrOpenTable from './components/PrOpenTable.vue'
+import PrCycleTime from './components/PrCycleTime.vue'
+import PrReviews from './components/PrReviews.vue'
 
 onMounted(loadStats)
+onMounted(loadGithub)
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleString('pt-BR')
@@ -34,6 +40,7 @@ const tabs = [
   { label: 'Time', icon: 'i-lucide-users', slot: 'team' as const, value: 'team' },
   { label: 'Saúde', icon: 'i-lucide-heart-pulse', slot: 'health' as const, value: 'health' },
   { label: 'Repos', icon: 'i-lucide-git-branch', slot: 'repos' as const, value: 'repos' },
+  { label: 'Pull requests', icon: 'i-lucide-git-pull-request', slot: 'prs' as const, value: 'prs' },
 ]
 
 // aba + filtros sincronizados com a URL (initUrlState lê a query string no boot
@@ -160,6 +167,25 @@ initUrlState()
                 <div class="flex flex-col gap-4">
                   <RepoShare />
                   <RepoMonthHeatmap />
+                </div>
+              </template>
+
+              <template #prs>
+                <UAlert
+                  v-if="githubError"
+                  color="warning"
+                  variant="subtle"
+                  icon="i-lucide-triangle-alert"
+                  title="Sem dados do GitHub"
+                  :description="`${githubError} para gerar o public/data/github.json (requer gh autenticado).`"
+                />
+                <div v-else-if="github" class="flex flex-col gap-4">
+                  <PrSummaryCards />
+                  <PrOpenTable />
+                  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <PrCycleTime />
+                    <PrReviews />
+                  </div>
                 </div>
               </template>
             </UTabs>

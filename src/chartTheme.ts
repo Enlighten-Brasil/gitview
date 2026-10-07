@@ -59,6 +59,8 @@ function resolve(): Record<string, string> {
     violet500: v('--ui-color-violet-500', '#8b5cf6'),
     violet900: v('--ui-color-violet-900', '#4c1d95'),
     violet300: v('--ui-color-violet-300', '#c4b5fd'),
+    error500: v('--ui-color-error-500', '#ef4444'),
+    warning500: v('--ui-color-warning-500', '#f59e0b'),
   }
   return cache
 }
