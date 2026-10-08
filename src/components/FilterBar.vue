@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { filters, stats } from '../data'
+import { filters, isCustomRange, stats } from '../data'
 
 const ranges = [
   { label: '1M', months: 1 },
@@ -10,6 +10,27 @@ const ranges = [
   { label: '24M', months: 24 },
   { label: 'Tudo', months: null },
 ] as const
+
+/** preset de período: limpa o range customizado */
+function setRange(months: number | null) {
+  filters.dateFrom = null
+  filters.dateTo = null
+  filters.rangeMonths = months
+}
+
+/** ativa o modo personalizado pré-preenchendo com a janela atual; desativa limpando as datas */
+function toggleCustom() {
+  if (isCustomRange()) {
+    filters.dateFrom = null
+    filters.dateTo = null
+    return
+  }
+  const from = new Date()
+  if (filters.rangeMonths != null) from.setMonth(from.getMonth() - filters.rangeMonths)
+  else from.setFullYear(from.getFullYear() - 10)
+  filters.dateFrom = from.toISOString().slice(0, 10)
+  filters.dateTo = new Date().toISOString().slice(0, 10)
+}
 
 const visibleAuthors = computed(() =>
   (stats.value?.authors ?? []).filter(a => filters.showBots || !a.bot),
@@ -52,12 +73,26 @@ function clearList(list: ListKey) {
           v-for="r in ranges"
           :key="r.label"
           size="xs"
-          :color="filters.rangeMonths === r.months ? 'primary' : 'neutral'"
-          :variant="filters.rangeMonths === r.months ? 'solid' : 'outline'"
-          @click="filters.rangeMonths = r.months"
+          :color="!isCustomRange() && filters.rangeMonths === r.months ? 'primary' : 'neutral'"
+          :variant="!isCustomRange() && filters.rangeMonths === r.months ? 'solid' : 'outline'"
+          @click="setRange(r.months)"
         >
           {{ r.label }}
         </UButton>
+        <UButton
+          size="xs"
+          icon="i-lucide-calendar-range"
+          :color="isCustomRange() ? 'primary' : 'neutral'"
+          :variant="isCustomRange() ? 'solid' : 'outline'"
+          @click="toggleCustom"
+        >
+          Personalizado
+        </UButton>
+      </div>
+      <div v-if="isCustomRange()" class="flex items-center gap-1.5">
+        <UInput v-model="filters.dateFrom" type="date" size="xs" class="flex-1" />
+        <span class="text-dimmed text-xs">→</span>
+        <UInput v-model="filters.dateTo" type="date" size="xs" class="flex-1" />
       </div>
       <USwitch v-model="filters.showBots" label="incluir bots" size="sm" class="mt-1" />
     </section>

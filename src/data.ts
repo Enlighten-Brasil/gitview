@@ -22,8 +22,16 @@ export const filters = reactive({
   repos: [] as string[],      // vazio = todos
   authors: [] as string[],    // vazio = todos
   rangeMonths: 12 as number | null, // null = todo o histórico
+  /** range customizado (YYYY-MM-DD) — quando preenchido, prevalece sobre rangeMonths */
+  dateFrom: null as string | null,
+  dateTo: null as string | null,
   showBots: false,
 })
+
+/** range customizado ativo? */
+export function isCustomRange(): boolean {
+  return !!(filters.dateFrom || filters.dateTo)
+}
 
 const botNames = computed(() => new Set((stats.value?.authors ?? []).filter(a => a.bot).map(a => a.name)))
 export function isBot(author: string) {
@@ -42,6 +50,7 @@ export async function loadStats() {
 }
 
 function cutoffDate(): Date | null {
+  if (filters.dateFrom) return new Date(`${filters.dateFrom}T00:00:00`)
   if (filters.rangeMonths == null) return null
   const d = new Date()
   d.setMonth(d.getMonth() - filters.rangeMonths)
@@ -49,10 +58,17 @@ function cutoffDate(): Date | null {
 }
 
 function inRange(periodKey: string): boolean {
+  const key = periodKey.slice(0, 7)
+  // range customizado: compara mês a mês com from/to
+  if (isCustomRange()) {
+    if (filters.dateFrom && key < filters.dateFrom.slice(0, 7)) return false
+    if (filters.dateTo && key > filters.dateTo.slice(0, 7)) return false
+    return true
+  }
   const cutoff = cutoffDate()
   if (!cutoff) return true
   // periodKey é "YYYY-Www" ou "YYYY-MM" — compara pelo começo do período
-  return periodKey.slice(0, 7) >= `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, '0')}`
+  return key >= `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, '0')}`
 }
 
 function selectedRepo(repo: string) {
@@ -82,6 +98,11 @@ export const filteredCommitCount = computed(() =>
 
 /** label do período selecionado (navbar + cards) */
 export const rangeLabel = computed(() => {
+  if (isCustomRange()) {
+    const f = filters.dateFrom ? new Date(`${filters.dateFrom}T00:00:00`).toLocaleDateString('pt-BR') : 'início'
+    const t = filters.dateTo ? new Date(`${filters.dateTo}T00:00:00`).toLocaleDateString('pt-BR') : 'hoje'
+    return `${f} → ${t}`
+  }
   if (filters.rangeMonths == null) return 'histórico completo'
   return filters.rangeMonths === 1 ? 'último mês' : `últimos ${filters.rangeMonths} meses`
 })
@@ -108,7 +129,8 @@ export const filteredTotals = computed(() => {
  * para o delta dos cards. null quando o filtro é "tudo" (sem janela comparável).
  */
 export const previousTotals = computed(() => {
-  if (filters.rangeMonths == null || !stats.value) return null
+  // sem janela comparável quando o filtro é "tudo" ou range customizado
+  if (filters.rangeMonths == null || isCustomRange() || !stats.value) return null
   const cutoff = cutoffDate()!
   const prevStart = new Date(cutoff)
   prevStart.setMonth(prevStart.getMonth() - filters.rangeMonths)

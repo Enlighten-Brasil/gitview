@@ -37,6 +37,7 @@ function authorOk(login: string) {
   return filters.authors.length === 0 || filters.authors.includes(ghName(login))
 }
 function cutoff(): Date | null {
+  if (filters.dateFrom) return new Date(`${filters.dateFrom}T00:00:00`)
   if (filters.rangeMonths == null) return null
   const d = new Date()
   d.setMonth(d.getMonth() - filters.rangeMonths)
@@ -44,8 +45,11 @@ function cutoff(): Date | null {
 }
 function inPeriod(iso: string | null): boolean {
   if (!iso) return false
+  const d = new Date(iso)
   const c = cutoff()
-  return !c || new Date(iso) >= c
+  if (c && d < c) return false
+  if (filters.dateTo && d > new Date(`${filters.dateTo}T23:59:59`)) return false
+  return true
 }
 
 /** PRs abertos agora (período não se aplica — aberto é "agora") */
@@ -158,4 +162,53 @@ export function fmtDuration(hours: number): string {
   const days = hours / 24
   if (days < 14) return `${days.toFixed(1).replace('.', ',')}d`
   return `${(days / 7).toFixed(1).replace('.', ',')}sem`
+}
+
+// ---------------------------------------------------------------------------
+// tendência de cycle time por repo — janela fixa de 6 meses (ignora o filtro de
+// período: tendência precisa de vários meses), mas respeita repos/devs/bots
+// ---------------------------------------------------------------------------
+export interface CycleTrendRow {
+  repo: string
+  /** medianas por mês, mais antigo -> mais recente (só meses com PRs) */
+  months: { month: string; medianHours: number; count: number }[]
+  /** últimos 3 meses com dados estão estritamente subindo */
+  rising: boolean
+}
+
+export const cycleTrend = computed<CycleTrendRow[]>(() => {
+  const cutoff = new Date()
+  cutoff.setMonth(cutoff.getMonth() - 6)
+  const prs = (github.value?.prs ?? []).filter(pr =>
+    pr.state === 'MERGED' && pr.mergedAt && repoOk(pr.repo) && authorOk(pr.author)
+    && new Date(pr.mergedAt) >= cutoff,
+  )
+
+  const byRepo = new Map<string, Map<string, number[]>>()
+  for (const pr of prs) {
+    const month = pr.mergedAt!.slice(0, 7)
+    if (!byRepo.has(pr.repo)) byRepo.set(pr.repo, new Map())
+    const m = byRepo.get(pr.repo)!
+    if (!m.has(month)) m.set(month, [])
+    m.get(month)!.push(cycleHours(pr))
+  }
+
+  return [...byRepo.entries()]
+    .map(([repo, m]) => {
+      const months = [...m.entries()]
+        .map(([month, hours]) => ({ month, medianHours: median(hours), count: hours.length }))
+        .sort((a, b) => a.month.localeCompare(b.month))
+      const last3 = months.slice(-3)
+      const rising = last3.length === 3
+        && last3[0].medianHours < last3[1].medianHours
+        && last3[1].medianHours < last3[2].medianHours
+      return { repo, months, rising }
+    })
+    .filter(r => r.months.reduce((s, m) => s + m.count, 0) >= 3)
+    .sort((a, b) => Number(b.rising) - Number(a.rising))
+})
+
+/** PRs abertos há mais de N dias (fluxo parado) */
+export function stalePrs(days: number) {
+  return openAging.value.filter(pr => pr.ageDays >= days)
 }

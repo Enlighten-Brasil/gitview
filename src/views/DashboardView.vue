@@ -17,6 +17,10 @@ import OffHoursPeriod from '../components/OffHoursPeriod.vue'
 import BusFactor from '../components/BusFactor.vue'
 import FixHotspots from '../components/FixHotspots.vue'
 import ReviewBottleneck from '../components/ReviewBottleneck.vue'
+import PrStaleAlert from '../components/PrStaleAlert.vue'
+import ReviewCoverage from '../components/ReviewCoverage.vue'
+import InactiveWatch from '../components/InactiveWatch.vue'
+import CycleTrend from '../components/CycleTrend.vue'
 import CommitTypes from '../components/CommitTypes.vue'
 import RepoTable from '../components/RepoTable.vue'
 import PrSummaryCards from '../components/PrSummaryCards.vue'
@@ -93,6 +97,12 @@ onMounted(syncUrlNow)
             <FixHotspots />
             <ReviewBottleneck />
           </div>
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <PrStaleAlert />
+            <ReviewCoverage />
+          </div>
+          <CycleTrend />
+          <InactiveWatch />
           <BusFactor />
         </div>
       </template>
@@ -123,7 +133,27 @@ onMounted(syncUrlNow)
             <PrReviews />
           </div>
         </div>
+        <div v-else class="flex flex-col gap-4">
+          <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <USkeleton v-for="i in 5" :key="i" class="h-20 rounded-lg" />
+          </div>
+          <USkeleton class="h-64 rounded-lg" />
+        </div>
       </template>
     </UTabs>
   </template>
+
+  <!-- skeleton enquanto o stats.json não chega -->
+  <div v-else class="flex flex-col gap-4">
+    <div class="border-b border-default pl-5 flex gap-4 py-2.5">
+      <USkeleton v-for="i in 5" :key="i" class="h-5 w-24" />
+    </div>
+    <div class="max-w-[1320px] w-full mx-auto px-5 py-6 flex flex-col gap-4">
+      <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+        <USkeleton v-for="i in 6" :key="i" class="h-20 rounded-lg" />
+      </div>
+      <USkeleton class="h-72 rounded-lg" />
+      <USkeleton class="h-56 rounded-lg" />
+    </div>
+  </div>
 </template>
