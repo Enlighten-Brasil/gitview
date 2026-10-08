@@ -8,36 +8,18 @@
  *
  * Re-rodar é incremental: INSERT OR IGNORE por (repo, hash).
  */
-import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs'
+import { spawn } from 'node:child_process'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DatabaseSync } from 'node:sqlite'
 import { loadConfig, resolveReposRoot } from './lib/config'
+import { discoverRepos, fetchRepo, isManagedRepo, mapPool, parseGitHub, remoteOf } from './lib/repos'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = resolve(__dirname, '..')
 
 const config = loadConfig()
-
-// ---------------------------------------------------------------------------
-// descoberta de repos
-// ---------------------------------------------------------------------------
-function discoverRepos(reposRoot: string): { name: string; path: string }[] {
-  const excluded = new Set(config.exclude ?? [])
-  const found: { name: string; path: string }[] = []
-
-  if (existsSync(join(reposRoot, '.git'))) {
-    found.push({ name: reposRoot.split(/[\\/]/).pop()!, path: reposRoot })
-  }
-
-  for (const entry of readdirSync(reposRoot, { withFileTypes: true })) {
-    if (!entry.isDirectory() || excluded.has(entry.name)) continue
-    const p = join(reposRoot, entry.name)
-    if (existsSync(join(p, '.git'))) found.push({ name: entry.name, path: p })
-  }
-  return found.sort((a, b) => a.name.localeCompare(b.name))
-}
 
 // ---------------------------------------------------------------------------
 // aliases de autor
@@ -167,17 +149,6 @@ function sinceArgs(repoName: string): string[] {
   return [`--since=${d.toISOString()}`]
 }
 
-/** map assíncrono com concorrência limitada (git log por repo em paralelo) */
-async function mapPool<T>(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
-  let next = 0
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (next < items.length) {
-      const item = items[next++]
-      await fn(item)
-    }
-  }))
-}
-
 // ---------------------------------------------------------------------------
 // helpers de agregação
 // ---------------------------------------------------------------------------
@@ -233,19 +204,28 @@ function commitType(subject: string): string {
 
 /** remote origin -> URL web https (para link de commit); null se não for GitHub */
 function repoWebUrl(path: string): string | null {
-  const r = spawnSync('git', ['remote', 'get-url', 'origin'], { cwd: path, encoding: 'utf-8' })
-  if (r.status !== 0) return null
-  const m = r.stdout.trim().match(/github\.com[:/]([^/]+\/[^/]+?)(?:\.git)?$/i)
-  return m ? `https://github.com/${m[1]}` : null
+  const remote = remoteOf(path)
+  const gh = remote ? parseGitHub(remote) : null
+  return gh ? `https://github.com/${gh.owner}/${gh.repo}` : null
 }
 
 // ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
 async function main() {
-  const repos = discoverRepos(resolveReposRoot(config))
+  const repos = discoverRepos(resolveReposRoot(config), config.exclude ?? [])
   console.log(`Repos encontrados: ${repos.length}`)
   repos.forEach(r => console.log(`  - ${r.name}`))
+
+  // clones gerenciados (data/repos) não têm dono que dê pull — atualiza aqui
+  const managed = repos.filter(r => isManagedRepo(r.path))
+  if (managed.length) {
+    console.log(`\nAtualizando ${managed.length} clones gerenciados (git fetch)...`)
+    await mapPool(managed, 4, async (repo) => {
+      const err = await fetchRepo(repo.path)
+      if (err) console.warn(`! ${repo.name}: fetch falhou, usando cache local (${err.split('\n')[0]})`)
+    })
+  }
 
   console.log(FULL ? 'Modo: completo (--full)' : 'Modo: incremental (--since por repo)')
 

@@ -1,5 +1,11 @@
 # gitview
 
+## 0.23.0
+
+### Minor Changes
+
+- Setup assistido de repositórios (`pnpm setup`): lista os repos da org via `gh` (sem precisar ter nada clonado), seleção interativa com padrão do time (`defaultRepos` no config), clone bare automático em `data/repos` e `git fetch` incremental a cada coleta. Descoberta de repos centralizada em `scripts/lib/repos.ts` (compatível com clones bare) e compartilhada pelos 3 coletores.
+
 ## 0.22.1
 
 ### Patch Changes

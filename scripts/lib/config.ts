@@ -14,6 +14,10 @@ import { fileURLToPath } from 'node:url'
 
 export interface Config {
   reposRoot?: string
+  /** org do GitHub listada pelo `pnpm setup` (ex.: "Enlighten-Brasil") */
+  githubOrg?: string
+  /** repos pré-selecionados no `pnpm setup` (Enter/--yes); fallback = todos não arquivados */
+  defaultRepos?: string[]
   exclude?: string[]
   /** Nome canônico -> lista de e-mails (alias) */
   authors?: Record<string, string[]>
@@ -52,14 +56,17 @@ export function resolveReposRoot(config: Config): string {
   candidates.push({ label: 'auto-detect', path: join(rootDir, '..', 'example') })
 
   for (const c of candidates) {
-    if (existsSync(c.path)) return resolve(c.path)
+    // caminhos relativos são resolvidos a partir da raiz do projeto
+    const abs = resolve(rootDir, c.path)
+    if (existsSync(abs)) return abs
   }
 
   const tried = candidates.map(c => `  - ${c.label}: ${c.path}`).join('\n')
   throw new Error(
     `pasta de repositórios não encontrada. Tentativas:\n${tried}\n\n`
     + `Configure uma das opções:\n`
-    + `  1. crie config.local.json na raiz: { "reposRoot": "C:/caminho/para/example" }\n`
-    + `  2. ou defina a variável de ambiente GITVIEW_REPOS_ROOT`,
+    + `  1. rode \`pnpm setup\` para escolher e clonar os repos da org (recomendado)\n`
+    + `  2. crie config.local.json na raiz: { "reposRoot": "C:/caminho/para/example" }\n`
+    + `  3. ou defina a variável de ambiente GITVIEW_REPOS_ROOT`,
   )
 }
