@@ -9,11 +9,12 @@
  * Saída: public/data/releases.json — o frontend continua 100% estático.
  */
 import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DatabaseSync } from 'node:sqlite'
 import { loadConfig, resolveReposRoot } from './lib/config'
+import { discoverRepos, mapPool, parseGitHub, remoteOf } from './lib/repos'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = resolve(__dirname, '..')
@@ -22,34 +23,6 @@ const root = resolve(__dirname, '..')
 const NOTES_MAX = 3000
 
 const config = loadConfig()
-
-// ---------------------------------------------------------------------------
-// descoberta (mesmo padrão dos outros coletores)
-// ---------------------------------------------------------------------------
-function discoverRepos(reposRoot: string): { name: string; path: string }[] {
-  const excluded = new Set(config.exclude ?? [])
-  const found: { name: string; path: string }[] = []
-  if (existsSync(join(reposRoot, '.git'))) {
-    found.push({ name: reposRoot.split(/[\\/]/).pop()!, path: reposRoot })
-  }
-  for (const entry of readdirSync(reposRoot, { withFileTypes: true })) {
-    if (!entry.isDirectory() || excluded.has(entry.name)) continue
-    const p = join(reposRoot, entry.name)
-    if (existsSync(join(p, '.git'))) found.push({ name: entry.name, path: p })
-  }
-  return found.sort((a, b) => a.name.localeCompare(b.name))
-}
-
-function remoteOf(path: string): string | null {
-  const r = spawnSync('git', ['remote', 'get-url', 'origin'], { cwd: path, encoding: 'utf-8' })
-  return r.status === 0 ? r.stdout.trim() || null : null
-}
-
-/** git@github.com:Owner/repo.git | https://github.com/Owner/repo(.git) -> Owner/repo */
-function parseGitHub(remote: string): { owner: string; repo: string } | null {
-  const m = remote.match(/github\.com[:/]([^/]+)\/([^/]+?)(?:\.git)?$/i)
-  return m ? { owner: m[1], repo: m[2] } : null
-}
 
 // ---------------------------------------------------------------------------
 // tags locais: nome + data (iso8601 estrito é parseável por new Date)
@@ -108,16 +81,7 @@ function ghReleases(ghRepo: { owner: string; repo: string }): Promise<Map<string
   })
 }
 
-/** map assíncrono com concorrência limitada (repos em paralelo) */
-async function mapPool<T>(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
-  let next = 0
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (next < items.length) {
-      const item = items[next++]
-      await fn(item)
-    }
-  }))
-}
+/** map assíncrono com concorrência limitada (repos em paralelo) — scripts/lib/repos.ts */
 
 // ---------------------------------------------------------------------------
 // main
@@ -125,7 +89,7 @@ async function mapPool<T>(items: T[], limit: number, fn: (item: T) => Promise<vo
 const db = new DatabaseSync(join(root, 'data', 'gitview.db'))
 const datesStmt = db.prepare('SELECT date FROM commits WHERE repo = ? ORDER BY date ASC')
 
-const repos = discoverRepos(resolveReposRoot(config))
+const repos = discoverRepos(resolveReposRoot(config), config.exclude ?? [])
 const out: unknown[] = []
 // ordem de saída estável mesmo com o processamento paralelo
 const byRepo = new Map<string, unknown>()

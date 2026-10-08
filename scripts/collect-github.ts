@@ -9,11 +9,12 @@
  * Requer `gh` autenticado (gh auth login) com acesso aos repos.
  * Logins do GitHub são mapeados para os nomes canônicos via config.githubUsers.
  */
-import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { spawn } from 'node:child_process'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { loadConfig, resolveReposRoot } from './lib/config'
+import { discoverRepos, mapPool, parseGitHub, remoteOf } from './lib/repos'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = resolve(__dirname, '..')
@@ -22,35 +23,6 @@ const root = resolve(__dirname, '..')
 const MERGED_CUTOFF_DAYS = 400
 
 const config = loadConfig()
-
-// ---------------------------------------------------------------------------
-// descoberta: repo local -> owner/repo no GitHub (via remote origin)
-// ---------------------------------------------------------------------------
-function discoverRepos(reposRoot: string): { name: string; path: string }[] {
-  const excluded = new Set(config.exclude ?? [])
-  const found: { name: string; path: string }[] = []
-  if (existsSync(join(reposRoot, '.git'))) {
-    found.push({ name: reposRoot.split(/[\\/]/).pop()!, path: reposRoot })
-  }
-  for (const entry of readdirSync(reposRoot, { withFileTypes: true })) {
-    if (!entry.isDirectory() || excluded.has(entry.name)) continue
-    const p = join(reposRoot, entry.name)
-    if (existsSync(join(p, '.git'))) found.push({ name: entry.name, path: p })
-  }
-  return found.sort((a, b) => a.name.localeCompare(b.name))
-}
-
-function remoteOf(path: string): string | null {
-  const r = spawnSync('git', ['remote', 'get-url', 'origin'], { cwd: path, encoding: 'utf-8' })
-  if (r.status !== 0) return null
-  return r.stdout.trim() || null
-}
-
-/** git@github.com:Owner/repo.git | https://github.com/Owner/repo(.git) -> Owner/repo */
-function parseGitHub(remote: string): { owner: string; repo: string } | null {
-  const m = remote.match(/github\.com[:/]([^/]+)\/([^/]+?)(?:\.git)?$/i)
-  return m ? { owner: m[1], repo: m[2] } : null
-}
 
 // ---------------------------------------------------------------------------
 // gh api graphql (args em array — sem problemas de quoting do PowerShell)
@@ -87,16 +59,7 @@ function gh<T>(query: string, vars: Record<string, string>): Promise<T> {
   })
 }
 
-/** map assíncrono com concorrência limitada (repos em paralelo) */
-async function mapPool<T>(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
-  let next = 0
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (next < items.length) {
-      const item = items[next++]
-      await fn(item)
-    }
-  }))
-}
+/** map assíncrono com concorrência limitada (repos em paralelo) — scripts/lib/repos.ts */
 
 const PR_QUERY = `
 query($owner: String!, $name: String!, $cursor: String) {
@@ -210,7 +173,7 @@ else {
   console.log(`Modo: completo (mergeados dos últimos ${MERGED_CUTOFF_DAYS} dias)`)
 }
 
-const repos = discoverRepos(resolveReposRoot(config))
+const repos = discoverRepos(resolveReposRoot(config), config.exclude ?? [])
 const fresh = new Map<string, PrRow>() // repo#number -> PR
 let fetchedCount = 0
 let skipped = 0

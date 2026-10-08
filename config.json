@@ -1,5 +1,19 @@
 {
   "reposRoot": "C:/Users/Raul/Documents/GitHub/enspace",
+  "githubOrg": "Enlighten-Brasil",
+  "defaultRepos": [
+    "enlighten-api",
+    "en-space",
+    "en-admin",
+    "en-keycloak",
+    "en-ms-plugin",
+    "en-realtime",
+    "en-report-processor",
+    "en-document-processor",
+    "en-sdk",
+    "en-infra",
+    "strapi"
+  ],
   "exclude": [],
   "authors": {
     "Raul Domingues": ["raaaaul@live.com", "hardeath950@localhost.localdomain", "raul@be-enlighten.com"],
