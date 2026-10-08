@@ -30,7 +30,9 @@ Re-rodar `pnpm collect` é **incremental**: commits usam `git log --since` a par
 `pnpm collect:github` e `pnpm collect:releases` rodam partes isoladas. A coleta do GitHub requer `gh` autenticado.
 
 Com o dev server rodando, o botão ↻ no navbar atualiza os dados sem sair da interface (middleware `/__collect`
-com progresso ao vivo; existe apenas em dev).
+com progresso ao vivo; existe apenas em dev). O navbar também mostra há quanto tempo os dados foram gerados
+(alerta após 24h) e um botão de **resumo da semana**: markdown da última semana fechada (commits, PRs, releases,
+pontos de atenção) pronto pra copiar ou baixar — feito pra colar em reunião.
 
 ## Configuração (`config.json`)
 
