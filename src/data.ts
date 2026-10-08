@@ -1,11 +1,22 @@
 import { computed, reactive, ref } from 'vue'
-import type { Stats } from './types'
+import type { CommitRow, Stats } from './types'
 
 export const stats = ref<Stats | null>(null)
 export const loadError = ref<string | null>(null)
 
-/** dev selecionado para drilldown (clique no ranking) */
-export const selectedDev = ref<string | null>(null)
+/** commits recentes (últimos 100/autor) — carregado sob demanda pela página do dev */
+export const recentCommits = ref<CommitRow[] | null>(null)
+export async function loadCommits() {
+  if (recentCommits.value) return
+  try {
+    const res = await fetch('/data/commits.json')
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    recentCommits.value = (await res.json()).commits
+  }
+  catch {
+    recentCommits.value = []
+  }
+}
 
 export const filters = reactive({
   repos: [] as string[],      // vazio = todos
@@ -21,7 +32,7 @@ export function isBot(author: string) {
 
 export async function loadStats() {
   try {
-    const res = await fetch('./data/stats.json')
+    const res = await fetch('/data/stats.json')
     if (!res.ok) throw new Error(`HTTP ${res.status} — rode "pnpm collect" primeiro`)
     stats.value = await res.json()
   }

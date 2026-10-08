@@ -22,7 +22,9 @@
     "DavidOliveirax": "David Oliveira",
     "FlacorLopes": "Flávio Lopes",
     "flromano": "Fernando Romano",
-    "Ana150": "Ana150"
+    "Ana150": "Ana150",
+    "SnoopyPRD": "Victor Prado",
+    "jhmendesenlighten": "João Oliveira"
   },
   "githubBots": ["dependabot", "copilot-pull-request-reviewer", "copilot-swe-agent", "cursor", "github-code-quality"]
 }

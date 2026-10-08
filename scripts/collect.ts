@@ -339,6 +339,32 @@ async function main() {
   writeFileSync(out, JSON.stringify(stats))
   const kb = (JSON.stringify(stats).length / 1024).toFixed(0)
   console.log(`\nstats.json gerado (${kb} KB) com ${rows.length} commits de ${stats.totals.authors} autores em ${repos.length} repos.`)
+
+  // commits recentes por autor (página de perfil do dev) — últimos 100 de cada
+  const recent = db.prepare(`
+    SELECT repo, hash, author, date, subject, additions, deletions FROM commits ORDER BY date DESC
+  `).all() as { repo: string; hash: string; author: string; date: string; subject: string; additions: number; deletions: number }[]
+  const perAuthorCount = new Map<string, number>()
+  const recentCommits = []
+  for (const c of recent) {
+    const n = perAuthorCount.get(c.author) ?? 0
+    if (n >= 100) continue
+    perAuthorCount.set(c.author, n + 1)
+    recentCommits.push({
+      hash: c.hash.slice(0, 7),
+      repo: c.repo,
+      author: c.author,
+      date: c.date,
+      message: c.subject,
+      additions: c.additions,
+      deletions: c.deletions,
+    })
+  }
+  writeFileSync(join(root, 'public', 'data', 'commits.json'), JSON.stringify({
+    generatedAt: new Date().toISOString(),
+    commits: recentCommits,
+  }))
+  console.log(`commits.json gerado com ${recentCommits.length} commits recentes.`)
   db.close()
 }
 

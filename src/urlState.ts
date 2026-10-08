@@ -1,18 +1,23 @@
 import { ref, watch } from 'vue'
-import { filters, selectedDev, stats } from './data'
+import { filters, stats } from './data'
 
 /**
- * Sincroniza o estado da UI (aba ativa + filtros + dev em detalhe) com a query
- * string da URL — links ficam compartilháveis/bookmarkáveis.
+ * Sincroniza o estado do DASHBOARD (aba ativa + filtros) com a query string da
+ * URL — links ficam compartilháveis/bookmarkáveis.
  *
- * Formato: ?tab=team&range=6&bots=1&repos=en-admin,en-space&devs=Ana150&dev=Raul+Domingues
+ * Formato: ?tab=team&range=6&bots=1&repos=en-admin,en-space&devs=Ana150
  * Valores default são omitidos para manter a URL limpa.
  * Usa replaceState (não polui o histórico a cada clique em filtro).
+ * Só atua na rota raiz — a página do dev (/dev/:nome) tem estado próprio.
  */
 
 export const activeTab = ref('overview')
 const TABS = ['overview', 'team', 'health', 'repos', 'prs']
 const RANGES = [3, 6, 12]
+
+function onDashboard(): boolean {
+  return location.pathname === '/' || location.pathname === '/index.html'
+}
 
 function parseUrl(reset = false) {
   // no popstate, volta tudo aos defaults antes de aplicar o que houver na URL
@@ -22,7 +27,6 @@ function parseUrl(reset = false) {
     filters.showBots = false
     filters.repos = []
     filters.authors = []
-    selectedDev.value = null
   }
 
   const q = new URLSearchParams(location.search)
@@ -41,8 +45,6 @@ function parseUrl(reset = false) {
 
   const devs = q.get('devs')
   if (devs) filters.authors = devs.split(',').filter(Boolean)
-
-  selectedDev.value = q.get('dev')
 }
 
 function buildUrl(): string {
@@ -52,7 +54,6 @@ function buildUrl(): string {
   if (filters.showBots) q.set('bots', '1')
   if (filters.repos.length) q.set('repos', filters.repos.join(','))
   if (filters.authors.length) q.set('devs', filters.authors.join(','))
-  if (selectedDev.value) q.set('dev', selectedDev.value)
   const s = q.toString()
   return s ? `${location.pathname}?${s}` : location.pathname
 }
@@ -65,7 +66,6 @@ function sanitize() {
   const authors = new Set(s.authors.map(a => a.name))
   filters.repos = filters.repos.filter(r => repos.has(r))
   filters.authors = filters.authors.filter(a => authors.has(a))
-  if (selectedDev.value && !authors.has(selectedDev.value)) selectedDev.value = null
 }
 
 let initialized = false
@@ -75,18 +75,28 @@ export function initUrlState() {
 
   // URL tem prioridade; sem parâmetros, cai no localStorage (aba) / defaults (filtros)
   activeTab.value = localStorage.getItem('gitview:tab') ?? 'overview'
-  parseUrl()
-  sanitize()
+  if (onDashboard()) {
+    parseUrl()
+    sanitize()
+  }
 
   watch(stats, sanitize)
 
-  watch([filters, activeTab, selectedDev], () => {
+  watch([filters, activeTab], () => {
+    if (!onDashboard()) return // não pisa na rota do dev
     history.replaceState(null, '', buildUrl())
     localStorage.setItem('gitview:tab', activeTab.value)
   }, { deep: true })
 
   window.addEventListener('popstate', () => {
+    if (!onDashboard()) return
     parseUrl(true)
     sanitize()
   })
+}
+
+/** regrava a query string no estado atual (ex.: ao voltar da página do dev) */
+export function syncUrlNow() {
+  if (!onDashboard()) return
+  history.replaceState(null, '', buildUrl())
 }

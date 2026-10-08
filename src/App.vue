@@ -1,26 +1,11 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { loadError, loadStats, rangeLabel, selectedDev, stats } from './data'
-import { github, githubError, loadGithub } from './github'
-import { activeTab, initUrlState } from './urlState'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
+import { loadStats, rangeLabel, stats } from './data'
+import { loadGithub } from './github'
+import { initUrlState } from './urlState'
 import { version } from '../package.json'
 import FilterBar from './components/FilterBar.vue'
-import SummaryCards from './components/SummaryCards.vue'
-import CommitsTimeline from './components/CommitsTimeline.vue'
-import RepoMonthHeatmap from './components/RepoMonthHeatmap.vue'
-import ActivityHeatmap from './components/ActivityHeatmap.vue'
-import RepoShare from './components/RepoShare.vue'
-import DevTable from './components/DevTable.vue'
-import WeeklyChampions from './components/WeeklyChampions.vue'
-import AuthorMonthHeatmap from './components/AuthorMonthHeatmap.vue'
-import PaceAlert from './components/PaceAlert.vue'
-import DevDetail from './components/DevDetail.vue'
-import BurnoutWatch from './components/BurnoutWatch.vue'
-import BusFactor from './components/BusFactor.vue'
-import PrSummaryCards from './components/PrSummaryCards.vue'
-import PrOpenTable from './components/PrOpenTable.vue'
-import PrCycleTime from './components/PrCycleTime.vue'
-import PrReviews from './components/PrReviews.vue'
 
 onMounted(loadStats)
 onMounted(loadGithub)
@@ -29,22 +14,17 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleString('pt-BR')
 }
 
-const rangeText = rangeLabel
+// navbar: nome do dev na rota de perfil, período no dashboard
+const route = useRoute()
+const navTitle = computed(() =>
+  route.name === 'dev' ? String(route.params.name ?? '') : rangeLabel.value,
+)
 
 // desktop: botão no navbar recolhe a sidebar com 1 clique
 // (o UDashboardSidebarCollapse nativo só cobre mobile; no desktop o default é arrastar a borda)
 const sidebarCollapsed = ref(false)
 
-const tabs = [
-  { label: 'Visão geral', icon: 'i-lucide-layout-dashboard', slot: 'overview' as const, value: 'overview' },
-  { label: 'Time', icon: 'i-lucide-users', slot: 'team' as const, value: 'team' },
-  { label: 'Saúde', icon: 'i-lucide-heart-pulse', slot: 'health' as const, value: 'health' },
-  { label: 'Repos', icon: 'i-lucide-git-branch', slot: 'repos' as const, value: 'repos' },
-  { label: 'Pull requests', icon: 'i-lucide-git-pull-request', slot: 'prs' as const, value: 'prs' },
-]
-
-// aba + filtros sincronizados com a URL (initUrlState lê a query string no boot
-// e passa a gravar toda mudança de volta na URL via replaceState)
+// aba + filtros sincronizados com a URL (só na rota do dashboard)
 initUrlState()
 </script>
 
@@ -86,11 +66,11 @@ initUrlState()
         </template>
       </UDashboardSidebar>
 
-      <!-- body sem padding: a faixa de abas fica full-bleed, colada no navbar/sidebar;
-           o padding do conteúdo fica no container de cada aba -->
+      <!-- body sem padding: cada view controla seu próprio padding/container
+           (dashboard: faixa de abas full-bleed colada no navbar) -->
       <UDashboardPanel :ui="{ body: 'p-0 sm:p-0 gap-0 sm:gap-0' }">
         <template #header>
-          <UDashboardNavbar :title="rangeText">
+          <UDashboardNavbar :title="navTitle">
             <template #leading>
               <UDashboardSidebarCollapse class="lg:hidden" />
               <UButton
@@ -106,90 +86,7 @@ initUrlState()
         </template>
 
         <template #body>
-          <div v-if="loadError" class="max-w-[1320px] w-full mx-auto px-5 py-6">
-            <UAlert
-              color="error"
-              variant="subtle"
-              icon="i-lucide-triangle-alert"
-              title="Não consegui carregar os dados"
-            >
-              <template #description>
-                {{ loadError }} — rode <code>pnpm collect</code> para gerar o <code>public/data/stats.json</code> a partir dos seus repos git.
-              </template>
-            </UAlert>
-          </div>
-
-          <template v-else-if="stats">
-            <div v-if="selectedDev" class="max-w-[1320px] w-full mx-auto px-5 pt-6">
-              <DevDetail />
-            </div>
-
-            <!-- faixa de abas colada no navbar, full-bleed (integrada à moldura header+sidebar),
-                 sticky no scroll; padding lateral zero alinha o label da 1ª aba com o título do navbar
-                 (o trigger do variant=link já tem padding interno próprio) -->
-            <UTabs
-              v-model="activeTab"
-              :items="tabs"
-              variant="link"
-              class="w-full"
-              :ui="{
-                list: 'sticky top-0 z-10 bg-default border-b border-default pl-5',
-                content: 'max-w-[1320px] w-full mx-auto px-5 py-6',
-              }"
-            >
-              <template #overview>
-                <div class="flex flex-col gap-4">
-                  <SummaryCards />
-                  <CommitsTimeline />
-                  <ActivityHeatmap />
-                </div>
-              </template>
-
-              <template #team>
-                <div class="flex flex-col gap-4">
-                  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <WeeklyChampions />
-                    <PaceAlert />
-                  </div>
-                  <AuthorMonthHeatmap />
-                  <DevTable />
-                </div>
-              </template>
-
-              <template #health>
-                <div class="flex flex-col gap-4">
-                  <BurnoutWatch />
-                  <BusFactor />
-                </div>
-              </template>
-
-              <template #repos>
-                <div class="flex flex-col gap-4">
-                  <RepoShare />
-                  <RepoMonthHeatmap />
-                </div>
-              </template>
-
-              <template #prs>
-                <UAlert
-                  v-if="githubError"
-                  color="warning"
-                  variant="subtle"
-                  icon="i-lucide-triangle-alert"
-                  title="Sem dados do GitHub"
-                  :description="`${githubError} para gerar o public/data/github.json (requer gh autenticado).`"
-                />
-                <div v-else-if="github" class="flex flex-col gap-4">
-                  <PrSummaryCards />
-                  <PrOpenTable />
-                  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <PrCycleTime />
-                    <PrReviews />
-                  </div>
-                </div>
-              </template>
-            </UTabs>
-          </template>
+          <RouterView />
         </template>
       </UDashboardPanel>
     </UDashboardGroup>
