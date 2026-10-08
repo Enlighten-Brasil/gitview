@@ -24,6 +24,8 @@ Os 3 coletores processam os repos em paralelo (pool de 4). Logins do GitHub → 
 
 Config dos coletores (`scripts/lib/config.ts`): merge de `config.json` (versionado, mapeamentos do time) + `config.local.json` (gitignored, overrides da máquina). `reposRoot` resolve nesta ordem: env `GITVIEW_REPOS_ROOT` → config → auto-detect `../example`; se nada existir, erro com instruções (ver README).
 
+`githubOrg` + `defaultRepos` (config.json) alimentam o `pnpm setup` (`scripts/setup.ts`): wizard que lista os repos da org via `gh`, clona os escolhidos em `data/repos/` (**bare**, gitignored) e grava `reposRoot` no config.local.json. Clones gerenciados recebem `git fetch --all --prune --tags` no início do `collect.ts`. Discovery compartilhada em `scripts/lib/repos.ts` (aceita checkout normal e bare; `isManagedRepo` identifica os clones do setup).
+
 ### Coleta pela UI (dev only)
 
 `scripts/collect-plugin.ts` é um plugin Vite (`apply: 'serve'`) que expõe `GET /__collect` (SSE; `?full=1` = completo) rodando os 3 coletores com progresso ao vivo. O botão ↻ no navbar (`App.vue` + `src/collect.ts`) só renderiza em `import.meta.env.DEV`; após o `done`, os loaders refazem o fetch com cache-bust (`loadStats/loadGithub/loadReleases/loadCommits` aceitam `force`). No build estático o endpoint não existe.
