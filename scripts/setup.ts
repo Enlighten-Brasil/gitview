@@ -82,7 +82,14 @@ function parseSelection(text: string, max: number): number[] | null {
 // ---------------------------------------------------------------------------
 checkGh()
 const config = loadConfig()
-const org = config.githubOrg ?? fail('defina "githubOrg" no config.json (ex.: "Enlighten-Brasil").')
+let org = config.githubOrg
+if (!org) {
+  if (YES) fail('defina "githubOrg" no config.json (ex.: "minha-org").')
+  const rl = readline.createInterface({ input, output })
+  org = (await rl.question('Org do GitHub para listar os repos: ')).trim()
+  rl.close()
+  if (!org) fail('org não informada.')
+}
 
 // já existe uma fonte de repos funcionando?
 const current = resolveReposRootSafe(config)

@@ -1,7 +1,7 @@
 /**
  * Coletor de estatísticas git multi-repo.
  *
- * 1. Descobre repos git dentro de `reposRoot` (config.json)
+ * 1. Descobre repos git dentro de `reposRoot` (env/config.local/auto-detect)
  * 2. Roda `git log --all --numstat` em cada um (streaming)
  * 3. Grava commits normalizados em data/gitview.db (node:sqlite nativo)
  * 4. Exporta agregados prontos em public/data/stats.json
@@ -228,6 +228,14 @@ async function main() {
   }
 
   console.log(FULL ? 'Modo: completo (--full)' : 'Modo: incremental (--since por repo)')
+
+  // repos que saíram da seleção (setup refeito, exclude, etc.) somem do banco —
+  // se voltarem um dia, o watermark vazio força re-scan completo deles
+  if (repos.length) {
+    const placeholders = repos.map(() => '?').join(',')
+    const pruned = db.prepare(`DELETE FROM commits WHERE repo NOT IN (${placeholders})`).run(...repos.map(r => r.name))
+    if (pruned.changes) console.log(`🧹 ${pruned.changes} commits removidos de repos fora da seleção`)
+  }
 
   await mapPool(repos, 4, async (repo) => {
     const t0 = Date.now()
