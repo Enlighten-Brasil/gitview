@@ -266,7 +266,12 @@ async function main() {
   const weekly = new Map<string, { commits: number; weekend: number; night: number }>() // week|repo|author
   const monthly = new Map<string, { commits: number; additions: number; deletions: number }>() // month|repo|author
   const monthlyTypes = new Map<string, number>() // month|repo|author|type
-  const heatmap = new Map<string, number>()     // author|repo|weekday|hour
+  const heatmap = new Map<string, number>()     // author|repo|month|weekday|hour
+  // heatmap ganha dimensão de mês pro filtro de período funcionar no frontend;
+  // limita aos últimos 24 meses (cobre o maior range do filtro) pra não inflar o JSON
+  const heatmapCutoff = new Date()
+  heatmapCutoff.setMonth(heatmapCutoff.getMonth() - 24)
+  const heatmapCutoffKey = monthKey(heatmapCutoff)
   const perAuthor = new Map<string, { commits: number; additions: number; deletions: number; repos: Set<string>; days: Set<string>; last: string }>()
   const perRepo = new Map<string, { commits: number; additions: number; deletions: number; authors: Set<string>; last: string }>()
   let totalAdd = 0
@@ -297,8 +302,11 @@ async function main() {
     const tk = `${mk}|${commitType(r.subject)}`
     monthlyTypes.set(tk, (monthlyTypes.get(tk) ?? 0) + 1)
 
-    const hk = `${r.author}|${r.repo}|${d.getDay()}|${d.getHours()}`
-    heatmap.set(hk, (heatmap.get(hk) ?? 0) + 1)
+    const month = monthKey(d)
+    if (month >= heatmapCutoffKey) {
+      const hk = `${r.author}|${r.repo}|${month}|${d.getDay()}|${d.getHours()}`
+      heatmap.set(hk, (heatmap.get(hk) ?? 0) + 1)
+    }
 
     const dk = dayKey(d)
     allDays.add(dk)
@@ -356,8 +364,8 @@ async function main() {
       return { month, repo, author, commits: v.commits, additions: v.additions, deletions: v.deletions }
     }),
     heatmap: [...heatmap.entries()].map(([k, commits]) => {
-      const [author, repo, weekday, hour] = k.split('|')
-      return { author, repo, weekday: Number(weekday), hour: Number(hour), commits }
+      const [author, repo, month, weekday, hour] = k.split('|')
+      return { author, repo, month, weekday: Number(weekday), hour: Number(hour), commits }
     }),
     monthlyTypes: [...monthlyTypes.entries()].map(([k, commits]) => {
       const [month, repo, author, type] = k.split('|')

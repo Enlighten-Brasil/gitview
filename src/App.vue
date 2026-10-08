@@ -3,12 +3,14 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { loadStats, rangeLabel, stats } from './data'
 import { loadGithub } from './github'
+import { loadReleases } from './releases'
 import { initUrlState } from './urlState'
 import { version } from '../package.json'
 import FilterBar from './components/FilterBar.vue'
 
 onMounted(loadStats)
 onMounted(loadGithub)
+onMounted(loadReleases)
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleString('pt-BR')

@@ -18,6 +18,7 @@ import BusFactor from '../components/BusFactor.vue'
 import FixHotspots from '../components/FixHotspots.vue'
 import ReviewBottleneck from '../components/ReviewBottleneck.vue'
 import CommitTypes from '../components/CommitTypes.vue'
+import RepoTable from '../components/RepoTable.vue'
 import PrSummaryCards from '../components/PrSummaryCards.vue'
 import PrOpenTable from '../components/PrOpenTable.vue'
 import PrCycleTime from '../components/PrCycleTime.vue'
@@ -98,6 +99,7 @@ onMounted(syncUrlNow)
 
       <template #repos>
         <div class="flex flex-col gap-4">
+          <RepoTable />
           <RepoShare />
           <RepoMonthHeatmap />
           <CommitTypes />

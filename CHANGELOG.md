@@ -1,5 +1,11 @@
 # gitview
 
+## 0.17.0
+
+### Minor Changes
+
+- releases: coletor de tags git + releases do GitHub (releases.json), aba Repos vira listagem clicável com última release e commits não liberados, nova página /repo/:name com releases, tipos, PRs e bus factor do repo. fix: heatmap de horários agora respeita o filtro de período (agregação por mês, janela de 24M)
+
 ## 0.16.0
 
 ### Minor Changes

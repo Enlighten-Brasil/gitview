@@ -1,6 +1,6 @@
 export interface WeeklyRow { week: string; repo: string; author: string; commits: number; weekend: number; night: number }
 export interface MonthlyRow { month: string; repo: string; author: string; commits: number; additions: number; deletions: number }
-export interface HeatmapRow { author: string; repo: string; weekday: number; hour: number; commits: number }
+export interface HeatmapRow { author: string; repo: string; month: string; weekday: number; hour: number; commits: number }
 export interface MonthlyTypeRow { month: string; repo: string; author: string; type: string; commits: number }
 
 export interface Stats {
@@ -58,4 +58,30 @@ export interface GitHubData {
   /** login do GitHub -> nome canônico do time + flag de bot */
   users: Record<string, { name: string; bot: boolean }>
   prs: PullRequest[]
+}
+
+export interface ReleaseTag {
+  tag: string
+  date: string
+  /** commits desde a tag anterior */
+  commits: number
+  name: string | null
+  /** notas da release no GitHub (truncadas); null quando a tag não virou release */
+  notes: string | null
+  prerelease: boolean
+  url: string | null
+}
+
+export interface RepoReleases {
+  repo: string
+  url: string | null
+  /** commits desde a última tag (trabalho ainda não liberado) */
+  unreleased: number
+  /** mais recente primeiro */
+  tags: ReleaseTag[]
+}
+
+export interface ReleasesData {
+  generatedAt: string
+  repos: RepoReleases[]
 }
