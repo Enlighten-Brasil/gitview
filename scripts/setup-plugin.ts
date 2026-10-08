@@ -30,7 +30,7 @@ function json(res: ServerResponse, status: number, body: unknown): void {
   res.end(JSON.stringify(body))
 }
 
-function readBody(req: IncomingMessage): Promise<Record<string, unknown>> {
+function readBody(req: IncomingMessage): Promise<Record<string, unknown> | null> {
   return new Promise((resolvePromise) => {
     const chunks: Buffer[] = []
     req.on('data', (c: Buffer) => chunks.push(c))
@@ -39,10 +39,11 @@ function readBody(req: IncomingMessage): Promise<Record<string, unknown>> {
         resolvePromise(JSON.parse(Buffer.concat(chunks).toString('utf-8') || '{}'))
       }
       catch {
-        resolvePromise({})
+        // corpo ilegível/inválido: null (e não {} — {} passaria o sanitize como "config vazia" e gravaria por cima)
+        resolvePromise(null)
       }
     })
-    req.on('error', () => resolvePromise({}))
+    req.on('error', () => resolvePromise(null))
   })
 }
 
@@ -76,6 +77,8 @@ function sanitizeDevProfiles(input: unknown): Record<string, DevProfile> {
   if (typeof input !== 'object' || Array.isArray(input)) throw new Error('devProfiles deve ser um objeto { nome: perfil }')
   const out: Record<string, DevProfile> = {}
   for (const [name, raw] of Object.entries(input as Record<string, unknown>)) {
+    // JSON.parse pode trazer '__proto__' como chave própria; atribuí-la ao out alteraria o protótipo
+    if (name === '__proto__' || name === 'constructor' || name === 'prototype') continue
     const canonical = name.trim()
     if (!canonical) throw new Error('nome de dev vazio')
     if (typeof raw !== 'object' || raw == null) throw new Error(`perfil inválido: ${canonical}`)
@@ -162,6 +165,10 @@ export function setupPlugin(): Plugin {
           return
         }
         const body = await readBody(req)
+        if (!body) {
+          json(res, 400, { error: 'corpo JSON inválido' })
+          return
+        }
         const deviceCode = String(body.deviceCode ?? '')
         if (!deviceCode) {
           json(res, 400, { error: 'deviceCode ausente' })
@@ -322,11 +329,17 @@ export function setupPlugin(): Plugin {
           return
         }
         try {
-          const [members, teams] = await Promise.all([
-            listOrgMembers(token, org).catch(() => []),
-            listOrgTeams(token, org).catch(() => []),
-          ])
-          json(res, 200, { org, members, teams })
+          // falhas por parte (ex.: token sem read:org → teams vazio) não derrubam o resto
+          const warnings: string[] = []
+          const members = await listOrgMembers(token, org).catch((err: unknown) => {
+            warnings.push(`membros: ${(err as Error).message}`)
+            return []
+          })
+          const teams = await listOrgTeams(token, org).catch((err: unknown) => {
+            warnings.push(`times: ${(err as Error).message} (o token precisa da permissão read:org na org)`)
+            return []
+          })
+          json(res, 200, { org, members, teams, warnings })
         }
         catch (err) {
           json(res, 500, { error: String((err as Error).message ?? err) })
@@ -337,6 +350,10 @@ export function setupPlugin(): Plugin {
       server.middlewares.use('/__team/config', async (req, res) => {
         if (req.method === 'POST') {
           const body = await readBody(req)
+          if (!body) {
+            json(res, 400, { error: 'corpo JSON inválido' })
+            return
+          }
           try {
             const devProfiles = sanitizeDevProfiles(body.devProfiles)
             const teams = sanitizeTeams(body.teams)
@@ -348,17 +365,23 @@ export function setupPlugin(): Plugin {
           }
           return
         }
-        const config = loadConfig()
-        json(res, 200, {
-          devProfiles: config.devProfiles ?? {},
-          teams: config.teams ?? [],
-          // aliases fixos do config.json (só leitura — edição é no repo)
-          fixed: {
-            authors: Object.keys(config.authors ?? {}),
-            githubUsers: config.githubUsers ?? {},
-          },
-          githubOrg: config.githubOrg ?? null,
-        })
+        try {
+          const config = loadConfig()
+          json(res, 200, {
+            devProfiles: config.devProfiles ?? {},
+            teams: config.teams ?? [],
+            // aliases fixos do config.json (só leitura — edição é no repo)
+            fixed: {
+              authors: Object.keys(config.authors ?? {}),
+              githubUsers: config.githubUsers ?? {},
+            },
+            githubOrg: config.githubOrg ?? null,
+          })
+        }
+        catch (err) {
+          // config.local.json corrompida: responde erro em vez de hanguear a requisição
+          json(res, 500, { error: String((err as Error).message ?? err) })
+        }
       })
 
       // limpeza local: apaga banco + JSONs (e clones com ?repos=1) sem recoletar.

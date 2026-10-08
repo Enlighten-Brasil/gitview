@@ -30,14 +30,13 @@ export function resolveAliases(config: Config): ResolvedAliases {
   return { emailToCanonical, loginToCanonical }
 }
 
-/** logins de bot (config.githubBots + padrões automáticos) */
+/** logins de bot do config (githubBots) — nomes exatos, lowercase. Padrões automáticos ficam em BOT_LOGIN_RE */
 export function botLoginSet(config: Config): Set<string> {
   return new Set((config.githubBots ?? []).map(b => b.toLowerCase()))
 }
 
-export function isBotLogin(config: Config, login: string): boolean {
-  return botLoginSet(config).has(login.toLowerCase()) || /(\[bot\]|-bot$|^dependabot)/i.test(login)
-}
+/** padrão de login de bot do GitHub (dependabot[bot], renovate-bot, ...) — usado por todos os coletores */
+export const BOT_LOGIN_RE = /(\[bot\]|-bot$|^dependabot)/i
 
 /** nomes canônicos de bot no git (termina com [bot] ou está em config.bots) */
 export function botAuthorNames(config: Config, authors: { name: string }[]): Set<string> {

@@ -1,5 +1,11 @@
 # gitview
 
+## 0.30.1
+
+### Patch Changes
+
+- Revisão da página /team: bots não vazam mais para devs/candidatos (`team.json` usa o flag `users[].bot` do github.json + regex compartilhado `BOT_LOGIN_RE`; `ghost` — autor de PR apagado — é ignorado); times aparecem no build estático (seed do `team.json`, antes sumiam); "salvar + recoletar" só roda a coleta se o salvar der certo, e o botão exige config carregada (evitava sobrescrever a config por engano com payload vazio); GET `/__team/config` com try/catch e POST rejeita corpo JSON inválido com 400 (antes virava "config vazia" e apagava perfis/times); chaves `__proto__`/`constructor`/`prototype` ignoradas no sanitize; `/__team/github` reporta falhas parciais no campo `warnings` (exibido no modal de import — antes 403 de `read:org` virava "Nenhum time visível" silencioso); bots fora do seletor de membros de time e da lista de associação de candidatos.
+
 ## 0.30.0
 
 ### Minor Changes
