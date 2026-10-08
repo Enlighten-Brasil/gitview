@@ -24,9 +24,11 @@ Os 3 coletores processam os repos em paralelo (pool de 4). Logins do GitHub → 
 
 Config dos coletores (`scripts/lib/config.ts`): merge de `config.json` (versionado, **agnóstico de máquina** — mapeamentos e defaults do time) + `config.local.json` (gitignored, dados da máquina: `reposRoot`, `githubToken`). `saveLocalConfig()` grava no local. `reposRoot` resolve nesta ordem: env `GITVIEW_REPOS_ROOT` → config (na prática o local) → auto-detect `../enspace`; se nada existir, erro com instruções (ver README). `authors`/`githubUsers`/`githubBots` são opcionais — sem eles nada quebra, só não há merge de aliases.
 
-`githubOrg` + `defaultRepos` (config.json) alimentam o `pnpm setup` (`scripts/setup.ts`): wizard que lista os repos da org via `gh`, clona os escolhidos em `data/repos/` (**bare**, gitignored) e grava `reposRoot` no config.local.json. Clones gerenciados recebem `git fetch --all --prune --tags` no início do `collect.ts`. Discovery compartilhada em `scripts/lib/repos.ts` (aceita checkout normal e bare; `isManagedRepo` identifica os clones do setup).
+`githubOrg` + `defaultRepos` (config.json) alimentam o `pnpm setup` (`scripts/setup.ts`): wizard que lista os repos da org via `gh`, clona os escolhidos em `data/repos/` (**bare**, gitignored) e grava `reposRoot` no config.local.json. Clones gerenciados recebem `git fetch --all --prune --tags` no início do `collect.ts` — e `denyPush` (`remote.origin.pushurl=no-push`), trava read-only no nível do git, idempotente, aplicada no clone e a cada coleta. Discovery compartilhada em `scripts/lib/repos.ts` (aceita checkout normal e bare; `isManagedRepo` identifica os clones do setup).
 
-`scripts/lib/github.ts` centraliza o acesso à API do GitHub **para o setup**: `getToken()` (`config.local.json#githubToken` → `gh auth token`), REST com paginação (`ghApiAll`), `currentUser`, `listOrgs`, `listOrgRepos`/`listUserRepos` e o **device flow** (`deviceStart`/`devicePoll`, escopo `repo read:org`, sem client secret). O `cloneBare` aceita token: persiste `http.https://github.com/.extraheader` no config do clone (autentica os fetches futuros sem `gh`). Os **coletores** seguem usando `gh api` (não passam por essa lib).
+Limpeza: `scripts/lib/clean.ts` (`cleanLocalData`) apaga banco + `public/data/*.json` (tudo regenerável; clones só com flag) — usada pelo `pnpm clean` (`scripts/clean.ts`) e pelo `/__collect?clean=1`.
+
+`scripts/lib/github.ts` centraliza o acesso à API do GitHub **para o setup**: `getToken()` (`config.local.json#githubToken` → `gh auth token`), REST com paginação (`ghApiAll`), `currentUser`, `listOrgs`, `listOrgRepos`/`listUserRepos` e o **device flow** (`deviceStart`/`devicePoll`, sem client secret). O device flow aceita **GitHub App** (client_id `Iv…` — sem scope, o token herda as permissões do app; recomendado: *Contents read-only* = token fisicamente read-only) e **OAuth App** (`Ov…`/hex — scope `repo read:org`, read+write; mitigado pelo `denyPush`). O `cloneBare` aceita token: persiste `http.https://github.com/.extraheader` (**Basic** `x-access-token`, serve pra PAT/OAuth/GitHub App) no config do clone (autentica os fetches futuros sem `gh`). Os **coletores** seguem usando `gh api` (não passam por essa lib).
 
 ### Setup pela UI (dev only)
 
@@ -39,9 +41,11 @@ Config dos coletores (`scripts/lib/config.ts`): merge de `config.json` (versiona
 
 Gate de primeira execução: `App.vue` redireciona `/` → `/setup` quando o `stats.json` dá 404 em dev; sidebar de filtros é oculta na rota `/setup`. Botão ⚙ no navbar (dev only) abre o wizard. Sem `oauthClientId`, o passo 1 orienta `gh auth login` (a UI detecta a sessão via sonda).
 
+Quando já há dados, o `/setup` mostra também o card **Manutenção dos dados locais**: *recoletar tudo* (`startCollect(true)`) e *limpar e recomeçar* (confirmação inline → `startCollect(false, true)` = wipe + full via `/__collect?clean=1`).
+
 ### Coleta pela UI (dev only)
 
-`scripts/collect-plugin.ts` é um plugin Vite (`apply: 'serve'`) que expõe `GET /__collect` (SSE; `?full=1` = completo) rodando os 3 coletores com progresso ao vivo. O botão ↻ no navbar (`App.vue` + `src/collect.ts`) só renderiza em `import.meta.env.DEV`; após o `done`, os loaders refazem o fetch com cache-bust (`loadStats/loadGithub/loadReleases/loadCommits` aceitam `force`). No build estático o endpoint não existe.
+`scripts/collect-plugin.ts` é um plugin Vite (`apply: 'serve'`) que expõe `GET /__collect` (SSE; `?full=1` = completo; `?clean=1` apaga banco + JSONs antes e implica full) rodando os 3 coletores com progresso ao vivo. O botão ↻ no navbar (`App.vue` + `src/collect.ts` — `startCollect(full, clean)`) só renderiza em `import.meta.env.DEV`; após o `done`, os loaders refazem o fetch com cache-bust (`loadStats/loadGithub/loadReleases/loadCommits` aceitam `force`). No build estático o endpoint não existe.
 
 ## Comandos
 

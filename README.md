@@ -56,7 +56,16 @@ O `config.json` versionado é um preset do time Enspace — **nada nele é espec
 
 - `githubOrg` — sua org no GitHub (se vazio, o setup pergunta)
 - `defaultRepos` — pré-seleção do setup (se vazio, o padrão é "todos não arquivados")
-- `oauthClientId` — Client ID de um **OAuth App** seu/da sua org com **Device Flow habilitado** (GitHub → Settings → Developer settings → OAuth Apps). Com ele, o setup autentica pela UI sem precisar do `gh`. Sem ele, tudo funciona via `gh auth login`. Nunca coloque o client secret no repo — o device flow não usa secret.
+- `oauthClientId` — Client ID de um **GitHub App** (recomendado, começa com `Iv…`) ou **OAuth App** (`Ov…`) seu/da sua org com **Device Flow habilitado** (GitHub → Settings → Developer settings). Com ele, o setup autentica pela UI sem precisar do `gh`. Sem ele, tudo funciona via `gh auth login`. Nunca coloque client secret no repo — o device flow não usa secret.
+
+> **Read-only de verdade**: use um **GitHub App** com permissão *Repository → Contents: Read-only* (+ *Metadata*, automática) instalado na org — o token emitido é fisicamente incapaz de escrever. OAuth App e `gh auth login` usam o escopo `repo`, que é read+write: o gitview só faz leituras, e os clones gerenciados têm a URL de push travada (`remote.origin.pushurl=no-push`), mas a garantia de permissão real vem do GitHub App.
+
+### Limpar e recomeçar
+
+Banco e JSONs são 100% regeneráveis a partir dos repositórios:
+
+- **UI**: `/setup` → card "Manutenção dos dados locais" → *recoletar tudo* (re-scan completo) ou *limpar e recomeçar* (apaga banco + JSONs e recoleta; clones mantidos).
+- **CLI**: `pnpm clean` (apaga `data/gitview.db*` + `public/data/*.json`) e depois `pnpm collect`. `pnpm clean -- --repos` apaga também os clones (a próxima coleta re-clona tudo — lento).
 - `authors` / `githubUsers` / `githubBots` / `bots` — mapeamentos de identidade do time. **Opcionais**: sem eles o dashboard funciona normalmente, só não agrupa aliases (cada e-mail/login vira um autor separado) e a coleta lista os logins sem mapeamento pra você ir completando.
 
 ## Comandos
@@ -66,6 +75,7 @@ pnpm setup              # wizard: escolher/clonar repos da org
 pnpm collect            # os 3 coletores em sequência (incremental)
 pnpm collect:github     # só PRs/reviews
 pnpm collect:releases   # só releases
+pnpm clean              # apaga banco + JSONs (regeneráveis; --repos inclui os clones)
 pnpm dev                # dashboard (navbar: ↻ roda a coleta, ⚙ abre o assistente /setup)
 pnpm build              # build estático
 pnpm changeset          # registrar mudança

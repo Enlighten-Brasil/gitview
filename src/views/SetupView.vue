@@ -177,6 +177,29 @@ watch(setupDone, (done) => {
 watch(collectSucceeded, (ok) => {
   if (ok && step.value === 3) allDone.value = true
 })
+
+// ---------------------------------------------------------------------------
+// manutenção: recoletar tudo / limpar dados locais (banco + JSONs regeneráveis)
+// ---------------------------------------------------------------------------
+const confirmWipe = ref(false)
+const maintenanceRan = ref(false)
+const maintenanceLog = computed(() => collectLog.value.slice(-8))
+
+function recollectAll() {
+  confirmWipe.value = false
+  maintenanceRan.value = true
+  startCollect(true)
+}
+
+function wipeAndRecollect() {
+  if (!confirmWipe.value) {
+    confirmWipe.value = true
+    return
+  }
+  confirmWipe.value = false
+  maintenanceRan.value = true
+  startCollect(false, true)
+}
 </script>
 
 <template>
@@ -396,6 +419,75 @@ watch(collectSucceeded, (ok) => {
               trailing-icon="i-lucide-arrow-right"
               @click="router.push('/')"
             />
+          </div>
+        </div>
+      </UCard>
+
+      <!-- manutenção dos dados locais (banco + JSONs são 100% regeneráveis) -->
+      <UCard v-if="status?.hasData">
+        <div class="flex flex-col gap-4">
+          <div class="flex items-center gap-2 font-medium">
+            <UIcon name="i-lucide-database" class="size-5" />
+            Manutenção dos dados locais
+          </div>
+          <p class="text-sm text-dimmed">
+            O banco e os JSONs do dashboard são regenerados a partir dos repositórios.
+            Recoletar tudo refaz o scan completo; limpar apaga banco + JSONs antes da
+            recoleta (os clones em <code>data/repos</code> são mantidos).
+          </p>
+
+          <pre
+            v-if="collecting && maintenanceLog.length"
+            class="max-h-40 overflow-auto rounded bg-accented p-2 font-mono text-xs leading-relaxed whitespace-pre-wrap"
+          >{{ maintenanceLog.join('\n') }}</pre>
+
+          <UAlert
+            v-if="maintenanceRan && collectSucceeded && !collecting"
+            color="success"
+            variant="subtle"
+            icon="i-lucide-circle-check"
+            title="dados regenerados com sucesso"
+          />
+          <UAlert
+            v-if="maintenanceRan && collectError"
+            color="error"
+            variant="subtle"
+            icon="i-lucide-circle-x"
+            :title="collectError"
+          />
+
+          <div class="flex items-center justify-between">
+            <UButton
+              label="recoletar tudo"
+              icon="i-lucide-refresh-cw"
+              color="neutral"
+              variant="outline"
+              :disabled="collecting"
+              @click="recollectAll"
+            />
+            <div class="flex items-center gap-2">
+              <template v-if="confirmWipe">
+                <span class="text-xs text-dimmed">apaga banco + JSONs (regenerados na sequência)</span>
+                <UButton label="cancelar" size="sm" color="neutral" variant="ghost" @click="confirmWipe = false" />
+                <UButton
+                  label="confirmar limpeza"
+                  size="sm"
+                  color="error"
+                  icon="i-lucide-trash-2"
+                  :loading="collecting"
+                  @click="wipeAndRecollect"
+                />
+              </template>
+              <UButton
+                v-else
+                label="limpar e recomeçar"
+                color="error"
+                variant="soft"
+                icon="i-lucide-trash-2"
+                :disabled="collecting"
+                @click="wipeAndRecollect"
+              />
+            </div>
           </div>
         </div>
       </UCard>

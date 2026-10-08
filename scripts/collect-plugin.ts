@@ -3,6 +3,7 @@
  * três coletores em sequência e transmite o progresso linha a linha.
  *
  * - `?full=1` repassa `--full` (re-scan completo do git + refetch total de PRs)
+ * - `?clean=1` apaga banco + JSONs antes de coletar (implica full)
  * - lock em memória: uma coleta por vez (segunda requisição recebe evento `busy`)
  * - no build estático o endpoint não existe — o botão da UI só aparece em dev
  */
@@ -10,6 +11,7 @@ import { spawn } from 'node:child_process'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Connect, Plugin } from 'vite'
+import { cleanLocalData } from './lib/clean'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = join(__dirname, '..')
@@ -67,9 +69,15 @@ export function collectPlugin(): Plugin {
           return
         }
         running = true
-        const full = new URL(req.url ?? '', 'http://localhost').searchParams.get('full') === '1'
+        const params = new URL(req.url ?? '', 'http://localhost').searchParams
+        const clean = params.get('clean') === '1'
+        const full = clean || params.get('full') === '1'
 
         ;(async () => {
+          if (clean) {
+            const removed = cleanLocalData()
+            send('log', { line: `Limpeza: ${removed.length ? `${removed.length} itens removidos (${removed.join(', ')})` : 'nada a remover'}` })
+          }
           for (const step of STEPS) {
             send('step', { label: step.label })
             await runStep(step.script, full, line => send('log', { line }))

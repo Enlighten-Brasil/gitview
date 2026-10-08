@@ -26,7 +26,7 @@ async function reloadData() {
   ])
 }
 
-export function startCollect(full = false) {
+export function startCollect(full = false, clean = false) {
   if (collecting.value) return
   collecting.value = true
   collectStep.value = null
@@ -34,7 +34,11 @@ export function startCollect(full = false) {
   collectError.value = null
   collectSucceeded.value = false
 
-  const es = new EventSource(`/__collect${full ? '?full=1' : ''}`)
+  const params = new URLSearchParams()
+  if (full || clean) params.set('full', '1')
+  if (clean) params.set('clean', '1')
+  const qs = params.toString()
+  const es = new EventSource(`/__collect${qs ? `?${qs}` : ''}`)
 
   es.addEventListener('step', (e) => {
     collectStep.value = JSON.parse((e as MessageEvent).data).label
