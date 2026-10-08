@@ -1,5 +1,11 @@
 # gitview
 
+## 0.22.1
+
+### Patch Changes
+
+- AGENTS.md documenta a resolução de config dos coletores (config.local.json, env, auto-detect).
+
 ## 0.22.0
 
 ### Minor Changes
