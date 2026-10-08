@@ -6,10 +6,10 @@ export const loadError = ref<string | null>(null)
 
 /** commits recentes (últimos 100/autor) — carregado sob demanda pela página do dev */
 export const recentCommits = ref<CommitRow[] | null>(null)
-export async function loadCommits() {
-  if (recentCommits.value) return
+export async function loadCommits(force = false) {
+  if (recentCommits.value && !force) return
   try {
-    const res = await fetch('/data/commits.json')
+    const res = await fetch(force ? `/data/commits.json?t=${Date.now()}` : '/data/commits.json')
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     recentCommits.value = (await res.json()).commits
   }
@@ -38,11 +38,12 @@ export function isBot(author: string) {
   return botNames.value.has(author)
 }
 
-export async function loadStats() {
+export async function loadStats(force = false) {
   try {
-    const res = await fetch('/data/stats.json')
+    const res = await fetch(force ? `/data/stats.json?t=${Date.now()}` : '/data/stats.json')
     if (!res.ok) throw new Error(`HTTP ${res.status} — rode "pnpm collect" primeiro`)
     stats.value = await res.json()
+    loadError.value = null
   }
   catch (err) {
     loadError.value = (err as Error).message
