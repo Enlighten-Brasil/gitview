@@ -11,11 +11,12 @@
  *   pnpm setup -- --yes   sem perguntas: todos os repos não arquivados
  */
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { stdin as input, stdout as output } from 'node:process'
 import * as readline from 'node:readline/promises'
-import { loadConfig, rootDir } from './lib/config'
+import { loadConfig, saveLocalConfig } from './lib/config'
+import { getToken } from './lib/github'
 import { cloneBare, discoverRepos, MANAGED_REPOS_DIR, mapPool, resolveReposRootSafe } from './lib/repos'
 
 const YES = process.argv.includes('--yes') || process.argv.includes('-y')
@@ -156,12 +157,13 @@ const chosen = selected.map(i => ghRepos[i])
 const missing = chosen.filter(r => !cloned.has(r.name))
 console.log(`\nSelecionados: ${chosen.length} (${missing.length} a clonar, ${chosen.length - missing.length} já clonados)`)
 
-// clone bare em paralelo
+// clone bare em paralelo (autenticado com o token do gh/device flow)
+const token = getToken()?.token
 let failures = 0
 await mapPool(missing, 4, async (repo) => {
   const dest = join(MANAGED_REPOS_DIR, repo.name)
   const t0 = Date.now()
-  const err = await cloneBare(`${org}/${repo.name}`, dest)
+  const err = await cloneBare(`${org}/${repo.name}`, dest, token)
   if (err) {
     failures++
     console.error(`✗ ${repo.name}: ${err.split('\n')[0]}`)
@@ -176,10 +178,7 @@ if (failures) console.warn(`\n! ${failures} repo(s) falharam — rode o setup de
 spawnSync('gh', ['auth', 'setup-git'], { encoding: 'utf-8' })
 
 // config.local.json: merge raso + reposRoot gerenciado (relativo = portátil)
-const localPath = join(rootDir, 'config.local.json')
-const local = existsSync(localPath) ? JSON.parse(readFileSync(localPath, 'utf-8')) : {}
-local.reposRoot = 'data/repos'
-writeFileSync(localPath, `${JSON.stringify(local, null, 2)}\n`)
+saveLocalConfig({ reposRoot: 'data/repos' })
 
 console.log(`\n✓ config.local.json gravado com reposRoot = data/repos`)
 console.log('\nPróximos passos:')

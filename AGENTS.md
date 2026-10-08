@@ -22,9 +22,22 @@ O frontend (Vue 3 + TS + Vite + ECharts + Nuxt UI v4 / Tailwind v4) é **100% es
 
 Os 3 coletores processam os repos em paralelo (pool de 4). Logins do GitHub → nomes canônicos via `config.githubUsers` (mapeamento **explícito**, não fuzzy). Bots: `config.githubBots` + `config.bots`.
 
-Config dos coletores (`scripts/lib/config.ts`): merge de `config.json` (versionado, **agnóstico de máquina** — mapeamentos e defaults do time) + `config.local.json` (gitignored, caminho de repos da máquina). `reposRoot` resolve nesta ordem: env `GITVIEW_REPOS_ROOT` → config (na prática o local) → auto-detect `../example`; se nada existir, erro com instruções (ver README). `authors`/`githubUsers`/`githubBots` são opcionais — sem eles nada quebra, só não há merge de aliases.
+Config dos coletores (`scripts/lib/config.ts`): merge de `config.json` (versionado, **agnóstico de máquina** — mapeamentos e defaults do time) + `config.local.json` (gitignored, dados da máquina: `reposRoot`, `githubToken`). `saveLocalConfig()` grava no local. `reposRoot` resolve nesta ordem: env `GITVIEW_REPOS_ROOT` → config (na prática o local) → auto-detect `../example`; se nada existir, erro com instruções (ver README). `authors`/`githubUsers`/`githubBots` são opcionais — sem eles nada quebra, só não há merge de aliases.
 
 `githubOrg` + `defaultRepos` (config.json) alimentam o `pnpm setup` (`scripts/setup.ts`): wizard que lista os repos da org via `gh`, clona os escolhidos em `data/repos/` (**bare**, gitignored) e grava `reposRoot` no config.local.json. Clones gerenciados recebem `git fetch --all --prune --tags` no início do `collect.ts`. Discovery compartilhada em `scripts/lib/repos.ts` (aceita checkout normal e bare; `isManagedRepo` identifica os clones do setup).
+
+`scripts/lib/github.ts` centraliza o acesso à API do GitHub **para o setup**: `getToken()` (`config.local.json#githubToken` → `gh auth token`), REST com paginação (`ghApiAll`), `currentUser`, `listOrgs`, `listOrgRepos`/`listUserRepos` e o **device flow** (`deviceStart`/`devicePoll`, escopo `repo read:org`, sem client secret). O `cloneBare` aceita token: persiste `http.https://github.com/.extraheader` no config do clone (autentica os fetches futuros sem `gh`). Os **coletores** seguem usando `gh api` (não passam por essa lib).
+
+### Setup pela UI (dev only)
+
+`scripts/setup-plugin.ts` é um plugin Vite (`apply: 'serve'`) que alimenta a rota `/setup` (`views/SetupView.vue` + `src/setup.ts`): wizard de 3 passos (conectar GitHub → escolher org/repos → clonar e coletar). Endpoints (todos dev only):
+
+- `GET /__setup/status` — auth (user + fonte do token), `oauthConfigured`, `reposRoot`, repos gerenciados, `hasData`. Sondado a cada 5s pelo passo 1.
+- `GET /__auth/device` — inicia o device flow (só se `oauthClientId` configurado no config.json); `POST /__auth/device/poll` — conclui e grava o token no config.local.json.
+- `GET /__setup/orgs` — orgs do usuário + entrada `@user` (repos pessoais); `GET /__setup/repos?org=` — payload enxuto (`name`, `archived`, `pushed_at`, `private`).
+- `GET /__setup/apply?org=&repos=a,b&dry=1` — SSE com lock: clona os faltantes (pool de 4), grava `reposRoot`; `?dry=1` valida sem efeitos.
+
+Gate de primeira execução: `App.vue` redireciona `/` → `/setup` quando o `stats.json` dá 404 em dev; sidebar de filtros é oculta na rota `/setup`. Botão ⚙ no navbar (dev only) abre o wizard. Sem `oauthClientId`, o passo 1 orienta `gh auth login` (a UI detecta a sessão via sonda).
 
 ### Coleta pela UI (dev only)
 
@@ -58,9 +71,10 @@ pnpm version:packages   # aplicar changesets (bumps + CHANGELOG)
 - `urlState.ts` — aba + filtros na query string (`?tab=&range=&from=&to=&repos=&devs=&bots=`), replaceState, popstate com reset, sanitização, fallback localStorage. **Só atua na rota `/`**.
 - `summary.ts` — resumo semanal exportável (markdown da última semana ISO fechada vs anterior). **Ignora os filtros da sidebar e sempre exclui bots** — é relatório do time inteiro, pra reunião. UI: `components/WeeklySummary.vue` (slideover com copiar/baixar .md, botão no navbar).
 - `chartTheme.ts` — tema ECharts com conversão oklch→hex (proxy `ct`).
-- `views/` — `DashboardView` (5 abas: Visão geral, Time, Saúde, Repos, Pull requests), `DevView` (`/dev/:name`), `RepoView` (`/repo/:name`).
+- `setup.ts` — cliente do wizard de setup: status/auth device flow/orgs/repos e SSE do `/__setup/apply` (refs `setupApplying/setupLog/setupError/setupDone` + `startSetupApply`). Só existe em dev.
+- `views/` — `DashboardView` (5 abas: Visão geral, Time, Saúde, Repos, Pull requests), `DevView` (`/dev/:name`), `RepoView` (`/repo/:name`), `SetupView` (`/setup`, dev only — wizard de onboarding).
 - `components/` — um componente por painel; tabelas usam a classe `.data-table` (ver `main.css`).
-- `App.vue` — navbar com badge de frescor dos dados (`dataAge`: warning após 24h sem coleta), botão do resumo semanal e botão de coleta (dev only).
+- `App.vue` — navbar com badge de frescor dos dados (`dataAge`: warning após 24h sem coleta), botão do resumo semanal, coleta (dev only) e ⚙ setup (dev only); gate que redireciona para `/setup` na primeira execução sem dados.
 
 ## Regras dos filtros (importante pra não "corrigir" o que é intencional)
 

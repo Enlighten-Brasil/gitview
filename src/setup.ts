@@ -1,0 +1,117 @@
+/**
+ * Cliente dos endpoints de onboarding (apenas dev — middleware do Vite,
+ * não existe no build estático). Cobre auth (device flow/gh) e o setup
+ * de repositórios (listar orgs/repos, clonar com progresso SSE).
+ */
+import { ref } from 'vue'
+
+export interface SetupStatus {
+  auth: { login: string; via: string } | null
+  oauthConfigured: boolean
+  reposRoot: string | null
+  repos: string[]
+  hasData: boolean
+  defaultOrg: string | null
+  defaultRepos: string[]
+}
+
+export interface OrgEntry { login: string; personal?: boolean }
+export interface RepoEntry { name: string; archived: boolean; pushed_at: string | null; private: boolean }
+
+async function getJson<T>(url: string): Promise<T> {
+  const res = await fetch(url)
+  const body = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`)
+  return body as T
+}
+
+export function fetchSetupStatus(): Promise<SetupStatus> {
+  return getJson('/__setup/status')
+}
+
+export function fetchOrgs(): Promise<OrgEntry[]> {
+  return getJson('/__setup/orgs')
+}
+
+export function fetchRepos(org: string): Promise<RepoEntry[]> {
+  return getJson(`/__setup/repos?org=${encodeURIComponent(org)}`)
+}
+
+// ---------------------------------------------------------------------------
+// device flow
+// ---------------------------------------------------------------------------
+export interface DeviceFlowStart {
+  deviceCode: string
+  userCode: string
+  verificationUri: string
+  interval: number
+}
+
+export type DeviceFlowPoll =
+  | { status: 'pending' | 'slow_down' | 'expired' | 'denied' }
+  | { status: 'ok'; login: string }
+
+export function startDeviceFlow(): Promise<DeviceFlowStart> {
+  return getJson('/__auth/device')
+}
+
+export async function pollDeviceFlow(deviceCode: string): Promise<DeviceFlowPoll> {
+  const res = await fetch('/__auth/device/poll', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ deviceCode }),
+  })
+  const body = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`)
+  return body as DeviceFlowPoll
+}
+
+// ---------------------------------------------------------------------------
+// apply (clone) com progresso via SSE
+// ---------------------------------------------------------------------------
+export const setupApplying = ref(false)
+export const setupLog = ref<string[]>([])
+export const setupError = ref<string | null>(null)
+export const setupDone = ref(false)
+
+const MAX_LOG_LINES = 300
+
+export function startSetupApply(org: string, repos: string[], dry = false) {
+  if (setupApplying.value) return
+  setupApplying.value = true
+  setupLog.value = []
+  setupError.value = null
+  setupDone.value = false
+
+  const params = new URLSearchParams({ org, repos: repos.join(',') })
+  if (dry) params.set('dry', '1')
+  const es = new EventSource(`/__setup/apply?${params}`)
+
+  es.addEventListener('log', (e) => {
+    setupLog.value.push(JSON.parse((e as MessageEvent).data).line)
+    if (setupLog.value.length > MAX_LOG_LINES) {
+      setupLog.value.splice(0, setupLog.value.length - MAX_LOG_LINES)
+    }
+  })
+  es.addEventListener('busy', () => {
+    setupError.value = 'já existe um setup em andamento'
+    es.close()
+    setupApplying.value = false
+  })
+  es.addEventListener('done', () => {
+    es.close()
+    setupApplying.value = false
+    setupDone.value = true
+  })
+  es.addEventListener('error', (e) => {
+    const data = (e as MessageEvent).data
+    if (data) {
+      setupError.value = JSON.parse(data).message
+    }
+    else if (!setupDone.value && setupApplying.value) {
+      setupError.value = 'conexão com o dev server caiu durante o setup'
+    }
+    es.close()
+    setupApplying.value = false
+  })
+}

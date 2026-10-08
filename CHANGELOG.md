@@ -1,5 +1,11 @@
 # gitview
 
+## 0.25.0
+
+### Minor Changes
+
+- Setup 100% pela UI: rota `/setup` com wizard de 3 passos (conectar GitHub via device flow ou `gh auth login`, escolher org/repos com busca e pré-seleção, clonar e rodar a primeira coleta com progresso ao vivo). Redirecionamento automático na primeira execução sem dados, botão ⚙ no navbar, clone autenticado por token (sem depender do `gh`) e endpoints `/__setup/*` + `/__auth/*` no dev server.
+
 ## 0.24.0
 
 ### Minor Changes

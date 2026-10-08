@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { collectError, collecting, collectLog, collectStep, collectSucceeded, startCollect } from './collect'
-import { loadStats, rangeLabel, stats } from './data'
+import { loadError, loadStats, rangeLabel, stats } from './data'
 import { loadGithub } from './github'
 import { loadReleases } from './releases'
 import { initUrlState } from './urlState'
@@ -20,6 +20,7 @@ function fmtDate(iso: string) {
 
 // navbar: nome do dev na rota de perfil, período no dashboard
 const route = useRoute()
+const router = useRouter()
 const navTitle = computed(() =>
   route.name === 'dev' ? String(route.params.name ?? '') : rangeLabel.value,
 )
@@ -30,6 +31,12 @@ const sidebarCollapsed = ref(false)
 
 // coleta pela UI: só em dev (o endpoint /__collect é middleware do Vite)
 const isDev = import.meta.env.DEV
+
+// primeira execução sem dados → onboarding (só em dev: no build estático os
+// endpoints de setup não existem e o aviso do rodapé já orienta o collect)
+watch(loadError, (err) => {
+  if (err && isDev && route.name !== 'setup') router.push('/setup')
+})
 const collectOpen = ref(false)
 const logEl = ref<HTMLElement | null>(null)
 
@@ -58,12 +65,15 @@ const dataAge = computed(() => {
 
 // aba + filtros sincronizados com a URL (só na rota do dashboard)
 initUrlState()
+
+// no wizard de setup a sidebar de filtros não faz sentido
+const isSetupRoute = computed(() => route.path === '/setup')
 </script>
 
 <template>
   <UApp>
     <UDashboardGroup storage="localStorage" storage-key="gitview">
-      <UDashboardSidebar v-model:collapsed="sidebarCollapsed" collapsible resizable>
+      <UDashboardSidebar v-if="!isSetupRoute" v-model:collapsed="sidebarCollapsed" collapsible resizable>
         <template #header="{ collapsed }">
           <div v-if="!collapsed" class="flex items-center gap-2.5">
             <UIcon name="i-lucide-git-graph" class="size-5 text-primary shrink-0" />
@@ -130,6 +140,16 @@ initUrlState()
                 </span>
               </UTooltip>
               <WeeklySummary v-if="stats" />
+              <UTooltip v-if="isDev" text="configurar conta e repositórios">
+                <UButton
+                  icon="i-lucide-settings"
+                  color="neutral"
+                  variant="ghost"
+                  size="sm"
+                  to="/setup"
+                  aria-label="configurações"
+                />
+              </UTooltip>
               <UPopover v-if="isDev" v-model:open="collectOpen" :ui="{ content: 'w-96' }">
                 <UTooltip text="atualizar dados (git + GitHub)">
                   <UButton

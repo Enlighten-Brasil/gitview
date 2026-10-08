@@ -82,12 +82,18 @@ export function fetchRepo(path: string): Promise<string | null> {
   })
 }
 
-/** clone bare via gh (autentica com o token do `gh auth login`) */
-export function cloneBare(fullName: string, dest: string): Promise<string | null> {
+/**
+ * clone bare autenticado. Com token: git puro — `-c` do clone grava o
+ * http.extraheader no config do novo repo, então os fetches futuros já saem
+ * autenticados (token local da máquina, em pasta gitignored). Sem token:
+ * fallback pro `gh repo clone` (usa a auth do gh CLI).
+ */
+export function cloneBare(fullName: string, dest: string, token?: string): Promise<string | null> {
   return new Promise((resolvePromise) => {
-    const child = spawn('gh', ['repo', 'clone', fullName, dest, '--', '--bare', '--quiet'], {
-      env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
-    })
+    const env = { ...process.env, GIT_TERMINAL_PROMPT: '0' }
+    const child = token
+      ? spawn('git', ['clone', '-c', `http.https://github.com/.extraheader=AUTHORIZATION: Bearer ${token}`, '--bare', '--quiet', `https://github.com/${fullName}.git`, dest], { env })
+      : spawn('gh', ['repo', 'clone', fullName, dest, '--', '--bare', '--quiet'], { env })
     const errChunks: Buffer[] = []
     child.stderr.on('data', (c: Buffer) => errChunks.push(c))
     child.on('error', e => resolvePromise(String(e)))
