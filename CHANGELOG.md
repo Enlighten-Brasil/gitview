@@ -1,5 +1,11 @@
 # gitview
 
+## 0.24.0
+
+### Minor Changes
+
+- config.json agnóstico de máquina: `reposRoot` sai do arquivo versionado (só `config.local.json`/env/auto-detect). Setup pergunta a org quando `githubOrg` não está definido. Documentado que os mapeamentos de identidade (authors/githubUsers/bots) são opcionais — o dashboard funciona sem eles, sem merge de aliases. Coleta remove do banco commits de repos que saíram da seleção (evita dados órfãos ao refazer o setup).
+
 ## 0.23.1
 
 ### Patch Changes

@@ -39,6 +39,14 @@ Exemplo de `config.local.json`:
 
 A pasta apontada deve conter os diretórios git dos repos (`example-api`, `example`, …). Nesse modo os dados refletem o estado do seu clone local — dê `git pull` nos repos antes de coletar se quiser dados frescos.
 
+### Usando com outro time/org
+
+O `config.json` versionado é um preset do time example — **nada nele é específico de máquina** (caminhos de repo só em `config.local.json`/env, nunca no git). Para usar com outro time:
+
+- `githubOrg` — sua org no GitHub (se vazio, o `pnpm setup` pergunta)
+- `defaultRepos` — pré-seleção do `pnpm setup` (se vazio, o padrão é "todos não arquivados")
+- `authors` / `githubUsers` / `githubBots` / `bots` — mapeamentos de identidade do time. **Opcionais**: sem eles o dashboard funciona normalmente, só não agrupa aliases (cada e-mail/login vira um autor separado) e a coleta lista os logins sem mapeamento pra você ir completando.
+
 ## Comandos
 
 ```bash
