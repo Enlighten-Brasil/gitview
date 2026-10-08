@@ -23,7 +23,7 @@ export async function loadGithub(force = false) {
 export function ghName(login: string): string {
   return github.value?.users[login]?.name ?? login
 }
-function ghIsBot(login: string): boolean {
+export function ghIsBot(login: string): boolean {
   return github.value?.users[login]?.bot ?? /bot/i.test(login)
 }
 

@@ -58,7 +58,8 @@ function cutoffDate(): Date | null {
   return d
 }
 
-function inRange(periodKey: string): boolean {
+/** período (YYYY-MM ou YYYY-Www) dentro do range filtrado? — usado também por /dev e /repo */
+export function inRange(periodKey: string): boolean {
   const key = periodKey.slice(0, 7)
   // range customizado: compara mês a mês com from/to
   if (isCustomRange()) {
