@@ -1,5 +1,18 @@
 # gitview
 
+## 0.27.0
+
+### Minor Changes
+
+- feat: filtro de período passa a valer nas páginas /dev/:name e /repo/:name
+  
+  - cards de commits/linhas, gráficos (timeline, pizza de repos/tipos, heatmap), PRs mergeados, cycle time, reviews e lista de commits respeitam o período; "Tudo" mantém o histórico completo
+  - cards que seguem históricos (dias ativos, streak, repos) ganham sufixo "(total)" quando há período ativo; releases e PRs abertos ficam fora do período (marcos/estado atual)
+  - header das páginas mostra o range ativo; heatmap mostra o range no título (em "Tudo", cap de 24M do coletor)
+  - sidebar mostra só o seletor de período em /dev e /repo (repos/devs só no dashboard); switch de bots visível no dashboard e em /repo (não em /dev)
+  - /repo passa a respeitar o switch de bots (commits, tipos, PRs)
+  - urlState sincroniza range/from/to/bots também em /dev e /repo; navegação por link preserva o contexto de período entre as páginas e regrava a query da rota
+
 ## 0.26.0
 
 ### Minor Changes

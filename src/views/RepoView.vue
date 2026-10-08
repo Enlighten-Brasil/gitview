@@ -2,10 +2,10 @@
 import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import type { EChartsOption } from 'echarts'
-import { stats } from '../data'
-import { fmtDuration, github, median } from '../github'
+import { filters, inRange, isBot, isCustomRange, rangeLabel, stats } from '../data'
+import { fmtDuration, ghIsBot, github, median } from '../github'
 import { daysSinceLastRelease, loadReleases, releases, repoRelease } from '../releases'
-import { axisLabel, ct, legendText, PALETTE, splitLine, tooltipBase } from '../chartTheme'
+import { axisLabel, ct, legendText, splitLine, tooltipBase } from '../chartTheme'
 import ChartPanel from '../components/ChartPanel.vue'
 
 const route = useRoute()
@@ -19,23 +19,47 @@ const repoStats = computed(() =>
 
 const rel = computed(() => repoRelease(repo.value))
 
+// o período se aplica nesta página: com preset/range ativo, commits, gráficos e
+// PRs mergeados ficam restritos ao período; "Tudo" = histórico completo.
+// releases e PRs abertos são marcos/estado atual e ficam de fora do período.
+const periodFiltered = computed(() => filters.rangeMonths !== null || isCustomRange())
+// sufixo dos cards que seguem históricos mesmo com período ativo
+const histSuffix = computed(() => (periodFiltered.value ? ' (total)' : ''))
+
+// linhas mensais do repo dentro do período, respeitando o switch de bots
+// (com "Tudo", inRange aceita todos os meses e a soma equivale ao total histórico)
+const periodMonthly = computed(() =>
+  (stats.value?.monthly ?? []).filter(r =>
+    r.repo === repo.value
+    && (filters.showBots || !isBot(r.author))
+    && inRange(r.month),
+  ),
+)
+const periodCommits = computed(() => periodMonthly.value.reduce((s, r) => s + r.commits, 0))
+const periodAdds = computed(() => periodMonthly.value.reduce((s, r) => s + r.additions, 0))
+const periodDels = computed(() => periodMonthly.value.reduce((s, r) => s + r.deletions, 0))
+const periodAuthors = computed(() => new Set(periodMonthly.value.map(r => r.author)).size)
+
 // ---------------------------------------------------------------------------
-// PRs do repo (dados do GitHub, se coletados)
+// PRs do repo (dados do GitHub, se coletados) — o switch de bots vale aqui também
 // ---------------------------------------------------------------------------
-const repoPrs = computed(() => (github.value?.prs ?? []).filter(p => p.repo === repo.value))
+const repoPrs = computed(() =>
+  (github.value?.prs ?? []).filter(p => p.repo === repo.value && (filters.showBots || !ghIsBot(p.author))),
+)
 const openPrs = computed(() => repoPrs.value.filter(p => p.state === 'OPEN'))
-const mergedPrs = computed(() => repoPrs.value.filter(p => p.state === 'MERGED'))
+// mergeados filtrados pelo período (mês do merge)
+const mergedPrs = computed(() =>
+  repoPrs.value.filter(p => p.state === 'MERGED' && p.mergedAt && inRange(p.mergedAt.slice(0, 7))),
+)
 const cycleHours = computed(() =>
   median(mergedPrs.value.map(p => (new Date(p.mergedAt!).getTime() - new Date(p.createdAt).getTime()) / 3_600_000)),
 )
 
-/** dev principal do repo (bus factor resumido) */
+/** commits por dev no período (ranking + bus factor) */
 const devsByCommits = computed(() => {
   const map = new Map<string, number>()
-  for (const r of stats.value?.monthly ?? []) {
-    if (r.repo !== repo.value) continue
+  for (const r of periodMonthly.value)
     map.set(r.author, (map.get(r.author) ?? 0) + r.commits)
-  }
   return [...map.entries()].map(([author, commits]) => ({ author, commits })).sort((a, b) => b.commits - a.commits)
 })
 
@@ -46,21 +70,28 @@ const topDev = computed(() => {
 })
 
 function fmt(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 10_000) return `${(n / 1_000).toFixed(0)}k`
+  if (n >= 1_000_000)
+    return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 10_000)
+    return `${(n / 1_000).toFixed(0)}k`
   return n.toLocaleString('pt-BR')
 }
 
 const cards = computed(() => {
   const r = repoStats.value
-  if (!r) return []
+  if (!r)
+    return []
   const days = daysSinceLastRelease(repo.value)
   const base = [
-    { value: fmt(r.commits), label: 'commits', icon: 'i-lucide-git-commit-horizontal' },
-    { value: fmt(r.additions), label: 'linhas +', icon: 'i-lucide-plus', color: 'text-success' },
-    { value: fmt(r.deletions), label: 'linhas −', icon: 'i-lucide-minus', color: 'text-error' },
-    { value: String(r.authors), label: 'devs', icon: 'i-lucide-users' },
+    { value: fmt(periodCommits.value), label: 'commits', icon: 'i-lucide-git-commit-horizontal' },
+    { value: fmt(periodAdds.value), label: 'linhas +', icon: 'i-lucide-plus', color: 'text-success' },
+    { value: fmt(periodDels.value), label: 'linhas −', icon: 'i-lucide-minus', color: 'text-error' },
+    { value: String(periodAuthors.value), label: 'devs', icon: 'i-lucide-users' },
   ]
+  // com período ativo, mostra também o total histórico pra referência
+  if (periodFiltered.value) {
+    base.push({ value: fmt(r.commits), label: `commits${histSuffix.value}`, icon: 'i-lucide-infinity' })
+  }
   if (rel.value) {
     base.push(
       {
@@ -108,7 +139,10 @@ const TYPE_COLORS: Record<string, string> = {
 const typesOption = computed<EChartsOption>(() => {
   const map = new Map<string, number>()
   for (const r of stats.value?.monthlyTypes ?? []) {
-    if (r.repo !== repo.value) continue
+    if (r.repo !== repo.value || !inRange(r.month))
+      continue
+    if (!filters.showBots && isBot(r.author))
+      continue
     const t = (TYPES as readonly string[]).includes(r.type) ? r.type : 'outros'
     map.set(t, (map.get(t) ?? 0) + r.commits)
   }
@@ -140,7 +174,7 @@ const devsOption = computed<EChartsOption>(() => {
 })
 
 // ---------------------------------------------------------------------------
-// timeline de releases
+// timeline de releases (marcos — não segue o período)
 // ---------------------------------------------------------------------------
 const tags = computed(() => rel.value?.tags ?? [])
 const shownTags = computed(() => tags.value.slice(0, 30))
@@ -173,7 +207,7 @@ function fmtDate(iso: string): string {
         rel="noopener"
         class="text-xs text-primary hover:underline"
       >GitHub ↗</a>
-      <span class="text-xs text-dimmed">— histórico completo</span>
+      <span class="text-xs text-dimmed">— {{ rangeLabel }}</span>
     </div>
 
     <UAlert

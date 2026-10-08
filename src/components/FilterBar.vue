@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { filters, isCustomRange, stats } from '../data'
+
+const route = useRoute()
+
+// período vale em todas as rotas; repos/devs só fazem sentido no dashboard;
+// o switch de bots não aparece na página de um dev específico
+const onDashboard = computed(() => route.path === '/')
+const onDevPage = computed(() => route.path.startsWith('/dev/'))
 
 const ranges = [
   { label: '1M', months: 1 },
@@ -26,8 +34,10 @@ function toggleCustom() {
     return
   }
   const from = new Date()
-  if (filters.rangeMonths != null) from.setMonth(from.getMonth() - filters.rangeMonths)
-  else from.setFullYear(from.getFullYear() - 10)
+  if (filters.rangeMonths != null)
+    from.setMonth(from.getMonth() - filters.rangeMonths)
+  else
+    from.setFullYear(from.getFullYear() - 10)
   filters.dateFrom = from.toISOString().slice(0, 10)
   filters.dateTo = new Date().toISOString().slice(0, 10)
 }
@@ -40,7 +50,8 @@ const hasSelection = computed(() => filters.repos.length > 0 || filters.authors.
 
 function toggle(list: string[], value: string) {
   const i = list.indexOf(value)
-  if (i >= 0) list.splice(i, 1)
+  if (i >= 0)
+    list.splice(i, 1)
   else list.push(value)
 }
 
@@ -94,90 +105,93 @@ function clearList(list: ListKey) {
         <span class="text-dimmed text-xs">→</span>
         <UInput v-model="filters.dateTo" type="date" size="xs" class="flex-1" />
       </div>
-      <USwitch v-model="filters.showBots" label="incluir bots" size="sm" class="mt-1" />
+      <USwitch v-if="!onDevPage" v-model="filters.showBots" label="incluir bots" size="sm" class="mt-1" />
     </section>
 
-    <USeparator />
+    <!-- repos e devs só fazem sentido no dashboard -->
+    <template v-if="onDashboard">
+      <USeparator />
 
-    <section class="flex flex-col gap-2">
-      <span class="filter-label flex items-center gap-1.5">
-        <UIcon name="i-lucide-git-branch" class="size-3.5" />
-        Repos
-        <UBadge v-if="filters.repos.length" color="primary" variant="soft" size="sm">
-          {{ filters.repos.length }}
-        </UBadge>
-        <span class="ml-auto flex items-center">
-          <UTooltip text="selecionar todos">
-            <UButton icon="i-lucide-check-check" color="neutral" variant="ghost" size="xs" @click="selectAll('repos')" />
-          </UTooltip>
-          <UTooltip text="inverter seleção">
-            <UButton icon="i-lucide-arrow-left-right" color="neutral" variant="ghost" size="xs" @click="invert('repos')" />
-          </UTooltip>
-          <UTooltip text="limpar">
-            <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" @click="clearList('repos')" />
-          </UTooltip>
+      <section class="flex flex-col gap-2">
+        <span class="filter-label flex items-center gap-1.5">
+          <UIcon name="i-lucide-git-branch" class="size-3.5" />
+          Repos
+          <UBadge v-if="filters.repos.length" color="primary" variant="soft" size="sm">
+            {{ filters.repos.length }}
+          </UBadge>
+          <span class="ml-auto flex items-center">
+            <UTooltip text="selecionar todos">
+              <UButton icon="i-lucide-check-check" color="neutral" variant="ghost" size="xs" @click="selectAll('repos')" />
+            </UTooltip>
+            <UTooltip text="inverter seleção">
+              <UButton icon="i-lucide-arrow-left-right" color="neutral" variant="ghost" size="xs" @click="invert('repos')" />
+            </UTooltip>
+            <UTooltip text="limpar">
+              <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" @click="clearList('repos')" />
+            </UTooltip>
+          </span>
         </span>
-      </span>
-      <div class="flex flex-wrap gap-1.5">
-        <UButton
-          v-for="repo in stats?.repos ?? []"
-          :key="repo"
-          size="xs"
-          :color="filters.repos.includes(repo) ? 'primary' : 'neutral'"
-          :variant="filters.repos.includes(repo) ? 'solid' : 'ghost'"
-          @click="toggle(filters.repos, repo)"
-        >
-          {{ repo }}
-        </UButton>
-      </div>
-    </section>
+        <div class="flex flex-wrap gap-1.5">
+          <UButton
+            v-for="repo in stats?.repos ?? []"
+            :key="repo"
+            size="xs"
+            :color="filters.repos.includes(repo) ? 'primary' : 'neutral'"
+            :variant="filters.repos.includes(repo) ? 'solid' : 'ghost'"
+            @click="toggle(filters.repos, repo)"
+          >
+            {{ repo }}
+          </UButton>
+        </div>
+      </section>
 
-    <USeparator />
+      <USeparator />
 
-    <section class="flex flex-col gap-2">
-      <span class="filter-label flex items-center gap-1.5">
-        <UIcon name="i-lucide-users" class="size-3.5" />
-        Devs
-        <UBadge v-if="filters.authors.length" color="primary" variant="soft" size="sm">
-          {{ filters.authors.length }}
-        </UBadge>
-        <span class="ml-auto flex items-center">
-          <UTooltip text="selecionar todos">
-            <UButton icon="i-lucide-check-check" color="neutral" variant="ghost" size="xs" @click="selectAll('authors')" />
-          </UTooltip>
-          <UTooltip text="inverter seleção">
-            <UButton icon="i-lucide-arrow-left-right" color="neutral" variant="ghost" size="xs" @click="invert('authors')" />
-          </UTooltip>
-          <UTooltip text="limpar">
-            <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" @click="clearList('authors')" />
-          </UTooltip>
+      <section class="flex flex-col gap-2">
+        <span class="filter-label flex items-center gap-1.5">
+          <UIcon name="i-lucide-users" class="size-3.5" />
+          Devs
+          <UBadge v-if="filters.authors.length" color="primary" variant="soft" size="sm">
+            {{ filters.authors.length }}
+          </UBadge>
+          <span class="ml-auto flex items-center">
+            <UTooltip text="selecionar todos">
+              <UButton icon="i-lucide-check-check" color="neutral" variant="ghost" size="xs" @click="selectAll('authors')" />
+            </UTooltip>
+            <UTooltip text="inverter seleção">
+              <UButton icon="i-lucide-arrow-left-right" color="neutral" variant="ghost" size="xs" @click="invert('authors')" />
+            </UTooltip>
+            <UTooltip text="limpar">
+              <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" @click="clearList('authors')" />
+            </UTooltip>
+          </span>
         </span>
-      </span>
-      <div class="flex flex-wrap gap-1.5">
-        <UButton
-          v-for="a in visibleAuthors"
-          :key="a.name"
-          size="xs"
-          :color="filters.authors.includes(a.name) ? 'primary' : 'neutral'"
-          :variant="filters.authors.includes(a.name) ? 'solid' : 'ghost'"
-          @click="toggle(filters.authors, a.name)"
-        >
-          {{ a.name }}
-        </UButton>
-      </div>
-    </section>
+        <div class="flex flex-wrap gap-1.5">
+          <UButton
+            v-for="a in visibleAuthors"
+            :key="a.name"
+            size="xs"
+            :color="filters.authors.includes(a.name) ? 'primary' : 'neutral'"
+            :variant="filters.authors.includes(a.name) ? 'solid' : 'ghost'"
+            @click="toggle(filters.authors, a.name)"
+          >
+            {{ a.name }}
+          </UButton>
+        </div>
+      </section>
 
-    <UButton
-      v-if="hasSelection"
-      size="xs"
-      color="error"
-      variant="ghost"
-      icon="i-lucide-x"
-      block
-      @click="clearSelection"
-    >
-      limpar filtros
-    </UButton>
+      <UButton
+        v-if="hasSelection"
+        size="xs"
+        color="error"
+        variant="ghost"
+        icon="i-lucide-x"
+        block
+        @click="clearSelection"
+      >
+        limpar filtros
+      </UButton>
+    </template>
   </div>
 </template>
 

@@ -72,7 +72,7 @@ pnpm version:packages   # aplicar changesets (bumps + CHANGELOG)
 - `data.ts` — filtros globais (`filters`), agregações filtradas (monthly/weekly/heatmap/types), totais + delta (`previousTotals`), ritmo (`pace`), burnout, off-hours por período.
 - `github.ts` — PRs filtrados, aging, cycle time (mediana geral/por repo/tendência 6M), reviews por dev e concentração por repo, merge sem review.
 - `releases.ts` — loader do releases.json + métricas (dias desde última release, cadência).
-- `urlState.ts` — aba + filtros na query string (`?tab=&range=&from=&to=&repos=&devs=&bots=`), replaceState, popstate com reset, sanitização, fallback localStorage. **Só atua na rota `/`**.
+- `urlState.ts` — aba + filtros na query string (`?tab=&range=&from=&to=&repos=&devs=&bots=`), replaceState, popstate com reset, sanitização, fallback localStorage. **Escopo por rota**: tab/repos/devs só no dashboard (`/`); período (range/from/to) + bots também em `/dev/:name` e `/repo/:name`; demais rotas (ex.: `/setup`) são ignoradas. Navegação por link preserva o contexto (afterEach aplica os params presentes sem resetar e regrava a query da rota).
 - `summary.ts` — resumo semanal exportável (markdown da última semana ISO fechada vs anterior). **Ignora os filtros da sidebar e sempre exclui bots** — é relatório do time inteiro, pra reunião. UI: `components/WeeklySummary.vue` (slideover com copiar/baixar .md, botão no navbar).
 - `chartTheme.ts` — tema ECharts com conversão oklch→hex (proxy `ct`).
 - `setup.ts` — cliente do wizard de setup: status/auth device flow/orgs/repos e SSE do `/__setup/apply` (refs `setupApplying/setupLog/setupError/setupDone` + `startSetupApply`). Só existe em dev.
@@ -83,7 +83,8 @@ pnpm version:packages   # aplicar changesets (bumps + CHANGELOG)
 ## Regras dos filtros (importante pra não "corrigir" o que é intencional)
 
 - Filtro de período: presets (1/3/6/12/24M, Tudo) **ou** range custom `dateFrom/dateTo` (YYYY-MM-DD, prevalece sobre preset, corta **por mês inteiro** — a agregação é mensal/semanal). Delta dos cards é omitido em range custom e em "Tudo".
-- Janelas fixas intencionais (ignoram o período, estão rotuladas no rodapé): Ritmo (4 vs 8 semanas), BurnoutWatch (8 semanas), Tendência de cycle time (6 meses), PRs abertos ("agora"), Ranking do time e páginas /dev e /repo (histórico completo; heatmap de horários cobre no máximo 24M — limite da agregação).
+- Janelas fixas intencionais (ignoram o período, estão rotuladas no rodapé): Ritmo (4 vs 8 semanas), BurnoutWatch (8 semanas), Tendência de cycle time (6 meses), PRs abertos ("agora"), Ranking do time (histórico completo).
+- **Páginas `/dev/:name` e `/repo/:name` respeitam o filtro de período** (desde 0.27.0): cards de commits/linhas/devs, gráficos, PRs mergeados, cycle time, reviews e lista de commits ficam restritos ao período; "Tudo" = histórico completo. Ficam fora do período por decisão: dias ativos/streak/repos (rotulados `(total)`), PRs abertos ("agora") e releases (marcos). Heatmap de horários em "Tudo" cobre no máximo 24M (limite da agregação). Na sidebar, essas rotas mostram **só o seletor de período** (+ switch de bots em `/repo`, que passa a valer para commits/tipos/PRs do repo).
 - Thresholds dos painéis de Saúde estão documentados no rodapé de cada card.
 
 ## Validação

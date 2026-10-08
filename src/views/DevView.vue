@@ -2,7 +2,7 @@
 import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import type { EChartsOption } from 'echarts'
-import { loadCommits, recentCommits, stats } from '../data'
+import { filters, inRange, isCustomRange, loadCommits, rangeLabel, recentCommits, stats } from '../data'
 import { fmtDuration, ghName, github, median } from '../github'
 import { axisLabel, ct, heatRamp, legendText, PALETTE, splitLine, tooltipBase } from '../chartTheme'
 import ChartPanel from '../components/ChartPanel.vue'
@@ -18,9 +18,26 @@ const authorStats = computed(() =>
   stats.value?.perAuthor.find(a => a.author === dev.value) ?? null,
 )
 
+// o período se aplica nesta página: com preset/range ativo, commits, gráficos e
+// PRs ficam restritos ao período; "Tudo" = histórico completo (heatmap sempre capado em 24M)
+const periodFiltered = computed(() => filters.rangeMonths !== null || isCustomRange())
+// sufixo dos cards que seguem históricos mesmo com período ativo
+const histSuffix = computed(() => (periodFiltered.value ? ' (total)' : ''))
+
+// linhas mensais do dev dentro do período — base dos cards de commits/linhas
+// (com "Tudo", inRange aceita todos os meses e a soma equivale ao total histórico)
+const myMonthly = computed(() =>
+  (stats.value?.monthly ?? []).filter(r => r.author === dev.value && inRange(r.month)),
+)
+const periodCommits = computed(() => myMonthly.value.reduce((s, r) => s + r.commits, 0))
+const periodAdds = computed(() => myMonthly.value.reduce((s, r) => s + r.additions, 0))
+const periodDels = computed(() => myMonthly.value.reduce((s, r) => s + r.deletions, 0))
+
 function fmt(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 10_000) return `${(n / 1_000).toFixed(0)}k`
+  if (n >= 1_000_000)
+    return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 10_000)
+    return `${(n / 1_000).toFixed(0)}k`
   return n.toLocaleString('pt-BR')
 }
 
@@ -29,19 +46,24 @@ function fmt(n: number): string {
 // ---------------------------------------------------------------------------
 const myPrs = computed(() => (github.value?.prs ?? []).filter(pr => ghName(pr.author) === dev.value))
 const myOpen = computed(() => myPrs.value.filter(p => p.state === 'OPEN'))
-const myMerged = computed(() => myPrs.value.filter(p => p.state === 'MERGED'))
+// mergeados filtrados pelo período (mês do merge)
+const myMerged = computed(() => myPrs.value.filter(p => p.state === 'MERGED' && p.mergedAt && inRange(p.mergedAt.slice(0, 7))))
 const myCycleHours = computed(() =>
   median(myMerged.value.map(p => (new Date(p.mergedAt!).getTime() - new Date(p.createdAt).getTime()) / 3_600_000)),
 )
-/** reviews que o dev FEZ em PRs de outras pessoas */
+/** reviews que o dev FEZ em PRs de outras pessoas — filtradas pelo período */
 const myReviews = computed(() => {
   let total = 0
   let approvals = 0
   for (const pr of github.value?.prs ?? []) {
     for (const r of pr.reviews) {
-      if (ghName(r.author) !== dev.value || r.author === pr.author) continue
+      if (ghName(r.author) !== dev.value || r.author === pr.author)
+        continue
+      if (!inRange(r.submittedAt.slice(0, 7)))
+        continue
       total++
-      if (r.state === 'APPROVED') approvals++
+      if (r.state === 'APPROVED')
+        approvals++
     }
   }
   return { total, approvals }
@@ -49,15 +71,16 @@ const myReviews = computed(() => {
 
 const cards = computed(() => {
   const a = authorStats.value
-  if (!a) return []
+  if (!a)
+    return []
   const base = [
-    { value: fmt(a.commits), label: 'commits', icon: 'i-lucide-git-commit-horizontal' },
-    { value: fmt(a.additions), label: 'linhas +', icon: 'i-lucide-plus', color: 'text-success' },
-    { value: fmt(a.deletions), label: 'linhas −', icon: 'i-lucide-minus', color: 'text-error' },
-    { value: String(a.activeDays), label: 'dias ativos', icon: 'i-lucide-calendar-check' },
-    { value: (a.commits / Math.max(a.activeDays, 1)).toFixed(1), label: 'commits/dia ativo', icon: 'i-lucide-zap' },
-    { value: `${a.streak} (máx ${a.longestStreak})`, label: 'streak 🔥', icon: 'i-lucide-flame' },
-    { value: String(a.repos), label: 'repositórios', icon: 'i-lucide-git-branch' },
+    { value: fmt(periodCommits.value), label: 'commits', icon: 'i-lucide-git-commit-horizontal' },
+    { value: fmt(periodAdds.value), label: 'linhas +', icon: 'i-lucide-plus', color: 'text-success' },
+    { value: fmt(periodDels.value), label: 'linhas −', icon: 'i-lucide-minus', color: 'text-error' },
+    { value: String(a.activeDays), label: `dias ativos${histSuffix.value}`, icon: 'i-lucide-calendar-check' },
+    { value: (a.commits / Math.max(a.activeDays, 1)).toFixed(1), label: `commits/dia ativo${histSuffix.value}`, icon: 'i-lucide-zap' },
+    { value: `${a.streak} (máx ${a.longestStreak})`, label: `streak 🔥${histSuffix.value}`, icon: 'i-lucide-flame' },
+    { value: String(a.repos), label: `repositórios${histSuffix.value}`, icon: 'i-lucide-git-branch' },
   ]
   if (github.value) {
     base.push(
@@ -73,9 +96,10 @@ const cards = computed(() => {
 // gráficos
 // ---------------------------------------------------------------------------
 const timelineOption = computed<EChartsOption>(() => {
-  const rows = (stats.value?.weekly ?? []).filter(r => r.author === dev.value)
+  const rows = (stats.value?.weekly ?? []).filter(r => r.author === dev.value && inRange(r.week))
   const byWeek = new Map<string, number>()
-  for (const r of rows) byWeek.set(r.week, (byWeek.get(r.week) ?? 0) + r.commits)
+  for (const r of rows)
+    byWeek.set(r.week, (byWeek.get(r.week) ?? 0) + r.commits)
   const weeks = [...byWeek.keys()].sort()
 
   return {
@@ -91,7 +115,8 @@ const timelineOption = computed<EChartsOption>(() => {
 const repoOption = computed<EChartsOption>(() => {
   const map = new Map<string, number>()
   for (const r of stats.value?.monthly ?? []) {
-    if (r.author !== dev.value) continue
+    if (r.author !== dev.value || !inRange(r.month))
+      continue
     map.set(r.repo, (map.get(r.repo) ?? 0) + r.commits)
   }
   const data = [...map.entries()].map(([repo, commits]) => ({ name: repo, value: commits })).sort((a, b) => b.value - a.value)
@@ -115,11 +140,13 @@ const heatOption = computed<EChartsOption>(() => {
   const map = new Map<string, number>()
   let max = 0
   for (const r of stats.value?.heatmap ?? []) {
-    if (r.author !== dev.value) continue
+    if (r.author !== dev.value || !inRange(r.month))
+      continue
     const k = `${r.weekday}|${r.hour}`
     const v = (map.get(k) ?? 0) + r.commits
     map.set(k, v)
-    if (v > max) max = v
+    if (v > max)
+      max = v
   }
   const data: [number, number, number][] = []
   for (const [k, v] of map) {
@@ -147,11 +174,16 @@ const heatOption = computed<EChartsOption>(() => {
   }
 })
 
+// título do heatmap: em "Tudo" o coletor capa em 24M; com período, mostra o range
+const heatTitle = computed(() =>
+  periodFiltered.value ? `Horários de atividade — ${rangeLabel.value}` : 'Horários de atividade — últimos 24 meses',
+)
+
 // ---------------------------------------------------------------------------
-// últimos commits
+// últimos commits — filtrados pelo período
 // ---------------------------------------------------------------------------
 const commits = computed(() =>
-  (recentCommits.value ?? []).filter(c => c.author === dev.value).slice(0, 50),
+  (recentCommits.value ?? []).filter(c => c.author === dev.value && inRange(c.date.slice(0, 7))).slice(0, 50),
 )
 
 function fmtCommitDate(iso: string): string {
@@ -182,7 +214,7 @@ function commitUrl(repo: string, hash: string): string | null {
       <h1 class="text-xl font-bold text-highlighted">
         {{ dev }}
       </h1>
-      <span class="text-xs text-dimmed">— histórico completo</span>
+      <span class="text-xs text-dimmed">— {{ rangeLabel }}</span>
     </div>
 
     <UAlert
@@ -212,7 +244,7 @@ function commitUrl(repo: string, hash: string): string | null {
       <ChartPanel title="Commits por semana" icon="i-lucide-chart-column" :option="timelineOption" />
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <ChartPanel title="Distribuição por repositório" icon="i-lucide-chart-pie" :option="repoOption" />
-        <ChartPanel title="Horários de atividade — últimos 24 meses" icon="i-lucide-clock" :option="heatOption" />
+        <ChartPanel :title="heatTitle" icon="i-lucide-clock" :option="heatOption" />
       </div>
 
       <!-- PRs abertos do dev -->
@@ -299,7 +331,7 @@ function commitUrl(repo: string, hash: string): string | null {
           </table>
         </div>
         <div v-else class="py-10 text-center text-sm text-muted">
-          Sem commits recentes — rode <code>pnpm collect</code> para gerar o commits.json.
+          Sem commits no período — ajuste o filtro ou rode <code>pnpm collect</code> para gerar o commits.json.
         </div>
       </UCard>
     </template>
