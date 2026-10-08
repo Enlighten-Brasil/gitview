@@ -7,11 +7,13 @@
  *  GET  /__setup/orgs                       orgs do usuário autenticado
  *  GET  /__setup/repos?org=X                repos da org (ou pessoais com org=@user)
  *  GET  /__setup/apply?org=X&repos=a,b,c    SSE: clona os faltantes em data/repos
- *                                           (&dry=1 só simula) e grava config.local.json
+ *                                           (&dry=1 só simula; &remove=d,e apaga
+ *                                           clones gerenciados) e grava config.local.json
  *
  * Mesmo modelo do collect-plugin: só existe no dev server; localhost apenas.
  */
 import { existsSync, mkdirSync } from 'node:fs'
+import { rm } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { join } from 'node:path'
 import type { Plugin } from 'vite'
@@ -88,22 +90,9 @@ export function setupPlugin(): Plugin {
         }
       })
 
-      // device flow: início
-      server.middlewares.use('/__auth/device', async (req, res) => {
-        const clientId = loadConfig().oauthClientId
-        if (!clientId) {
-          json(res, 409, { error: 'oauth_not_configured' })
-          return
-        }
-        try {
-          json(res, 200, await deviceStart(clientId))
-        }
-        catch (err) {
-          json(res, 500, { error: String((err as Error).message ?? err) })
-        }
-      })
-
       // device flow: poll (grava o token no config.local.json ao concluir)
+      // ATENÇÃO: registrado ANTES do '/__auth/device' — o connect casa por
+      // prefixo, então '/__auth/device' engoliria '/__auth/device/poll'.
       server.middlewares.use('/__auth/device/poll', async (req, res) => {
         const clientId = loadConfig().oauthClientId
         if (!clientId) {
@@ -125,6 +114,21 @@ export function setupPlugin(): Plugin {
             return
           }
           json(res, 200, result)
+        }
+        catch (err) {
+          json(res, 500, { error: String((err as Error).message ?? err) })
+        }
+      })
+
+      // device flow: início
+      server.middlewares.use('/__auth/device', async (req, res) => {
+        const clientId = loadConfig().oauthClientId
+        if (!clientId) {
+          json(res, 409, { error: 'oauth_not_configured' })
+          return
+        }
+        try {
+          json(res, 200, await deviceStart(clientId))
         }
         catch (err) {
           json(res, 500, { error: String((err as Error).message ?? err) })
@@ -187,6 +191,9 @@ export function setupPlugin(): Plugin {
         const org = params.get('org') ?? ''
         const repos = (params.get('repos') ?? '').split(',').map(s => s.trim()).filter(Boolean)
         const dry = params.get('dry') === '1'
+        // remoção explícita de clones gerenciados (fluxo "gerenciar repositórios" —
+        // o cliente só manda os nomes que o usuário desmarcou de propósito)
+        const remove = (params.get('remove') ?? '').split(',').map(s => s.trim()).filter(n => /^[\w.-]+$/.test(n))
         if (!org || !repos.length) {
           send('error', { message: 'org/repos ausentes' })
           res.end()
@@ -197,6 +204,13 @@ export function setupPlugin(): Plugin {
         ;(async () => {
           const token = getToken()?.token
           mkdirSync(MANAGED_REPOS_DIR, { recursive: true })
+          for (const name of remove) {
+            const dir = join(MANAGED_REPOS_DIR, name)
+            if (!existsSync(dir))
+              continue
+            await rm(dir, { recursive: true, force: true })
+            send('log', { line: `− ${name}: clone removido do disco` })
+          }
           const existing = new Set(discoverRepos(MANAGED_REPOS_DIR).map(r => r.name))
           const missing = repos.filter(name => !existing.has(name))
           send('log', { line: `${repos.length} selecionados: ${missing.length} a clonar, ${repos.length - missing.length} já existem` })

@@ -32,16 +32,16 @@ Limpeza: `scripts/lib/clean.ts` (`cleanLocalData`) apaga banco + `public/data/*.
 
 ### Setup pela UI (dev only)
 
-`scripts/setup-plugin.ts` é um plugin Vite (`apply: 'serve'`) que alimenta a rota `/setup` (`views/SetupView.vue` + `src/setup.ts`): wizard de 3 passos (conectar GitHub → escolher org/repos → clonar e coletar). Endpoints (todos dev only):
+`scripts/setup-plugin.ts` é um plugin Vite (`apply: 'serve'`) que alimenta a rota `/setup` (`views/SetupView.vue` + `src/setup.ts`). A página tem **2 modos**: sem dados é o **wizard de 3 passos** (conectar GitHub → escolher org/repos → clonar e coletar); com dados cai direto numa tela **Configurações** (chips dos repos atuais + gerenciar repositórios, manutenção — recoletar/limpar, conta GitHub — trocar de conta). Gerenciar repos abre a lista pré-selecionada com os repos atuais (badge "atual"); desmarcar um atual mostra alerta de remoção e o apply apaga o clone do disco. Endpoints (todos dev only):
 
-- `GET /__setup/status` — auth (user + fonte do token), `oauthConfigured`, `reposRoot`, repos gerenciados, `hasData`. Sondado a cada 5s pelo passo 1.
-- `GET /__auth/device` — inicia o device flow (só se `oauthClientId` configurado no config.json); `POST /__auth/device/poll` — conclui e grava o token no config.local.json.
+- `GET /__setup/status` — auth (user + fonte do token), `oauthConfigured`, `reposRoot`, repos gerenciados, `hasData`. Sondado a cada 5s enquanto a tela de auth está aberta (detecta `gh auth login` e troca de conta — volta às configurações quando o login muda).
+- `GET /__auth/device` — inicia o device flow (só se `oauthClientId` configurado no config.json); `POST /__auth/device/poll` — conclui e grava o token no config.local.json. **Ordem importa**: o poll é registrado ANTES no connect, que casa middleware por prefixo (`/__auth/device` engoliria `/poll`).
 - `GET /__setup/orgs` — orgs do usuário + entrada `@user` (repos pessoais); `GET /__setup/repos?org=` — payload enxuto (`name`, `archived`, `pushed_at`, `private`).
-- `GET /__setup/apply?org=&repos=a,b&dry=1` — SSE com lock: clona os faltantes (pool de 4), grava `reposRoot`; `?dry=1` valida sem efeitos.
+- `GET /__setup/apply?org=&repos=a,b&dry=1&remove=c,d` — SSE com lock: remove os clones listados em `remove` (só gerenciados, nome sanitizado), clona os faltantes (pool de 4), grava `reposRoot`; `?dry=1` valida sem efeitos. Remoção é sempre explícita (nunca prune por diferença de lista).
 
-Gate de primeira execução: `App.vue` redireciona `/` → `/setup` quando o `stats.json` dá 404 em dev; sidebar de filtros é oculta na rota `/setup`. Botão ⚙ no navbar (dev only) abre o wizard. Sem `oauthClientId`, o passo 1 orienta `gh auth login` (a UI detecta a sessão via sonda).
+Gate de primeira execução: `App.vue` redireciona `/` → `/setup` quando o `stats.json` dá 404 em dev; sidebar de filtros é oculta na rota `/setup`. Botão ⚙ no navbar (dev only) abre o `/setup`. Sem `oauthClientId`, o passo 1 orienta `gh auth login` (a UI detecta a sessão via sonda).
 
-Quando já há dados, o `/setup` mostra também o card **Manutenção dos dados locais**: *recoletar tudo* (`startCollect(true)`) e *limpar e recomeçar* (confirmação inline → `startCollect(false, true)` = wipe + full via `/__collect?clean=1`).
+A tela Configurações tem o card **Manutenção dos dados locais**: *recoletar tudo* (`startCollect(true)`) e *limpar e recomeçar* (confirmação inline → `startCollect(false, true)` = wipe + full via `/__collect?clean=1`).
 
 ### Coleta pela UI (dev only)
 
@@ -75,8 +75,8 @@ pnpm version:packages   # aplicar changesets (bumps + CHANGELOG)
 - `urlState.ts` — aba + filtros na query string (`?tab=&range=&from=&to=&repos=&devs=&bots=`), replaceState, popstate com reset, sanitização, fallback localStorage. **Escopo por rota**: tab/repos/devs só no dashboard (`/`); período (range/from/to) + bots também em `/dev/:name` e `/repo/:name`; demais rotas (ex.: `/setup`) são ignoradas. Navegação por link preserva o contexto (afterEach aplica os params presentes sem resetar e regrava a query da rota).
 - `summary.ts` — resumo semanal exportável (markdown da última semana ISO fechada vs anterior). **Ignora os filtros da sidebar e sempre exclui bots** — é relatório do time inteiro, pra reunião. UI: `components/WeeklySummary.vue` (slideover com copiar/baixar .md, botão no navbar).
 - `chartTheme.ts` — tema ECharts com conversão oklch→hex (proxy `ct`).
-- `setup.ts` — cliente do wizard de setup: status/auth device flow/orgs/repos e SSE do `/__setup/apply` (refs `setupApplying/setupLog/setupError/setupDone` + `startSetupApply`). Só existe em dev.
-- `views/` — `DashboardView` (5 abas: Visão geral, Time, Saúde, Repos, Pull requests), `DevView` (`/dev/:name`), `RepoView` (`/repo/:name`), `SetupView` (`/setup`, dev only — wizard de onboarding).
+- `setup.ts` — cliente do setup: status/auth device flow/orgs/repos e SSE do `/__setup/apply` (`startSetupApply(org, repos, { dry?, remove? })`, refs `setupApplying/setupLog/setupError/setupDone`). Só existe em dev.
+- `views/` — `DashboardView` (5 abas: Visão geral, Time, Saúde, Repos, Pull requests), `DevView` (`/dev/:name`), `RepoView` (`/repo/:name`), `SetupView` (`/setup`, dev only — wizard de onboarding + tela de configurações).
 - `components/` — um componente por painel; tabelas usam a classe `.data-table` (ver `main.css`).
 - `App.vue` — navbar com badge de frescor dos dados (`dataAge`: warning após 24h sem coleta), botão do resumo semanal, coleta (dev only) e ⚙ setup (dev only); gate que redireciona para `/setup` na primeira execução sem dados.
 
