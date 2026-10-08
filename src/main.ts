@@ -1,44 +1,22 @@
-import { createApp } from 'vue'
-import { use } from 'echarts/core'
-import { BarChart, HeatmapChart, LineChart, PieChart } from 'echarts/charts'
-import {
-  CalendarComponent,
-  DataZoomComponent,
-  GridComponent,
-  LegendComponent,
-  TitleComponent,
-  TooltipComponent,
-  VisualMapComponent,
-} from 'echarts/components'
-import { CanvasRenderer } from 'echarts/renderers'
-import VChart from 'vue-echarts'
+// VChart global sem import de echarts aqui — a config real fica em src/echarts-config.ts.
+import { createApp, defineAsyncComponent } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import ui from '@nuxt/ui/vue-plugin'
 import App from './App.vue'
-import DashboardView from './views/DashboardView.vue'
-import DevView from './views/DevView.vue'
-import RepoView from './views/RepoView.vue'
-import SetupView from './views/SetupView.vue'
-import TeamView from './views/TeamView.vue'
 import './main.css'
 
-use([
-  BarChart, HeatmapChart, LineChart, PieChart,
-  CalendarComponent, DataZoomComponent, GridComponent, LegendComponent,
-  TitleComponent, TooltipComponent, VisualMapComponent,
-  CanvasRenderer,
-])
-
 // rotas: dashboard (tabs + filtros na query string), perfil do dev e página do repo
+// Views lazy: cada rota vira um chunk próprio. Echarts fica só nos chunks que
+// usam gráfico (via ChartPanel) — /team e /setup não pagam esse peso.
 const router = createRouter({
   routes: [
-    { path: '/', name: 'dashboard', component: DashboardView },
-    { path: '/dev/:name', name: 'dev', component: DevView },
-    { path: '/repo/:name', name: 'repo', component: RepoView },
+    { path: '/', name: 'dashboard', component: defineAsyncComponent(() => import('./views/DashboardView.vue')) },
+    { path: '/dev/:name', name: 'dev', component: defineAsyncComponent(() => import('./views/DevView.vue')) },
+    { path: '/repo/:name', name: 'repo', component: defineAsyncComponent(() => import('./views/RepoView.vue')) },
     // time: perfis de devs, aliases e times (edição só em dev)
-    { path: '/team', name: 'team', component: TeamView },
+    { path: '/team', name: 'team', component: defineAsyncComponent(() => import('./views/TeamView.vue')) },
     // onboarding/configuração pela UI (só funciona em dev — endpoints do Vite)
-    { path: '/setup', name: 'setup', component: SetupView },
+    { path: '/setup', name: 'setup', component: defineAsyncComponent(() => import('./views/SetupView.vue')) },
   ],
   history: createWebHistory(),
 })
@@ -46,5 +24,4 @@ const router = createRouter({
 createApp(App)
   .use(router)
   .use(ui)
-  .component('VChart', VChart)
   .mount('#app')
