@@ -1,5 +1,11 @@
 # gitview
 
+## 0.21.0
+
+### Minor Changes
+
+- Aba Repositórios ganha o painel "Linhas adicionadas × removidas": barras de adições (para cima) e remoções (para baixo) por mês com linha de saldo, e modo "acumulado" mostrando o crescimento líquido do código no período — respeita todos os filtros (período, repos, devs, bots).
+
 ## 0.20.0
 
 ### Minor Changes

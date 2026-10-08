@@ -22,6 +22,7 @@ import ReviewCoverage from '../components/ReviewCoverage.vue'
 import InactiveWatch from '../components/InactiveWatch.vue'
 import CycleTrend from '../components/CycleTrend.vue'
 import CommitTypes from '../components/CommitTypes.vue'
+import LinesFlow from '../components/LinesFlow.vue'
 import RepoTable from '../components/RepoTable.vue'
 import PrSummaryCards from '../components/PrSummaryCards.vue'
 import PrOpenTable from '../components/PrOpenTable.vue'
@@ -110,6 +111,7 @@ onMounted(syncUrlNow)
       <template #repos>
         <div class="flex flex-col gap-4">
           <RepoTable />
+          <LinesFlow />
           <RepoShare />
           <RepoMonthHeatmap />
           <CommitTypes />
