@@ -112,6 +112,36 @@ export const reviewsByDev = computed(() => {
     .sort((a, b) => b.total - a.total)
 })
 
+/** concentração de reviews por repo no período filtrado (exclui self-review e bots) */
+export interface RepoReviewShare {
+  repo: string
+  total: number          // reviews de terceiros no período
+  topReviewer: string
+  topCount: number
+  topShare: number       // topCount / total
+}
+
+export const reviewShareByRepo = computed<RepoReviewShare[]>(() => {
+  const byRepo = new Map<string, Map<string, number>>()
+  for (const pr of mergedPrs.value) {
+    for (const r of pr.reviews) {
+      if (r.author === pr.author || ghIsBot(r.author)) continue
+      if (!byRepo.has(pr.repo)) byRepo.set(pr.repo, new Map())
+      const m = byRepo.get(pr.repo)!
+      const name = ghName(r.author)
+      m.set(name, (m.get(name) ?? 0) + 1)
+    }
+  }
+  return [...byRepo.entries()]
+    .map(([repo, m]) => {
+      const sorted = [...m.entries()].sort((a, b) => b[1] - a[1])
+      const total = sorted.reduce((s, [, v]) => s + v, 0)
+      const [topReviewer, topCount] = sorted[0] ?? ['—', 0]
+      return { repo, total, topReviewer, topCount, topShare: total > 0 ? topCount / total : 0 }
+    })
+    .sort((a, b) => b.topShare - a.topShare)
+})
+
 /** mergeados sem nenhuma review de outra pessoa */
 export const mergedWithoutReview = computed(() => {
   const noReview = mergedPrs.value.filter(pr =>
