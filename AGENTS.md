@@ -8,6 +8,8 @@ Dashboard interno do Raul (gestor de dev) para acompanhar commits, PRs e release
 git log  →  data/gitview.db (node:sqlite, incremental)  →  public/data/stats.json + commits.json
 gh api graphql  →  public/data/github.json (PRs + reviews)
 git tag + gh api REST  →  public/data/releases.json (tags + notas de release)
+config + stats/github  →  team.json (devs + times + candidatos)
+public/data/*.json     →  check-data.ts (valida os shapes no fim da coleta; falha = coleta falha)
 ```
 
 O frontend (Vue 3 + TS + Vite + ECharts + Nuxt UI v4 / Tailwind v4) é **100% estático**: só lê os JSONs de `public/data/`, nada é recalculado do git no navegador. `public/data/*` e `data/` são gitignored — sempre regenerados pelos coletores.
@@ -20,6 +22,7 @@ O frontend (Vue 3 + TS + Vite + ECharts + Nuxt UI v4 / Tailwind v4) é **100% es
 | `collect-github.ts` | `github.json` (PRs OPEN todos + MERGED últimos 400d, reviews inline, mapa login→dev) | `gh api graphql` (requer `gh auth`) — incremental: refetch só de PRs atualizados desde a última coleta, merge com o JSON anterior; `--full` ignora o cache |
 | `collect-releases.ts` | `releases.json` (tags com data, commits entre tags, não liberados, notas do GitHub) | `git tag` + `gh api` REST |
 | `collect-team.ts` | `team.json` (devs: perfil título/descrição + e-mails + logins + times; times; candidatos sem mapeamento) | config (`devProfiles`/`teams` locais + `authors`/`githubUsers`) + stats/github.json já gerados |
+| `check-data.ts` | — (só valida; exit 1 em shape inválido) | lê os 5 JSONs de `public/data/`; asserts de estrutura + invariantes do team (membro órfão, candidato bot/ghost, nome duplicado) |
 
 Os 3 coletores de dados processam os repos em paralelo (pool de 4). Logins do GitHub → nomes canônicos via `config.githubUsers` (mapeamento **explícito**, não fuzzy). Bots: `config.githubBots` + `config.bots`. Aliases efetivos = `authors`/`githubUsers` **+** `devProfiles` (e-mails/logins extras) — merge em `scripts/lib/team.ts` (`resolveAliases`), usado por collect.ts e collect-github.ts; o local sobrescreve em conflito.
 
@@ -53,14 +56,16 @@ A tela Configurações tem o card **Manutenção dos dados locais** com 3 açõe
 
 ### Coleta pela UI (dev only)
 
-`scripts/collect-plugin.ts` é um plugin Vite (`apply: 'serve'`) que expõe `GET /__collect` (SSE; `?full=1` = completo; `?clean=1` apaga banco + JSONs antes e implica full) rodando os 4 coletores com progresso ao vivo. O botão ↻ no navbar (`App.vue` + `src/collect.ts` — `startCollect(full, clean)`) só renderiza em `import.meta.env.DEV`; após o `done`, os loaders refazem o fetch com cache-bust (`loadStats/loadGithub/loadReleases/loadCommits/loadTeam` aceitam `force`). No build estático o endpoint não existe.
+`scripts/collect-plugin.ts` é um plugin Vite (`apply: 'serve'`) que expõe `GET /__collect` (SSE; `?full=1` = completo; `?clean=1` apaga banco + JSONs antes e implica full) rodando os 4 coletores + `check-data` com progresso ao vivo. O botão ↻ no navbar (`App.vue` + `src/collect.ts` — `startCollect(full, clean)`) só renderiza em `import.meta.env.DEV`; após o `done`, os loaders refazem o fetch com cache-bust (`loadStats/loadGithub/loadReleases/loadCommits/loadTeam` aceitam `force`). No build estático o endpoint não existe.
 
 ## Comandos
 
 ```bash
-pnpm collect            # os 3 coletores em sequência
+pnpm collect            # os 4 coletores em sequência + check-data no fim
 pnpm collect:github     # só PRs
 pnpm collect:releases   # só releases
+pnpm check:data         # só a validação de shape dos JSONs
+pnpm typecheck          # tsc --noEmit (scripts + src; templates .vue fora)
 pnpm dev                # http://localhost:5173 (Vite)
 pnpm build              # dist estático
 pnpm changeset          # registrar mudança
@@ -83,6 +88,8 @@ pnpm version:packages   # aplicar changesets (bumps + CHANGELOG)
 - `urlState.ts` — aba + filtros na query string (`?tab=&range=&from=&to=&repos=&devs=&bots=`), replaceState, popstate com reset, sanitização, fallback localStorage. **Escopo por rota**: tab/repos/devs só no dashboard (`/`); período (range/from/to) + bots também em `/dev/:name` e `/repo/:name`; demais rotas (ex.: `/setup`) são ignoradas. Navegação por link preserva o contexto (afterEach aplica os params presentes sem resetar e regrava a query da rota).
 - `summary.ts` — resumo semanal exportável (markdown da última semana ISO fechada vs anterior). **Ignora os filtros da sidebar e sempre exclui bots** — é relatório do time inteiro, pra reunião. UI: `components/WeeklySummary.vue` (slideover com copiar/baixar .md, botão no navbar).
 - `chartTheme.ts` — tema ECharts com conversão oklch→hex (proxy `ct`).
+- `echarts.ts` — registro central dos módulos ECharts usados (`echarts/core` + `use([...])`). Só `ChartPanel.vue` (o único componente com gráfico) importa isso + `VChart` — echarts entra apenas nos chunks das rotas que renderizam gráficos.
+- `main.ts` — rotas com `defineAsyncComponent` + dynamic import (code-split por rota; só `/` puxa echarts). `vite-env.d.ts` dá o shim `*.vue` pro `tsc` dos scripts.
 - `setup.ts` — cliente do setup: status/auth device flow/orgs/repos e SSE do `/__setup/apply` (`startSetupApply(org, repos, { dry?, remove? })`, refs `setupApplying/setupLog/setupError/setupDone`). Só existe em dev.
 - `views/` — `DashboardView` (5 abas: Visão geral, Time, Saúde, Repos, Pull requests), `DevView` (`/dev/:name`), `RepoView` (`/repo/:name`), `SetupView` (`/setup`, dev only — wizard de onboarding + tela de configurações), `TeamView` (`/team` — perfis/aliases/times; edição dev only).
 - `components/` — um componente por painel; tabelas usam a classe `.data-table` (ver `main.css`).
@@ -99,4 +106,4 @@ pnpm version:packages   # aplicar changesets (bumps + CHANGELOG)
 
 - Validar no Chrome via chrome-devtools MCP em `http://localhost:5173`. O modelo não lê imagens — validar por DOM/`evaluate_script` (textos, tabelas, valores) e checar console.
 - Tabs do Reka UI **não respondem a `.click()` sintético** — usar o `click` real do MCP com o uid do snapshot, ou navegar pela URL (`?tab=...`).
-- Não há suite de testes; `pnpm build` (vite) é o check de compilação.
+- Não há suite de testes; `pnpm build` (vite) é o check de compilação, `pnpm typecheck` o de tipos (templates `.vue` ficam fora — shim manual em `src/vite-env.d.ts`), `pnpm check:data` o dos dados gerados (já roda no fim do `pnpm collect` e como 5º passo do `/__collect`).

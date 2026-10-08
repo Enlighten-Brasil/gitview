@@ -1,5 +1,16 @@
 # gitview
 
+## 0.31.0
+
+### Minor Changes
+
+- Ferramentas de engenharia: typecheck funcional, code-split por rota e verificação de dados
+  
+  - `pnpm typecheck` (`tsc --noEmit`) passa a rodar limpo: `@types/node` + shim `*.vue` (`src/vite-env.d.ts`)
+  - Code-split por rota no `main.ts` (`defineAsyncComponent`): bundle inicial cai de ~1.38 MB para ~520 kB (base Vue/Nuxt UI); echarts (~628 kB junto com o `ChartPanel`) vira chunk carregado só pelas rotas com gráfico — `/team` e `/setup` não pagam o peso
+  - `scripts/check-data.ts`: valida o shape dos 5 JSONs gerados + invariantes do team (membro órfão, candidato bot/ghost, nome duplicado); roda no fim do `pnpm collect` e como 5º passo do `/__collect` — falha de dado aparece como erro na coleta, não como tela quebrada
+  - `pnpm check:data` para rodar a validação avulsa
+
 ## 0.30.1
 
 ### Patch Changes

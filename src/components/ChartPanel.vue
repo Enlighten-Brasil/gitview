@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import * as echarts from 'echarts/core'
 import { ref } from 'vue'
+import VChart from 'vue-echarts'
 import type { EChartsOption } from 'echarts'
+import '../echarts' // registro dos charts/renderers (side-effect) — chunk só das rotas com gráfico
 import { ct } from '../chartTheme'
 
 const props = defineProps<{
