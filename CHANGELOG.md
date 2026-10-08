@@ -1,5 +1,11 @@
 # gitview
 
+## 0.16.0
+
+### Minor Changes
+
+- aba Saúde vira painel de risco: fix hotspots por repo, gargalo de review, fora do horário no período filtrado e bus factor cruzado com quem revisa (ponto cego quando o dev principal domina as reviews)
+
 ## 0.15.0
 
 ### Minor Changes

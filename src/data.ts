@@ -246,3 +246,32 @@ export const burnout = computed<BurnoutRow[]>(() => {
     .filter(b => b.total > 0 && (b.weekend > 0 || b.night > 0))
     .sort((a, b) => (b.weekend + b.night) - (a.weekend + a.night))
 })
+
+// ---------------------------------------------------------------------------
+// fora do horário no período filtrado (complemento do burnout, que é fixo em 8 sem)
+// ---------------------------------------------------------------------------
+export interface OffHoursRow {
+  author: string
+  total: number
+  weekend: number
+  night: number
+  offHoursPct: number
+}
+
+export const offHoursPeriod = computed<OffHoursRow[]>(() => {
+  const rows = (stats.value?.weekly ?? []).filter(r =>
+    selectedRepo(r.repo) && selectedAuthor(r.author) && inRange(r.week),
+  )
+  const byAuthor = new Map<string, { total: number; weekend: number; night: number }>()
+  for (const r of rows) {
+    if (!byAuthor.has(r.author)) byAuthor.set(r.author, { total: 0, weekend: 0, night: 0 })
+    const b = byAuthor.get(r.author)!
+    b.total += r.commits
+    b.weekend += r.weekend
+    b.night += r.night
+  }
+  return [...byAuthor.entries()]
+    .map(([author, b]) => ({ author, ...b, offHoursPct: b.total > 0 ? (b.weekend + b.night) / b.total : 0 }))
+    .filter(b => b.total >= 20 && (b.weekend > 0 || b.night > 0))
+    .sort((a, b) => b.offHoursPct - a.offHoursPct)
+})
