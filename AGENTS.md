@@ -19,10 +19,11 @@ O frontend (Vue 3 + TS + Vite + ECharts + Nuxt UI v4 / Tailwind v4) é **100% es
 | `collect.ts` | `stats.json` (agregados weekly/monthly/heatmap por mês/monthlyTypes/perAuthor/perRepo/repoUrls) + `commits.json` (100 últimos/autor) | `git log --all --numstat --since=<watermark-7d>` → SQLite (`INSERT OR IGNORE`, incremental; `--full` = re-scan) |
 | `collect-github.ts` | `github.json` (PRs OPEN todos + MERGED últimos 400d, reviews inline, mapa login→dev) | `gh api graphql` (requer `gh auth`) — incremental: refetch só de PRs atualizados desde a última coleta, merge com o JSON anterior; `--full` ignora o cache |
 | `collect-releases.ts` | `releases.json` (tags com data, commits entre tags, não liberados, notas do GitHub) | `git tag` + `gh api` REST |
+| `collect-team.ts` | `team.json` (devs: perfil título/descrição + e-mails + logins + times; times; candidatos sem mapeamento) | config (`devProfiles`/`teams` locais + `authors`/`githubUsers`) + stats/github.json já gerados |
 
-Os 3 coletores processam os repos em paralelo (pool de 4). Logins do GitHub → nomes canônicos via `config.githubUsers` (mapeamento **explícito**, não fuzzy). Bots: `config.githubBots` + `config.bots`.
+Os 3 coletores de dados processam os repos em paralelo (pool de 4). Logins do GitHub → nomes canônicos via `config.githubUsers` (mapeamento **explícito**, não fuzzy). Bots: `config.githubBots` + `config.bots`. Aliases efetivos = `authors`/`githubUsers` **+** `devProfiles` (e-mails/logins extras) — merge em `scripts/lib/team.ts` (`resolveAliases`), usado por collect.ts e collect-github.ts; o local sobrescreve em conflito.
 
-Config dos coletores (`scripts/lib/config.ts`): merge de `config.json` (versionado, **agnóstico de máquina** — mapeamentos e defaults do time) + `config.local.json` (gitignored, dados da máquina: `reposRoot`, `githubToken`). `saveLocalConfig()` grava no local. `reposRoot` resolve nesta ordem: env `GITVIEW_REPOS_ROOT` → config (na prática o local) → auto-detect `../example`; se nada existir, erro com instruções (ver README). `authors`/`githubUsers`/`githubBots` são opcionais — sem eles nada quebra, só não há merge de aliases.
+Config dos coletores (`scripts/lib/config.ts`): merge de `config.json` (versionado, **agnóstico de máquina** — mapeamentos e defaults do time) + `config.local.json` (gitignored, dados da máquina: `reposRoot`, `githubToken`, `devProfiles`, `teams`). `saveLocalConfig()` grava no local. `reposRoot` resolve nesta ordem: env `GITVIEW_REPOS_ROOT` → config (na prática o local) → auto-detect `../example`; se nada existir, erro com instruções (ver README). `authors`/`githubUsers`/`githubBots` são opcionais — sem eles nada quebra, só não há merge de aliases.
 
 `githubOrg` + `defaultRepos` (config.json) alimentam o `pnpm setup` (`scripts/setup.ts`): wizard que lista os repos da org via `gh`, clona os escolhidos em `data/repos/` (**bare**, gitignored) e grava `reposRoot` no config.local.json. Clones gerenciados recebem `git fetch --all --prune --tags` no início do `collect.ts` — e `denyPush` (`remote.origin.pushurl=no-push`), trava read-only no nível do git, idempotente, aplicada no clone e a cada coleta. Discovery compartilhada em `scripts/lib/repos.ts` (aceita checkout normal e bare; `isManagedRepo` identifica os clones do setup).
 
@@ -39,14 +40,20 @@ Limpeza: `scripts/lib/clean.ts` (`cleanLocalData`) apaga banco + `public/data/*.
 - `GET /__setup/orgs` — orgs do usuário + entrada `@user` (repos pessoais); `GET /__setup/repos?org=` — payload enxuto (`name`, `archived`, `pushed_at`, `private`).
 - `GET /__setup/apply?org=&repos=a,b&dry=1&remove=c,d` — SSE com lock: remove os clones listados em `remove` (só gerenciados, nome sanitizado), clona os faltantes (pool de 4), grava `reposRoot`; `?dry=1` valida sem efeitos. Remoção é sempre explícita (nunca prune por diferença de lista).
 - `GET /__clean[?repos=1]` — apaga banco + JSONs sem recoletar (com `repos=1`, apaga também os clones) — mesma lib do `pnpm clean`; é o botão "apagar dados" (volta ao wizard; o `/` redireciona por causa do gate).
+- `GET /__team/github` — membros + times da org (`githubOrg`) via REST (para importar). Requer token com `read:org`; falha → listas vazias.
+- `GET/POST /__team/config` — lê/grava `devProfiles` + `teams` no config.local.json (sanitização de payload em `sanitizeDevProfiles`/`sanitizeTeams`; `fixed` expõe os aliases do config.json como somente leitura).
 
-Gate de primeira execução: `App.vue` redireciona `/` → `/setup` quando o `stats.json` dá 404 em dev; sidebar de filtros é oculta na rota `/setup`. Botão ⚙ no navbar (dev only) abre o `/setup`. Sem `oauthClientId`, o passo 1 orienta `gh auth login` (a UI detecta a sessão via sonda).
+### Time pela UI (rota `/team`)
+
+`views/TeamView.vue` + `src/team.ts`: página fora do dashboard pra gerenciar **times** (nome, descrição, cor, membros) e **perfis de devs** (título, descrição, e-mails de commit, logins do GitHub extras). Persiste em `config.local.json` via `/__team/config` (só a máquina — dados de gestão não versionados). Botão **importar do GitHub** traz times e membros da org (`/__team/github`); times importados resolvem logins→devs pelos aliases já mapeados. A seção **Sem mapeamento** lista autores do git e logins do GitHub vistos nos dados sem alias (do `team.json#candidates`) e associa a um dev — a unificação vale na coleta seguinte (`resolveAliases`). "Salvar + recoletar" roda a coleta completa (`startCollect(true)`) pra reescrever stats/github com os novos nomes. No build estático a página é somente leitura (endpoints dev only).
+
+Gate de primeira execução: `App.vue` redireciona `/` → `/setup` quando o `stats.json` dá 404 em dev; sidebar de filtros é oculta nas rotas `/setup` e `/team`. Botões no navbar (dev only): 👥 `/team`, ⚙ `/setup`. Sem `oauthClientId`, o passo 1 orienta `gh auth login` (a UI detecta a sessão via sonda).
 
 A tela Configurações tem o card **Manutenção dos dados locais** com 3 ações: *recoletar tudo* (`startCollect(true)`), *limpar e recoletar* (wipe + full, `startCollect(false, true)` via `/__collect?clean=1`) e *apagar dados* (confirmação inline com checkbox de clones → `/__clean`; sem dados o gate leva de volta ao wizard).
 
 ### Coleta pela UI (dev only)
 
-`scripts/collect-plugin.ts` é um plugin Vite (`apply: 'serve'`) que expõe `GET /__collect` (SSE; `?full=1` = completo; `?clean=1` apaga banco + JSONs antes e implica full) rodando os 3 coletores com progresso ao vivo. O botão ↻ no navbar (`App.vue` + `src/collect.ts` — `startCollect(full, clean)`) só renderiza em `import.meta.env.DEV`; após o `done`, os loaders refazem o fetch com cache-bust (`loadStats/loadGithub/loadReleases/loadCommits` aceitam `force`). No build estático o endpoint não existe.
+`scripts/collect-plugin.ts` é um plugin Vite (`apply: 'serve'`) que expõe `GET /__collect` (SSE; `?full=1` = completo; `?clean=1` apaga banco + JSONs antes e implica full) rodando os 4 coletores com progresso ao vivo. O botão ↻ no navbar (`App.vue` + `src/collect.ts` — `startCollect(full, clean)`) só renderiza em `import.meta.env.DEV`; após o `done`, os loaders refazem o fetch com cache-bust (`loadStats/loadGithub/loadReleases/loadCommits/loadTeam` aceitam `force`). No build estático o endpoint não existe.
 
 ## Comandos
 
@@ -77,7 +84,7 @@ pnpm version:packages   # aplicar changesets (bumps + CHANGELOG)
 - `summary.ts` — resumo semanal exportável (markdown da última semana ISO fechada vs anterior). **Ignora os filtros da sidebar e sempre exclui bots** — é relatório do time inteiro, pra reunião. UI: `components/WeeklySummary.vue` (slideover com copiar/baixar .md, botão no navbar).
 - `chartTheme.ts` — tema ECharts com conversão oklch→hex (proxy `ct`).
 - `setup.ts` — cliente do setup: status/auth device flow/orgs/repos e SSE do `/__setup/apply` (`startSetupApply(org, repos, { dry?, remove? })`, refs `setupApplying/setupLog/setupError/setupDone`). Só existe em dev.
-- `views/` — `DashboardView` (5 abas: Visão geral, Time, Saúde, Repos, Pull requests), `DevView` (`/dev/:name`), `RepoView` (`/repo/:name`), `SetupView` (`/setup`, dev only — wizard de onboarding + tela de configurações).
+- `views/` — `DashboardView` (5 abas: Visão geral, Time, Saúde, Repos, Pull requests), `DevView` (`/dev/:name`), `RepoView` (`/repo/:name`), `SetupView` (`/setup`, dev only — wizard de onboarding + tela de configurações), `TeamView` (`/team` — perfis/aliases/times; edição dev only).
 - `components/` — um componente por painel; tabelas usam a classe `.data-table` (ver `main.css`).
 - `App.vue` — navbar com badge de frescor dos dados (`dataAge`: warning após 24h sem coleta), botão do resumo semanal, coleta (dev only) e ⚙ setup (dev only); gate que redireciona para `/setup` na primeira execução sem dados.
 

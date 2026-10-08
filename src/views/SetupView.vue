@@ -408,7 +408,15 @@ async function deleteAllData() {
                 {{ r }}
               </UBadge>
             </div>
-            <div class="flex justify-end">
+            <div class="flex justify-end gap-2">
+              <UButton
+                label="perfis e times"
+                icon="i-lucide-users"
+                trailing-icon="i-lucide-arrow-right"
+                color="neutral"
+                variant="outline"
+                to="/team"
+              />
               <UButton
                 label="gerenciar repositórios"
                 icon="i-lucide-list-checks"

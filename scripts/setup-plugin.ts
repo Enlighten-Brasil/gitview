@@ -20,8 +20,9 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { join } from 'node:path'
 import type { Plugin } from 'vite'
 import { loadConfig, rootDir, saveLocalConfig } from './lib/config'
+import type { DevProfile, TeamConfig } from './lib/config'
 import { cleanLocalData } from './lib/clean'
-import { currentUser, devicePoll, deviceStart, getToken, listOrgs, listOrgRepos, listUserRepos } from './lib/github'
+import { currentUser, devicePoll, deviceStart, getToken, listOrgMembers, listOrgs, listOrgRepos, listOrgTeams, listUserRepos } from './lib/github'
 import { cloneBare, discoverRepos, MANAGED_REPOS_DIR, mapPool, resolveReposRootSafe } from './lib/repos'
 
 function json(res: ServerResponse, status: number, body: unknown): void {
@@ -53,6 +54,64 @@ function requireToken(res: ServerResponse): string | null {
     return null
   }
   return auth.token
+}
+
+// ---------------------------------------------------------------------------
+// sanitização do payload /__team/config
+// ---------------------------------------------------------------------------
+function strOrUndef(v: unknown, max = 200): string | undefined {
+  if (typeof v !== 'string') return undefined
+  const s = v.trim()
+  return s ? s.slice(0, max) : undefined
+}
+
+function strList(v: unknown, max = 30): string[] | undefined {
+  if (!Array.isArray(v)) return undefined
+  const out = [...new Set(v.filter((x): x is string => typeof x === 'string').map(x => x.trim()).filter(Boolean))]
+  return out.length ? out.slice(0, max) : undefined
+}
+
+function sanitizeDevProfiles(input: unknown): Record<string, DevProfile> {
+  if (input == null) return {}
+  if (typeof input !== 'object' || Array.isArray(input)) throw new Error('devProfiles deve ser um objeto { nome: perfil }')
+  const out: Record<string, DevProfile> = {}
+  for (const [name, raw] of Object.entries(input as Record<string, unknown>)) {
+    const canonical = name.trim()
+    if (!canonical) throw new Error('nome de dev vazio')
+    if (typeof raw !== 'object' || raw == null) throw new Error(`perfil inválido: ${canonical}`)
+    const p = raw as Record<string, unknown>
+    const profile: DevProfile = {}
+    const title = strOrUndef(p.title)
+    const description = strOrUndef(p.description, 500)
+    const emails = strList(p.emails)
+    const githubLogins = strList(p.githubLogins)
+    if (title) profile.title = title
+    if (description) profile.description = description
+    if (emails) profile.emails = emails.map(e => e.toLowerCase())
+    if (githubLogins) profile.githubLogins = githubLogins
+    out[canonical] = profile
+  }
+  return out
+}
+
+function sanitizeTeams(input: unknown): TeamConfig[] {
+  if (input == null) return []
+  if (!Array.isArray(input)) throw new Error('teams deve ser uma lista')
+  const seen = new Set<string>()
+  return input.map((raw) => {
+    if (typeof raw !== 'object' || raw == null) throw new Error('time inválido')
+    const t = raw as Record<string, unknown>
+    const name = strOrUndef(t.name, 80)
+    if (!name) throw new Error('time sem nome')
+    if (seen.has(name.toLowerCase())) throw new Error(`time duplicado: ${name}`)
+    seen.add(name.toLowerCase())
+    const team: TeamConfig = { name, members: strList(t.members, 100) ?? [] }
+    const description = strOrUndef(t.description, 300)
+    const color = strOrUndef(t.color, 20)
+    if (description) team.description = description
+    if (color && /^#[0-9a-f]{3,8}$/i.test(color)) team.color = color
+    return team
+  })
 }
 
 let applying = false
@@ -247,6 +306,59 @@ export function setupPlugin(): Plugin {
             applying = false
             res.end()
           })
+      })
+
+      // ---------------------------------------------------------------------
+      // time: perfis de devs e times (config.local.json → team.json)
+      // ---------------------------------------------------------------------
+
+      // membros + times da org no GitHub (sugestões pra importar)
+      server.middlewares.use('/__team/github', async (_req, res) => {
+        const token = requireToken(res)
+        if (!token) return
+        const org = loadConfig().githubOrg
+        if (!org) {
+          json(res, 409, { error: 'githubOrg não configurada' })
+          return
+        }
+        try {
+          const [members, teams] = await Promise.all([
+            listOrgMembers(token, org).catch(() => []),
+            listOrgTeams(token, org).catch(() => []),
+          ])
+          json(res, 200, { org, members, teams })
+        }
+        catch (err) {
+          json(res, 500, { error: String((err as Error).message ?? err) })
+        }
+      })
+
+      // lê perfis/times locais + resumo do config versionado (aliases fixos)
+      server.middlewares.use('/__team/config', async (req, res) => {
+        if (req.method === 'POST') {
+          const body = await readBody(req)
+          try {
+            const devProfiles = sanitizeDevProfiles(body.devProfiles)
+            const teams = sanitizeTeams(body.teams)
+            saveLocalConfig({ devProfiles, teams })
+            json(res, 200, { ok: true, devProfiles: Object.keys(devProfiles).length, teams: teams.length })
+          }
+          catch (err) {
+            json(res, 400, { error: String((err as Error).message ?? err) })
+          }
+          return
+        }
+        const config = loadConfig()
+        json(res, 200, {
+          devProfiles: config.devProfiles ?? {},
+          teams: config.teams ?? [],
+          // aliases fixos do config.json (só leitura — edição é no repo)
+          fixed: {
+            authors: Object.keys(config.authors ?? {}),
+            githubUsers: config.githubUsers ?? {},
+          },
+          githubOrg: config.githubOrg ?? null,
+        })
       })
 
       // limpeza local: apaga banco + JSONs (e clones com ?repos=1) sem recoletar.

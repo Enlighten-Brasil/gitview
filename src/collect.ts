@@ -6,6 +6,7 @@ import { ref } from 'vue'
 import { loadCommits, loadStats, recentCommits } from './data'
 import { loadGithub } from './github'
 import { loadReleases } from './releases'
+import { loadTeam } from './team'
 
 export const collecting = ref(false)
 export const collectStep = ref<string | null>(null)
@@ -23,6 +24,7 @@ async function reloadData() {
     loadGithub(true),
     loadReleases(true),
     loadCommits(true),
+    loadTeam(true),
   ])
 }
 

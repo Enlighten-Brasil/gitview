@@ -85,3 +85,45 @@ export interface ReleasesData {
   generatedAt: string
   repos: RepoReleases[]
 }
+
+// ---------------------------------------------------------------------------
+// team.json — perfis de devs e times (config.local.json + aliases detectados)
+// ---------------------------------------------------------------------------
+export interface DevProfileInfo {
+  /** nome canônico (chave de join com stats/github) */
+  name: string
+  title: string | null
+  description: string | null
+  /** e-mails de commit conhecidos (config + detectados no git) */
+  emails: string[]
+  /** logins do GitHub mapeados pra este dev */
+  githubLogins: string[]
+  /** times dos quais o dev faz parte */
+  teams: string[]
+  bot: boolean
+}
+
+export interface TeamInfo {
+  name: string
+  description: string | null
+  color: string | null
+  members: string[]
+}
+
+/** identidade vista nos dados mas sem perfil/mapeamento — candidata a cadastro */
+export interface TeamCandidate {
+  kind: 'author' | 'login'
+  /** nome do autor (git) ou login (GitHub) */
+  id: string
+  /** e-mails vistos (author) */
+  emails?: string[]
+  /** PRs/reviews vistos (login) */
+  prs?: number
+}
+
+export interface TeamData {
+  generatedAt: string
+  devs: DevProfileInfo[]
+  teams: TeamInfo[]
+  candidates: TeamCandidate[]
+}
