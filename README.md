@@ -63,8 +63,8 @@ horários, PRs abertos, últimos 50 commits com links pro GitHub).
 - Bus factor × reviewers (concentração de commits cruzada com quem revisa — ponto cego quando o dev principal domina as reviews)
 
 **Repos** — listagem clicável (commits, devs, % fix, última release, commits não liberados) + gráficos cross-repo
-(share, repo × mês, tipos de commit). Clique no repo → página dedicada `/repo/:name` (cards, tipos, commits por dev,
-timeline de releases com notas do GitHub).
+(fluxo de linhas +/− por mês ou acumulado, share, repo × mês, tipos de commit). Clique no repo → página dedicada
+`/repo/:name` (cards, tipos, commits por dev, timeline de releases com notas do GitHub).
 
 **Pull requests** — cards (abertos, +7d, mergeados, cycle time mediano, % sem review), aging dos abertos,
 cycle time por repo, reviews por dev.
