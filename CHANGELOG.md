@@ -1,5 +1,11 @@
 # gitview
 
+## 0.25.1
+
+### Patch Changes
+
+- Configura o `oauthClientId` do OAuth App da org (device flow habilitado) — passo 1 do `/setup` agora autentica 100% pela UI, sem depender do `gh`.
+
 ## 0.25.0
 
 ### Minor Changes
