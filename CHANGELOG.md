@@ -1,5 +1,11 @@
 # gitview
 
+## 0.18.0
+
+### Minor Changes
+
+- aba Saúde completa: PRs parados (14+d), % merge sem review com threshold, inatividade de repos/devs e tendência de cycle time por repo (6 meses). novo: range de datas personalizado (de/até) na sidebar e na URL (?from=&to=), skeletons de carregamento no dashboard e na aba PRs
+
 ## 0.17.0
 
 ### Minor Changes
