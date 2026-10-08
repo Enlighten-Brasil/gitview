@@ -38,10 +38,11 @@ Limpeza: `scripts/lib/clean.ts` (`cleanLocalData`) apaga banco + `public/data/*.
 - `GET /__auth/device` — inicia o device flow (só se `oauthClientId` configurado no config.json); `POST /__auth/device/poll` — conclui e grava o token no config.local.json. **Ordem importa**: o poll é registrado ANTES no connect, que casa middleware por prefixo (`/__auth/device` engoliria `/poll`).
 - `GET /__setup/orgs` — orgs do usuário + entrada `@user` (repos pessoais); `GET /__setup/repos?org=` — payload enxuto (`name`, `archived`, `pushed_at`, `private`).
 - `GET /__setup/apply?org=&repos=a,b&dry=1&remove=c,d` — SSE com lock: remove os clones listados em `remove` (só gerenciados, nome sanitizado), clona os faltantes (pool de 4), grava `reposRoot`; `?dry=1` valida sem efeitos. Remoção é sempre explícita (nunca prune por diferença de lista).
+- `GET /__clean[?repos=1]` — apaga banco + JSONs sem recoletar (com `repos=1`, apaga também os clones) — mesma lib do `pnpm clean`; é o botão "apagar dados" (volta ao wizard; o `/` redireciona por causa do gate).
 
 Gate de primeira execução: `App.vue` redireciona `/` → `/setup` quando o `stats.json` dá 404 em dev; sidebar de filtros é oculta na rota `/setup`. Botão ⚙ no navbar (dev only) abre o `/setup`. Sem `oauthClientId`, o passo 1 orienta `gh auth login` (a UI detecta a sessão via sonda).
 
-A tela Configurações tem o card **Manutenção dos dados locais**: *recoletar tudo* (`startCollect(true)`) e *limpar e recomeçar* (confirmação inline → `startCollect(false, true)` = wipe + full via `/__collect?clean=1`).
+A tela Configurações tem o card **Manutenção dos dados locais** com 3 ações: *recoletar tudo* (`startCollect(true)`), *limpar e recoletar* (wipe + full, `startCollect(false, true)` via `/__collect?clean=1`) e *apagar dados* (confirmação inline com checkbox de clones → `/__clean`; sem dados o gate leva de volta ao wizard).
 
 ### Coleta pela UI (dev only)
 
