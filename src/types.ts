@@ -21,6 +21,16 @@ export interface Stats {
   heatmap: HeatmapRow[]
 }
 
+export interface CommitRow {
+  hash: string
+  repo: string
+  author: string
+  date: string
+  message: string
+  additions: number
+  deletions: number
+}
+
 export interface PrReview { author: string; state: string; submittedAt: string }
 
 export interface PullRequest {

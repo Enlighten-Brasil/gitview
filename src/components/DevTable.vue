@@ -1,6 +1,14 @@
 ﻿<script setup lang="ts">
 import { computed, ref } from 'vue'
-import { filters, isBot, selectedDev, stats } from '../data'
+import { useRouter } from 'vue-router'
+import { filters, isBot, stats } from '../data'
+
+const router = useRouter()
+
+/** clique na linha abre a página dedicada do dev */
+function openDev(author: string) {
+  router.push({ name: 'dev', params: { name: author } })
+}
 
 type Key = 'commits' | 'additions' | 'deletions' | 'repos' | 'activeDays' | 'lastCommit' | 'streak'
 const sortKey = ref<Key>('commits')
@@ -96,8 +104,7 @@ function exportCsv() {
           v-for="a in visibleAuthors"
           :key="a.author"
           class="dev-row"
-          :class="{ selected: selectedDev === a.author }"
-          @click="selectedDev = selectedDev === a.author ? null : a.author"
+          @click="openDev(a.author)"
         >
           <td>{{ a.author }}</td>
           <td class="num">{{ fmt(a.commits) }}</td>

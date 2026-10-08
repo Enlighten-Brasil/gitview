@@ -22,7 +22,9 @@
     "devlogin-l": "Dev D",
     "devlogin-n": "Dev F",
     "devlogin-m": "Dev R",
-    "Dev A": "Dev A"
+    "Dev A": "Dev A",
+    "devlogin-s": "Dev V",
+    "devlogin-c": "Dev O"
   },
   "githubBots": ["dependabot", "copilot-pull-request-reviewer", "copilot-swe-agent", "cursor", "github-code-quality"]
 }

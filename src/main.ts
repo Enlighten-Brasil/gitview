@@ -15,6 +15,8 @@ import VChart from 'vue-echarts'
 import { createRouter, createWebHistory } from 'vue-router'
 import ui from '@nuxt/ui/vue-plugin'
 import App from './App.vue'
+import DashboardView from './views/DashboardView.vue'
+import DevView from './views/DevView.vue'
 import './main.css'
 
 use([
@@ -24,9 +26,12 @@ use([
   CanvasRenderer,
 ])
 
-// Nuxt UI (ULink etc.) espera um vue-router registrado, mesmo sem rotas
+// rotas: dashboard (tabs + filtros na query string) e perfil dedicado do dev
 const router = createRouter({
-  routes: [],
+  routes: [
+    { path: '/', name: 'dashboard', component: DashboardView },
+    { path: '/dev/:name', name: 'dev', component: DevView },
+  ],
   history: createWebHistory(),
 })
 

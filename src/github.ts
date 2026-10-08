@@ -7,7 +7,7 @@ export const githubError = ref<string | null>(null)
 
 export async function loadGithub() {
   try {
-    const res = await fetch('./data/github.json')
+    const res = await fetch('/data/github.json')
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     github.value = await res.json()
   }
