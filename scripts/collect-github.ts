@@ -13,6 +13,7 @@ import { spawn, spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { loadConfig, resolveReposRoot } from './lib/config'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = resolve(__dirname, '..')
@@ -20,16 +21,7 @@ const root = resolve(__dirname, '..')
 /** mergeados mais antigos que isso ficam de fora (cobre a visão de 12M com folga) */
 const MERGED_CUTOFF_DAYS = 400
 
-interface Config {
-  reposRoot: string
-  exclude?: string[]
-  /** login do GitHub (case-insensitive) -> nome canônico do time */
-  githubUsers?: Record<string, string>
-  /** logins que são bots (dependabot etc.) */
-  githubBots?: string[]
-}
-
-const config = JSON.parse(readFileSync(join(root, 'config.json'), 'utf-8')) as Config
+const config = loadConfig()
 
 // ---------------------------------------------------------------------------
 // descoberta: repo local -> owner/repo no GitHub (via remote origin)
@@ -74,7 +66,7 @@ function gh<T>(query: string, vars: Record<string, string>): Promise<T> {
     const errChunks: Buffer[] = []
     child.stdout.on('data', (c: Buffer) => chunks.push(c))
     child.stderr.on('data', (c: Buffer) => errChunks.push(c))
-    child.on('error', reject)
+    child.on('error', err => reject(new Error(`falha ao executar o gh: ${err.message} — instale o GitHub CLI e rode "gh auth login"`)))
     child.on('close', (code) => {
       if (code !== 0) {
         reject(new Error(`gh falhou: ${Buffer.concat(errChunks).toString().trim()}`))
@@ -218,7 +210,7 @@ else {
   console.log(`Modo: completo (mergeados dos últimos ${MERGED_CUTOFF_DAYS} dias)`)
 }
 
-const repos = discoverRepos(config.reposRoot)
+const repos = discoverRepos(resolveReposRoot(config))
 const fresh = new Map<string, PrRow>() // repo#number -> PR
 let fetchedCount = 0
 let skipped = 0

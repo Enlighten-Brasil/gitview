@@ -1,89 +1,57 @@
 # gitview
 
-Dashboard interno (Vue 3 + TS + Vite + ECharts + Nuxt UI v4) com estatísticas de commits, PRs e releases do time em vários repositórios git.
+Dashboard interno de métricas do time Enspace: commits, PRs e releases dos 12 repositórios, tudo local e read-only sobre os repos.
 
-## Como funciona
+## Setup
 
-```
-git log (todos os repos)   →  data/gitview.db (SQLite, incremental)  →  public/data/stats.json + commits.json
-gh api graphql             →  public/data/github.json   (PRs + reviews)
-git tag + gh api REST      →  public/data/releases.json (tags + notas de release)
-                                       ↓
-                            frontend 100% estático (só lê os JSONs)
-```
+Requisitos:
 
-O SQLite usa o `node:sqlite` nativo do Node 24 (sem dependências nativas).
-Os JSONs são gitignored — sempre regenerados pelos coletores.
-
-## Uso
+- **Node 24+** (a coleta usa `node:sqlite`)
+- **pnpm 10+**
+- **GitHub CLI** com login: `gh auth login` (necessário para PRs e notas de release)
 
 ```bash
+git clone git@github.com:Enlighten-Brasil/gitview.git
+cd gitview
 pnpm install
-pnpm collect   # roda os 3 coletores: git → stats.json, GitHub → github.json, releases → releases.json
+pnpm collect   # 1ª coleta é completa, leva alguns minutos (depois ~15s)
 pnpm dev       # http://localhost:5173
 ```
 
-Re-rodar `pnpm collect` é **incremental**: commits usam `git log --since` a partir do watermark no banco
-(margem de 7 dias; INSERT OR IGNORE por repo+hash) e PRs refazem o fetch só do que mudou desde a última coleta
-(merge com o `github.json` anterior; mergeados expiram fora da janela de 400 dias). Use `--full`
-(ex.: `tsx scripts/collect.ts --full`) para re-scan completo. Os 3 coletores processam os repos em paralelo.
-`pnpm collect:github` e `pnpm collect:releases` rodam partes isoladas. A coleta do GitHub requer `gh` autenticado.
+### Onde estão os repositórios?
 
-Com o dev server rodando, o botão ↻ no navbar atualiza os dados sem sair da interface (middleware `/__collect`
-com progresso ao vivo; existe apenas em dev). O navbar também mostra há quanto tempo os dados foram gerados
-(alerta após 24h) e um botão de **resumo da semana**: markdown da última semana fechada (commits, PRs, releases,
-pontos de atenção) pronto pra copiar ou baixar — feito pra colar em reunião.
+O coletor procura a pasta com os repos na seguinte ordem:
 
-## Configuração (`config.json`)
+1. Variável de ambiente `GITVIEW_REPOS_ROOT`
+2. `reposRoot` em `config.local.json` (não versionado)
+3. Auto-detect: pasta `../enspace` ao lado do clone do gitview
+4. `reposRoot` do `config.json` versionado
 
-- `reposRoot` — pasta que contém os repositórios git (auto-descoberta: toda subpasta com `.git`)
-- `exclude` — nomes de repos a ignorar
-- `authors` — aliases: `"Nome Canônico": ["email1", "email2"]` — consolida a mesma pessoa que commita
-  com nomes/e-mails diferentes. Mudou o alias? Rode `pnpm collect` de novo: os commits já gravados são re-normalizados.
-- `bots` — autores extras a tratar como bot (além do padrão `*[bot]`)
-- `githubUsers` — login do GitHub → nome canônico do time (mapeamento explícito)
-- `githubBots` — logins de bot (dependabot etc.)
+Se nenhuma existir, o coletor mostra instruções. Exemplo de `config.local.json`:
 
-## O que tem no dashboard
+```json
+{
+  "reposRoot": "C:/Users/seu.usuario/Documents/GitHub/enspace"
+}
+```
 
-**Visão geral** — cards do período com delta (↑/↓ vs janela anterior), timeline de commits por semana/mês, heatmap dia × hora.
+A pasta apontada deve conter os diretórios git dos repos (`enlighten-api`, `en-space`, …). O acesso é o seu próprio: os commits são lidos via `git log` local e os PRs via `gh` autenticado na sua conta.
 
-**Time** — campeão da semana 🏆, ritmo (4 semanas vs média das 8 anteriores), heatmap dev × mês, ranking completo
-(ordenável, exportável em CSV). Clique no dev → página dedicada `/dev/:name` (cards, timeline, donut de repos,
-horários, PRs abertos, últimos 50 commits com links pro GitHub).
+## Comandos
 
-**Saúde** — painel de risco do time:
-- Fora do horário (8 semanas) + fora do horário no período filtrado
-- Fix hotspots (% de commits fix por repo, com threshold)
-- Gargalo de review (concentração de reviews em 1 pessoa por repo)
-- PRs parados (abertos há 14+ dias)
-- % mergeado sem review (com threshold)
-- Tendência de cycle time por repo (6 meses; alerta "subindo" após 3 meses de alta)
-- Inatividade (repos 30+d sem commit, devs 21+d sem commit)
-- Bus factor × reviewers (concentração de commits cruzada com quem revisa — ponto cego quando o dev principal domina as reviews)
+```bash
+pnpm collect            # os 3 coletores em sequência (incremental)
+pnpm collect:github     # só PRs/reviews
+pnpm collect:releases   # só releases
+pnpm dev                # dashboard (botão ↻ no navbar roda a coleta pela UI)
+pnpm build              # build estático
+pnpm changeset          # registrar mudança
+pnpm version:packages   # aplicar changesets (bump + CHANGELOG)
+```
 
-**Repos** — listagem clicável (commits, devs, % fix, última release, commits não liberados) + gráficos cross-repo
-(fluxo de linhas +/− por mês ou acumulado, share, repo × mês, tipos de commit). Clique no repo → página dedicada
-`/repo/:name` (cards, tipos, commits por dev, timeline de releases com notas do GitHub).
+## Convenções
 
-**Pull requests** — cards (abertos, +7d, mergeados, cycle time mediano, % sem review), aging dos abertos,
-cycle time por repo, reviews por dev.
-
-## Filtros e URL
-
-- **Período**: presets 1/3/6/12/24M/Tudo **ou** range personalizado de/até (corta por mês inteiro; sem delta nos cards).
-- **Repos**, **devs** (com ações em massa) e **bots** (fora por padrão).
-- Estado inteiro na query string — links compartilháveis: `?tab=health&range=6&repos=en-sdk&devs=Ana`
-  ou `?from=2026-09-01&to=2026-09-30`. Aba também persiste em localStorage.
-- Alguns painéis usam janela fixa intencional (ritmo, burnout, cycle trend, PRs abertos) — estão rotulados.
-
-## Releases
-
-`pnpm collect:releases` lê as tags git locais (universal) e casa com as releases do GitHub (notas, prerelease, URL).
-Métricas: commits entre releases, **commits não liberados** (desde a última tag), dias desde a última release.
-
-## Versionamento
-
-Changesets: toda mudança gera um changeset (`pnpm changeset`), depois `pnpm version:packages` aplica o bump
-+ CHANGELOG, e o commit de release fecha com `chore(release): X.Y.Z`. Histórico completo em `CHANGELOG.md`.
-Para agentes: ver `AGENTS.md`.
+- Toda mudança = changeset (`minor` feature / `patch` fix) → `pnpm version:packages` → commit único com `chore(release): X.Y.Z` no corpo.
+- Commits em pt-BR (Conventional Commits), código em inglês, comentários em pt-BR.
+- `data/` e `public/data/` são gerados e gitignored.
+- Detalhes de arquitetura e regras de filtro: ver `AGENTS.md`.

@@ -9,22 +9,16 @@
  * Re-rodar é incremental: INSERT OR IGNORE por (repo, hash).
  */
 import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DatabaseSync } from 'node:sqlite'
+import { loadConfig, resolveReposRoot } from './lib/config'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = resolve(__dirname, '..')
 
-interface Config {
-  reposRoot: string
-  exclude?: string[]
-  /** Nome canônico -> lista de e-mails (alias) */
-  authors?: Record<string, string[]>
-}
-
-const config = JSON.parse(readFileSync(join(root, 'config.json'), 'utf-8')) as Config
+const config = loadConfig()
 
 // ---------------------------------------------------------------------------
 // descoberta de repos
@@ -59,7 +53,7 @@ function canonicalAuthor(name: string, email: string): string {
 // ---------------------------------------------------------------------------
 // bots (auto: nome termina com [bot]; extras via config.bots)
 // ---------------------------------------------------------------------------
-const configBots = new Set(((config as Config & { bots?: string[] }).bots ?? []).map(b => b.toLowerCase()))
+const configBots = new Set((config.bots ?? []).map(b => b.toLowerCase()))
 function isBot(name: string): boolean {
   return /\[bot\]$/i.test(name.trim()) || configBots.has(name.toLowerCase())
 }
@@ -249,7 +243,7 @@ function repoWebUrl(path: string): string | null {
 // main
 // ---------------------------------------------------------------------------
 async function main() {
-  const repos = discoverRepos(resolve(config.reposRoot))
+  const repos = discoverRepos(resolveReposRoot(config))
   console.log(`Repos encontrados: ${repos.length}`)
   repos.forEach(r => console.log(`  - ${r.name}`))
 

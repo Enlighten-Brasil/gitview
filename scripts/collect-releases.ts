@@ -9,10 +9,11 @@
  * Saída: public/data/releases.json — o frontend continua 100% estático.
  */
 import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DatabaseSync } from 'node:sqlite'
+import { loadConfig, resolveReposRoot } from './lib/config'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = resolve(__dirname, '..')
@@ -20,12 +21,7 @@ const root = resolve(__dirname, '..')
 /** notas de release truncadas nesse tamanho (o link pro GitHub tem o resto) */
 const NOTES_MAX = 3000
 
-interface Config {
-  reposRoot: string
-  exclude?: string[]
-}
-
-const config = JSON.parse(readFileSync(join(root, 'config.json'), 'utf-8')) as Config
+const config = loadConfig()
 
 // ---------------------------------------------------------------------------
 // descoberta (mesmo padrão dos outros coletores)
@@ -129,7 +125,7 @@ async function mapPool<T>(items: T[], limit: number, fn: (item: T) => Promise<vo
 const db = new DatabaseSync(join(root, 'data', 'gitview.db'))
 const datesStmt = db.prepare('SELECT date FROM commits WHERE repo = ? ORDER BY date ASC')
 
-const repos = discoverRepos(resolve(config.reposRoot))
+const repos = discoverRepos(resolveReposRoot(config))
 const out: unknown[] = []
 // ordem de saída estável mesmo com o processamento paralelo
 const byRepo = new Map<string, unknown>()
