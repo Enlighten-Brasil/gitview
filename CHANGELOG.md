@@ -1,5 +1,11 @@
 # gitview
 
+## 0.22.0
+
+### Minor Changes
+
+- Suporte a múltiplas máquinas/devs: caminho dos repositórios agora é configurável por máquina (env `GITVIEW_REPOS_ROOT`, `config.local.json` gitignored ou auto-detect da pasta `../example`), com erro amigável quando nada é encontrado. Erro claro também quando o GitHub CLI não está instalado/autenticado. README com passo a passo de onboarding.
+
 ## 0.21.0
 
 ### Minor Changes

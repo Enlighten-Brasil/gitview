@@ -8,3 +8,4 @@ auto-imports.d.ts
 components.d.ts
 
 screenshot-*.png
+config.local.json
