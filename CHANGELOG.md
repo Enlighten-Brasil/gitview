@@ -1,5 +1,11 @@
 # gitview
 
+## 0.23.1
+
+### Patch Changes
+
+- AGENTS.md documenta o setup assistido e os clones gerenciados (data/repos, fetch automático, scripts/lib/repos.ts).
+
 ## 0.23.0
 
 ### Minor Changes
