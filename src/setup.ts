@@ -76,7 +76,7 @@ export const setupDone = ref(false)
 
 const MAX_LOG_LINES = 300
 
-export function startSetupApply(org: string, repos: string[], dry = false) {
+export function startSetupApply(org: string, repos: string[], opts: { dry?: boolean, remove?: string[] } = {}) {
   if (setupApplying.value) return
   setupApplying.value = true
   setupLog.value = []
@@ -84,7 +84,8 @@ export function startSetupApply(org: string, repos: string[], dry = false) {
   setupDone.value = false
 
   const params = new URLSearchParams({ org, repos: repos.join(',') })
-  if (dry) params.set('dry', '1')
+  if (opts.dry) params.set('dry', '1')
+  if (opts.remove?.length) params.set('remove', opts.remove.join(','))
   const es = new EventSource(`/__setup/apply?${params}`)
 
   es.addEventListener('log', (e) => {

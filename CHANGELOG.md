@@ -1,5 +1,11 @@
 # gitview
 
+## 0.28.0
+
+### Minor Changes
+
+- Refina a usabilidade do setup pela UI: quem já tem dados cai direto numa tela de Configurações (repos atuais + gerenciar, manutenção, conta) em vez do wizard de 3 passos; gerenciar repositórios permite remover clones do disco com alerta explícito; corrige o device flow quebrado (o poll era engolido pelo handler de início por casamento de prefixo do connect); sonda de auth a cada 5s na tela de conexão (detecta `gh auth login` e troca de conta, voltando às configurações).
+
 ## 0.27.0
 
 ### Minor Changes
