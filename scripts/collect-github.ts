@@ -15,7 +15,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { loadConfig, resolveReposRoot } from './lib/config'
 import { discoverRepos, mapPool, parseGitHub, remoteOf } from './lib/repos'
-import { botLoginSet, resolveAliases } from './lib/team'
+import { BOT_LOGIN_RE, botLoginSet, resolveAliases } from './lib/team'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = resolve(__dirname, '..')
@@ -158,7 +158,7 @@ const FULL = process.argv.includes('--full')
 const userMap = resolveAliases(config).loginToCanonical
 const botLogins = botLoginSet(config)
 function isBotLogin(login: string): boolean {
-  return botLogins.has(login.toLowerCase()) || /(\[bot\]|-bot$|^dependabot)/i.test(login)
+  return botLogins.has(login.toLowerCase()) || BOT_LOGIN_RE.test(login)
 }
 
 /** PR normalizado no formato do github.json (shape solto pra aceitar o arquivo anterior) */

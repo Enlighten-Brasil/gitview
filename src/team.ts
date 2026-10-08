@@ -1,9 +1,9 @@
 /**
- * Time: loader do team.json (estático) + client dos endpoints dev (config/GitHub).
- * Salvar dispara recoleta leve (só team.json) via startCollect? Não — o apply
- * usa o coletor único /__team/apply implícito: a UI chama saveTeamConfig e
- * depois re-roda loadTeam(true) após o backend regenerar via /__collect leve.
- * Aqui: save → POST /__team/config; refresh → startCollect já existente (4 passos).
+ * Time: loader do team.json (estático) + client dos endpoints dev-only:
+ * GET/POST /__team/config (perfis/times em config.local.json) e
+ * GET /__team/github (membros + times da org).
+ * Recoleta após salvar usa o /__collect existente (4 passos) — não há
+ * endpoint parcial só de team.json.
  */
 import { ref } from 'vue'
 import type { TeamData } from './types'
@@ -42,6 +42,8 @@ export interface GithubTeamData {
   org: string
   members: { login: string, avatar_url: string }[]
   teams: { slug: string, name: string, description: string | null, members: string[] }[]
+  /** falhas parciais na API (ex.: token sem read:org → times vazio) */
+  warnings?: string[]
 }
 
 async function req<T>(url: string, init?: RequestInit): Promise<T> {

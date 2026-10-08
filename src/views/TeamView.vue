@@ -8,7 +8,18 @@ import type { GithubTeamData, TeamConfigPayload } from '../team'
 const isDev = import.meta.env.DEV
 const toast = useToast()
 
-onMounted(() => loadTeam(true))
+onMounted(async () => {
+  await loadTeam(true)
+  // build estático: sem endpoints de config — times vêm do team.json (somente leitura)
+  if (!isDev) {
+    teams.value = (team.value?.teams ?? []).map(t => ({
+      name: t.name,
+      description: t.description ?? '',
+      color: t.color ?? '',
+      members: [...t.members],
+    }))
+  }
+})
 onMounted(loadConfigState)
 
 // ---------------------------------------------------------------------------
@@ -97,16 +108,18 @@ function payload(): TeamConfigPayload {
 const dirty = computed(() => JSON.stringify(payload()) !== JSON.stringify(savedSnapshot.value))
 const savedSnapshot = ref<TeamConfigPayload>({ devProfiles: {}, teams: [] })
 
-async function save() {
+async function save(): Promise<boolean> {
   saving.value = true
   try {
     const p = payload()
     await saveTeamConfig(p)
     savedSnapshot.value = p
     toast.add({ title: 'perfis salvos', description: 'rode a recoleta pra aplicar nos dados', color: 'success' })
+    return true
   }
   catch (err) {
     toast.add({ title: 'erro ao salvar', description: String((err as Error).message ?? err), color: 'error' })
+    return false
   }
   finally {
     saving.value = false
@@ -114,8 +127,9 @@ async function save() {
 }
 
 async function saveAndRecollect() {
-  await save()
-  startCollect(true)
+  // não recoleta se o salvar falhou (a coleta usaria a config antiga)
+  if (await save())
+    startCollect(true)
 }
 
 // ---------------------------------------------------------------------------
@@ -142,7 +156,7 @@ function confirmEdit() {
 // ---------------------------------------------------------------------------
 // times
 // ---------------------------------------------------------------------------
-const devNames = computed(() => (team.value?.devs ?? []).map(d => d.name).sort())
+const devNames = computed(() => (team.value?.devs ?? []).filter(d => !d.bot).map(d => d.name).sort())
 const PALETTE = ['#8b5cf6', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6', '#f97316']
 
 function addTeam() {
@@ -270,7 +284,7 @@ const assignTarget = reactive<Record<string, string>>({})
           label="salvar"
           @click="save"
         />
-        <UTooltip v-if="isDev" text="salva e roda a coleta completa (recria stats/github com os novos aliases)">
+        <UTooltip v-if="isDev && configLoaded" text="salva e roda a coleta completa (recria stats/github com os novos aliases)">
           <UButton
             icon="i-lucide-refresh-cw"
             color="neutral"
@@ -520,6 +534,13 @@ const assignTarget = reactive<Record<string, string>>({})
         </div>
         <UAlert v-else-if="ghError" color="error" variant="subtle" icon="i-lucide-circle-x" :title="ghError" />
         <div v-else-if="gh" class="flex flex-col gap-4">
+          <UAlert
+            v-if="gh.warnings?.length"
+            color="warning"
+            variant="subtle"
+            icon="i-lucide-triangle-alert"
+            :title="gh.warnings.join(' · ')"
+          />
           <div>
             <h3 class="text-sm font-medium mb-2">
               Times da org {{ gh.org }}

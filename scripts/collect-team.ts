@@ -17,7 +17,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { loadConfig } from './lib/config'
-import { botAuthorNames, botLoginSet, resolveAliases } from './lib/team'
+import { BOT_LOGIN_RE, botAuthorNames, botLoginSet, resolveAliases } from './lib/team'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = resolve(__dirname, '..')
@@ -43,14 +43,21 @@ function readJson<T>(file: string): T | null {
 const stats = readJson<StatsJson>('stats.json')
 const github = readJson<GithubJson>('github.json')
 
+// bots sinalizados na coleta do GitHub (githubBots + regex) — fonte autoritativa aqui
+const ghBotLogins = new Set(Object.entries(github?.users ?? {}).filter(([, u]) => u.bot).map(([l]) => l.toLowerCase()))
+
 // ---------------------------------------------------------------------------
 // universo de devs: perfis + autores/logins canônicos vistos nos dados
 // ---------------------------------------------------------------------------
 const profiles = config.devProfiles ?? {}
+const profileByLower = new Map(Object.entries(profiles).map(([k, v]) => [k.toLowerCase(), v]))
 const canonicalNames = new Set<string>(Object.keys(profiles))
 
 for (const a of stats?.authors ?? []) canonicalNames.add(a.name)
-for (const u of Object.values(github?.users ?? {})) canonicalNames.add(u.name)
+// 'ghost' = autor de PR apagado (collect-github) — não é dev
+for (const [login, u] of Object.entries(github?.users ?? {})) {
+  if (login.toLowerCase() !== 'ghost') canonicalNames.add(u.name)
+}
 
 const botAuthors = stats ? botAuthorNames(config, stats.authors ?? []) : new Set<string>()
 
@@ -94,18 +101,23 @@ function addLogin(dev: string, login: string) {
 }
 for (const [login, canonical] of loginToCanonical) addLogin(canonical, login)
 for (const [login, u] of Object.entries(github?.users ?? {})) {
+  if (login.toLowerCase() === 'ghost') continue
   addLogin(loginToCanonical.get(login.toLowerCase()) ?? u.name, login)
 }
 
 const devs = [...canonicalNames]
   .map(name => ({
     name,
-    title: profiles[name]?.title ?? null,
-    description: profiles[name]?.description ?? null,
+    title: profileByLower.get(name.toLowerCase())?.title ?? null,
+    description: profileByLower.get(name.toLowerCase())?.description ?? null,
     emails: [...(emailsByDev.get(name) ?? [])].sort(),
     githubLogins: [...(loginsByDev.get(name) ?? [])].sort(),
     teams: (teamsByDev.get(name) ?? []).sort(),
-    bot: botAuthors.has(name) || [...(loginsByDev.get(name) ?? [])].some(l => botLogins.has(l.toLowerCase())),
+    bot: botAuthors.has(name)
+      || [...(loginsByDev.get(name) ?? [])].some(l => {
+        const k = l.toLowerCase()
+        return botLogins.has(k) || ghBotLogins.has(k) || BOT_LOGIN_RE.test(l)
+      }),
   }))
   .sort((a, b) => a.name.localeCompare(b.name))
 
@@ -117,7 +129,7 @@ const candidates: { kind: 'author' | 'login', id: string, emails?: string[], prs
 for (const a of stats?.authors ?? []) {
   // autor sem nenhum e-mail aliasado e sem perfil próprio → nome cru do git
   const aliased = a.emails.some(e => emailToCanonical.has(e.toLowerCase()))
-  if (!aliased && !profiles[a.name] && !botAuthors.has(a.name)) {
+  if (!aliased && !profileByLower.has(a.name.toLowerCase()) && !botAuthors.has(a.name)) {
     candidates.push({ kind: 'author', id: a.name, emails: a.emails })
   }
 }
@@ -130,8 +142,8 @@ for (const pr of github?.prs ?? []) {
   }
 }
 for (const login of Object.keys(github?.users ?? {})) {
-  if (loginToCanonical.has(login.toLowerCase())) continue
-  if (botLogins.has(login.toLowerCase())) continue
+  const k = login.toLowerCase()
+  if (k === 'ghost' || loginToCanonical.has(k) || botLogins.has(k) || ghBotLogins.has(k) || BOT_LOGIN_RE.test(login)) continue
   candidates.push({ kind: 'login', id: login, prs: prCountByLogin.get(login) ?? 0 })
 }
 
