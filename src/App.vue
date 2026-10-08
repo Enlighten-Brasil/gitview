@@ -66,8 +66,8 @@ const dataAge = computed(() => {
 // aba + filtros sincronizados com a URL (só na rota do dashboard)
 initUrlState()
 
-// no wizard de setup a sidebar de filtros não faz sentido
-const isSetupRoute = computed(() => route.path === '/setup')
+// nas rotas fora do dashboard (setup/team) a sidebar de filtros não faz sentido
+const isSetupRoute = computed(() => route.path === '/setup' || route.path === '/team')
 </script>
 
 <template>
@@ -130,6 +130,16 @@ const isSetupRoute = computed(() => route.path === '/setup')
               />
             </template>
             <template #right>
+              <UTooltip text="perfis e times">
+                <UButton
+                  icon="i-lucide-users"
+                  color="neutral"
+                  variant="ghost"
+                  size="sm"
+                  to="/team"
+                  aria-label="time"
+                />
+              </UTooltip>
               <UTooltip v-if="dataAge" :text="`dados gerados em ${fmtDate(dataAge.generatedAt)}`">
                 <span
                   class="hidden sm:inline-flex items-center gap-1 text-xs"

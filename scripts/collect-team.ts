@@ -1,0 +1,147 @@
+/**
+ * Coletor de perfis do time → public/data/team.json.
+ *
+ * Junta:
+ * - perfis/times do config.local.json (devProfiles/teams — dados locais de gestão)
+ * - aliases detectados nos dados coletados: autores do stats.json (nome+emails)
+ *   e logins do github.json (PRs/reviews)
+ *
+ * O merge de aliases efetivo (config + perfis) também é usado pelos coletores
+ * principais via `resolveAliases` em lib/team.ts — o stats.json e o github.json
+ * já nascem com os nomes canônicos certos.
+ *
+ * Roda por último na sequência: lê stats.json e github.json (quando existem)
+ * pra calcular os candidatos não mapeados.
+ */
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { loadConfig } from './lib/config'
+import { botAuthorNames, botLoginSet, resolveAliases } from './lib/team'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const root = resolve(__dirname, '..')
+
+const config = loadConfig()
+const { emailToCanonical, loginToCanonical } = resolveAliases(config)
+const botLogins = botLoginSet(config)
+
+const outDir = join(root, 'public', 'data')
+mkdirSync(outDir, { recursive: true })
+
+// ---------------------------------------------------------------------------
+// dados já coletados (podem não existir ainda — primeiro setup)
+// ---------------------------------------------------------------------------
+interface StatsJson { authors?: { name: string; emails: string[]; bot: boolean }[] }
+interface GithubJson { users?: Record<string, { name: string; bot: boolean }>, prs?: { author: string; reviews: { author: string }[] }[] }
+
+function readJson<T>(file: string): T | null {
+  const path = join(outDir, file)
+  return existsSync(path) ? JSON.parse(readFileSync(path, 'utf-8')) as T : null
+}
+
+const stats = readJson<StatsJson>('stats.json')
+const github = readJson<GithubJson>('github.json')
+
+// ---------------------------------------------------------------------------
+// universo de devs: perfis + autores/logins canônicos vistos nos dados
+// ---------------------------------------------------------------------------
+const profiles = config.devProfiles ?? {}
+const canonicalNames = new Set<string>(Object.keys(profiles))
+
+for (const a of stats?.authors ?? []) canonicalNames.add(a.name)
+for (const u of Object.values(github?.users ?? {})) canonicalNames.add(u.name)
+
+const botAuthors = stats ? botAuthorNames(config, stats.authors ?? []) : new Set<string>()
+
+// times por dev (chave = nome canônico exato; match case-insensitive pra ser tolerante)
+const teams = (config.teams ?? []).map(t => ({
+  name: t.name,
+  description: t.description ?? null,
+  color: t.color ?? null,
+  members: t.members,
+}))
+const teamsByDev = new Map<string, string[]>()
+const canonicalByLower = new Map([...canonicalNames].map(n => [n.toLowerCase(), n]))
+for (const t of teams) {
+  for (const member of t.members) {
+    const canonical = canonicalByLower.get(member.toLowerCase()) ?? member
+    if (!teamsByDev.has(canonical)) teamsByDev.set(canonical, [])
+    teamsByDev.get(canonical)!.push(t.name)
+    canonicalNames.add(canonical)
+  }
+}
+
+// e-mails: config (authors + perfis) + detectados no git
+const emailsByDev = new Map<string, Set<string>>()
+function addEmail(dev: string, email: string) {
+  if (!emailsByDev.has(dev)) emailsByDev.set(dev, new Set())
+  emailsByDev.get(dev)!.add(email)
+}
+for (const [email, canonical] of emailToCanonical) addEmail(canonical, email)
+for (const a of stats?.authors ?? []) {
+  for (const e of a.emails) {
+    // se o e-mail tem alias próprio apontando pra outro canônico, respeita o alias
+    addEmail(emailToCanonical.get(e.toLowerCase()) ?? a.name, e)
+  }
+}
+
+// logins: config (githubUsers + perfis) + detectados no github.json
+const loginsByDev = new Map<string, Set<string>>()
+function addLogin(dev: string, login: string) {
+  if (!loginsByDev.has(dev)) loginsByDev.set(dev, new Set())
+  loginsByDev.get(dev)!.add(login)
+}
+for (const [login, canonical] of loginToCanonical) addLogin(canonical, login)
+for (const [login, u] of Object.entries(github?.users ?? {})) {
+  addLogin(loginToCanonical.get(login.toLowerCase()) ?? u.name, login)
+}
+
+const devs = [...canonicalNames]
+  .map(name => ({
+    name,
+    title: profiles[name]?.title ?? null,
+    description: profiles[name]?.description ?? null,
+    emails: [...(emailsByDev.get(name) ?? [])].sort(),
+    githubLogins: [...(loginsByDev.get(name) ?? [])].sort(),
+    teams: (teamsByDev.get(name) ?? []).sort(),
+    bot: botAuthors.has(name) || [...(loginsByDev.get(name) ?? [])].some(l => botLogins.has(l.toLowerCase())),
+  }))
+  .sort((a, b) => a.name.localeCompare(b.name))
+
+// ---------------------------------------------------------------------------
+// candidatos: identidades nos dados sem alias/perfil cadastrado
+// ---------------------------------------------------------------------------
+const candidates: { kind: 'author' | 'login', id: string, emails?: string[], prs?: number }[] = []
+
+for (const a of stats?.authors ?? []) {
+  // autor sem nenhum e-mail aliasado e sem perfil próprio → nome cru do git
+  const aliased = a.emails.some(e => emailToCanonical.has(e.toLowerCase()))
+  if (!aliased && !profiles[a.name] && !botAuthors.has(a.name)) {
+    candidates.push({ kind: 'author', id: a.name, emails: a.emails })
+  }
+}
+
+const prCountByLogin = new Map<string, number>()
+for (const pr of github?.prs ?? []) {
+  prCountByLogin.set(pr.author, (prCountByLogin.get(pr.author) ?? 0) + 1)
+  for (const r of pr.reviews) {
+    if (r.author) prCountByLogin.set(r.author, (prCountByLogin.get(r.author) ?? 0) + 1)
+  }
+}
+for (const login of Object.keys(github?.users ?? {})) {
+  if (loginToCanonical.has(login.toLowerCase())) continue
+  if (botLogins.has(login.toLowerCase())) continue
+  candidates.push({ kind: 'login', id: login, prs: prCountByLogin.get(login) ?? 0 })
+}
+
+candidates.sort((a, b) => a.id.localeCompare(b.id))
+
+writeFileSync(join(outDir, 'team.json'), JSON.stringify({
+  generatedAt: new Date().toISOString(),
+  devs,
+  teams,
+  candidates,
+}))
+
+console.log(`✓ team.json: ${devs.length} devs (${Object.keys(profiles).length} com perfil), ${teams.length} times, ${candidates.length} candidatos a mapear`)

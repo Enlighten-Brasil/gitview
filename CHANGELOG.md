@@ -1,5 +1,11 @@
 # gitview
 
+## 0.30.0
+
+### Minor Changes
+
+- Página **Time** (`/team`): perfis de devs (título, descrição), unificação de aliases (e-mails de commit e logins do GitHub) e times (nome, descrição, cor, membros) — salvos em `config.local.json` (só na máquina). Importa membros e times da org do GitHub; lista identidades sem mapeamento pra associar a um dev. Os aliases cadastrados já valem na coleta seguinte (merge com `authors`/`githubUsers` do config).
+
 ## 0.29.0
 
 ### Minor Changes

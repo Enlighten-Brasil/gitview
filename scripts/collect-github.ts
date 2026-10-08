@@ -15,6 +15,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { loadConfig, resolveReposRoot } from './lib/config'
 import { discoverRepos, mapPool, parseGitHub, remoteOf } from './lib/repos'
+import { botLoginSet, resolveAliases } from './lib/team'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = resolve(__dirname, '..')
@@ -154,11 +155,8 @@ async function fetchPrs(
 // ---------------------------------------------------------------------------
 const FULL = process.argv.includes('--full')
 
-const userMap = new Map<string, string>()
-for (const [login, name] of Object.entries(config.githubUsers ?? {})) {
-  userMap.set(login.toLowerCase(), name)
-}
-const botLogins = new Set((config.githubBots ?? []).map(b => b.toLowerCase()))
+const userMap = resolveAliases(config).loginToCanonical
+const botLogins = botLoginSet(config)
 function isBotLogin(login: string): boolean {
   return botLogins.has(login.toLowerCase()) || /(\[bot\]|-bot$|^dependabot)/i.test(login)
 }

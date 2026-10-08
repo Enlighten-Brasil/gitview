@@ -29,6 +29,33 @@ export interface Config {
   /** login do GitHub (case-insensitive) -> nome canônico do time */
   githubUsers?: Record<string, string>
   githubBots?: string[]
+  /**
+   * Perfis do time (só config.local.json — dados pessoais de gestão).
+   * Chave = nome canônico (mesmo usado em authors/githubUsers).
+   * emails/githubLogins aqui viram aliases na coleta (merge com authors/githubUsers).
+   */
+  devProfiles?: Record<string, DevProfile>
+  teams?: TeamConfig[]
+}
+
+export interface DevProfile {
+  /** cargo/função (ex.: "Gerente de desenvolvimento") */
+  title?: string
+  /** nota livre (foco, squad, observações) */
+  description?: string
+  /** e-mails adicionais de commit (mesclados com authors) */
+  emails?: string[]
+  /** logins do GitHub adicionais (mesclados com githubUsers) */
+  githubLogins?: string[]
+}
+
+export interface TeamConfig {
+  name: string
+  description?: string
+  /** cor do badge (hex) — opcional */
+  color?: string
+  /** nomes canônicos dos devs */
+  members: string[]
 }
 
 /** raiz do projeto gitview (pasta acima de scripts/) */

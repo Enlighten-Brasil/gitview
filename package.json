@@ -1,13 +1,14 @@
 {
   "name": "gitview",
   "private": true,
-  "version": "0.29.0",
+  "version": "0.30.0",
   "type": "module",
   "scripts": {
     "setup": "tsx scripts/setup.ts",
-    "collect": "tsx scripts/collect.ts && tsx scripts/collect-github.ts && tsx scripts/collect-releases.ts",
+    "collect": "tsx scripts/collect.ts && tsx scripts/collect-github.ts && tsx scripts/collect-releases.ts && tsx scripts/collect-team.ts",
     "collect:github": "tsx scripts/collect-github.ts",
     "collect:releases": "tsx scripts/collect-releases.ts",
+    "collect:team": "tsx scripts/collect-team.ts",
     "clean": "tsx scripts/clean.ts",
     "dev": "vite",
     "build": "vite build",

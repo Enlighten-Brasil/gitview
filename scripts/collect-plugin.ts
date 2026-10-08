@@ -21,6 +21,7 @@ const STEPS = [
   { script: 'scripts/collect.ts', label: 'commits' },
   { script: 'scripts/collect-github.ts', label: 'pull requests' },
   { script: 'scripts/collect-releases.ts', label: 'releases' },
+  { script: 'scripts/collect-team.ts', label: 'time' },
 ]
 
 let running = false

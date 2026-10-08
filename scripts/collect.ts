@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url'
 import { DatabaseSync } from 'node:sqlite'
 import { loadConfig, resolveReposRoot } from './lib/config'
 import { denyPush, discoverRepos, fetchRepo, isManagedRepo, mapPool, parseGitHub, remoteOf } from './lib/repos'
+import { resolveAliases } from './lib/team'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = resolve(__dirname, '..')
@@ -22,12 +23,9 @@ const root = resolve(__dirname, '..')
 const config = loadConfig()
 
 // ---------------------------------------------------------------------------
-// aliases de autor
+// aliases de autor (config.authors + devProfiles do config.local.json)
 // ---------------------------------------------------------------------------
-const emailToCanonical = new Map<string, string>()
-for (const [canonical, emails] of Object.entries(config.authors ?? {})) {
-  for (const e of emails) emailToCanonical.set(e.toLowerCase(), canonical)
-}
+const { emailToCanonical } = resolveAliases(config)
 function canonicalAuthor(name: string, email: string): string {
   return emailToCanonical.get(email.toLowerCase()) ?? name.trim()
 }

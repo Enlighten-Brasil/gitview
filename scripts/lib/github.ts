@@ -59,6 +59,24 @@ export function listOrgs(token: string): Promise<OrgEntry[]> {
   return ghApiAll<OrgEntry>('/user/orgs', token)
 }
 
+/** membros da org (requer token com read:org; falha → lista vazia) */
+export function listOrgMembers(token: string, org: string): Promise<{ login: string, avatar_url: string }[]> {
+  return ghApiAll<{ login: string, avatar_url: string }>(`/orgs/${encodeURIComponent(org)}/members`, token)
+}
+
+/** times da org + membros de cada um (requer read:org; falha → []) */
+export async function listOrgTeams(token: string, org: string): Promise<{ slug: string, name: string, description: string | null, members: string[] }[]> {
+  const teams = await ghApiAll<{ slug: string, name: string, description: string | null }>(`/orgs/${encodeURIComponent(org)}/teams`, token)
+  const members = await Promise.all(
+    teams.map(t =>
+      ghApiAll<{ login: string }>(`/orgs/${encodeURIComponent(org)}/teams/${encodeURIComponent(t.slug)}/members`, token)
+        .then(ms => ms.map(m => m.login))
+        .catch(() => [] as string[]),
+    ),
+  )
+  return teams.map((t, i) => ({ ...t, members: members[i] }))
+}
+
 export function listOrgRepos(token: string, org: string): Promise<RepoEntry[]> {
   return ghApiAll<RepoEntry>(`/orgs/${encodeURIComponent(org)}/repos?type=all`, token)
 }
