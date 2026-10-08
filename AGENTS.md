@@ -52,9 +52,11 @@ pnpm version:packages   # aplicar changesets (bumps + CHANGELOG)
 - `github.ts` — PRs filtrados, aging, cycle time (mediana geral/por repo/tendência 6M), reviews por dev e concentração por repo, merge sem review.
 - `releases.ts` — loader do releases.json + métricas (dias desde última release, cadência).
 - `urlState.ts` — aba + filtros na query string (`?tab=&range=&from=&to=&repos=&devs=&bots=`), replaceState, popstate com reset, sanitização, fallback localStorage. **Só atua na rota `/`**.
+- `summary.ts` — resumo semanal exportável (markdown da última semana ISO fechada vs anterior). **Ignora os filtros da sidebar e sempre exclui bots** — é relatório do time inteiro, pra reunião. UI: `components/WeeklySummary.vue` (slideover com copiar/baixar .md, botão no navbar).
 - `chartTheme.ts` — tema ECharts com conversão oklch→hex (proxy `ct`).
 - `views/` — `DashboardView` (5 abas: Visão geral, Time, Saúde, Repos, Pull requests), `DevView` (`/dev/:name`), `RepoView` (`/repo/:name`).
 - `components/` — um componente por painel; tabelas usam a classe `.data-table` (ver `main.css`).
+- `App.vue` — navbar com badge de frescor dos dados (`dataAge`: warning após 24h sem coleta), botão do resumo semanal e botão de coleta (dev only).
 
 ## Regras dos filtros (importante pra não "corrigir" o que é intencional)
 

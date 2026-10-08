@@ -8,6 +8,7 @@ import { loadReleases } from './releases'
 import { initUrlState } from './urlState'
 import { version } from '../package.json'
 import FilterBar from './components/FilterBar.vue'
+import WeeklySummary from './components/WeeklySummary.vue'
 
 onMounted(loadStats)
 onMounted(loadGithub)
@@ -41,6 +42,18 @@ function onCollectClick(full = false) {
 watch(() => collectLog.value.length, async () => {
   await nextTick()
   logEl.value?.scrollTo({ top: logEl.value.scrollHeight })
+})
+
+// frescor dos dados no navbar — uso manual antes de reuniões, destacar dados velhos
+const dataAge = computed(() => {
+  if (!stats.value) return null
+  const hours = (Date.now() - new Date(stats.value.generatedAt).getTime()) / 3_600_000
+  const label = hours < 1
+    ? 'agora mesmo'
+    : hours < 24
+      ? `há ${Math.floor(hours)}h`
+      : `há ${Math.floor(hours / 24)}d`
+  return { label, stale: hours >= 24, generatedAt: stats.value.generatedAt }
 })
 
 // aba + filtros sincronizados com a URL (só na rota do dashboard)
@@ -107,6 +120,16 @@ initUrlState()
               />
             </template>
             <template #right>
+              <UTooltip v-if="dataAge" :text="`dados gerados em ${fmtDate(dataAge.generatedAt)}`">
+                <span
+                  class="hidden sm:inline-flex items-center gap-1 text-xs"
+                  :class="dataAge.stale ? 'text-warning' : 'text-dimmed'"
+                >
+                  <UIcon :name="dataAge.stale ? 'i-lucide-triangle-alert' : 'i-lucide-clock'" class="size-3.5" />
+                  {{ dataAge.label }}
+                </span>
+              </UTooltip>
+              <WeeklySummary v-if="stats" />
               <UPopover v-if="isDev" v-model:open="collectOpen" :ui="{ content: 'w-96' }">
                 <UTooltip text="atualizar dados (git + GitHub)">
                   <UButton

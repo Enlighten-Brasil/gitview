@@ -1,5 +1,11 @@
 # gitview
 
+## 0.20.0
+
+### Minor Changes
+
+- Resumo semanal exportável: botão no navbar abre slideover com o markdown da última semana ISO fechada (commits, PRs, releases, pontos de atenção) comparada com a anterior — copiar para o clipboard ou baixar .md, pronto pra colar em reunião. O navbar também passa a mostrar há quanto tempo os dados foram gerados, com alerta visual após 24h sem coleta.
+
 ## 0.19.0
 
 ### Minor Changes

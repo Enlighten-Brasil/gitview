@@ -179,7 +179,8 @@ export const commitsByAuthor = computed(() => {
 // ---------------------------------------------------------------------------
 // ritmo (últimas 4 semanas vs média das 8 anteriores) — ignora o filtro de período
 // ---------------------------------------------------------------------------
-function isoWeekKey(d: Date): string {
+/** chave ISO "YYYY-Www" (segunda a domingo) — usada também pelo resumo semanal */
+export function isoWeekKey(d: Date): string {
   const date = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
   const dayNum = (date.getUTCDay() + 6) % 7
   date.setUTCDate(date.getUTCDate() - dayNum + 3)
