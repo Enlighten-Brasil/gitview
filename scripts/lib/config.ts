@@ -8,7 +8,7 @@
  * - env `GITVIEW_REPOS_ROOT` tem prioridade máxima.
  * - fallback: pasta `enspace` irmã do clone do gitview (layout padrão do time).
  */
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -18,6 +18,10 @@ export interface Config {
   githubOrg?: string
   /** repos pré-selecionados no `pnpm setup` (Enter/--yes); fallback = todos não arquivados */
   defaultRepos?: string[]
+  /** client_id do OAuth App (público) — habilita o device flow no onboarding da UI */
+  oauthClientId?: string
+  /** token do device flow — só em config.local.json (gitignored), NUNCA versionar */
+  githubToken?: string
   exclude?: string[]
   /** Nome canônico -> lista de e-mails (alias) */
   authors?: Record<string, string[]>
@@ -39,6 +43,14 @@ export function loadConfig(): Config {
   const local = readJson(join(rootDir, 'config.local.json'))
   // merge raso: o local sobrescreve chave a chave (uso típico: só reposRoot)
   return { ...shared, ...local }
+}
+
+/** grava/mergeia chaves no config.local.json (gitignored — onde vivem os segredos locais) */
+export function saveLocalConfig(patch: Partial<Config>): void {
+  const path = join(rootDir, 'config.local.json')
+  const local = readJson(path)
+  Object.assign(local, patch)
+  writeFileSync(path, `${JSON.stringify(local, null, 2)}\n`)
 }
 
 /**

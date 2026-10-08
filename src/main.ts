@@ -18,6 +18,7 @@ import App from './App.vue'
 import DashboardView from './views/DashboardView.vue'
 import DevView from './views/DevView.vue'
 import RepoView from './views/RepoView.vue'
+import SetupView from './views/SetupView.vue'
 import './main.css'
 
 use([
@@ -33,6 +34,8 @@ const router = createRouter({
     { path: '/', name: 'dashboard', component: DashboardView },
     { path: '/dev/:name', name: 'dev', component: DevView },
     { path: '/repo/:name', name: 'repo', component: RepoView },
+    // onboarding/configuração pela UI (só funciona em dev — endpoints do Vite)
+    { path: '/setup', name: 'setup', component: SetupView },
   ],
   history: createWebHistory(),
 })
