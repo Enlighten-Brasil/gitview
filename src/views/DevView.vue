@@ -158,6 +158,12 @@ function fmtCommitDate(iso: string): string {
   const d = new Date(iso)
   return `${d.toLocaleDateString('pt-BR')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
+
+/** link pro commit no GitHub (quando o repo tem remote mapeado) */
+function commitUrl(repo: string, hash: string): string | null {
+  const base = stats.value?.repoUrls?.[repo]
+  return base ? `${base}/commit/${hash}` : null
+}
 </script>
 
 <template>
@@ -271,7 +277,16 @@ function fmtCommitDate(iso: string): string {
                 <td class="whitespace-nowrap text-muted">
                   {{ c.repo }}
                 </td>
-                <td><code class="text-xs bg-accented px-1 py-0.5 rounded">{{ c.hash }}</code></td>
+                <td>
+                  <a
+                    v-if="commitUrl(c.repo, c.hash)"
+                    :href="commitUrl(c.repo, c.hash)!"
+                    target="_blank"
+                    rel="noopener"
+                    class="text-primary hover:underline"
+                  ><code class="text-xs bg-accented px-1 py-0.5 rounded">{{ c.hash }}</code></a>
+                  <code v-else class="text-xs bg-accented px-1 py-0.5 rounded">{{ c.hash }}</code>
+                </td>
                 <td class="max-w-[520px] truncate" :title="c.message">
                   {{ c.message }}
                 </td>

@@ -13,7 +13,7 @@ import { filters, stats } from './data'
 
 export const activeTab = ref('overview')
 const TABS = ['overview', 'team', 'health', 'repos', 'prs']
-const RANGES = [3, 6, 12]
+const RANGES = [1, 3, 6, 12, 24]
 
 function onDashboard(): boolean {
   return location.pathname === '/' || location.pathname === '/index.html'

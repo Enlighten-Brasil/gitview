@@ -1,10 +1,13 @@
 export interface WeeklyRow { week: string; repo: string; author: string; commits: number; weekend: number; night: number }
 export interface MonthlyRow { month: string; repo: string; author: string; commits: number; additions: number; deletions: number }
 export interface HeatmapRow { author: string; repo: string; weekday: number; hour: number; commits: number }
+export interface MonthlyTypeRow { month: string; repo: string; author: string; type: string; commits: number }
 
 export interface Stats {
   generatedAt: string
   repos: string[]
+  /** repo -> URL web do remote (para links de commit); ausente quando não há remote do GitHub */
+  repoUrls?: Record<string, string>
   authors: { name: string; emails: string[]; bot: boolean }[]
   totals: {
     commits: number
@@ -19,6 +22,7 @@ export interface Stats {
   weekly: WeeklyRow[]
   monthly: MonthlyRow[]
   heatmap: HeatmapRow[]
+  monthlyTypes?: MonthlyTypeRow[]
 }
 
 export interface CommitRow {

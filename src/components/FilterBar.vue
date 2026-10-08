@@ -3,9 +3,11 @@ import { computed } from 'vue'
 import { filters, stats } from '../data'
 
 const ranges = [
+  { label: '1M', months: 1 },
   { label: '3M', months: 3 },
   { label: '6M', months: 6 },
   { label: '12M', months: 12 },
+  { label: '24M', months: 24 },
   { label: 'Tudo', months: null },
 ] as const
 
