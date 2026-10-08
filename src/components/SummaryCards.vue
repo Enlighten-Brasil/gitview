@@ -1,11 +1,18 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { commitsByAuthor, filteredCommitCount, filteredTotals, rangeLabel, stats } from '../data'
+import { commitsByAuthor, filteredCommitCount, filteredTotals, previousTotals, rangeLabel, stats } from '../data'
 
 function fmt(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
   if (n >= 10_000) return `${(n / 1_000).toFixed(0)}k`
   return n.toLocaleString('pt-BR')
+}
+
+/** delta % vs janela anterior equivalente; null sem base de comparação */
+function delta(cur: number, prev: number | undefined) {
+  if (prev == null || prev === 0) return null
+  const pct = Math.round(((cur - prev) / prev) * 100)
+  return { pct: Math.abs(pct), dir: pct > 2 ? 'up' : pct < -2 ? 'down' : 'flat' } as const
 }
 
 /** destaque do período — fica fora do grid pra nunca truncar o nome */
@@ -20,14 +27,23 @@ const top = computed(() => {
 
 const periodCards = computed(() => {
   const t = filteredTotals.value
+  const p = previousTotals.value
   return [
-    { value: fmt(t.commits), label: 'commits', icon: 'i-lucide-git-commit-horizontal' },
-    { value: fmt(t.additions), label: 'linhas +', icon: 'i-lucide-plus', color: 'text-success' },
-    { value: fmt(t.deletions), label: 'linhas −', icon: 'i-lucide-minus', color: 'text-error' },
-    { value: String(t.authors), label: 'devs ativos', icon: 'i-lucide-users' },
-    { value: String(t.repos), label: 'repos ativos', icon: 'i-lucide-git-branch' },
+    { value: fmt(t.commits), label: 'commits', icon: 'i-lucide-git-commit-horizontal', delta: delta(t.commits, p?.commits), judge: true },
+    { value: fmt(t.additions), label: 'linhas +', icon: 'i-lucide-plus', color: 'text-success', delta: delta(t.additions, p?.additions), judge: false },
+    { value: fmt(t.deletions), label: 'linhas −', icon: 'i-lucide-minus', color: 'text-error', delta: delta(t.deletions, p?.deletions), judge: false },
+    { value: String(t.authors), label: 'devs ativos', icon: 'i-lucide-users', delta: delta(t.authors, p?.authors), judge: true },
+    { value: String(t.repos), label: 'repos ativos', icon: 'i-lucide-git-branch', delta: delta(t.repos, p?.repos), judge: true },
   ]
 })
+
+/** cor do delta: commits/devs/repos sobem = bom; linhas +/- são neutras */
+function deltaClass(dir: 'up' | 'down' | 'flat', judge: boolean): string {
+  if (!judge) return 'text-dimmed'
+  if (dir === 'up') return 'text-success'
+  if (dir === 'down') return 'text-error'
+  return 'text-dimmed'
+}
 
 /** totais históricos em linha discreta (contexto, sem duplicar o grid) */
 const historyLine = computed(() => {
@@ -69,6 +85,16 @@ const historyLine = computed(() => {
           </div>
           <div class="text-xs text-muted mt-1">
             {{ c.label }}
+            <span
+              v-if="c.delta"
+              class="ml-1 font-semibold"
+              :class="deltaClass(c.delta.dir, c.judge)"
+              :title="`vs ${rangeLabel.replace('últimos', 'os').replace('último', 'o')} anteriores`"
+            >
+              <template v-if="c.delta.dir === 'up'">↑ {{ c.delta.pct }}%</template>
+              <template v-else-if="c.delta.dir === 'down'">↓ {{ c.delta.pct }}%</template>
+              <template v-else>→ 0%</template>
+            </span>
           </div>
         </div>
       </div>

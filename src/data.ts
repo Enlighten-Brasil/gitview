@@ -81,9 +81,10 @@ export const filteredCommitCount = computed(() =>
 )
 
 /** label do período selecionado (navbar + cards) */
-export const rangeLabel = computed(() =>
-  filters.rangeMonths ? `últimos ${filters.rangeMonths} meses` : 'histórico completo',
-)
+export const rangeLabel = computed(() => {
+  if (filters.rangeMonths == null) return 'histórico completo'
+  return filters.rangeMonths === 1 ? 'último mês' : `últimos ${filters.rangeMonths} meses`
+})
 
 /** totais do período filtrado (cards "no período") */
 export const filteredTotals = computed(() => {
@@ -101,6 +102,42 @@ export const filteredTotals = computed(() => {
     repos: commitsByRepo.value.length,
   }
 })
+
+/**
+ * totais da janela ANTERIOR equivalente (ex.: 6M antes do cutoff de 6M),
+ * para o delta dos cards. null quando o filtro é "tudo" (sem janela comparável).
+ */
+export const previousTotals = computed(() => {
+  if (filters.rangeMonths == null || !stats.value) return null
+  const cutoff = cutoffDate()!
+  const prevStart = new Date(cutoff)
+  prevStart.setMonth(prevStart.getMonth() - filters.rangeMonths)
+  const prevKey = `${prevStart.getFullYear()}-${String(prevStart.getMonth() + 1).padStart(2, '0')}`
+  const cutKey = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, '0')}`
+
+  let commits = 0
+  let additions = 0
+  let deletions = 0
+  const authors = new Set<string>()
+  const repos = new Set<string>()
+  for (const r of stats.value.monthly) {
+    if (r.month < prevKey || r.month >= cutKey) continue
+    if (!selectedRepo(r.repo) || !selectedAuthor(r.author)) continue
+    commits += r.commits
+    additions += r.additions
+    deletions += r.deletions
+    authors.add(r.author)
+    repos.add(r.repo)
+  }
+  return { commits, additions, deletions, authors: authors.size, repos: repos.size }
+})
+
+/** tipos de commit (feat/fix/...) no filtro atual — aba Repositórios */
+export const filteredTypes = computed(() =>
+  (stats.value?.monthlyTypes ?? []).filter(r =>
+    selectedRepo(r.repo) && selectedAuthor(r.author) && inRange(r.month),
+  )
+)
 
 /** commits por repo no filtro atual (para o donut) */
 export const commitsByRepo = computed(() => {

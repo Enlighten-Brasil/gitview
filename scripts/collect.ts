@@ -8,7 +8,7 @@
  *
  * Re-rodar é incremental: INSERT OR IGNORE por (repo, hash).
  */
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -197,6 +197,25 @@ function calcStreaks(days: Set<string>): { streak: number; longestStreak: number
 }
 
 // ---------------------------------------------------------------------------
+// tipo do commit pelo prefixo conventional commits (feat/fix/chore/...)
+// ---------------------------------------------------------------------------
+const KNOWN_TYPES = new Set(['feat', 'fix', 'chore', 'refactor', 'docs', 'test', 'perf', 'style', 'build', 'ci'])
+function commitType(subject: string): string {
+  const m = subject.match(/^([a-zA-Z]+)(\([^)]*\))?!?:/)
+  if (!m) return 'outros'
+  const t = m[1].toLowerCase()
+  return KNOWN_TYPES.has(t) ? t : 'outros'
+}
+
+/** remote origin -> URL web https (para link de commit); null se não for GitHub */
+function repoWebUrl(path: string): string | null {
+  const r = spawnSync('git', ['remote', 'get-url', 'origin'], { cwd: path, encoding: 'utf-8' })
+  if (r.status !== 0) return null
+  const m = r.stdout.trim().match(/github\.com[:/]([^/]+\/[^/]+?)(?:\.git)?$/i)
+  return m ? `https://github.com/${m[1]}` : null
+}
+
+// ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
 async function main() {
@@ -240,12 +259,13 @@ async function main() {
   // -------------------------------------------------------------------------
   console.log('\nAgregando...')
   const rows = db.prepare(`
-    SELECT repo, author, email, date, additions, deletions FROM commits ORDER BY date ASC
-  `).all() as { repo: string; author: string; email: string; date: string; additions: number; deletions: number }[]
+    SELECT repo, author, email, date, subject, additions, deletions FROM commits ORDER BY date ASC
+  `).all() as { repo: string; author: string; email: string; date: string; subject: string; additions: number; deletions: number }[]
 
   const emailsByAuthor = new Map<string, Set<string>>()
   const weekly = new Map<string, { commits: number; weekend: number; night: number }>() // week|repo|author
   const monthly = new Map<string, { commits: number; additions: number; deletions: number }>() // month|repo|author
+  const monthlyTypes = new Map<string, number>() // month|repo|author|type
   const heatmap = new Map<string, number>()     // author|repo|weekday|hour
   const perAuthor = new Map<string, { commits: number; additions: number; deletions: number; repos: Set<string>; days: Set<string>; last: string }>()
   const perRepo = new Map<string, { commits: number; additions: number; deletions: number; authors: Set<string>; last: string }>()
@@ -273,6 +293,9 @@ async function main() {
     mCur.additions += r.additions
     mCur.deletions += r.deletions
     monthly.set(mk, mCur)
+
+    const tk = `${mk}|${commitType(r.subject)}`
+    monthlyTypes.set(tk, (monthlyTypes.get(tk) ?? 0) + 1)
 
     const hk = `${r.author}|${r.repo}|${d.getDay()}|${d.getHours()}`
     heatmap.set(hk, (heatmap.get(hk) ?? 0) + 1)
@@ -304,6 +327,9 @@ async function main() {
   const stats = {
     generatedAt: new Date().toISOString(),
     repos: repos.map(r => r.name),
+    repoUrls: Object.fromEntries(
+      repos.map(r => [r.name, repoWebUrl(r.path)]).filter(([, url]) => url != null),
+    ),
     authors: [...emailsByAuthor.entries()]
       .map(([name, emails]) => ({ name, emails: [...emails].sort(), bot: isBot(name) }))
       .sort((a, b) => a.name.localeCompare(b.name)),
@@ -332,6 +358,10 @@ async function main() {
     heatmap: [...heatmap.entries()].map(([k, commits]) => {
       const [author, repo, weekday, hour] = k.split('|')
       return { author, repo, weekday: Number(weekday), hour: Number(hour), commits }
+    }),
+    monthlyTypes: [...monthlyTypes.entries()].map(([k, commits]) => {
+      const [month, repo, author, type] = k.split('|')
+      return { month, repo, author, type, commits }
     }),
   }
 

@@ -14,6 +14,7 @@ import AuthorMonthHeatmap from '../components/AuthorMonthHeatmap.vue'
 import PaceAlert from '../components/PaceAlert.vue'
 import BurnoutWatch from '../components/BurnoutWatch.vue'
 import BusFactor from '../components/BusFactor.vue'
+import CommitTypes from '../components/CommitTypes.vue'
 import PrSummaryCards from '../components/PrSummaryCards.vue'
 import PrOpenTable from '../components/PrOpenTable.vue'
 import PrCycleTime from '../components/PrCycleTime.vue'
@@ -89,6 +90,7 @@ onMounted(syncUrlNow)
         <div class="flex flex-col gap-4">
           <RepoShare />
           <RepoMonthHeatmap />
+          <CommitTypes />
         </div>
       </template>
 
