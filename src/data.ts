@@ -72,7 +72,7 @@ export const filteredMonthly = computed(() =>
 )
 
 export const filteredHeatmap = computed(() =>
-  (stats.value?.heatmap ?? []).filter(r => selectedRepo(r.repo) && selectedAuthor(r.author)),
+  (stats.value?.heatmap ?? []).filter(r => selectedRepo(r.repo) && selectedAuthor(r.author) && inRange(r.month)),
 )
 
 /** commits no período filtrado (para cards) */

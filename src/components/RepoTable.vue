@@ -1,0 +1,134 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { filteredMonthly, filteredTypes, stats } from '../data'
+import { daysSinceLastRelease, releaseByRepo } from '../releases'
+
+const router = useRouter()
+
+interface RepoRow {
+  repo: string
+  commits: number
+  devs: number
+  lastCommit: string | null
+  lastTag: string | null
+  daysSinceRelease: number | null
+  unreleased: number | null // null = releases não coletadas
+  fixPct: number
+}
+
+const rows = computed<RepoRow[]>(() => {
+  // commits e devs ativos no período filtrado
+  const byRepo = new Map<string, { commits: number; devs: Set<string> }>()
+  for (const r of filteredMonthly.value) {
+    const cur = byRepo.get(r.repo) ?? { commits: 0, devs: new Set<string>() }
+    cur.commits += r.commits
+    cur.devs.add(r.author)
+    byRepo.set(r.repo, cur)
+  }
+
+  // fix% no período filtrado
+  const fixByRepo = new Map<string, { fix: number; total: number }>()
+  for (const r of filteredTypes.value) {
+    const cur = fixByRepo.get(r.repo) ?? { fix: 0, total: 0 }
+    cur.total += r.commits
+    if (r.type === 'fix') cur.fix += r.commits
+    fixByRepo.set(r.repo, cur)
+  }
+
+  const lastCommitByRepo = new Map((stats.value?.perRepo ?? []).map(r => [r.repo, r.lastCommit]))
+
+  return [...byRepo.entries()]
+    .map(([repo, v]) => {
+      const rel = releaseByRepo.value.get(repo)
+      const fix = fixByRepo.get(repo)
+      return {
+        repo,
+        commits: v.commits,
+        devs: v.devs.size,
+        lastCommit: lastCommitByRepo.get(repo) ?? null,
+        lastTag: rel?.tags[0]?.tag ?? null,
+        daysSinceRelease: daysSinceLastRelease(repo),
+        unreleased: rel ? rel.unreleased : null,
+        fixPct: fix && fix.total > 0 ? fix.fix / fix.total : 0,
+      }
+    })
+    .sort((a, b) => b.commits - a.commits)
+})
+
+function fmtDate(iso: string | null): string {
+  return iso ? new Date(iso).toLocaleDateString('pt-BR') : '—'
+}
+
+/** destaque para trabalho parado sem release */
+function unreleasedColor(n: number | null): string {
+  if (n == null || n === 0) return 'text-dimmed'
+  if (n >= 50) return 'text-error font-medium'
+  if (n >= 20) return 'text-warning font-medium'
+  return ''
+}
+
+function open(repo: string) {
+  router.push(`/repo/${encodeURIComponent(repo)}`)
+}
+</script>
+
+<template>
+  <UCard :ui="{ body: 'p-0 sm:p-0', header: 'py-3 px-4 sm:px-4' }">
+    <template #header>
+      <div class="flex items-center gap-2">
+        <UIcon name="i-lucide-git-branch" class="size-4 text-primary" />
+        <span class="text-sm font-semibold text-highlighted">Repositórios</span>
+        <UBadge color="neutral" variant="subtle" size="sm" class="ml-auto">
+          {{ rows.length }}
+        </UBadge>
+      </div>
+    </template>
+
+    <div class="overflow-x-auto">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>repo</th>
+            <th class="num">commits</th>
+            <th class="num">devs</th>
+            <th class="num">% fix</th>
+            <th class="num">último commit</th>
+            <th class="num">última release</th>
+            <th class="num">não liberados</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="r in rows" :key="r.repo" class="cursor-pointer hover:bg-accented/50" @click="open(r.repo)">
+            <td class="font-medium text-primary">
+              {{ r.repo }}
+            </td>
+            <td class="num">{{ r.commits.toLocaleString('pt-BR') }}</td>
+            <td class="num">{{ r.devs }}</td>
+            <td class="num">
+              <span :class="r.fixPct >= 0.35 ? 'text-error' : r.fixPct >= 0.25 ? 'text-warning' : ''">
+                {{ Math.round(r.fixPct * 100) }}%
+              </span>
+            </td>
+            <td class="num whitespace-nowrap text-muted">
+              {{ fmtDate(r.lastCommit) }}
+            </td>
+            <td class="num whitespace-nowrap">
+              <template v-if="r.lastTag">
+                <code class="text-xs bg-accented px-1 py-0.5 rounded">{{ r.lastTag }}</code>
+                <span class="text-dimmed text-xs ml-1">há {{ r.daysSinceRelease }}d</span>
+              </template>
+              <span v-else class="text-dimmed">—</span>
+            </td>
+            <td class="num" :class="unreleasedColor(r.unreleased)">
+              {{ r.unreleased == null ? '—' : r.unreleased }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="text-dimmed text-xs px-4 pb-3 pt-2">
+      commits/devs/% fix seguem o filtro do período · não liberados = commits desde a última tag (≥20 em amarelo, ≥50 em vermelho) · clique no repo pra ver o detalhe
+    </p>
+  </UCard>
+</template>

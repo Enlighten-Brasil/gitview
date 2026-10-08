@@ -17,6 +17,7 @@ import ui from '@nuxt/ui/vue-plugin'
 import App from './App.vue'
 import DashboardView from './views/DashboardView.vue'
 import DevView from './views/DevView.vue'
+import RepoView from './views/RepoView.vue'
 import './main.css'
 
 use([
@@ -26,11 +27,12 @@ use([
   CanvasRenderer,
 ])
 
-// rotas: dashboard (tabs + filtros na query string) e perfil dedicado do dev
+// rotas: dashboard (tabs + filtros na query string), perfil do dev e página do repo
 const router = createRouter({
   routes: [
     { path: '/', name: 'dashboard', component: DashboardView },
     { path: '/dev/:name', name: 'dev', component: DevView },
+    { path: '/repo/:name', name: 'repo', component: RepoView },
   ],
   history: createWebHistory(),
 })

@@ -212,7 +212,7 @@ function commitUrl(repo: string, hash: string): string | null {
       <ChartPanel title="Commits por semana" icon="i-lucide-chart-column" :option="timelineOption" />
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <ChartPanel title="Distribuição por repositório" icon="i-lucide-chart-pie" :option="repoOption" />
-        <ChartPanel title="Horários de atividade" icon="i-lucide-clock" :option="heatOption" />
+        <ChartPanel title="Horários de atividade — últimos 24 meses" icon="i-lucide-clock" :option="heatOption" />
       </div>
 
       <!-- PRs abertos do dev -->
