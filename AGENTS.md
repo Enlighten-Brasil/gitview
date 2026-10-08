@@ -16,11 +16,15 @@ O frontend (Vue 3 + TS + Vite + ECharts + Nuxt UI v4 / Tailwind v4) é **100% es
 
 | script | saída | fonte |
 |---|---|---|
-| `collect.ts` | `stats.json` (agregados weekly/monthly/heatmap por mês/monthlyTypes/perAuthor/perRepo/repoUrls) + `commits.json` (100 últimos/autor) | `git log --all --numstat` → SQLite (`INSERT OR IGNORE`, incremental) |
-| `collect-github.ts` | `github.json` (PRs OPEN todos + MERGED últimos 400d, reviews inline, mapa login→dev) | `gh api graphql` (requer `gh auth`) |
+| `collect.ts` | `stats.json` (agregados weekly/monthly/heatmap por mês/monthlyTypes/perAuthor/perRepo/repoUrls) + `commits.json` (100 últimos/autor) | `git log --all --numstat --since=<watermark-7d>` → SQLite (`INSERT OR IGNORE`, incremental; `--full` = re-scan) |
+| `collect-github.ts` | `github.json` (PRs OPEN todos + MERGED últimos 400d, reviews inline, mapa login→dev) | `gh api graphql` (requer `gh auth`) — incremental: refetch só de PRs atualizados desde a última coleta, merge com o JSON anterior; `--full` ignora o cache |
 | `collect-releases.ts` | `releases.json` (tags com data, commits entre tags, não liberados, notas do GitHub) | `git tag` + `gh api` REST |
 
-Logins do GitHub → nomes canônicos via `config.githubUsers` (mapeamento **explícito**, não fuzzy). Bots: `config.githubBots` + `config.bots`.
+Os 3 coletores processam os repos em paralelo (pool de 4). Logins do GitHub → nomes canônicos via `config.githubUsers` (mapeamento **explícito**, não fuzzy). Bots: `config.githubBots` + `config.bots`.
+
+### Coleta pela UI (dev only)
+
+`scripts/collect-plugin.ts` é um plugin Vite (`apply: 'serve'`) que expõe `GET /__collect` (SSE; `?full=1` = completo) rodando os 3 coletores com progresso ao vivo. O botão ↻ no navbar (`App.vue` + `src/collect.ts`) só renderiza em `import.meta.env.DEV`; após o `done`, os loaders refazem o fetch com cache-bust (`loadStats/loadGithub/loadReleases/loadCommits` aceitam `force`). No build estático o endpoint não existe.
 
 ## Comandos
 

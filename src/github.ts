@@ -5,11 +5,12 @@ import { filters } from './data'
 export const github = ref<GitHubData | null>(null)
 export const githubError = ref<string | null>(null)
 
-export async function loadGithub() {
+export async function loadGithub(force = false) {
   try {
-    const res = await fetch('/data/github.json')
+    const res = await fetch(force ? `/data/github.json?t=${Date.now()}` : '/data/github.json')
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     github.value = await res.json()
+    githubError.value = null
   }
   catch {
     githubError.value = 'sem dados do GitHub — rode "pnpm collect:github"'

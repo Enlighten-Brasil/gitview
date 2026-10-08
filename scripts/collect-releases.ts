@@ -8,7 +8,7 @@
  *
  * Saída: public/data/releases.json — o frontend continua 100% estático.
  */
-import { spawnSync } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -90,19 +90,37 @@ interface GhRelease {
   body: string | null
 }
 
-function ghReleases(ghRepo: { owner: string; repo: string }): Map<string, GhRelease> {
-  const r = spawnSync('gh', ['api', `repos/${ghRepo.owner}/${ghRepo.repo}/releases?per_page=100`], {
-    encoding: 'utf-8',
-    maxBuffer: 64 * 1024 * 1024,
+function ghReleases(ghRepo: { owner: string; repo: string }): Promise<Map<string, GhRelease>> {
+  return new Promise((resolvePromise) => {
+    const child = spawn('gh', ['api', `repos/${ghRepo.owner}/${ghRepo.repo}/releases?per_page=100`])
+    const chunks: Buffer[] = []
+    child.stdout.on('data', (c: Buffer) => chunks.push(c))
+    child.on('error', () => resolvePromise(new Map()))
+    child.on('close', (code) => {
+      if (code !== 0) {
+        resolvePromise(new Map())
+        return
+      }
+      try {
+        const list = JSON.parse(Buffer.concat(chunks).toString('utf-8')) as GhRelease[]
+        resolvePromise(new Map(list.filter(rel => !rel.draft).map(rel => [rel.tag_name, rel])))
+      }
+      catch {
+        resolvePromise(new Map())
+      }
+    })
   })
-  if (r.status !== 0) return new Map()
-  try {
-    const list = JSON.parse(r.stdout) as GhRelease[]
-    return new Map(list.filter(rel => !rel.draft).map(rel => [rel.tag_name, rel]))
-  }
-  catch {
-    return new Map()
-  }
+}
+
+/** map assíncrono com concorrência limitada (repos em paralelo) */
+async function mapPool<T>(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
+  let next = 0
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const item = items[next++]
+      await fn(item)
+    }
+  }))
 }
 
 // ---------------------------------------------------------------------------
@@ -113,12 +131,14 @@ const datesStmt = db.prepare('SELECT date FROM commits WHERE repo = ? ORDER BY d
 
 const repos = discoverRepos(resolve(config.reposRoot))
 const out: unknown[] = []
+// ordem de saída estável mesmo com o processamento paralelo
+const byRepo = new Map<string, unknown>()
 
-for (const repo of repos) {
+await mapPool(repos, 4, async (repo) => {
   const tags = gitTags(repo.path)
   const remote = remoteOf(repo.path)
   const ghRepo = remote ? parseGitHub(remote) : null
-  const ghMap = ghRepo ? ghReleases(ghRepo) : new Map<string, GhRelease>()
+  const ghMap = ghRepo ? await ghReleases(ghRepo) : new Map<string, GhRelease>()
 
   // datas dos commits do repo (asc) — para contar commits entre tags
   const dates = (datesStmt.all(repo.name) as { date: string }[]).map(r => r.date)
@@ -146,14 +166,16 @@ for (const repo of repos) {
   const unreleased = dates.length - cursor
   const webUrl = ghRepo ? `https://github.com/${ghRepo.owner}/${ghRepo.repo}` : null
 
-  out.push({
+  byRepo.set(repo.name, {
     repo: repo.name,
     url: webUrl,
     unreleased,
     tags: tagRows.reverse(), // mais recente primeiro
   })
   console.log(`✓ ${repo.name}: ${tags.length} tags (${ghMap.size} com release no GitHub), ${unreleased} commits não liberados`)
-}
+})
+
+for (const repo of repos) out.push(byRepo.get(repo.name))
 
 db.close()
 

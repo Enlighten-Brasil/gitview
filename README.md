@@ -23,8 +23,14 @@ pnpm collect   # roda os 3 coletores: git → stats.json, GitHub → github.json
 pnpm dev       # http://localhost:5173
 ```
 
-Re-rodar `pnpm collect` é **incremental** (INSERT OR IGNORE por repo+hash): só commits novos entram.
+Re-rodar `pnpm collect` é **incremental**: commits usam `git log --since` a partir do watermark no banco
+(margem de 7 dias; INSERT OR IGNORE por repo+hash) e PRs refazem o fetch só do que mudou desde a última coleta
+(merge com o `github.json` anterior; mergeados expiram fora da janela de 400 dias). Use `--full`
+(ex.: `tsx scripts/collect.ts --full`) para re-scan completo. Os 3 coletores processam os repos em paralelo.
 `pnpm collect:github` e `pnpm collect:releases` rodam partes isoladas. A coleta do GitHub requer `gh` autenticado.
+
+Com o dev server rodando, o botão ↻ no navbar atualiza os dados sem sair da interface (middleware `/__collect`
+com progresso ao vivo; existe apenas em dev).
 
 ## Configuração (`config.json`)
 

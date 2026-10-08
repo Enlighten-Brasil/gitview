@@ -77,13 +77,14 @@ interface RawCommit {
   deletions: number
 }
 
-function gitLog(repoPath: string): Promise<RawCommit[]> {
+function gitLog(repoPath: string, extraArgs: string[] = []): Promise<RawCommit[]> {
   return new Promise((resolvePromise, reject) => {
     const child = spawn('git', [
       '-C', repoPath,
       'log', '--all', '--no-renames',
       '--pretty=format:%x1e%H%x1f%an%x1f%ae%x1f%aI%x1f%s',
       '--numstat',
+      ...extraArgs,
     ])
     const chunks: Buffer[] = []
     const errChunks: Buffer[] = []
@@ -155,6 +156,35 @@ const insert = db.prepare(`
 `)
 
 // ---------------------------------------------------------------------------
+// incremental: --since por repo a partir do watermark no banco (max date - margem).
+// A margem cobre commits com committer date antiga mergeados depois do watermark;
+// o INSERT OR IGNORE torna a sobreposição inócua. `--full` força re-scan completo.
+// ---------------------------------------------------------------------------
+const FULL = process.argv.includes('--full')
+const SINCE_MARGIN_DAYS = 7
+const maxDateStmt = db.prepare('SELECT MAX(date) AS max FROM commits WHERE repo = ?')
+
+function sinceArgs(repoName: string): string[] {
+  if (FULL) return []
+  const row = maxDateStmt.get(repoName) as { max: string | null }
+  if (!row.max) return []
+  const d = new Date(row.max)
+  d.setDate(d.getDate() - SINCE_MARGIN_DAYS)
+  return [`--since=${d.toISOString()}`]
+}
+
+/** map assíncrono com concorrência limitada (git log por repo em paralelo) */
+async function mapPool<T>(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
+  let next = 0
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const item = items[next++]
+      await fn(item)
+    }
+  }))
+}
+
+// ---------------------------------------------------------------------------
 // helpers de agregação
 // ---------------------------------------------------------------------------
 function isoWeekKey(d: Date): string {
@@ -223,11 +253,13 @@ async function main() {
   console.log(`Repos encontrados: ${repos.length}`)
   repos.forEach(r => console.log(`  - ${r.name}`))
 
-  for (const repo of repos) {
+  console.log(FULL ? 'Modo: completo (--full)' : 'Modo: incremental (--since por repo)')
+
+  await mapPool(repos, 4, async (repo) => {
     const t0 = Date.now()
     let inTransaction = false
     try {
-      const commits = await gitLog(repo.path)
+      const commits = await gitLog(repo.path, sinceArgs(repo.name))
       let inserted = 0
       db.exec('BEGIN')
       inTransaction = true
@@ -246,7 +278,7 @@ async function main() {
       if (inTransaction) db.exec('ROLLBACK')
       console.error(`✗ ${repo.name}: ${(err as Error).message}`)
     }
-  }
+  })
 
   // re-normaliza autores já gravados caso os aliases tenham mudado no config
   const updateAuthor = db.prepare('UPDATE commits SET author = ? WHERE email = ? AND author != ?')

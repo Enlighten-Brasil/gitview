@@ -1,5 +1,11 @@
 # gitview
 
+## 0.19.0
+
+### Minor Changes
+
+- Coleta incremental e atualização de dados pela UI: `collect.ts` usa `git log --since` a partir do watermark no banco (margem de 7 dias, `--full` para re-scan completo), `collect-github.ts` refaz o fetch só de PRs atualizados desde a última coleta (merge com o JSON anterior e expiração fora da janela de 400 dias) e os três coletores processam os repos em paralelo. No dev server, botão ↻ no navbar roda a coleta sem sair da interface (middleware `/__collect` com progresso ao vivo via SSE) e recarrega os dados na hora.
+
 ## 0.18.1
 
 ### Patch Changes

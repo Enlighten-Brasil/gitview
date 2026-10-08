@@ -4,11 +4,12 @@ import type { ReleasesData, RepoReleases } from './types'
 export const releases = ref<ReleasesData | null>(null)
 export const releasesError = ref<string | null>(null)
 
-export async function loadReleases() {
+export async function loadReleases(force = false) {
   try {
-    const res = await fetch('/data/releases.json')
+    const res = await fetch(force ? `/data/releases.json?t=${Date.now()}` : '/data/releases.json')
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     releases.value = await res.json()
+    releasesError.value = null
   }
   catch {
     releasesError.value = 'sem dados de releases — rode "pnpm collect:releases"'
