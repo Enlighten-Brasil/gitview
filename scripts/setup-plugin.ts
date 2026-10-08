@@ -9,6 +9,8 @@
  *  GET  /__setup/apply?org=X&repos=a,b,c    SSE: clona os faltantes em data/repos
  *                                           (&dry=1 só simula; &remove=d,e apaga
  *                                           clones gerenciados) e grava config.local.json
+ *  GET  /__clean[?repos=1]                  apaga banco + JSONs (com repos=1 apaga
+ *                                           também os clones) — o "pnpm clean" da UI
  *
  * Mesmo modelo do collect-plugin: só existe no dev server; localhost apenas.
  */
@@ -18,6 +20,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { join } from 'node:path'
 import type { Plugin } from 'vite'
 import { loadConfig, rootDir, saveLocalConfig } from './lib/config'
+import { cleanLocalData } from './lib/clean'
 import { currentUser, devicePoll, deviceStart, getToken, listOrgs, listOrgRepos, listUserRepos } from './lib/github'
 import { cloneBare, discoverRepos, MANAGED_REPOS_DIR, mapPool, resolveReposRootSafe } from './lib/repos'
 
@@ -244,6 +247,27 @@ export function setupPlugin(): Plugin {
             applying = false
             res.end()
           })
+      })
+
+      // limpeza local: apaga banco + JSONs (e clones com ?repos=1) sem recoletar.
+      // Mesma lib do `pnpm clean`. O gate de primeira execução leva de volta ao wizard.
+      server.middlewares.use('/__clean', async (req, res) => {
+        if (applying) {
+          json(res, 409, { error: 'setup em andamento — aguarde terminar' })
+          return
+        }
+        const repos = new URL(req.url ?? '', 'http://localhost').searchParams.get('repos') === '1'
+        applying = true
+        try {
+          const removed = cleanLocalData(repos)
+          json(res, 200, { removed })
+        }
+        catch (err) {
+          json(res, 500, { error: String((err as Error).message ?? err) })
+        }
+        finally {
+          applying = false
+        }
       })
     },
   }

@@ -14,6 +14,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { collectError, collectLog, collectSucceeded, collecting, startCollect } from '../collect'
 import type { DeviceFlowStart, OrgEntry, RepoEntry, SetupStatus } from '../setup'
+import { cleanLocalData } from '../setup'
 import {
   fetchOrgs,
   fetchRepos,
@@ -340,6 +341,26 @@ function wipeAndRecollect() {
   maintenanceRan.value = true
   startCollect(false, true)
 }
+
+// apagar sem recoletar: volta ao estado de primeira execução (wizard)
+const confirmDelete = ref(false)
+const deleteRepos = ref(false)
+const deleting = ref(false)
+const deleteError = ref<string | null>(null)
+
+async function deleteAllData() {
+  deleting.value = true
+  deleteError.value = null
+  try {
+    await cleanLocalData(deleteRepos.value)
+    // reload completo: sem stats.json, o gate de App.vue cai no wizard
+    window.location.reload()
+  }
+  catch (err) {
+    deleteError.value = (err as Error).message
+    deleting.value = false
+  }
+}
 </script>
 
 <template>
@@ -408,9 +429,11 @@ function wipeAndRecollect() {
               Manutenção dos dados locais
             </div>
             <p class="text-sm text-dimmed">
-              O banco e os JSONs do dashboard são regenerados a partir dos repositórios.
-              Recoletar tudo refaz o scan completo; limpar apaga banco + JSONs antes da
-              recoleta (os clones em <code>data/repos</code> são mantidos).
+              O banco e os JSONs do dashboard são 100% regeneráveis a partir dos repositórios.
+              Recoletar só gera dados novos;
+              <strong>limpar e recoletar</strong> apaga e gera de novo na sequência;
+              <strong>apagar dados</strong> remove tudo e volta ao assistente de configuração
+              (os clones em <code>data/repos</code> ficam, a menos que você marque a opção).
             </p>
 
             <pre
@@ -432,6 +455,13 @@ function wipeAndRecollect() {
               icon="i-lucide-circle-x"
               :title="collectError"
             />
+            <UAlert
+              v-if="deleteError"
+              color="error"
+              variant="subtle"
+              icon="i-lucide-circle-x"
+              :title="deleteError"
+            />
 
             <div class="flex items-center justify-between">
               <UButton
@@ -439,15 +469,15 @@ function wipeAndRecollect() {
                 icon="i-lucide-refresh-cw"
                 color="neutral"
                 variant="outline"
-                :disabled="collecting"
+                :disabled="collecting || deleting"
                 @click="recollectAll"
               />
               <div class="flex items-center gap-2">
                 <template v-if="confirmWipe">
-                  <span class="text-xs text-dimmed">apaga banco + JSONs (regenerados na sequência)</span>
+                  <span class="text-xs text-dimmed">apaga banco + JSONs e gera tudo de novo na sequência</span>
                   <UButton label="cancelar" size="sm" color="neutral" variant="ghost" @click="confirmWipe = false" />
                   <UButton
-                    label="confirmar limpeza"
+                    label="confirmar"
                     size="sm"
                     color="error"
                     icon="i-lucide-trash-2"
@@ -455,15 +485,38 @@ function wipeAndRecollect() {
                     @click="wipeAndRecollect"
                   />
                 </template>
-                <UButton
-                  v-else
-                  label="limpar e recomeçar"
-                  color="error"
-                  variant="soft"
-                  icon="i-lucide-trash-2"
-                  :disabled="collecting"
-                  @click="wipeAndRecollect"
-                />
+                <template v-else-if="confirmDelete">
+                  <UCheckbox v-model="deleteRepos" size="xs" label="incluindo os clones (data/repos)" />
+                  <span class="text-xs text-dimmed">volta ao assistente; nada é recoletado</span>
+                  <UButton label="cancelar" size="sm" color="neutral" variant="ghost" @click="confirmDelete = false" />
+                  <UButton
+                    label="confirmar"
+                    size="sm"
+                    color="error"
+                    icon="i-lucide-trash-2"
+                    :loading="deleting"
+                    @click="deleteAllData"
+                  />
+                </template>
+                <template v-else>
+                  <UButton
+                    label="apagar dados"
+                    color="neutral"
+                    variant="ghost"
+                    size="sm"
+                    icon="i-lucide-eraser"
+                    :disabled="collecting"
+                    @click="confirmDelete = true"
+                  />
+                  <UButton
+                    label="limpar e recoletar"
+                    color="error"
+                    variant="soft"
+                    icon="i-lucide-trash-2"
+                    :disabled="collecting"
+                    @click="wipeAndRecollect"
+                  />
+                </template>
               </div>
             </div>
           </div>

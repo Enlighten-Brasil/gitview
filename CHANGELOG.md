@@ -1,5 +1,11 @@
 # gitview
 
+## 0.29.0
+
+### Minor Changes
+
+- Nova ação **"apagar dados"** no setup: limpa banco + JSONs sem recoletar e volta ao assistente de configuração (com checkbox opcional para apagar também os clones em `data/repos` — o "pnpm clean" da UI via `/__clean`). Renomeado "limpar e recomeçar" → "limpar e recoletar" e descrição do card deixada explícita: limpar SEMPRE regenera os dados na sequência (era isso que fazia os dados "voltarem" após o reset).
+
 ## 0.28.0
 
 ### Minor Changes

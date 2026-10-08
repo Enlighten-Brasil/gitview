@@ -53,9 +53,7 @@ export type DeviceFlowPoll =
 
 export function startDeviceFlow(): Promise<DeviceFlowStart> {
   return getJson('/__auth/device')
-}
-
-export async function pollDeviceFlow(deviceCode: string): Promise<DeviceFlowPoll> {
+}export async function pollDeviceFlow(deviceCode: string): Promise<DeviceFlowPoll> {
   const res = await fetch('/__auth/device/poll', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -64,6 +62,14 @@ export async function pollDeviceFlow(deviceCode: string): Promise<DeviceFlowPoll
   const body = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`)
   return body as DeviceFlowPoll
+}
+
+// ---------------------------------------------------------------------------
+// limpeza local (o "pnpm clean" da UI): apaga banco + JSONs; com repos, os clones
+// ---------------------------------------------------------------------------
+export async function cleanLocalData(repos: boolean): Promise<string[]> {
+  const { removed } = await getJson<{ removed: string[] }>(`/__clean${repos ? '?repos=1' : ''}`)
+  return removed
 }
 
 // ---------------------------------------------------------------------------
