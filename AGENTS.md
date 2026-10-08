@@ -1,0 +1,65 @@
+# AGENTS.md — gitview
+
+Dashboard interno do Raul (gestor de dev) para acompanhar commits, PRs e releases do time nos 12 repositórios do example (`C:/Users/dev/Documents/GitHub/example`). Ferramenta **read-only** sobre os dados — nunca escreve nos repos analisados.
+
+## Arquitetura
+
+```
+git log  →  data/gitview.db (node:sqlite, incremental)  →  public/data/stats.json + commits.json
+gh api graphql  →  public/data/github.json (PRs + reviews)
+git tag + gh api REST  →  public/data/releases.json (tags + notas de release)
+```
+
+O frontend (Vue 3 + TS + Vite + ECharts + Nuxt UI v4 / Tailwind v4) é **100% estático**: só lê os JSONs de `public/data/`, nada é recalculado do git no navegador. `public/data/*` e `data/` são gitignored — sempre regenerados pelos coletores.
+
+### Coletores (`scripts/`)
+
+| script | saída | fonte |
+|---|---|---|
+| `collect.ts` | `stats.json` (agregados weekly/monthly/heatmap por mês/monthlyTypes/perAuthor/perRepo/repoUrls) + `commits.json` (100 últimos/autor) | `git log --all --numstat` → SQLite (`INSERT OR IGNORE`, incremental) |
+| `collect-github.ts` | `github.json` (PRs OPEN todos + MERGED últimos 400d, reviews inline, mapa login→dev) | `gh api graphql` (requer `gh auth`) |
+| `collect-releases.ts` | `releases.json` (tags com data, commits entre tags, não liberados, notas do GitHub) | `git tag` + `gh api` REST |
+
+Logins do GitHub → nomes canônicos via `config.githubUsers` (mapeamento **explícito**, não fuzzy). Bots: `config.githubBots` + `config.bots`.
+
+## Comandos
+
+```bash
+pnpm collect            # os 3 coletores em sequência
+pnpm collect:github     # só PRs
+pnpm collect:releases   # só releases
+pnpm dev                # http://localhost:5173 (Vite)
+pnpm build              # dist estático
+pnpm changeset          # registrar mudança
+pnpm version:packages   # aplicar changesets (bumps + CHANGELOG)
+```
+
+## Convenções obrigatórias
+
+- **Toda mudança** = changeset (`minor` feature / `patch` fix) → `pnpm version:packages` → commit único com `chore(release): X.Y.Z` no corpo. Versão atual: ver `package.json` / `CHANGELOG.md`.
+- **Commits em pt-BR** (Conventional Commits), código em inglês, comentários em pt-BR.
+- **Windows / PowerShell 5.1**: usar `pnpm.cmd` (o shim `pnpm.ps1` é bloqueado pela Execution Policy). **Nunca** editar arquivos UTF-8 via PowerShell (mojibake) — usar as ferramentas de edição. **Nunca** piper CLI que muta arquivos com `2>&1 | Select-Object` (pode abortar no meio).
+- ESLint `@antfu/eslint-config`: sem ponto-e-vírgula, aspas simples.
+- Deleção de arquivos: `rm -- <path>` (launcher recuperável), nunca `Remove-Item`.
+
+## Estrutura do `src/`
+
+- `data.ts` — filtros globais (`filters`), agregações filtradas (monthly/weekly/heatmap/types), totais + delta (`previousTotals`), ritmo (`pace`), burnout, off-hours por período.
+- `github.ts` — PRs filtrados, aging, cycle time (mediana geral/por repo/tendência 6M), reviews por dev e concentração por repo, merge sem review.
+- `releases.ts` — loader do releases.json + métricas (dias desde última release, cadência).
+- `urlState.ts` — aba + filtros na query string (`?tab=&range=&from=&to=&repos=&devs=&bots=`), replaceState, popstate com reset, sanitização, fallback localStorage. **Só atua na rota `/`**.
+- `chartTheme.ts` — tema ECharts com conversão oklch→hex (proxy `ct`).
+- `views/` — `DashboardView` (5 abas: Visão geral, Time, Saúde, Repos, Pull requests), `DevView` (`/dev/:name`), `RepoView` (`/repo/:name`).
+- `components/` — um componente por painel; tabelas usam a classe `.data-table` (ver `main.css`).
+
+## Regras dos filtros (importante pra não "corrigir" o que é intencional)
+
+- Filtro de período: presets (1/3/6/12/24M, Tudo) **ou** range custom `dateFrom/dateTo` (YYYY-MM-DD, prevalece sobre preset, corta **por mês inteiro** — a agregação é mensal/semanal). Delta dos cards é omitido em range custom e em "Tudo".
+- Janelas fixas intencionais (ignoram o período, estão rotuladas no rodapé): Ritmo (4 vs 8 semanas), BurnoutWatch (8 semanas), Tendência de cycle time (6 meses), PRs abertos ("agora"), Ranking do time e páginas /dev e /repo (histórico completo; heatmap de horários cobre no máximo 24M — limite da agregação).
+- Thresholds dos painéis de Saúde estão documentados no rodapé de cada card.
+
+## Validação
+
+- Validar no Chrome via chrome-devtools MCP em `http://localhost:5173`. O modelo não lê imagens — validar por DOM/`evaluate_script` (textos, tabelas, valores) e checar console.
+- Tabs do Reka UI **não respondem a `.click()` sintético** — usar o `click` real do MCP com o uid do snapshot, ou navegar pela URL (`?tab=...`).
+- Não há suite de testes; `pnpm build` (vite) é o check de compilação.

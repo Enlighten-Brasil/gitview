@@ -1,7 +1,7 @@
 {
   "name": "gitview",
   "private": true,
-  "version": "0.18.0",
+  "version": "0.18.1",
   "type": "module",
   "scripts": {
     "collect": "tsx scripts/collect.ts && tsx scripts/collect-github.ts && tsx scripts/collect-releases.ts",

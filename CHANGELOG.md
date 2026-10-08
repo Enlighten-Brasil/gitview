@@ -1,5 +1,11 @@
 # gitview
 
+## 0.18.1
+
+### Patch Changes
+
+- docs: AGENTS.md novo (arquitetura, coletores, convenções e regras dos filtros para agentes) e README reescrito cobrindo todo o estado atual (abas, páginas /dev e /repo, releases, filtros, URL e versionamento)
+
 ## 0.18.0
 
 ### Minor Changes
