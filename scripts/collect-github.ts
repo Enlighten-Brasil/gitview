@@ -61,6 +61,26 @@ function gh<T>(query: string, vars: Record<string, string>): Promise<T> {
 
 /** map assíncrono com concorrência limitada (repos em paralelo) — scripts/lib/repos.ts */
 
+/**
+ * Retry em erros transitórios (HTTP 5xx, rede) — um 502 no meio da paginação
+ * não pode derrubar o repo inteiro (no modo completo ele sairia zerado).
+ */
+async function ghRetry<T>(query: string, vars: Record<string, string>): Promise<T> {
+  let lastErr: Error | null = null
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      return await gh<T>(query, vars)
+    }
+    catch (err) {
+      lastErr = err as Error
+      const transient = /HTTP 5\d\d|ECONNRESET|ETIMEDOUT|EAI_AGAIN|socket|fetch failed/i.test(lastErr.message)
+      if (!transient || attempt === 3) throw err
+      await new Promise(r => setTimeout(r, attempt * 2000))
+    }
+  }
+  throw lastErr
+}
+
 const PR_QUERY = `
 query($owner: String!, $name: String!, $cursor: String) {
   repository(owner: $owner, name: $name) {
@@ -116,7 +136,7 @@ async function fetchPrs(
   for (let page = 0; page < 30; page++) {
     const vars: Record<string, string> = { owner: ghRepo.owner, name: ghRepo.repo }
     if (cursor) vars.cursor = cursor
-    const data = await gh<QueryResult>(query, vars)
+    const data = await ghRetry<QueryResult>(query, vars)
     const prs = data.repository?.pullRequests
     if (!prs) break
     out.push(...prs.nodes)
@@ -158,10 +178,13 @@ mkdirSync(outDir, { recursive: true })
 const outFile = join(outDir, 'github.json')
 
 // incremental: PRs mergeados mudam pouco — refetch só dos atualizados desde a última
-// coleta (margem de 1 dia) e merge com o arquivo anterior. `--full` ignora o cache.
-const prev = (!FULL && existsSync(outFile))
+// coleta (margem de 1 dia) e merge com o arquivo anterior. `--full` ignora o cache
+// para o FETCH, mas o arquivo anterior segue carregado como rede de segurança:
+// um repo que falha no modo completo não pode sair zerado do painel.
+const cached = existsSync(outFile)
   ? JSON.parse(readFileSync(outFile, 'utf-8')) as { generatedAt: string; prs: PrRow[] }
   : null
+const prev = FULL ? null : cached
 
 const cutoff = new Date()
 if (prev) {
@@ -220,6 +243,18 @@ await mapPool(repos, 4, async (repo) => {
   }
   catch (err) {
     console.error(`✗ ${repo.name}: ${(err as Error).message}`)
+    // rede de segurança: repo que falhou não pode sumir do painel — reaproveita
+    // o cache (mergeados respeitam a janela de MERGED_CUTOFF_DAYS, como no merge)
+    const pruneCutoff = new Date()
+    pruneCutoff.setDate(pruneCutoff.getDate() - MERGED_CUTOFF_DAYS)
+    let restored = 0
+    for (const p of cached?.prs ?? []) {
+      if (p.repo !== repo.name) continue
+      if (p.state === 'MERGED' && p.mergedAt && new Date(p.mergedAt as string) < pruneCutoff) continue
+      fresh.set(`${p.repo}#${p.number}`, p)
+      restored++
+    }
+    if (restored) console.log(`  ↳ ${restored} PRs mantidos do cache anterior`)
   }
 })
 

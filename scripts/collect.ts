@@ -14,7 +14,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DatabaseSync } from 'node:sqlite'
 import { loadConfig, resolveReposRoot } from './lib/config'
-import { discoverRepos, fetchRepo, isManagedRepo, mapPool, parseGitHub, remoteOf } from './lib/repos'
+import { denyPush, discoverRepos, fetchRepo, isManagedRepo, mapPool, parseGitHub, remoteOf } from './lib/repos'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = resolve(__dirname, '..')
@@ -217,11 +217,13 @@ async function main() {
   console.log(`Repos encontrados: ${repos.length}`)
   repos.forEach(r => console.log(`  - ${r.name}`))
 
-  // clones gerenciados (data/repos) não têm dono que dê pull — atualiza aqui
+  // clones gerenciados (data/repos) não têm dono que dê pull — atualiza aqui.
+  // denyPush é idempotente: garante a trava read-only também em clones antigos.
   const managed = repos.filter(r => isManagedRepo(r.path))
   if (managed.length) {
     console.log(`\nAtualizando ${managed.length} clones gerenciados (git fetch)...`)
     await mapPool(managed, 4, async (repo) => {
+      denyPush(repo.path)
       const err = await fetchRepo(repo.path)
       if (err) console.warn(`! ${repo.name}: fetch falhou, usando cache local (${err.split('\n')[0]})`)
     })

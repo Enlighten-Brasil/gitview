@@ -4,8 +4,11 @@
  * Token (ordem): config.local.json `githubToken` (gravado pelo device flow)
  * → `gh auth token` (ponte pra quem já tem o gh autenticado).
  *
- * Device flow: precisa de um OAuth App com "device flow" habilitado; o
- * client_id é público por design e fica em config.json (`oauthClientId`).
+ * Device flow: precisa de um OAuth App ou **GitHub App** com "device flow"
+ * habilitado; o client_id é público por design e fica em config.json
+ * (`oauthClientId`). GitHub App (client_id "Iv…") é o recomendado: as
+ * permissões granulares do app (Contents: read) tornam o token fisicamente
+ * read-only; OAuth App ("Ov…"/hex) usa o escopo `repo`, que é read+write.
  */
 import { spawnSync } from 'node:child_process'
 import { loadConfig } from './config'
@@ -66,7 +69,7 @@ export function listUserRepos(token: string): Promise<RepoEntry[]> {
 }
 
 // ---------------------------------------------------------------------------
-// device flow (OAuth App com device flow habilitado — sem client secret)
+// device flow (OAuth App ou GitHub App com device flow — sem client secret)
 // ---------------------------------------------------------------------------
 export interface DeviceStart {
   deviceCode: string
@@ -76,10 +79,15 @@ export interface DeviceStart {
 }
 
 export async function deviceStart(clientId: string): Promise<DeviceStart> {
+  // GitHub App (client_id "Iv…") não aceita scope: o token herda as permissões
+  // granulares do registro do app (ex.: Contents read-only). OAuth App pede
+  // `repo read:org` (o `repo` clássico é read+write — endurecido no git via
+  // denyPush nos clones gerenciados).
+  const isGitHubApp = clientId.startsWith('Iv')
   const res = await fetch('https://github.com/login/device/code', {
     method: 'POST',
     headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ client_id: clientId, scope: 'repo read:org' }),
+    body: JSON.stringify(isGitHubApp ? { client_id: clientId } : { client_id: clientId, scope: 'repo read:org' }),
   })
   if (!res.ok) throw new Error(`device flow: HTTP ${res.status}`)
   const json = await res.json() as Record<string, unknown>

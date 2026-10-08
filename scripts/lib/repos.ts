@@ -83,21 +83,41 @@ export function fetchRepo(path: string): Promise<string | null> {
 }
 
 /**
+ * Trava de read-only no nível do git: sobrescreve a URL de push do origin,
+ * então `git push` falha mesmo que a credencial do clone permita escrita
+ * (escopo repo do OAuth/gh é read+write — a garantia aqui é no remote).
+ * Idempotente — o collect reaplica nos clones gerenciados a cada execução.
+ */
+export function denyPush(path: string): void {
+  spawnSync('git', ['-C', path, 'config', 'remote.origin.pushurl', 'no-push'], { stdio: 'ignore' })
+}
+
+/**
  * clone bare autenticado. Com token: git puro — `-c` do clone grava o
- * http.extraheader no config do novo repo, então os fetches futuros já saem
- * autenticados (token local da máquina, em pasta gitignored). Sem token:
- * fallback pro `gh repo clone` (usa a auth do gh CLI).
+ * http.extraheader (Basic x-access-token, aceito por PAT/OAuth/GitHub App)
+ * no config do novo repo, então os fetches futuros já saem autenticados
+ * (token local da máquina, em pasta gitignored). Sem token: fallback pro
+ * `gh repo clone` (usa a auth do gh CLI). Todo clone sai com push travado
+ * (denyPush) — o gitview nunca escreve nos remotes.
  */
 export function cloneBare(fullName: string, dest: string, token?: string): Promise<string | null> {
   return new Promise((resolvePromise) => {
     const env = { ...process.env, GIT_TERMINAL_PROMPT: '0' }
+    const basic = token ? Buffer.from(`x-access-token:${token}`).toString('base64') : ''
     const child = token
-      ? spawn('git', ['clone', '-c', `http.https://github.com/.extraheader=AUTHORIZATION: Bearer ${token}`, '--bare', '--quiet', `https://github.com/${fullName}.git`, dest], { env })
+      ? spawn('git', ['clone', '-c', `http.https://github.com/.extraheader=AUTHORIZATION: basic ${basic}`, '--bare', '--quiet', `https://github.com/${fullName}.git`, dest], { env })
       : spawn('gh', ['repo', 'clone', fullName, dest, '--', '--bare', '--quiet'], { env })
     const errChunks: Buffer[] = []
     child.stderr.on('data', (c: Buffer) => errChunks.push(c))
     child.on('error', e => resolvePromise(String(e)))
-    child.on('close', code => resolvePromise(code === 0 ? null : Buffer.concat(errChunks).toString('utf-8').trim()))
+    child.on('close', (code) => {
+      if (code !== 0) {
+        resolvePromise(Buffer.concat(errChunks).toString('utf-8').trim())
+        return
+      }
+      denyPush(dest)
+      resolvePromise(null)
+    })
   })
 }
 

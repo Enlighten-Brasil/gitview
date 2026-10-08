@@ -1,5 +1,11 @@
 # gitview
 
+## 0.26.0
+
+### Minor Changes
+
+- Limpeza e read-only reforçado: `pnpm clean` + card "Manutenção dos dados locais" no `/setup` (recoletar tudo / limpar e recomeçar, com `/__collect?clean=1`). Device flow passa a aceitar **GitHub App** (client_id `Iv…`, sem scope — token fisicamente read-only com Contents: read). Clones gerenciados ganham trava de push no git (`remote.origin.pushurl=no-push`, aplicada no clone e a cada coleta) e autenticação via header Basic (`x-access-token`, compatível com PAT/OAuth/GitHub App). Coleta de PRs resiliente: retry em erros transitórios (5xx/rede) e fallback pro cache anterior quando um repo falha — um repo com erro não sai mais zerado do painel no modo completo.
+
 ## 0.25.1
 
 ### Patch Changes
