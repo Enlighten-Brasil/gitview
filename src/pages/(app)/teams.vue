@@ -3,8 +3,12 @@ import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useToast } from '@nuxt/ui/composables'
 import { onBeforeRouteLeave } from 'vue-router'
 import { collecting, startCollect } from '@/collect'
+import { stats } from '@/data'
+import { github } from '@/github'
 import { fetchGithubTeam, fetchTeamConfig, loadTeam, saveTeamConfig, team, teamLoadError } from '@/team'
-import type { GithubTeamData, TeamConfigPayload } from '@/team'
+import type { GithubTeamData, TeamConfigPayload, TeamMetrics } from '@/team'
+import DevCard from '@/components/team/DevCard.vue'
+import TeamCard from '@/components/team/TeamCard.vue'
 
 // gerência do time (era /team — alias mantém links/bookmarks)
 definePage({
@@ -185,12 +189,48 @@ function otherTeamsOf(dev: string, currentIdx: number): string[] {
     .map(t => t.name.trim())
 }
 
-/** opções do select de membros de um time — marca quem já está em outro time */
-function memberItems(currentIdx: number): { label: string, value: string, hint?: string }[] {
-  return devNames.value.map(d => {
-    const others = otherTeamsOf(d, currentIdx)
-    return { label: d, value: d, hint: others.length ? `já em: ${others.join(', ')}` : undefined }
-  })
+/** opções do add-member: exclui quem já está no time, marca quem está em outro */
+function memberAddItems(currentIdx: number): { label: string, value: string, hint?: string }[] {
+  const inTeam = new Set(teams.value[currentIdx]?.members ?? [])
+  return devNames.value
+    .filter(d => !inTeam.has(d))
+    .map((d) => {
+      const others = otherTeamsOf(d, currentIdx)
+      return { label: d, value: d, hint: others.length ? `já em: ${others.join(', ')}` : undefined }
+    })
+}
+
+// ---------------------------------------------------------------------------
+// métricas por time (total histórico — a página não segue o filtro de período)
+// ---------------------------------------------------------------------------
+/** login do GitHub -> nome canônico (github.json#users) */
+const loginToName = computed(() => {
+  const map = new Map<string, string>()
+  for (const [login, u] of Object.entries(github.value?.users ?? {}))
+    map.set(login.toLowerCase(), u.name)
+  return map
+})
+
+const authorsWithCommits = computed(() => new Set((stats.value?.perAuthor ?? []).map(a => a.author)))
+
+function metricsFor(members: string[]): TeamMetrics {
+  const set = new Set(members)
+  let commits = 0
+  let last: string | null = null
+  for (const a of stats.value?.perAuthor ?? []) {
+    if (!set.has(a.author))
+      continue
+    commits += a.commits
+    if (a.lastCommit > (last ?? ''))
+      last = a.lastCommit
+  }
+  let prs = 0
+  for (const p of github.value?.prs ?? []) {
+    const name = loginToName.value.get(p.author.toLowerCase()) ?? p.author
+    if (set.has(name))
+      prs++
+  }
+  return { devs: members.length, commits, prs, lastCommit: last }
 }
 
 function addTeam() {
@@ -198,11 +238,31 @@ function addTeam() {
 }
 
 function removeTeam(i: number) {
-  const t = teams.value[i]
-  const label = t.name.trim() || '(sem nome)'
-  if (!window.confirm(`remover o time "${label}"? a mudança só é persistida ao salvar.`))
-    return
   teams.value.splice(i, 1)
+}
+
+/** volta os rascunhos ao último estado salvo (descarta edições) */
+function revert() {
+  const saved = savedSnapshot.value
+  for (const k of Object.keys(profiles))
+    delete profiles[k]
+  for (const [name, p] of Object.entries(saved.devProfiles))
+    profiles[name] = toDraft(p)
+  teams.value = saved.teams.map(t => ({
+    name: t.name,
+    description: t.description ?? '',
+    color: t.color ?? '',
+    members: [...t.members],
+  }))
+  toast.add({ title: 'mudanças descartadas', color: 'neutral' })
+}
+
+/** badges de time de um dev com a cor vigente (rascunho do editor > team.json) */
+function teamBadgesFor(names: string[]): { name: string, color: string | null }[] {
+  return names.map((name) => {
+    const draft = teams.value.find(t => t.name.trim().toLowerCase() === name.toLowerCase())
+    return { name: draft?.name.trim() || name, color: draft?.color || team.value?.teams.find(t => t.name === name)?.color || null }
+  })
 }
 
 // guarda de navegação: avisa antes de sair da página com mudanças não salvas
@@ -219,10 +279,6 @@ function onBeforeUnload(e: BeforeUnloadEvent) {
 }
 onMounted(() => window.addEventListener('beforeunload', onBeforeUnload))
 onUnmounted(() => window.removeEventListener('beforeunload', onBeforeUnload))
-
-function teamColor(name: string): string | null {
-  return teams.value.find(t => t.name === name)?.color || team.value?.teams.find(t => t.name === name)?.color || null
-}
 
 // ---------------------------------------------------------------------------
 // importar do GitHub
@@ -328,26 +384,6 @@ const assignTarget = reactive<Record<string, string>>({})
           label="importar do GitHub"
           @click="openImport"
         />
-        <UButton
-          v-if="isDev && configLoaded"
-          icon="i-lucide-save"
-          size="sm"
-          :loading="saving"
-          :disabled="!dirty"
-          label="salvar"
-          @click="save"
-        />
-        <UTooltip v-if="isDev && configLoaded" text="salva e roda a coleta completa (recria stats/github com os novos aliases)">
-          <UButton
-            icon="i-lucide-refresh-cw"
-            color="neutral"
-            variant="soft"
-            size="sm"
-            :loading="collecting"
-            label="salvar + recoletar"
-            @click="saveAndRecollect"
-          />
-        </UTooltip>
       </div>
     </div>
 
@@ -368,139 +404,92 @@ const assignTarget = reactive<Record<string, string>>({})
       description="Rode a coleta (pnpm collect) pra gerar os dados do time."
     />
 
-    <!-- times -->
-    <section id="times" class="flex flex-col gap-3 scroll-mt-16">
-      <div class="flex items-center gap-2">
-        <h2 class="font-medium">
-          Times
-        </h2>
-        <UBadge color="neutral" variant="subtle" size="sm">
-          {{ teams.length }}
-        </UBadge>
-        <UButton
-          v-if="isDev && configLoaded"
-          icon="i-lucide-plus"
-          size="xs"
-          color="neutral"
-          variant="soft"
-          label="novo time"
-          class="ml-auto"
-          @click="addTeam"
-        />
-      </div>
-      <p v-if="!teams.length" class="text-sm text-dimmed">
-        Nenhum time ainda. Importe do GitHub ou crie manualmente.
-      </p>
-      <div class="grid gap-3 md:grid-cols-2">
-        <UCard v-for="(t, i) in teams" :key="i">
-          <div class="flex flex-col gap-2">
-            <div class="flex items-center gap-2">
-              <span
-                class="size-3 rounded-full shrink-0 border border-default"
-                :style="{ backgroundColor: t.color || 'transparent' }"
-              />
-              <UInput v-model="t.name" :disabled="!isDev" placeholder="nome do time" size="sm" class="flex-1" />
-              <UButton
-                v-if="isDev"
-                icon="i-lucide-trash-2"
-                color="error"
-                variant="ghost"
-                size="xs"
-                aria-label="remover time"
-                @click="removeTeam(i)"
-              />
-            </div>
-            <div class="flex items-center gap-2">
-              <UInput v-model="t.color" :disabled="!isDev" placeholder="#8b5cf6" size="xs" class="w-24 font-mono" />
-              <UInput v-model="t.description" :disabled="!isDev" placeholder="descrição (opcional)" size="xs" class="flex-1" />
-            </div>
-            <USelectMenu
-              v-model="t.members"
-              :items="memberItems(i)"
-              multiple
-              :disabled="!isDev"
-              placeholder="membros…"
-              size="sm"
-              class="w-full"
-              value-key="value"
-            />
-            <div class="flex flex-wrap gap-1">
-              <UBadge v-for="m in t.members" :key="m" color="neutral" variant="soft" size="sm">
-                {{ m }}
-              </UBadge>
-            </div>
-          </div>
-        </UCard>
-      </div>
-    </section>
-
-    <!-- devs -->
-    <section id="devs" class="flex flex-col gap-3 scroll-mt-16">
-      <div class="flex items-center gap-2">
-        <h2 class="font-medium">
-          Devs
-        </h2>
-        <UBadge color="neutral" variant="subtle" size="sm">
-          {{ devs.length }}
-        </UBadge>
+    <!-- skeleton enquanto o team.json chega (senão o vazio parece "sem time") -->
+    <div v-if="!team && !teamLoadError" class="flex flex-col gap-6" aria-busy="true">
+      <div class="grid gap-4 md:grid-cols-2">
+        <USkeleton v-for="i in 4" :key="i" class="h-48 rounded-lg" />
       </div>
       <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        <UCard v-for="d in devs" :key="d.name">
-          <div class="flex flex-col gap-2">
-            <div class="flex items-start gap-2">
-              <div class="min-w-0">
-                <div class="font-medium truncate">
-                  {{ d.name }}
-                  <UBadge v-if="d.bot" color="warning" variant="subtle" size="xs" class="ml-1">
-                    bot
-                  </UBadge>
-                </div>
-                <div v-if="profiles[d.name]?.title || d.title" class="text-xs text-primary truncate">
-                  {{ profiles[d.name]?.title || d.title }}
-                </div>
-                <div v-if="profiles[d.name]?.description || d.description" class="text-xs text-dimmed line-clamp-2">
-                  {{ profiles[d.name]?.description || d.description }}
-                </div>
-              </div>
-              <UButton
-                v-if="isDev && configLoaded"
-                icon="i-lucide-pencil"
-                color="neutral"
-                variant="ghost"
-                size="xs"
-                class="ml-auto shrink-0"
-                aria-label="editar perfil"
-                @click="openEdit(d.name)"
-              />
-            </div>
-            <div class="flex flex-wrap gap-1">
-              <UBadge
-                v-for="t in d.teams"
-                :key="t"
-                variant="soft"
-                size="xs"
-                :style="teamColor(t) ? { backgroundColor: `${teamColor(t)}22`, color: teamColor(t)! } : {}"
-              >
-                {{ t }}
-              </UBadge>
-            </div>
-            <div class="text-xs text-dimmed flex flex-col gap-0.5">
-              <span v-if="d.githubLogins.length" class="truncate">
-                <UIcon name="i-lucide-github" class="inline size-3 align-text-top" />
-                {{ d.githubLogins.join(', ') }}
-              </span>
-              <span v-if="d.emails.length" class="truncate">
-                <UIcon name="i-lucide-mail" class="inline size-3 align-text-top" />
-                {{ d.emails.join(', ') }}
-              </span>
-            </div>
-          </div>
-        </UCard>
+        <USkeleton v-for="i in 6" :key="i" class="h-28 rounded-lg" />
       </div>
-    </section>
+    </div>
 
-    <!-- candidatos -->
-    <section v-if="candidates.length" id="sem-mapeamento" class="flex flex-col gap-3 scroll-mt-16">
+    <template v-else>
+      <!-- times -->
+      <section id="times" class="flex flex-col gap-3 scroll-mt-16">
+        <div class="flex items-center gap-2">
+          <h2 class="font-medium">
+            Times
+          </h2>
+          <UBadge color="neutral" variant="subtle" size="sm">
+            {{ teams.filter(t => t.name.trim()).length }}
+          </UBadge>
+          <UButton
+            v-if="isDev && configLoaded"
+            icon="i-lucide-plus"
+            size="xs"
+            color="neutral"
+            variant="soft"
+            label="novo time"
+            class="ml-auto"
+            @click="addTeam"
+          />
+        </div>
+        <div class="grid gap-4 md:grid-cols-2">
+          <TeamCard
+            v-for="(t, i) in teams"
+            :key="i"
+            :team="t"
+            :items="memberAddItems(i)"
+            :metrics="metricsFor(t.members)"
+            :disabled="!isDev || !configLoaded"
+            @remove="removeTeam(i)"
+          />
+          <button
+            v-if="isDev && configLoaded && !teams.length"
+            class="flex min-h-40 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-default text-sm text-dimmed hover:border-primary hover:text-primary transition-colors cursor-pointer"
+            @click="addTeam"
+          >
+            <UIcon name="i-lucide-plus" class="size-6" />
+            criar o primeiro time
+          </button>
+          <p v-if="!teams.length && !(isDev && configLoaded)" class="text-sm text-dimmed">
+            Nenhum time cadastrado.
+          </p>
+        </div>
+      </section>
+
+      <!-- devs -->
+      <section id="devs" class="flex flex-col gap-3 scroll-mt-16">
+        <div class="flex items-center gap-2">
+          <h2 class="font-medium">
+            Devs
+          </h2>
+          <UBadge color="neutral" variant="subtle" size="sm">
+            {{ devs.filter(d => !d.bot).length }}
+          </UBadge>
+          <span class="text-xs text-dimmed">nomes unificados pelos aliases; edite o perfil pra cadastrá-los</span>
+        </div>
+        <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <DevCard
+            v-for="d in devs"
+            :key="d.name"
+            :name="d.name"
+            :title="profiles[d.name]?.title || d.title"
+            :description="profiles[d.name]?.description || d.description"
+            :emails="profiles[d.name] ? splitList(profiles[d.name].emails) : d.emails"
+            :github-logins="profiles[d.name] ? splitList(profiles[d.name].githubLogins) : d.githubLogins"
+            :team-badges="teamBadgesFor(d.teams)"
+            :bot="d.bot"
+            :has-profile="authorsWithCommits.has(d.name)"
+            :editable="isDev && configLoaded && !d.bot"
+            @edit="openEdit(d.name)"
+          />
+        </div>
+      </section>
+
+      <!-- candidatos: identidades dos dados sem alias cadastrado -->
+      <section v-if="candidates.length" id="sem-mapeamento" class="flex flex-col gap-3 scroll-mt-16">
       <div class="flex items-center gap-2">
         <h2 class="font-medium">
           Sem mapeamento
@@ -543,7 +532,53 @@ const assignTarget = reactive<Record<string, string>>({})
           </template>
         </div>
       </div>
-    </section>
+      </section>
+    </template>
+
+    <!-- gravação: barra sticky no rodapé do painel -->
+    <div
+      v-if="isDev && configLoaded"
+      class="sticky bottom-0 z-10 mt-2 flex items-center gap-2 rounded-xl border border-default bg-default/85 dark:bg-elevated/85 backdrop-blur px-3 py-2 shadow-lg"
+    >
+      <UIcon
+        :name="dirty ? 'i-lucide-circle-dot' : 'i-lucide-circle-check'"
+        class="size-4 shrink-0"
+        :class="dirty ? 'text-warning' : 'text-success'"
+      />
+      <span class="text-xs text-dimmed">
+        {{ dirty ? 'alterações não salvas (só nesta máquina até salvar)' : 'tudo salvo em team.local.json' }}
+      </span>
+      <div class="ml-auto flex items-center gap-2">
+        <UButton
+          v-if="dirty"
+          label="desfazer"
+          size="xs"
+          color="neutral"
+          variant="ghost"
+          :disabled="saving || collecting"
+          @click="revert"
+        />
+        <UButton
+          icon="i-lucide-save"
+          size="xs"
+          :loading="saving"
+          :disabled="!dirty"
+          label="salvar"
+          @click="save"
+        />
+        <UTooltip text="salva e roda a coleta completa (recria stats/github com os novos aliases)">
+          <UButton
+            icon="i-lucide-refresh-cw"
+            color="neutral"
+            variant="soft"
+            size="xs"
+            :loading="collecting"
+            label="salvar + recoletar"
+            @click="saveAndRecollect"
+          />
+        </UTooltip>
+      </div>
+    </div>
 
     <!-- modal editar perfil -->
     <UModal :open="editing != null" :title="`perfil de ${editing ?? ''}`" @update:open="(v: boolean) => { if (!v) editing = null }">
@@ -557,9 +592,19 @@ const assignTarget = reactive<Record<string, string>>({})
           </UFormField>
           <UFormField label="e-mails de commit" description="separados por vírgula — unifica nomes diferentes do mesmo dev no git">
             <UTextarea v-model="draft.emails" placeholder="a@b.com, c@d.com" :rows="2" class="w-full font-mono text-xs" />
+            <div v-if="splitList(draft.emails).length" class="flex flex-wrap gap-1 mt-1.5">
+              <UBadge v-for="e in splitList(draft.emails)" :key="e" color="neutral" variant="soft" size="xs" class="font-mono">
+                {{ e }}
+              </UBadge>
+            </div>
           </UFormField>
           <UFormField label="logins do GitHub" description="separados por vírgula — unifica logins do mesmo dev em PRs">
             <UTextarea v-model="draft.githubLogins" placeholder="login1, login2" :rows="2" class="w-full font-mono text-xs" />
+            <div v-if="splitList(draft.githubLogins).length" class="flex flex-wrap gap-1 mt-1.5">
+              <UBadge v-for="l in splitList(draft.githubLogins)" :key="l" color="neutral" variant="soft" size="xs" class="font-mono">
+                {{ l }}
+              </UBadge>
+            </div>
           </UFormField>
         </div>
       </template>

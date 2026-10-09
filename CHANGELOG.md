@@ -1,5 +1,18 @@
 # gitview
 
+## 0.34.0
+
+### Minor Changes
+
+- feat(/teams): editor de times reformulado — cards com métricas, chips de membro e barra de gravação
+  
+  - Times como cards: avatar de iniciais com a cor do time, nome/descrição inline, paleta de cor em popover (+ hex custom, "sem cor"), membros como chips removíveis e combobox de adição com busca (hint "já em: outro time"; já-marcados saem da lista); remoção com confirmação inline (sem `window.confirm`)
+  - **Métricas por time** direto dos dados coletados: devs, commits e PRs (total histórico, o mesmo do ranking — a página não segue o filtro de período, conforme `meta.filters: none`) + "último commit há X"
+  - Devs como cards com avatar colorido por nome, cargo/descrição, badges de time com a cor vigente, contagem de aliases (completo no tooltip) e link para o perfil de commits quando o dev tem dados; bots sem botão de edição
+  - **Barra sticky de gravação**: status salvo/não salvo, *desfazer* (volta ao último snapshot), *salvar* e *salvar + recoletar*; botões de salvar saem do cabeçalho
+  - Skeleton enquanto o `team.json` carrega (o vazio não parece mais "sem time"); preview em chips dos e-mails/logins no modal de perfil
+  - helpers de avatar (`initialsOf`/`avatarBgClass`) exportados de `src/team.ts`; tipos compartilhados `TeamDraft`/`TeamMetrics`
+
 ## 0.33.0
 
 ### Minor Changes
