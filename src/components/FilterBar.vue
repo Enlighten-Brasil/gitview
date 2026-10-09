@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { filters, isCustomRange, stats } from '../data'
+import { filters, isCustomRange, stats } from '@/data'
 
 const route = useRoute()
 
-// período vale em todas as rotas; repos/devs só fazem sentido no dashboard;
-// o switch de bots não aparece na página de um dev específico
-const onDashboard = computed(() => route.path === '/')
-const onDevPage = computed(() => route.path.startsWith('/dev/'))
+// escopo por rota (route.meta.filters): período vale em todas as rotas de
+// dados; repos/devs só no escopo 'full'; o switch de bots some em 'period'
+// (página de um dev específico não tem o que incluir/excluir de bot)
+type FilterScope = 'full' | 'period' | 'period-bots' | 'none'
+const scope = computed<FilterScope>(() => (route.meta.filters as FilterScope | undefined) ?? 'none')
+const showReposDevs = computed(() => scope.value === 'full')
+const showBots = computed(() => scope.value === 'full' || scope.value === 'period-bots')
 
 const ranges = [
   { label: '1M', months: 1 },
@@ -105,11 +108,11 @@ function clearList(list: ListKey) {
         <span class="text-dimmed text-xs">→</span>
         <UInput v-model="filters.dateTo" type="date" size="xs" class="flex-1" />
       </div>
-      <USwitch v-if="!onDevPage" v-model="filters.showBots" label="incluir bots" size="sm" class="mt-1" />
+      <USwitch v-if="showBots" v-model="filters.showBots" label="incluir bots" size="sm" class="mt-1" />
     </section>
 
-    <!-- repos e devs só fazem sentido no dashboard -->
-    <template v-if="onDashboard">
+    <!-- repos e devs só no escopo 'full' (dashboard e seções agregadas) -->
+    <template v-if="showReposDevs">
       <USeparator />
 
       <section class="flex flex-col gap-2">

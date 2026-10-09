@@ -34,9 +34,30 @@ Limpeza: `scripts/lib/clean.ts` (`cleanLocalData`) apaga banco + `public/data/*.
 
 `scripts/lib/github.ts` centraliza o acesso HTTP à API do GitHub (coletores **e** setup): `getToken()` (`GITVIEW_GITHUB_TOKEN` do `.env`/shell → `gh auth token`; o **gh CLI é ponte opcional**, ninguém precisa dele instalado pra coletar), REST (`ghApi`/`ghApiAll` — path com `/` inicial), `ghGraphql`, `currentUser`, `listOrgs`, `listOrgMembers`/`listOrgTeams`, `listOrgRepos`/`listUserRepos` e o **device flow** (`deviceStart`/`devicePoll`, sem client secret). O device flow aceita **GitHub App** (client_id `Iv…` — sem scope, o token herda as permissões do app; recomendado: *Contents read-only* = token fisicamente read-only) e **OAuth App** (`Ov…`/hex — scope `repo read:org`, read+write; mitigado pelo `denyPush`). O `cloneBare`/`fetchRepo` autenticam via `gitAuthEnv` (Basic `x-access-token` serve pra PAT/OAuth/GitHub App), sem gravar segredo em disco.
 
+### Rotas (vue-router 5 file-based)
+
+`src/pages/` gera as rotas (plugin `vue-router/vite` no vite.config, **antes** do `vue()`). Nomes de rota = caminho de arquivo sem os grupos `(app)/(dashboard)` (`getRouteName` custom; `/devs/[name]` etc.) — o mapa tipado `src/route-map.d.ts` é **gerado e commitado** (typecheck sem dev run). Layouts aninhados via `_parent.vue`:
+
+```
+pages/
+├── (app)/_parent.vue            shell: rail + navbar + coleta · meta.requiresData
+│   ├── (dashboard)/_parent.vue  faixa de abas (links p/ rotas) · section/filtros herdados
+│   │   ├── index.vue  /          devs.vue  /devs   health.vue  /health
+│   ├── devs/[name].vue           alias /dev/:name
+│   ├── repos/index.vue  /repos   repos/[name].vue  /repos/:name (alias /repo/:name)
+│   ├── prs.vue · releases.vue · teams.vue (/teams, alias /team)
+│   └── settings/  (index · repos · account)     requiresServer
+├── setup/  (_parent onboarding · index · github · repos · collect)
+└── [...path].vue                 404
+```
+
+- **`route.meta` é o contrato** (tipado em `src/router/meta.ts`): `requiresData` (sem dados → guard manda `/setup`), `onboarding` (com dados → `/settings`; sem auth → passo 1), `requiresServer` (build estático → fora), `setupStep` (2/3 exigem auth; 3 exige seleção no sessionStorage), `section` (rail/painel contextual), `filters` (`full|period|period-bots|none` — o que a sidebar E a URL carregam), `title` (navbar). `definePage()` não aceita guards → tudo vive em `src/router/guards.ts`.
+- Guard global (`beforeEach`): 0) legado `/?tab=prs|repos|team|health` → rotas novas preservando query; 1) boot único (`ensureBoot` = loadStats 1×; splash no App.vue enquanto `router.isReady`); 2–5) regras do meta acima. `resetBoot()` é chamado depois de coletar no wizard / apagar dados / limpar (senão a navegação seguinte herdaria "sem dados" do boot antigo).
+- HMR de rotas: `handleHotUpdate(router)` em `src/router/index.ts`. Scroll: `src/router/scroll.ts` (afterEach — o container é o body do painel, não a janela; âncoras com retry porque ECharts atrasa o layout). `base: '/'` + `createWebHistory` — deep links exigem SPA fallback no servidor que servir o dist.
+
 ### Setup pela UI (dev only)
 
-`scripts/setup-plugin.ts` é um plugin Vite (`apply: 'serve'`) que alimenta a rota `/setup` (`views/SetupView.vue` + `src/setup.ts`). A página tem **2 modos**: sem dados é o **wizard de 3 passos** (conectar GitHub → escolher org/repos → clonar e coletar); com dados cai direto numa tela **Configurações** (chips dos repos atuais + gerenciar repositórios, manutenção — recoletar/limpar, conta GitHub — trocar de conta). Gerenciar repos abre a lista pré-selecionada com os repos atuais (badge "atual"); desmarcar um atual mostra alerta de remoção e o apply apaga o clone do disco. Endpoints (todos dev only):
+`scripts/setup-plugin.ts` é um plugin Vite (`apply: 'serve'`) que alimenta o **wizard** `pages/setup/*` (rota `/setup/github|repos|collect`) e a tela de **Configurações** `pages/settings/*` (`/settings`, `/settings/repos`, `/settings/account`) — os componentes compartilhados vivem em `src/components/setup/` (`GithubConnect.vue` device flow+PAT+gh / `RepoPicker.vue` escolha de repos / `RunLog.vue` progresso SSE). Sem dados: wizard de 3 passos; com dados: `/setup/*` cai em `/settings` (guard). Gerenciar repos abre a lista pré-selecionada com os repos atuais (badge "atual"); desmarcar um atual mostra alerta de remoção e o apply apaga o clone do disco. A seleção do passo 2 sobrevive a F5 via `src/wizard.ts` (sessionStorage). Endpoints (todos dev only):
 
 - `GET /__setup/status` — auth (user + fonte do token), `oauthConfigured`, `reposRoot`, repos gerenciados, `hasData`. Sondado a cada 5s enquanto a tela de auth está aberta (detecta `gh auth login` e troca de conta — volta às configurações quando o login muda).
 - `GET /__auth/device` — inicia o device flow (só se `GITVIEW_GITHUB_CLIENT_ID` no `.env`); `POST /__auth/device/poll` — conclui e grava o token no `.env`. **Ordem importa**: o poll é registrado ANTES no connect, que casa middleware por prefixo (`/__auth/device` engoliria `/poll`).
@@ -47,13 +68,13 @@ Limpeza: `scripts/lib/clean.ts` (`cleanLocalData`) apaga banco + `public/data/*.
 - `GET /__team/github` — membros + times da org (`githubOrg`) via REST (para importar). Requer token com `read:org`; falha parcial (ex.: sem permissão → times vazio) vem no campo `warnings` (a UI mostra no modal de import).
 - `GET/POST /__team/config` — lê/grava `devProfiles` + `teams` no `team.local.json` (sanitização de payload em `sanitizeDevProfiles`/`sanitizeTeams`).
 
-### Time pela UI (rota `/team`)
+### Time pela UI (rota `/teams`)
 
-`views/TeamView.vue` + `src/team.ts`: página fora do dashboard pra gerenciar **times** (nome, descrição, cor, membros) e **perfis de devs** (título, descrição, e-mails de commit, logins do GitHub extras). Persiste em `team.local.json` via `/__team/config` (só a máquina — dados de gestão não versionados). Botão **importar do GitHub** traz times e membros da org (`/__team/github`); times importados resolvem logins→devs pelos aliases já mapeados. A seção **Sem mapeamento** lista autores do git e logins do GitHub vistos nos dados sem alias (do `team.json#candidates`) e associa a um dev — a unificação vale na coleta seguinte (`resolveAliases`). "Salvar + recoletar" roda a coleta completa (`startCollect(true)`) pra reescrever stats/github com os novos nomes — só se o salvar der certo. No build estático a página é somente leitura (endpoints dev only) — devs **e times** são renderizados do `team.json` (times entram no editor via seed no `onMounted`, já que `/__team/config` não existe). Bot de perfil não entra em `devNames` (não é alvo de associação).
+`pages/(app)/teams.vue` + `src/team.ts`: página fora do dashboard pra gerenciar **times** (nome, descrição, cor, membros) e **perfis de devs** (título, descrição, e-mails de commit, logins do GitHub extras). Persiste em `team.local.json` via `/__team/config` (só a máquina — dados de gestão não versionados). Botão **importar do GitHub** traz times e membros da org (`/__team/github`); times importados resolvem logins→devs pelos aliases já mapeados. A seção **Sem mapeamento** lista autores do git e logins do GitHub vistos nos dados sem alias (do `team.json#candidates`) e associa a um dev — a unificação vale na coleta seguinte (`resolveAliases`). "Salvar + recoletar" roda a coleta completa (`startCollect(true)`) pra reescrever stats/github com os novos nomes — só se o salvar der certo. No build estático a página é somente leitura (endpoints dev only) — devs **e times** são renderizados do `team.json` (times entram no editor via seed no `onMounted`, já que `/__team/config` não existe). Bot de perfil não entra em `devNames` (não é alvo de associação).
 
-Gate de primeira execução: `App.vue` redireciona `/` → `/setup` quando o `stats.json` dá 404 em dev; sidebar de filtros é oculta nas rotas `/setup` e `/team`. Botões no navbar: 👥 `/team` (também no build estático) e ⚙ `/setup` (dev only). O passo 1 de auth oferece device flow (com Client ID no `.env`), colar PAT ou a ponte do `gh auth login` (detectado via sonda).
+Gate de primeira execução: o guard global exige `requiresData` — sem `stats.json`, **toda** rota de dados cai no wizard (`/setup`), que renderiza sem rail/navbar; splash no `App.vue` cobre o boot (loadStats 1× aguardado pelo guard). A seção Config (⚙) da rail só aparece em dev. O passo 1 de auth (`/setup/github`) oferece device flow (com Client ID no `.env`), colar PAT ou a ponte do `gh auth login` (detectado via sonda).
 
-A tela Configurações tem o card **Manutenção dos dados locais** com 3 ações: *recoletar tudo* (`startCollect(true)`), *limpar e recoletar* (wipe + full, `startCollect(false, true)` via `/__collect?clean=1`) e *apagar dados* (confirmação inline com checkbox de clones → `/__clean`; sem dados o gate leva de volta ao wizard).
+A tela **Configurações** (`/settings`, com dados) tem o card **Manutenção dos dados locais** com 3 ações: *recoletar tudo* (`startCollect(true)`), *limpar e recoletar* (wipe + full, `startCollect(false, true)` via `/__collect?clean=1`) e *apagar dados* (confirmação inline com checkbox de clones → `/__clean`, `stats.value = null` + `resetBoot()` + `router.replace('/setup')` — sem reload).
 
 ### Coleta pela UI (dev only)
 
@@ -87,25 +108,29 @@ pnpm version:packages   # aplicar changesets (bumps + CHANGELOG)
 - `data.ts` — filtros globais (`filters`), agregações filtradas (monthly/weekly/heatmap/types), totais + delta (`previousTotals`), ritmo (`pace`), burnout, off-hours por período.
 - `github.ts` — PRs filtrados, aging, cycle time (mediana geral/por repo/tendência 6M), reviews por dev e concentração por repo, merge sem review.
 - `releases.ts` — loader do releases.json + métricas (dias desde última release, cadência).
-- `urlState.ts` — aba + filtros na query string (`?tab=&range=&from=&to=&repos=&devs=&bots=`), replaceState, popstate com reset, sanitização, fallback localStorage. **Escopo por rota**: tab/repos/devs só no dashboard (`/`); período (range/from/to) + bots também em `/dev/:name` e `/repo/:name`; demais rotas (ex.: `/setup`) são ignoradas. Navegação por link preserva o contexto (afterEach aplica os params presentes sem resetar e regrava a query da rota).
+- `urlState.ts` — filtros na query string (`?range=&from=&to=&repos=&devs=&bots=`), replaceState, popstate com reset, sanitização, fallback localStorage. **Escopo por rota** (`route.meta.filters`): `full` (abas do dashboard, `/prs`, `/repos` — tudo) | `period` (`/devs/:name` — só período) | `period-bots` (`/repos/:name`) | `none` (setup/settings/404 — não atua). As abas do dashboard são rotas próprias desde 0.33; o `?tab=` legado é resolvido pelo guard, não aqui. Navegação por link preserva o contexto (afterEach aplica os params presentes sem resetar e regrava a query da rota).
 - `summary.ts` — resumo semanal exportável (markdown da última semana ISO fechada vs anterior). **Ignora os filtros da sidebar e sempre exclui bots** — é relatório do time inteiro, pra reunião. UI: `components/WeeklySummary.vue` (slideover com copiar/baixar .md, botão no navbar).
 - `chartTheme.ts` — tema ECharts com conversão oklch→hex (proxy `ct`).
 - `echarts.ts` — registro central dos módulos ECharts usados (`echarts/core` + `use([...])`). Só `ChartPanel.vue` (o único componente com gráfico) importa isso + `VChart` — echarts entra apenas nos chunks das rotas que renderizam gráficos.
-- `main.ts` — rotas com `defineAsyncComponent` + dynamic import (code-split por rota; só `/` puxa echarts). `vite-env.d.ts` dá o shim `*.vue` pro `tsc` dos scripts.
-- `setup.ts` — cliente do setup: status/auth device flow/orgs/repos e SSE do `/__setup/apply` (`startSetupApply(org, repos, { dry?, remove? })`, refs `setupApplying/setupLog/setupError/setupDone`). Só existe em dev.
-- `views/` — `DashboardView` (5 abas: Visão geral, Time, Saúde, Repos, Pull requests), `DevView` (`/dev/:name`), `RepoView` (`/repo/:name`), `SetupView` (`/setup`, dev only — wizard de onboarding + tela de configurações), `TeamView` (`/team` — perfis/aliases/times; edição dev only).
-- `components/` — um componente por painel; tabelas usam a classe `.data-table` (ver `main.css`).
-- `App.vue` — navbar com badge de frescor dos dados (`dataAge`: warning após 24h sem coleta), botão do resumo semanal, coleta (dev only) e ⚙ setup (dev only); gate que redireciona para `/setup` na primeira execução sem dados.
+- `main.ts` — cria o app, usa o `router` de `src/router/` e o plugin Vue do Nuxt UI; o code-split por rota vem do `importMode: async` do file-based routing (só `/` puxa echarts). `vite-env.d.ts` dá o shim `*.vue` pro `tsc` dos scripts.
+- `router/` — `index.ts` (createRouter + `routes` de `vue-router/auto-routes` + `handleHotUpdate`), `guards.ts` (boot único + regras do meta + status cacheado do setup + `serverMode`), `scroll.ts`, `meta.ts` (augmentation do `RouteMeta`).
+- `nav.ts` — mapa da navegação two-pane (seções/subs com `to`/`hash`); a seção ativa vem de `route.meta.section`.
+- `wizard.ts` — seleção do passo 2 do onboarding persistida em sessionStorage (sobrevive a F5/voltar).
+- `setup.ts` — cliente do setup: status/auth device flow/PAT/logout/orgs/repos e SSE do `/__setup/apply` (`startSetupApply(org, repos, { dry?, remove? })`, refs `setupApplying/setupLog/setupError/setupDone`). Só existe em dev.
+- `pages/` — rotas por arquivo (ver seção Rotas): `(app)/` shell com `(dashboard)/` (índice = Visão geral, `devs.vue` = Equipe, `health.vue` = Saúde), `devs/[name].vue`, `repos/index + [name]`, `prs.vue`, `releases.vue`, `teams.vue` (edição dev only), `settings/` (dev only), `setup/` (dev only), `[...path].vue` 404.
+- `components/` — um componente por painel; tabelas usam a classe `.data-table` (ver `main.css`); `components/setup/` agrupa GithubConnect/RepoPicker/RunLog (wizard + settings).
+- `App.vue` — só `UApp` + splash enquanto `router.isReady` + `<RouterView/>`; o shell (navbar com badge de frescor `dataAge`, resumo semanal, coleta ⚙/↻ dev-only) é `pages/(app)/_parent.vue`.
 
 ## Regras dos filtros (importante pra não "corrigir" o que é intencional)
 
 - Filtro de período: presets (1/3/6/12/24M, Tudo) **ou** range custom `dateFrom/dateTo` (YYYY-MM-DD, prevalece sobre preset, corta **por mês inteiro** — a agregação é mensal/semanal). Delta dos cards é omitido em range custom e em "Tudo".
 - Janelas fixas intencionais (ignoram o período, estão rotuladas no rodapé): Ritmo (4 vs 8 semanas), BurnoutWatch (8 semanas), Tendência de cycle time (6 meses), PRs abertos ("agora"), Ranking do time (histórico completo).
-- **Páginas `/dev/:name` e `/repo/:name` respeitam o filtro de período** (desde 0.27.0): cards de commits/linhas/devs, gráficos, PRs mergeados, cycle time, reviews e lista de commits ficam restritos ao período; "Tudo" = histórico completo. Ficam fora do período por decisão: dias ativos/streak/repos (rotulados `(total)`), PRs abertos ("agora") e releases (marcos). Heatmap de horários em "Tudo" cobre no máximo 24M (limite da agregação). Na sidebar, essas rotas mostram **só o seletor de período** (+ switch de bots em `/repo`, que passa a valer para commits/tipos/PRs do repo).
+- **Páginas `/devs/:name` e `/repos/:name` respeitam o filtro de período** (desde 0.27.0): cards de commits/linhas/devs, gráficos, PRs mergeados, cycle time, reviews e lista de commits ficam restritos ao período; "Tudo" = histórico completo. Ficam fora do período por decisão: dias ativos/streak/repos (rotulados `(total)`), PRs abertos ("agora") e releases (marcos). Heatmap de horários em "Tudo" cobre no máximo 24M (limite da agregação). Na sidebar, essas rotas mostram **só o seletor de período** (+ switch de bots em `/repos/:name`, que passa a valer para commits/tipos/PRs do repo).
+- `/prs` e `/repos` (índice) usam o escopo `full` de filtros — visíveis na sidebar **e** na URL (decisão 0.33: escondê-los mas aplicá-los era a fonte de "filtro fantasma").
 - Thresholds dos painéis de Saúde estão documentados no rodapé de cada card.
 
 ## Validação
 
 - Validar no Chrome via chrome-devtools MCP em `http://localhost:5173`. O modelo não lê imagens — validar por DOM/`evaluate_script` (textos, tabelas, valores) e checar console.
-- Tabs do Reka UI **não respondem a `.click()` sintético** — usar o `click` real do MCP com o uid do snapshot, ou navegar pela URL (`?tab=...`).
+- Tabs do Reka UI **não respondem a `.click()` sintético** — usar o `click` real do MCP com o uid do snapshot, ou navegar pela URL (`/devs`, `/health`…).
 - Não há suite de testes; `pnpm build` (vite) é o check de compilação, `pnpm typecheck` o de tipos (templates `.vue` ficam fora — shim manual em `src/vite-env.d.ts`), `pnpm check:data` o dos dados gerados (já roda no fim do `pnpm collect` e como 5º passo do `/__collect`).

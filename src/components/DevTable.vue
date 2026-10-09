@@ -7,7 +7,7 @@ const router = useRouter()
 
 /** clique na linha abre a página dedicada do dev */
 function openDev(author: string) {
-  router.push({ name: 'dev', params: { name: author } })
+  router.push({ name: '/devs/[name]', params: { name: author } })
 }
 
 type Key = 'commits' | 'additions' | 'deletions' | 'repos' | 'activeDays' | 'lastCommit' | 'streak'

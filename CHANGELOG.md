@@ -1,5 +1,20 @@
 # gitview
 
+## 0.33.0
+
+### Minor Changes
+
+- feat: rotas por pastas (vue-router 5 file-based), guard de dados e setup/settings aninhados
+  
+  - `vue-router/vite` gera as rotas de `src/pages/` (layouts aninhados `_parent.vue`, route groups `(app)`/`(dashboard)`, `definePage` com meta tipado em `src/router/meta.ts`); mapa commitado em `src/route-map.d.ts` + `handleHotUpdate`
+  - **Abas viram rotas**: `/` (Visão geral), `/devs` (Equipe), `/health` (Saúde); hierarquia `/devs/:name` e `/repos/:name` (aliases legados `/dev/:name`, `/repo/:name`, `/team` preservam links antigos; `/?tab=` vira redirect no guard)
+  - **Gate de dados no guard global** (`src/router/guards.ts`): boot único do `stats.json` antes de qualquer rota `requiresData`; sem dados cai no wizard; com dados `/setup/*` → `/settings`; passos do wizard validam auth/seleção; splash no App.vue durante o boot; rotas de config bloqueadas no build estático (`requiresServer`)
+  - **Setup/settings em rotas**: wizard em `/setup/github|repos|collect` (seleção sobrevive a F5 via sessionStorage) e `/settings` com Geral/Repositórios/Conta; componentes `GithubConnect`/`RepoPicker`/`RunLog` compartilhados
+  - Navegação/filtros guiados por `route.meta` (seção da rail, escopo `filters` `full|period|period-bots|none`): `/prs` e `/repos` passam a **mostrar e sincronizar** os filtros que já aplicavam escondidos ("filtro fantasma") — URL compartilha o estado; `activeTab`/`?tab=` sai do urlState
+  - `base: '/'` + alias `@` (tsconfig/vite); `App.vue` só casarota; scroll do painel moveu p/ `router/scroll.ts`; página 404 `pages/[...path].vue`
+  - Fix: RepoPicker refaz a pré-seleção quando o status chega depois da lista de repos (corrida de montagem; /settings/repos abria sem seleção)
+  - Fix: card "apagar dados" limpa o estado na memória e volta ao wizard sem reload; releases.vue agora lista vazio/loading e linka os repos
+
 ## 0.32.0
 
 ### Minor Changes

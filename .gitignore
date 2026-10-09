@@ -9,7 +9,7 @@ components.d.ts
 
 screenshot-*.png
 config.local.json*
-dev-server.log
+dev-server*.log
 
 # config de máquina (segredo) e config de time — regeneráveis só via setup/UI
 .env

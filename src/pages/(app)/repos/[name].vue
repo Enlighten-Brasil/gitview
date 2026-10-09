@@ -2,11 +2,20 @@
 import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import type { EChartsOption } from 'echarts'
-import { filters, inRange, isBot, isCustomRange, rangeLabel, stats } from '../data'
-import { fmtDuration, ghIsBot, github, median } from '../github'
-import { daysSinceLastRelease, loadReleases, releases, repoRelease } from '../releases'
-import { axisLabel, ct, legendText, splitLine, tooltipBase } from '../chartTheme'
-import ChartPanel from '../components/ChartPanel.vue'
+import { filters, inRange, isBot, isCustomRange, rangeLabel, stats } from '@/data'
+import { fmtDuration, ghIsBot, github, median } from '@/github'
+import { daysSinceLastRelease, loadReleases, releases, repoRelease } from '@/releases'
+import { axisLabel, ct, legendText, splitLine, tooltipBase } from '@/chartTheme'
+import ChartPanel from '@/components/ChartPanel.vue'
+
+// rota de detalhe do repo (era /repo/:name — alias mantém os links antigos)
+definePage({
+  alias: '/repo/:name',
+  meta: {
+    section: 'repos',
+    filters: 'period-bots',
+  },
+})
 
 const route = useRoute()
 const repo = computed(() => String(route.params.name ?? ''))
@@ -189,7 +198,7 @@ function fmtDate(iso: string): string {
     <!-- cabeçalho -->
     <div class="flex items-center gap-3 flex-wrap">
       <UButton
-        to="/?tab=repos"
+        to="/repos"
         icon="i-lucide-arrow-left"
         color="neutral"
         variant="ghost"

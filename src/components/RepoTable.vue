@@ -69,7 +69,7 @@ function unreleasedColor(n: number | null): string {
 }
 
 function open(repo: string) {
-  router.push(`/repo/${encodeURIComponent(repo)}`)
+  router.push({ name: '/repos/[name]', params: { name: repo } })
 }
 </script>
 

@@ -4,42 +4,50 @@
  * - rail primária (56px, ícones + rótulo minúsculo): seções globais
  * - painel contextual (220px): sub-itens da seção ativa + filtros (quando couber)
  * O painel contextual é recolhível (botão « no header), persistido em localStorage.
+ * A seção ativa vem de route.meta.section; sub-itens são rotas ou âncoras.
  */
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { NAV_BOTTOM, NAV_SECTIONS, sectionFor } from '../nav'
-import { activeTab } from '../urlState'
+import { NAV_BOTTOM, NAV_SECTIONS } from '@/nav'
+import { serverMode } from '@/router/guards'
 import FilterBar from './FilterBar.vue'
 
 const route = useRoute()
-const section = computed(() => sectionFor(route.path))
+const sectionKey = computed(() => route.meta.section ?? null)
+const section = computed(() =>
+  [...NAV_SECTIONS, NAV_BOTTOM].find(s => s.key === sectionKey.value) ?? null,
+)
 
 // recolher o painel contextual (a rail fica sempre visível)
 const CONTEXT_KEY = 'gitview:contextCollapsed'
 const contextCollapsed = ref(localStorage.getItem(CONTEXT_KEY) === '1')
 watch(contextCollapsed, v => localStorage.setItem(CONTEXT_KEY, v ? '1' : '0'))
 
-function subLink(s: { tab?: string, hash?: string }): Record<string, string> {
-  if (s.tab)
-    return { path: '/', query: { tab: s.tab } }
-  if (s.hash)
-    return { path: route.path, hash: `#${s.hash}` }
-  return { path: route.path }
+function subLink(s: { to?: string, hash?: string }) {
+  if (s.to)
+    return { path: s.to }
+  return { path: route.path, hash: s.hash ? `#${s.hash}` : undefined }
 }
 
-function isSubActive(s: { tab?: string, hash?: string }): boolean {
-  if (s.tab)
-    return route.path === '/' && activeTab.value === s.tab
+function isSubActive(s: { to?: string, hash?: string }): boolean {
   if (s.hash)
     return route.hash === `#${s.hash}`
-  return false
+  if (!s.to)
+    return false
+  // exato, ou pai do detalhe (/devs ativo em /devs/Ana; '/' só casa exato)
+  if (s.to === '/')
+    return route.path === '/'
+  return route.path === s.to || route.path.startsWith(`${s.to}/`)
 }
 
+const filtersScope = computed(() => route.meta.filters ?? 'none')
 const showPanel = computed(() => {
-  if (contextCollapsed.value) return false
+  if (contextCollapsed.value)
+    return false
   const s = section.value
-  if (!s) return false
-  return (s.subs?.length ?? 0) > 0 || !!s.showFilters
+  if (!s)
+    return false
+  return s.subs.length > 0 || filtersScope.value !== 'none'
 })
 </script>
 
@@ -54,21 +62,21 @@ const showPanel = computed(() => {
         <RouterLink
           v-for="s in NAV_SECTIONS"
           :key="s.key"
-          :to="s.to === '/' ? { path: '/', query: activeTab !== 'overview' ? { tab: activeTab } : {} } : s.to"
+          :to="s.to"
           class="rail-item"
-          :class="{ active: section?.key === s.key }"
-          :aria-current="section?.key === s.key ? 'page' : undefined"
+          :class="{ active: sectionKey === s.key }"
+          :aria-current="sectionKey === s.key ? 'page' : undefined"
         >
           <UIcon :name="s.icon" class="size-[18px]" />
           <span class="rail-label">{{ s.label }}</span>
         </RouterLink>
       </div>
-      <div class="rail-bottom">
+      <div v-if="serverMode" class="rail-bottom">
         <RouterLink
           :to="NAV_BOTTOM.to"
           class="rail-item"
-          :class="{ active: section?.key === NAV_BOTTOM.key }"
-          :aria-current="section?.key === NAV_BOTTOM.key ? 'page' : undefined"
+          :class="{ active: sectionKey === NAV_BOTTOM.key }"
+          :aria-current="sectionKey === NAV_BOTTOM.key ? 'page' : undefined"
         >
           <UIcon :name="NAV_BOTTOM.icon" class="size-[18px]" />
           <span class="rail-label">{{ NAV_BOTTOM.label }}</span>
@@ -92,7 +100,7 @@ const showPanel = computed(() => {
         />
       </header>
 
-      <nav v-if="section?.subs?.length" class="context-nav">
+      <nav v-if="section?.subs.length" class="context-nav">
         <RouterLink
           v-for="s in section.subs"
           :key="s.label"
@@ -105,15 +113,15 @@ const showPanel = computed(() => {
         </RouterLink>
       </nav>
 
-      <template v-if="section?.showFilters">
-        <USeparator v-if="section?.subs?.length" class="my-3" />
+      <template v-if="filtersScope !== 'none'">
+        <USeparator v-if="section?.subs.length" class="my-3" />
         <FilterBar />
       </template>
     </aside>
 
     <!-- botão flutuante pra reabrir quando recolhido -->
     <UButton
-      v-else-if="section && ((section.subs?.length ?? 0) > 0 || section.showFilters)"
+      v-else-if="section && (section.subs.length > 0 || filtersScope !== 'none')"
       icon="i-lucide-chevrons-right"
       color="neutral"
       variant="soft"

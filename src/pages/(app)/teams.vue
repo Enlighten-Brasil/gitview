@@ -2,9 +2,19 @@
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useToast } from '@nuxt/ui/composables'
 import { onBeforeRouteLeave } from 'vue-router'
-import { collecting, startCollect } from '../collect'
-import { fetchGithubTeam, fetchTeamConfig, loadTeam, saveTeamConfig, team, teamLoadError } from '../team'
-import type { GithubTeamData, TeamConfigPayload } from '../team'
+import { collecting, startCollect } from '@/collect'
+import { fetchGithubTeam, fetchTeamConfig, loadTeam, saveTeamConfig, team, teamLoadError } from '@/team'
+import type { GithubTeamData, TeamConfigPayload } from '@/team'
+
+// gerência do time (era /team — alias mantém links/bookmarks)
+definePage({
+  alias: '/team',
+  meta: {
+    section: 'teams',
+    filters: 'none',
+    title: 'Times',
+  },
+})
 
 const isDev = import.meta.env.DEV
 const toast = useToast()

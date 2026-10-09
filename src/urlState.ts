@@ -1,42 +1,35 @@
-import { ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import type { RouteLocationNormalized } from 'vue-router'
 import { filters, stats } from './data'
-import { LEGACY_TAB_ROUTES } from './nav'
 
 /**
- * Sincroniza o estado (aba + filtros) com a query string da URL — links ficam
+ * Sincroniza os filtros com a query string da URL — links ficam
  * compartilháveis/bookmarkáveis.
  *
- * Formato: ?tab=team&range=6&bots=1&repos=en-admin,example&devs=Dev A
+ * Formato: ?range=6&from=2026-01-01&to=2026-06-30&bots=1&repos=example&devs=Dev A
  * Valores default são omitidos para manter a URL limpa.
  * Usa replaceState (não polui o histórico a cada clique em filtro).
  *
- * Escopo por rota:
- * - dashboard (/): tab, repos, devs, período (range/from/to), bots
- * - /dev/:name e /repo/:name: só o período (range/from/to) e bots
- * - demais rotas (/setup etc.): urlState não atua
+ * Escopo por rota = route.meta.filters (definido por página em src/pages):
+ * - 'full' (dashboard e seções com dados agregados): período + repos + devs + bots
+ * - 'period' (/devs/:name): só o período
+ * - 'period-bots' (/repos/:name): período + bots
+ * - 'none' (/setup, /settings, 404...): urlState não atua
+ * As abas do dashboard são rotas próprias desde 0.33 — o ?tab= legado é tratado
+ * pelo guard (router/guards.ts), não aqui.
  */
 
-export const activeTab = ref('overview')
-// prs/repos viraram rotas dedicadas (/?tab=prs|repos redireciona via nav.ts)
-const TABS = ['overview', 'team', 'health']
+type FilterScope = 'full' | 'period' | 'period-bots' | 'none'
 const RANGES = [1, 3, 6, 12, 24]
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
-type RouteKind = 'dashboard' | 'dev' | 'repo' | 'other'
-
-function routeKind(path: string): RouteKind {
-  if (path === '/' || path === '/index.html')
-    return 'dashboard'
-  if (path.startsWith('/dev/'))
-    return 'dev'
-  if (path.startsWith('/repo/'))
-    return 'repo'
-  return 'other'
+function scopeOf(route: RouteLocationNormalized | null): FilterScope {
+  return (route?.meta?.filters as FilterScope | undefined) ?? 'none'
 }
 
-/** período (range/from/to) + bots — vale no dashboard, /dev e /repo */
-function applyRangeParams(q: URLSearchParams) {
+/** período (range/from/to) + bots — vale em todo escopo de dados */
+function applyRangeParams(q: URLSearchParams, scope: FilterScope) {
   const from = q.get('from')
   const to = q.get('to')
   if (from && DATE_RE.test(from))
@@ -53,19 +46,18 @@ function applyRangeParams(q: URLSearchParams) {
       filters.rangeMonths = Number(range)
   }
 
-  if (q.has('bots'))
+  if (scope !== 'period' && q.has('bots'))
     filters.showBots = q.get('bots') === '1'
 }
 
-function parseUrl(kind: RouteKind, reset = false) {
+function parseUrl(scope: FilterScope, reset = false) {
   // no popstate, volta tudo aos defaults antes de aplicar o que houver na URL
   if (reset) {
     filters.rangeMonths = 12
     filters.dateFrom = null
     filters.dateTo = null
     filters.showBots = false
-    if (kind === 'dashboard') {
-      activeTab.value = 'overview'
+    if (scope === 'full') {
       filters.repos = []
       filters.authors = []
     }
@@ -82,11 +74,7 @@ function parseUrl(kind: RouteKind, reset = false) {
       filters.rangeMonths = Number(savedRange)
   }
 
-  if (kind === 'dashboard') {
-    const tab = q.get('tab')
-    if (tab && TABS.includes(tab))
-      activeTab.value = tab
-
+  if (scope === 'full') {
     const repos = q.get('repos')
     if (repos)
       filters.repos = repos.split(',').filter(Boolean)
@@ -96,14 +84,12 @@ function parseUrl(kind: RouteKind, reset = false) {
       filters.authors = devs.split(',').filter(Boolean)
   }
 
-  applyRangeParams(q)
+  applyRangeParams(q, scope)
 }
 
-function buildUrl(kind: RouteKind): string {
+function buildUrl(scope: FilterScope): string {
   const q = new URLSearchParams()
-  if (kind === 'dashboard') {
-    if (activeTab.value !== 'overview')
-      q.set('tab', activeTab.value)
+  if (scope === 'full') {
     if (filters.repos.length)
       q.set('repos', filters.repos.join(','))
     if (filters.authors.length)
@@ -118,7 +104,7 @@ function buildUrl(kind: RouteKind): string {
   else if (filters.rangeMonths !== 12) {
     q.set('range', filters.rangeMonths == null ? 'all' : String(filters.rangeMonths))
   }
-  if (filters.showBots)
+  if (filters.showBots && scope !== 'period')
     q.set('bots', '1')
   const s = q.toString()
   return s ? `${location.pathname}?${s}` : location.pathname
@@ -142,32 +128,21 @@ export function initUrlState() {
   initialized = true
 
   const router = useRouter()
+  const route = useRoute()
 
-  // compat: ?tab=prs|repos (links antigos) → rotas dedicadas
-  const legacyTab = new URLSearchParams(location.search).get('tab')
-  if (legacyTab && LEGACY_TAB_ROUTES[legacyTab] && routeKind(location.pathname) === 'dashboard') {
-    const q = new URLSearchParams(location.search)
-    q.delete('tab')
-    const qs = q.toString()
-    router.replace({ path: LEGACY_TAB_ROUTES[legacyTab], query: qs ? Object.fromEntries(q) : {} })
-  }
-
-  // URL tem prioridade; sem parâmetros, cai no localStorage (aba) / defaults (filtros)
-  activeTab.value = localStorage.getItem('gitview:tab') ?? 'overview'
-  const initialKind = routeKind(location.pathname)
-  if (initialKind !== 'other') {
-    parseUrl(initialKind)
+  const initialScope = scopeOf(route)
+  if (initialScope !== 'none') {
+    parseUrl(initialScope)
     sanitize()
   }
 
   watch(stats, sanitize)
 
-  watch([filters, activeTab], () => {
-    const kind = routeKind(location.pathname)
-    if (kind === 'other')
+  watch(filters, () => {
+    const scope = scopeOf(route)
+    if (scope === 'none')
       return // não pisa em /setup e afins
-    history.replaceState(null, '', buildUrl(kind))
-    localStorage.setItem('gitview:tab', activeTab.value)
+    history.replaceState(null, '', buildUrl(scope))
     localStorage.setItem('gitview:range', filters.rangeMonths == null ? 'all' : String(filters.rangeMonths))
   }, { deep: true })
 
@@ -175,27 +150,19 @@ export function initUrlState() {
   // URL SEM resetar o restante (preserva o contexto atual) e regrava a query da
   // nova rota — assim o período escolhido acompanha a navegação entre as páginas
   router.afterEach((to) => {
-    const kind = routeKind(to.path)
-    if (kind === 'other')
+    const scope = scopeOf(to)
+    if (scope === 'none')
       return
-    parseUrl(kind)
-    history.replaceState(null, '', buildUrl(kind))
+    parseUrl(scope)
+    history.replaceState(null, '', buildUrl(scope))
   })
 
   // voltar/avançar: a URL é a fonte da verdade — reseta os params da rota e aplica o que houver
   window.addEventListener('popstate', () => {
-    const kind = routeKind(location.pathname)
-    if (kind === 'other')
+    const scope = scopeOf(route)
+    if (scope === 'none')
       return
-    parseUrl(kind, true)
+    parseUrl(scope, true)
     sanitize()
   })
-}
-
-/** regrava a query string no estado atual (ex.: ao voltar da página do dev) */
-export function syncUrlNow() {
-  const kind = routeKind(location.pathname)
-  if (kind === 'other')
-    return
-  history.replaceState(null, '', buildUrl(kind))
 }
