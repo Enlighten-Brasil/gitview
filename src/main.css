@@ -18,6 +18,11 @@ body {
   background-attachment: fixed;
 }
 
+/* anchors da sub-nav: não ficar escondido atrás do navbar sticky */
+[id] {
+  scroll-margin-top: 72px;
+}
+
 /* ---------- chart sizing (ECharts) ---------- */
 .chart {
   width: 100%;

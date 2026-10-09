@@ -1,27 +1,28 @@
 /**
- * Setup interativo de repositórios.
+ * Setup interativo de repositórios (terminal).
  *
- * Lista os repos da org do GitHub (config.githubOrg) via `gh`, deixa o dev
+ * Lista os repos da org do GitHub (GITVIEW_GITHUB_ORG) via API, deixa o dev
  * escolher quais entram no dashboard e clona os faltantes em data/repos/
  * (clone bare, sem working tree — os coletores só leem refs/objetos).
- * Ao final grava config.local.json com reposRoot apontando pra data/repos.
+ * Ao final grava GITVIEW_REPOS_ROOT no .env.
+ *
+ * Auth: token do .env (GITVIEW_GITHUB_TOKEN) com fallback pro `gh auth token`
+ * — o gh CLI NÃO é obrigatório.
  *
  * Uso:
  *   pnpm setup            wizard interativo
- *   pnpm setup -- --yes   sem perguntas: todos os repos não arquivados
+ *   pnpm setup -- --yes   sem perguntas: repos padrão (ou todos não arquivados)
  */
-import { spawnSync } from 'node:child_process'
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { stdin as input, stdout as output } from 'node:process'
 import * as readline from 'node:readline/promises'
-import { loadConfig, saveLocalConfig } from './lib/config'
-import { getToken } from './lib/github'
+import { loadConfig, saveConfig } from './lib/config'
+import { ghApiAll, getToken, NO_TOKEN_HINT } from './lib/github'
+import type { RepoEntry } from './lib/github'
 import { cloneBare, discoverRepos, MANAGED_REPOS_DIR, mapPool, resolveReposRootSafe } from './lib/repos'
 
 const YES = process.argv.includes('--yes') || process.argv.includes('-y')
-
-interface GhRepo { name: string; isArchived: boolean; pushedAt: string }
 
 function fail(msg: string): never {
   console.error(`\n✗ ${msg}`)
@@ -29,31 +30,15 @@ function fail(msg: string): never {
 }
 
 // ---------------------------------------------------------------------------
-// gh instalado + autenticado
+// lista de repos da org (API REST, autenticada com o token da config)
 // ---------------------------------------------------------------------------
-function checkGh(): void {
-  const v = spawnSync('gh', ['--version'], { encoding: 'utf-8' })
-  if (v.error || v.status !== 0) {
-    fail('GitHub CLI (gh) não encontrado. Instale em https://cli.github.com e rode "gh auth login".')
+async function listOrgRepos(org: string, token: string): Promise<RepoEntry[]> {
+  try {
+    return await ghApiAll<RepoEntry>(`/orgs/${encodeURIComponent(org)}/repos?type=all`, token)
   }
-  const auth = spawnSync('gh', ['auth', 'status'], { encoding: 'utf-8' })
-  if (auth.status !== 0) fail('gh não está autenticado. Rode "gh auth login" e tente de novo.')
-}
-
-// ---------------------------------------------------------------------------
-// lista de repos da org
-// ---------------------------------------------------------------------------
-function listOrgRepos(org: string): GhRepo[] {
-  const r = spawnSync('gh', [
-    'repo', 'list', org,
-    '--limit', '500',
-    '--json', 'name,isArchived,pushedAt',
-  ], { encoding: 'utf-8', maxBuffer: 16 * 1024 * 1024 })
-  if (r.error || r.status !== 0) {
-    fail(`não consegui listar os repos de ${org}: ${(r.stderr || '').trim() || r.error}`)
+  catch (err) {
+    fail(`não consegui listar os repos de ${org}: ${(err as Error).message}`)
   }
-  const repos = JSON.parse(r.stdout) as GhRepo[]
-  return repos.sort((a, b) => (b.pushedAt ?? '').localeCompare(a.pushedAt ?? ''))
 }
 
 // ---------------------------------------------------------------------------
@@ -81,11 +66,13 @@ function parseSelection(text: string, max: number): number[] | null {
 // ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
-checkGh()
+const auth = getToken()
+if (!auth) fail(`${NO_TOKEN_HINT}.`)
+
 const config = loadConfig()
 let org = config.githubOrg
 if (!org) {
-  if (YES) fail('defina "githubOrg" no config.json (ex.: "minha-org").')
+  if (YES) fail('defina GITVIEW_GITHUB_ORG no .env (ex.: "minha-org") ou rode o wizard sem --yes.')
   const rl = readline.createInterface({ input, output })
   org = (await rl.question('Org do GitHub para listar os repos: ')).trim()
   rl.close()
@@ -99,7 +86,7 @@ const alreadyManaged = current === MANAGED_REPOS_DIR
 if (current && currentRepos.length && !alreadyManaged) {
   console.log(`Fonte de repos já configurada: ${current} (${currentRepos.length} repos)`)
   if (YES) {
-    console.log('Nada a fazer. Para migrar pros clones gerenciados, remova reposRoot do config.local.json e rode novamente.')
+    console.log('Nada a fazer. Para migrar pros clones gerenciados, limpe GITVIEW_REPOS_ROOT no .env e rode novamente.')
     process.exit(0)
   }
   const rl = readline.createInterface({ input, output })
@@ -112,7 +99,8 @@ if (current && currentRepos.length && !alreadyManaged) {
 }
 
 console.log(`\nListando repos de ${org}...`)
-const ghRepos = listOrgRepos(org)
+const ghRepos = (await listOrgRepos(org, auth.token))
+  .sort((a, b) => (b.pushed_at ?? '').localeCompare(a.pushed_at ?? ''))
 if (!ghRepos.length) fail(`nenhum repo encontrado em ${org} — confira o acesso da sua conta.`)
 
 mkdirSync(MANAGED_REPOS_DIR, { recursive: true })
@@ -120,14 +108,14 @@ const cloned = new Set(discoverRepos(MANAGED_REPOS_DIR).map(r => r.name))
 
 console.log('')
 ghRepos.forEach((r, i) => {
-  const marks = [cloned.has(r.name) ? 'clonado' : '', r.isArchived ? 'arquivado' : ''].filter(Boolean).join(', ')
+  const marks = [cloned.has(r.name) ? 'clonado' : '', r.archived ? 'arquivado' : ''].filter(Boolean).join(', ')
   console.log(`  ${String(i + 1).padStart(3)}. ${r.name}${marks ? ` (${marks})` : ''}`)
 })
 
-// seleção: Enter/--yes = defaultRepos do config (fallback: todos não arquivados)
+// seleção: Enter/--yes = defaultRepos do .env (fallback: todos não arquivados)
 const defaultNames = (config.defaultRepos ?? []).map(n => n.toLowerCase())
 const defaultIdx = ghRepos.map((_, i) => i)
-  .filter(i => !ghRepos[i].isArchived && (!defaultNames.length || defaultNames.includes(ghRepos[i].name.toLowerCase())))
+  .filter(i => !ghRepos[i].archived && (!defaultNames.length || defaultNames.includes(ghRepos[i].name.toLowerCase())))
 const notInOrg = (config.defaultRepos ?? []).filter(n => !ghRepos.some(r => r.name.toLowerCase() === n.toLowerCase()))
 if (notInOrg.length) console.warn(`! defaultRepos fora da org (ignorados): ${notInOrg.join(', ')}`)
 
@@ -145,7 +133,7 @@ else {
     selected = defaultIdx
   }
   else if (/^all$/i.test(text)) {
-    selected = ghRepos.map((_, i) => i).filter(i => !ghRepos[i].isArchived)
+    selected = ghRepos.map((_, i) => i).filter(i => !ghRepos[i].archived)
   }
   else {
     selected = parseSelection(text, ghRepos.length)
@@ -157,13 +145,12 @@ const chosen = selected.map(i => ghRepos[i])
 const missing = chosen.filter(r => !cloned.has(r.name))
 console.log(`\nSelecionados: ${chosen.length} (${missing.length} a clonar, ${chosen.length - missing.length} já clonados)`)
 
-// clone bare em paralelo (autenticado com o token do gh/device flow)
-const token = getToken()?.token
+// clone bare em paralelo (autenticado com o token da config; fetch usa o mesmo token)
 let failures = 0
 await mapPool(missing, 4, async (repo) => {
   const dest = join(MANAGED_REPOS_DIR, repo.name)
   const t0 = Date.now()
-  const err = await cloneBare(`${org}/${repo.name}`, dest, token)
+  const err = await cloneBare(`${org}/${repo.name}`, dest, auth.token)
   if (err) {
     failures++
     console.error(`✗ ${repo.name}: ${err.split('\n')[0]}`)
@@ -174,13 +161,10 @@ await mapPool(missing, 4, async (repo) => {
 })
 if (failures) console.warn(`\n! ${failures} repo(s) falharam — rode o setup de novo pra tentar outra vez.`)
 
-// credential helper do gh pros fetches futuros (collect faz git fetch nos clones)
-spawnSync('gh', ['auth', 'setup-git'], { encoding: 'utf-8' })
+// .env: reposRoot gerenciado (relativo = portátil)
+saveConfig({ reposRoot: 'data/repos' })
 
-// config.local.json: merge raso + reposRoot gerenciado (relativo = portátil)
-saveLocalConfig({ reposRoot: 'data/repos' })
-
-console.log(`\n✓ config.local.json gravado com reposRoot = data/repos`)
+console.log('\n✓ GITVIEW_REPOS_ROOT = data/repos gravado no .env')
 console.log('\nPróximos passos:')
 console.log('  pnpm collect   # primeira coleta (completa, leva alguns minutos)')
 console.log('  pnpm dev       # http://localhost:5173')

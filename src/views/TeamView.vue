@@ -41,8 +41,6 @@ interface TeamDraft {
 
 const profiles = reactive<Record<string, ProfileDraft>>({})
 const teams = ref<TeamDraft[]>([])
-const fixedAuthors = ref<string[]>([])
-const fixedGithubUsers = ref<Record<string, string>>({})
 const configLoaded = ref(false)
 const saving = ref(false)
 
@@ -67,8 +65,6 @@ async function loadConfigState() {
       color: t.color ?? '',
       members: [...t.members],
     }))
-    fixedAuthors.value = cfg.fixed.authors
-    fixedGithubUsers.value = cfg.fixed.githubUsers
     savedSnapshot.value = payload()
     configLoaded.value = true
   }
@@ -306,10 +302,10 @@ const assignTarget = reactive<Record<string, string>>({})
     <div class="flex items-center gap-3 flex-wrap">
       <div>
         <h1 class="text-xl font-semibold">
-          Time
+          Times
         </h1>
         <p class="text-sm text-dimmed">
-          Perfis de devs, aliases (e-mails e logins) e times. Salvo em <code class="text-xs">config.local.json</code> (só na sua máquina).
+          Perfis de devs, aliases (e-mails e logins) e times. Salvo em <code class="text-xs">team.local.json</code> (só na sua máquina).
         </p>
       </div>
       <div class="ml-auto flex items-center gap-2">
@@ -351,7 +347,7 @@ const assignTarget = reactive<Record<string, string>>({})
       variant="subtle"
       icon="i-lucide-lock"
       title="edição só no modo dev"
-      description="No build estático esta página é somente leitura (perfis e times definidos em config.local.json)."
+      description="No build estático esta página é somente leitura (perfis e times definidos em team.local.json)."
     />
     <UAlert
       v-if="teamLoadError"
@@ -555,14 +551,6 @@ const assignTarget = reactive<Record<string, string>>({})
           <UFormField label="logins do GitHub" description="separados por vírgula — unifica logins do mesmo dev em PRs">
             <UTextarea v-model="draft.githubLogins" placeholder="login1, login2" :rows="2" class="w-full font-mono text-xs" />
           </UFormField>
-          <UAlert
-            v-if="editing && fixedAuthors.includes(editing)"
-            color="info"
-            variant="subtle"
-            icon="i-lucide-info"
-            title="este dev tem aliases fixos no config.json"
-            description="Os aliases daqui somam com os fixos. Pra remover os fixos, edite o config.json no repo."
-          />
         </div>
       </template>
       <template #footer>

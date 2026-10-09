@@ -19,6 +19,7 @@ import {
   fetchOrgs,
   fetchRepos,
   fetchSetupStatus,
+  githubLogout,
   pollDeviceFlow,
   setupApplying,
   setupDone,
@@ -26,6 +27,7 @@ import {
   setupLog,
   startDeviceFlow,
   startSetupApply,
+  submitGithubToken,
 } from '../setup'
 
 const router = useRouter()
@@ -148,6 +150,44 @@ onBeforeUnmount(() => {
   if (statusTimer)
     clearInterval(statusTimer)
 })
+
+// ---------------------------------------------------------------------------
+// PAT colado + desconexão
+// ---------------------------------------------------------------------------
+const pat = ref('')
+const patSaving = ref(false)
+const patError = ref<string | null>(null)
+
+async function connectPat() {
+  if (!pat.value.trim() || patSaving.value)
+    return
+  patSaving.value = true
+  patError.value = null
+  try {
+    await submitGithubToken(pat.value.trim())
+    pat.value = ''
+    await refreshStatus()
+  }
+  catch (err) {
+    patError.value = (err as Error).message
+  }
+  finally {
+    patSaving.value = false
+  }
+}
+
+const loggingOut = ref(false)
+
+async function disconnectGithub() {
+  loggingOut.value = true
+  try {
+    await githubLogout()
+    await refreshStatus()
+  }
+  finally {
+    loggingOut.value = false
+  }
+}
 
 function openAuth(fromSettings: boolean) {
   cameFromSettings.value = fromSettings
@@ -587,7 +627,18 @@ async function deleteAllData() {
               :title="`Conectado como @${status.auth.login}`"
               :description="`via ${status.auth.via}. Os repos são listados e clonados com as suas permissões.`"
             />
-            <p v-if="!status.oauthConfigured" class="text-xs text-dimmed">
+            <div v-if="status.auth.via === 'token (.env)'" class="flex">
+              <UButton
+                label="desconectar"
+                size="xs"
+                color="error"
+                variant="ghost"
+                icon="i-lucide-log-out"
+                :loading="loggingOut"
+                @click="disconnectGithub"
+              />
+            </div>
+            <p v-if="!status.oauthConfigured && status.auth.via === 'gh cli'" class="text-xs text-dimmed">
               Para trocar de conta, rode `gh auth login` no terminal — a troca é detectada aqui automaticamente.
             </p>
             <div class="flex justify-between">
@@ -624,7 +675,7 @@ async function deleteAllData() {
           </template>
 
           <template v-else>
-            <!-- device flow (OAuth App configurado) -->
+            <!-- device flow (Client ID configurado no .env) -->
             <template v-if="status?.oauthConfigured">
               <div v-if="device" class="flex flex-col items-center gap-3 rounded-lg bg-accented p-4">
                 <p class="text-sm">
@@ -662,14 +713,14 @@ async function deleteAllData() {
               </div>
             </template>
 
-            <!-- ponte gh CLI (sem OAuth App configurado) -->
+            <!-- ponte gh CLI (sem Client ID no .env) -->
             <template v-else>
               <UAlert
                 color="info"
                 variant="subtle"
                 icon="i-lucide-terminal"
                 title="Autentique com o GitHub CLI"
-                description="Rode `gh auth login` no terminal (uma vez só) e clique em verificar. Quando um OAuth App for configurado neste projeto, este passo vira um botão."
+                description="Rode `gh auth login` no terminal (uma vez só) e clique em verificar — a sessão é detectada aqui automaticamente. Ou cole um token pessoal abaixo. Definindo GITVIEW_GITHUB_CLIENT_ID no .env, o botão de device flow aparece."
               />
               <div class="flex justify-between gap-2">
                 <UButton
@@ -691,6 +742,33 @@ async function deleteAllData() {
                 />
               </div>
             </template>
+
+            <!-- alternativa universal: colar um PAT (funciona sem OAuth App e sem gh) -->
+            <USeparator label="ou" class="my-1" />
+            <div class="flex flex-col gap-2">
+              <span class="text-sm font-medium">
+                Usar um token pessoal (PAT)
+              </span>
+              <p class="text-xs text-dimmed">
+                GitHub → Settings → Developer settings → Personal access tokens (clássico), escopo <code>repo</code> (+ <code>read:org</code> p/ importar times). Fica só no <code>.env</code> da máquina.
+              </p>
+              <div class="flex gap-2">
+                <UInput
+                  v-model="pat"
+                  type="password"
+                  placeholder="ghp_…"
+                  class="flex-1"
+                  @keyup.enter="connectPat"
+                />
+                <UButton
+                  label="conectar"
+                  :loading="patSaving"
+                  :disabled="!pat.trim() || patSaving"
+                  @click="connectPat"
+                />
+              </div>
+              <UAlert v-if="patError" color="error" variant="subtle" icon="i-lucide-circle-x" :title="patError" />
+            </div>
           </template>
         </div>
       </UCard>

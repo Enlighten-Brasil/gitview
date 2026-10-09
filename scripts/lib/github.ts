@@ -1,27 +1,32 @@
 /**
- * Acesso à API do GitHub sem depender do gh CLI — usado pelo onboarding da UI.
+ * Acesso HTTP à API do GitHub (REST + GraphQL + device flow) — sem depender
+ * do gh CLI. Usado pelos coletores e pelo onboarding da UI.
  *
- * Token (ordem): config.local.json `githubToken` (gravado pelo device flow)
- * → `gh auth token` (ponte pra quem já tem o gh autenticado).
+ * Token (ordem): `GITVIEW_GITHUB_TOKEN` (`.env`/shell — gravado pelo device
+ * flow ou colado na UI) → `gh auth token` (ponte pra quem já tem o gh
+ * autenticado).
  *
  * Device flow: precisa de um OAuth App ou **GitHub App** com "device flow"
- * habilitado; o client_id é público por design e fica em config.json
- * (`oauthClientId`). GitHub App (client_id "Iv…") é o recomendado: as
- * permissões granulares do app (Contents: read) tornam o token fisicamente
- * read-only; OAuth App ("Ov…"/hex) usa o escopo `repo`, que é read+write.
+ * habilitado; o client_id é público por design e fica no `.env`
+ * (`GITVIEW_GITHUB_CLIENT_ID`, default do `.env.example`). GitHub App
+ * (client_id "Iv…") é o recomendado: as permissões granulares do app
+ * (Contents: read) tornam o token fisicamente read-only; OAuth App
+ * ("Ov…"/hex) usa o escopo `repo`, que é read+write.
  */
 import { spawnSync } from 'node:child_process'
 import { loadConfig } from './config'
 
-export interface GhAuth { token: string; via: 'device flow' | 'gh cli' }
+export interface GhAuth { token: string; via: 'token (.env)' | 'gh cli' }
 
 export function getToken(): GhAuth | null {
-  const local = loadConfig().githubToken
-  if (local) return { token: local, via: 'device flow' }
+  const envToken = loadConfig().githubToken
+  if (envToken) return { token: envToken, via: 'token (.env)' }
   const r = spawnSync('gh', ['auth', 'token'], { encoding: 'utf-8' })
   const token = r.status === 0 ? r.stdout.trim() : ''
   return token ? { token, via: 'gh cli' } : null
 }
+
+export const NO_TOKEN_HINT = 'sem token do GitHub — conecte sua conta no setup (/setup → "Conectar com GitHub") ou rode "gh auth login"'
 
 export async function ghApi<T>(path: string, token: string): Promise<T> {
   const res = await fetch(`https://api.github.com${path}`, {
@@ -46,6 +51,29 @@ export async function ghApiAll<T>(path: string, token: string): Promise<T[]> {
     if (items.length < 100) break
   }
   return out
+}
+
+/** GraphQL v4 — throws com "HTTP <status>" em rede/4xx e "graphql: <msg>" p/ erros do body */
+export async function ghGraphql<T>(query: string, vars: Record<string, unknown>, token: string): Promise<T> {
+  const res = await fetch('https://api.github.com/graphql', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      'User-Agent': 'gitview',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ query, variables: vars }),
+  })
+  const json = await res.json().catch(() => ({}) as Record<string, unknown>)
+  if (!res.ok) {
+    const detail = typeof json.message === 'string' ? ` — ${json.message}` : ''
+    throw new Error(`GitHub GraphQL: HTTP ${res.status}${detail}`)
+  }
+  const errors = (json as { errors?: { message?: string }[] }).errors
+  if (errors?.length) throw new Error(`graphql: ${String(errors[0].message ?? 'erro sem mensagem')}`)
+  return (json as { data: T }).data
 }
 
 export function currentUser(token: string): Promise<{ login: string }> {

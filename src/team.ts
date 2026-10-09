@@ -1,6 +1,6 @@
 /**
  * Time: loader do team.json (estático) + client dos endpoints dev-only:
- * GET/POST /__team/config (perfis/times em config.local.json) e
+ * GET/POST /__team/config (perfis/times em team.local.json) e
  * GET /__team/github (membros + times da org).
  * Recoleta após salvar usa o /__collect existente (4 passos) — não há
  * endpoint parcial só de team.json.
@@ -34,7 +34,6 @@ export interface TeamConfigPayload {
 }
 
 export interface TeamConfigState extends TeamConfigPayload {
-  fixed: { authors: string[], githubUsers: Record<string, string> }
   githubOrg: string | null
 }
 

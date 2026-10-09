@@ -1,83 +1,95 @@
 # gitview
 
-Dashboard interno de métricas do time Enspace: commits, PRs e releases dos repositórios da org, tudo local e read-only sobre os repos.
+Dashboard interno de métricas do time: commits, PRs e releases dos repositórios da org, tudo local e read-only sobre os repos.
 
 ## Setup
 
 Requisitos:
 
-- **Node 24+** (a coleta usa `node:sqlite`)
+- **Node 24+** (a coleta usa `node:sqlite` e lê o `.env` nativamente)
 - **pnpm 10+**
-- Uma conta GitHub — autenticada pela própria UI (device flow) ou via **GitHub CLI** (`gh auth login`)
+- Uma conta GitHub — autenticada pela própria UI (**device flow** ou colando um **PAT**), ou via **GitHub CLI** (`gh auth login`), que serve de ponte quando não há token no `.env`
 
 ```bash
 git clone git@github.com:Enlighten-Brasil/gitview.git
 cd gitview
 pnpm install
-pnpm dev       # http://localhost:5173 — na primeira execução cai no assistente /setup
+pnpm dev       # ou pnpm start — http://localhost:5173 — na primeira execução cai no assistente /setup
 ```
+
+Nada para copiar ou editar antes de rodar: o `.env` é criado automaticamente a partir do `.env.example` na primeira execução (`pnpm dev`, `pnpm start` ou qualquer coletor).
+
+### O `.env` (config da máquina — gitignored)
+
+| chave | para quê |
+|---|---|
+| `GITVIEW_GITHUB_CLIENT_ID` | Client ID (público) do OAuth/GitHub App com device flow — vem preenchido no `.env.example`; vazio desliga o botão "Conectar com GitHub" |
+| `GITVIEW_GITHUB_TOKEN` | token gravado pelo device flow/PAT. **É o único segredo do projeto** — vazio usa o `gh auth token` se o gh estiver logado |
+| `GITVIEW_GITHUB_ORG` | org default do setup e da importação de times em /team |
+| `GITVIEW_REPOS_ROOT` | pasta com os clones. Vazio = `data/repos` (criado pelo setup) |
+| `GITVIEW_DEFAULT_REPOS` | CSV de repos pré-selecionados no setup (vazio = todos não arquivados) |
+| `GITVIEW_EXCLUDE` | CSV de pastas ignoradas na descoberta de repos |
+| `GITVIEW_PORT` | porta do dev server (default 5173) |
+
+Ordem de precedência: variável do shell → `.env` → default. O arquivo é lido **fresco** a cada execução de coletor (token novo vale sem reiniciar o dev server). Caminhos em Windows: use barra normal (`C:/Users/...`), ou aspas simples se houver espaços.
+
+> ⚠ **Pull para o time**: quem ainda tem `config.json`/`config.local.json` (formato antigo) e ainda não rodou nada deste release, rode `pnpm dev` **antes** de dar pull — a migração move tudo para `.env` + `team.local.json` (os aliases do `config.json` versionado vivem desde então no `team.local.json` de cada máquina; `pnpm clean` não apaga esse arquivo).
+
+### Config do time (`team.local.json` — gitignored)
+
+Perfis de devs (título, descrição), aliases (e-mails de commit, logins do GitHub), times e bots extras. Tudo editável pela tela **/team** (dev only; persistido via `/__team/config`). É a única fonte de nomes canônicos — sem ela o dashboard funciona, cada e-mail/login vira um autor separado e a coleta lista os "candidatos" pra você ir associando.
 
 ### Setup pela UI (`/setup`)
 
 Na primeira execução (sem dados coletados) o dashboard redireciona para o assistente de 3 passos — também acessível depois pelo botão ⚙ no navbar:
 
-1. **Conectar o GitHub** — se `oauthClientId` estiver configurado, autentica via **device flow** (o browser abre `github.com/login/device`, você digita o código e pronto; o token fica só no seu `config.local.json`). Sem OAuth App, cai na ponte do `gh auth token`.
-2. **Escolher repositórios** — lista os repos da sua org (ou da sua conta pessoal), com busca e pré-seleção do `defaultRepos`.
-3. **Clonar e coletar** — faz clones bare em `data/repos/` e já roda a primeira coleta com progresso ao vivo.
+1. **Conectar o GitHub** — device flow (o browser abre `github.com/login/device`, você digita o código; o token vai para o seu `.env`), colar um **PAT** (repo + read:org) ou a ponte do `gh auth login`. Com Client ID configurado o botão aparece; sem ele, os outros caminhos funcionam.
+2. **Escolher repositórios** — lista os repos da sua org (ou da sua conta pessoal), com busca e pré-seleção do `GITVIEW_DEFAULT_REPOS`.
+3. **Clonar e coletar** — faz clones bare em `data/repos/` e roda a primeira coleta com progresso ao vivo.
 
-Os clones de `data/repos/` são atualizados automaticamente via `git fetch` a cada coleta. Não é necessário ter os repos clonados em lugar nenhum.
+Os clones de `data/repos/` são atualizados automaticamente via `git fetch` a cada coleta (o token é injetado por variável de ambiente do git, nunca gravado no clone). Não é necessário ter os repos clonados em lugar nenhum, nem o `gh` instalado.
 
 ### Setup pelo terminal (alternativa)
 
-`pnpm setup` faz o mesmo fluxo no terminal (usa o `gh` para listar/clonar). Útil para automação ou se preferir não abrir a UI antes.
+`pnpm setup` faz o mesmo fluxo de clone no terminal (usa o token da config — que pode vir do `gh`). Útil para automação.
 
 ### Apontar para clones existentes
 
-Se você já tem os repos clonados e prefere usá-los, o coletor procura a pasta na seguinte ordem:
+Se você já tem os repos clonados e prefere usá-los, o coletor procura a pasta na ordem:
 
 1. Variável de ambiente `GITVIEW_REPOS_ROOT`
-2. `reposRoot` em `config.local.json` (não versionado)
-3. Auto-detect: pasta `../enspace` ao lado do clone do gitview
-4. `reposRoot` do `config.json` versionado
+2. `GITVIEW_REPOS_ROOT` no `.env`
+3. Padrão: `data/repos` (clones gerenciados do setup)
 
-Exemplo de `config.local.json`:
-
-```json
-{
-  "reposRoot": "C:/Users/seu.usuario/Documents/GitHub/enspace"
-}
-```
-
-A pasta apontada deve conter os diretórios git dos repos (`enlighten-api`, `en-space`, …). Nesse modo os dados refletem o estado do seu clone local — dê `git pull` nos repos antes de coletar se quiser dados frescos.
+Nesse modo os dados refletem o estado do seu clone local — dê `git pull` nos repos antes de coletar se quiser dados frescos.
 
 ### Usando com outro time/org
 
-O `config.json` versionado é um preset do time Enspace — **nada nele é específico de máquina** (caminhos de repo só em `config.local.json`/env, nunca no git). Para usar com outro time:
+O projeto não tem dado de máquina nem de time versionado: `.env` e `team.local.json` são gitignored e criados por cada um (o `.env.example` é o único template, com um Client ID de exemplo). Ajustes típicos:
 
-- `githubOrg` — sua org no GitHub (se vazio, o setup pergunta)
-- `defaultRepos` — pré-seleção do setup (se vazio, o padrão é "todos não arquivados")
-- `oauthClientId` — Client ID de um **GitHub App** (recomendado, começa com `Iv…`) ou **OAuth App** (`Ov…`) seu/da sua org com **Device Flow habilitado** (GitHub → Settings → Developer settings). Com ele, o setup autentica pela UI sem precisar do `gh`. Sem ele, tudo funciona via `gh auth login`. Nunca coloque client secret no repo — o device flow não usa secret.
+- `GITVIEW_GITHUB_ORG` / `GITVIEW_DEFAULT_REPOS` — org e pré-seleção do setup
+- `GITVIEW_GITHUB_CLIENT_ID` — Client ID de um **GitHub App** (recomendado, começa com `Iv…`) ou **OAuth App** (`Ov…`) seu/da sua org com **Device Flow habilitado** (GitHub → Settings → Developer settings). Nunca coloque client secret — o device flow não usa secret.
 
 > **Read-only de verdade**: use um **GitHub App** com permissão *Repository → Contents: Read-only* (+ *Metadata*, automática) instalado na org — o token emitido é fisicamente incapaz de escrever. OAuth App e `gh auth login` usam o escopo `repo`, que é read+write: o gitview só faz leituras, e os clones gerenciados têm a URL de push travada (`remote.origin.pushurl=no-push`), mas a garantia de permissão real vem do GitHub App.
 
 ### Limpar e recomeçar
 
-Banco e JSONs são 100% regeneráveis a partir dos repositórios:
+Banco e JSONs são 100% regeneráveis a partir dos repositórios (`team.local.json` **não** é — é o cadastro do time):
 
 - **UI**: `/setup` → card "Manutenção dos dados locais" → *recoletar tudo* (re-scan completo) ou *limpar e recomeçar* (apaga banco + JSONs e recoleta; clones mantidos).
 - **CLI**: `pnpm clean` (apaga `data/gitview.db*` + `public/data/*.json`) e depois `pnpm collect`. `pnpm clean -- --repos` apaga também os clones (a próxima coleta re-clona tudo — lento).
-- `authors` / `githubUsers` / `githubBots` / `bots` — mapeamentos de identidade do time. **Opcionais**: sem eles o dashboard funciona normalmente, só não agrupa aliases (cada e-mail/login vira um autor separado) e a coleta lista os logins sem mapeamento pra você ir completando.
 
 ## Comandos
 
 ```bash
-pnpm setup              # wizard: escolher/clonar repos da org
-pnpm collect            # os 3 coletores em sequência (incremental)
+pnpm dev / start        # dashboard em http://localhost:5173 (navbar: ↻ recoleta, ⚙ abre o assistente /setup)
+pnpm setup              # wizard de terminal: escolher/clonar repos da org
+pnpm collect            # os 4 coletores em sequência + validação (incremental)
 pnpm collect:github     # só PRs/reviews
 pnpm collect:releases   # só releases
+pnpm check:data         # validação de shape dos JSONs gerados
 pnpm clean              # apaga banco + JSONs (regeneráveis; --repos inclui os clones)
-pnpm dev                # dashboard (navbar: ↻ roda a coleta, ⚙ abre o assistente /setup)
-pnpm build              # build estático
+pnpm build              # build estático (dist/ — somente leitura, sem endpoints de setup)
 pnpm changeset          # registrar mudança
 pnpm version:packages   # aplicar changesets (bump + CHANGELOG)
 ```
@@ -86,5 +98,5 @@ pnpm version:packages   # aplicar changesets (bump + CHANGELOG)
 
 - Toda mudança = changeset (`minor` feature / `patch` fix) → `pnpm version:packages` → commit único com `chore(release): X.Y.Z` no corpo.
 - Commits em pt-BR (Conventional Commits), código em inglês, comentários em pt-BR.
-- `data/` (banco + clones) e `public/data/` são gerados e gitignored.
+- `data/` (banco + clones), `public/data/`, `.env` e `team.local.json` são locais e gitignored.
 - Detalhes de arquitetura e regras de filtro: ver `AGENTS.md`.

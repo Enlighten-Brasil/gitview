@@ -29,7 +29,7 @@ const rows = computed(() => releases.value?.repos ?? [])
           </UBadge>
         </div>
         <div class="mt-2 text-xs text-dimmed">
-          {{ r.tags[0]?.name ?? '— sem tags —' }}
+          {{ r.tags[0]?.name ?? r.tags[0]?.tag ?? '— sem tags —' }}
         </div>
       </UCard>
     </div>

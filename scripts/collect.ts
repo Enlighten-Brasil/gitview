@@ -1,7 +1,7 @@
 /**
  * Coletor de estatísticas git multi-repo.
  *
- * 1. Descobre repos git dentro de `reposRoot` (env/config.local/auto-detect)
+ * 1. Descobre repos git dentro de `reposRoot` (GITVIEW_REPOS_ROOT do .env/shell → data/repos)
  * 2. Roda `git log --all --numstat` em cada um (streaming)
  * 3. Grava commits normalizados em data/gitview.db (node:sqlite nativo)
  * 4. Exporta agregados prontos em public/data/stats.json
@@ -14,7 +14,8 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DatabaseSync } from 'node:sqlite'
 import { loadConfig, resolveReposRoot } from './lib/config'
-import { denyPush, discoverRepos, fetchRepo, isManagedRepo, mapPool, parseGitHub, remoteOf } from './lib/repos'
+import { getToken, NO_TOKEN_HINT } from './lib/github'
+import { denyPush, discoverRepos, fetchRepo, isManagedRepo, mapPool, parseGitHub, remoteOf, scrubPersistedToken } from './lib/repos'
 import { resolveAliases } from './lib/team'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -23,7 +24,7 @@ const root = resolve(__dirname, '..')
 const config = loadConfig()
 
 // ---------------------------------------------------------------------------
-// aliases de autor (config.authors + devProfiles do config.local.json)
+// aliases de autor (devProfiles do team.local.json)
 // ---------------------------------------------------------------------------
 const { emailToCanonical } = resolveAliases(config)
 function canonicalAuthor(name: string, email: string): string {
@@ -217,12 +218,17 @@ async function main() {
 
   // clones gerenciados (data/repos) não têm dono que dê pull — atualiza aqui.
   // denyPush é idempotente: garante a trava read-only também em clones antigos.
+  // scrubPersistedToken apaga o extraheader que versões antigas gravavam no
+  // clone (token em repouso) — o fetch agora injeta o token só no processo.
   const managed = repos.filter(r => isManagedRepo(r.path))
   if (managed.length) {
+    const token = getToken()?.token
+    if (!token) console.warn(`! ${NO_TOKEN_HINT} — fetch dos clones vai usar só o cache local`)
     console.log(`\nAtualizando ${managed.length} clones gerenciados (git fetch)...`)
     await mapPool(managed, 4, async (repo) => {
       denyPush(repo.path)
-      const err = await fetchRepo(repo.path)
+      scrubPersistedToken(repo.path)
+      const err = await fetchRepo(repo.path, token)
       if (err) console.warn(`! ${repo.name}: fetch falhou, usando cache local (${err.split('\n')[0]})`)
     })
   }

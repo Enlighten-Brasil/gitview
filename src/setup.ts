@@ -1,6 +1,6 @@
 /**
  * Cliente dos endpoints de onboarding (apenas dev — middleware do Vite,
- * não existe no build estático). Cobre auth (device flow/gh) e o setup
+ * não existe no build estático). Cobre auth (device flow/PAT/gh) e o setup
  * de repositórios (listar orgs/repos, clonar com progresso SSE).
  */
 import { ref } from 'vue'
@@ -51,9 +51,33 @@ export type DeviceFlowPoll =
   | { status: 'pending' | 'slow_down' | 'expired' | 'denied' }
   | { status: 'ok'; login: string }
 
+// ---------------------------------------------------------------------------
+// PAT colado + desconexão
+// ---------------------------------------------------------------------------
+export function submitGithubToken(token: string): Promise<{ login: string }> {
+  return postJson<{ login: string }>('/__auth/token', { token })
+}
+
+export function githubLogout(): Promise<{ ok: true }> {
+  return postJson<{ ok: true }>('/__auth/logout', {})
+}
+
+async function postJson<T>(url: string, body: unknown): Promise<T> {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error((data as { error?: string }).error ?? `HTTP ${res.status}`)
+  return data as T
+}
+
 export function startDeviceFlow(): Promise<DeviceFlowStart> {
   return getJson('/__auth/device')
-}export async function pollDeviceFlow(deviceCode: string): Promise<DeviceFlowPoll> {
+}
+
+export async function pollDeviceFlow(deviceCode: string): Promise<DeviceFlowPoll> {
   const res = await fetch('/__auth/device/poll', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

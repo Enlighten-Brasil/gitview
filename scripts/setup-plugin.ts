@@ -2,13 +2,15 @@
  * Plugin Vite (apenas dev): endpoints locais pro onboarding pela UI.
  *
  *  GET  /__setup/status                     auth, reposRoot atual, defaults
- *  POST /__auth/device                      inicia o device flow (requer oauthClientId)
+ *  POST /__auth/device                      inicia o device flow (requer client id)
  *  POST /__auth/device/poll                 { deviceCode } -> pending/ok (grava o token)
+ *  POST /__auth/token                       { token } — PAT colado (valida antes de gravar)
+ *  POST /__auth/logout                      limpa o token do .env
  *  GET  /__setup/orgs                       orgs do usuário autenticado
  *  GET  /__setup/repos?org=X                repos da org (ou pessoais com org=@user)
  *  GET  /__setup/apply?org=X&repos=a,b,c    SSE: clona os faltantes em data/repos
  *                                           (&dry=1 só simula; &remove=d,e apaga
- *                                           clones gerenciados) e grava config.local.json
+ *                                           clones gerenciados) e grava o .env
  *  GET  /__clean[?repos=1]                  apaga banco + JSONs (com repos=1 apaga
  *                                           também os clones) — o "pnpm clean" da UI
  *
@@ -19,7 +21,7 @@ import { rm } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { join } from 'node:path'
 import type { Plugin } from 'vite'
-import { loadConfig, rootDir, saveLocalConfig } from './lib/config'
+import { loadConfig, rootDir, saveConfig } from './lib/config'
 import type { DevProfile, TeamConfig } from './lib/config'
 import { cleanLocalData } from './lib/clean'
 import { currentUser, devicePoll, deviceStart, getToken, listOrgMembers, listOrgs, listOrgRepos, listOrgTeams, listUserRepos } from './lib/github'
@@ -142,7 +144,7 @@ export function setupPlugin(): Plugin {
           }
           json(res, 200, {
             auth: auth && login ? { login, via: auth.via } : null,
-            oauthConfigured: !!config.oauthClientId,
+            oauthConfigured: !!config.githubClientId,
             reposRoot,
             repos: repos.map(r => r.name),
             hasData: existsSync(join(rootDir, 'public', 'data', 'stats.json')),
@@ -155,11 +157,11 @@ export function setupPlugin(): Plugin {
         }
       })
 
-      // device flow: poll (grava o token no config.local.json ao concluir)
+      // device flow: poll (grava o token no .env ao concluir)
       // ATENÇÃO: registrado ANTES do '/__auth/device' — o connect casa por
       // prefixo, então '/__auth/device' engoliria '/__auth/device/poll'.
       server.middlewares.use('/__auth/device/poll', async (req, res) => {
-        const clientId = loadConfig().oauthClientId
+        const clientId = loadConfig().githubClientId
         if (!clientId) {
           json(res, 409, { error: 'oauth_not_configured' })
           return
@@ -177,7 +179,7 @@ export function setupPlugin(): Plugin {
         try {
           const result = await devicePoll(clientId, deviceCode)
           if (result.status === 'ok') {
-            saveLocalConfig({ githubToken: result.token })
+            saveConfig({ githubToken: result.token })
             const login = (await currentUser(result.token)).login
             json(res, 200, { status: 'ok', login })
             return
@@ -191,7 +193,7 @@ export function setupPlugin(): Plugin {
 
       // device flow: início
       server.middlewares.use('/__auth/device', async (req, res) => {
-        const clientId = loadConfig().oauthClientId
+        const clientId = loadConfig().githubClientId
         if (!clientId) {
           json(res, 409, { error: 'oauth_not_configured' })
           return
@@ -202,6 +204,35 @@ export function setupPlugin(): Plugin {
         catch (err) {
           json(res, 500, { error: String((err as Error).message ?? err) })
         }
+      })
+
+      // PAT colado na UI: valida na API antes de gravar no .env
+      server.middlewares.use('/__auth/token', async (req, res) => {
+        const body = await readBody(req)
+        if (!body) {
+          json(res, 400, { error: 'corpo JSON inválido' })
+          return
+        }
+        const token = String(body.token ?? '').trim()
+        if (!token) {
+          json(res, 400, { error: 'token ausente' })
+          return
+        }
+        try {
+          const user = await currentUser(token)
+          saveConfig({ githubToken: token })
+          json(res, 200, { login: user.login })
+        }
+        catch (err) {
+          json(res, 401, { error: `token inválido ou sem acesso — ${(err as Error).message}` })
+        }
+      })
+
+      // desconectar: limpa a chave do .env (se o gh CLI estiver logado, ele
+      // continua servindo de ponte — a UI reflete isso no próximo status)
+      server.middlewares.use('/__auth/logout', async (_req, res) => {
+        saveConfig({ githubToken: '' })
+        json(res, 200, { ok: true })
       })
 
       // orgs do usuário (+ entrada pseudo pra repos pessoais)
@@ -288,6 +319,10 @@ export function setupPlugin(): Plugin {
             send('done', { dry: true, cloned: 0, skipped: repos.length - missing.length })
             return
           }
+          if (missing.length && !token) {
+            send('error', { message: 'sem token do GitHub — conecte sua conta no passo 1 antes de clonar' })
+            return
+          }
           let failures = 0
           await mapPool(missing, 4, async (name) => {
             const t0 = Date.now()
@@ -300,8 +335,8 @@ export function setupPlugin(): Plugin {
               send('log', { line: `✓ ${name} clonado (${((Date.now() - t0) / 1000).toFixed(0)}s)` })
             }
           })
-          saveLocalConfig({ reposRoot: 'data/repos' })
-          send('log', { line: 'config.local.json gravado (reposRoot = data/repos)' })
+          saveConfig({ reposRoot: 'data/repos' })
+          send('log', { line: '.env gravado (GITVIEW_REPOS_ROOT = data/repos)' })
           if (failures) {
             send('error', { message: `${failures} repo(s) falharam ao clonar` })
             return
@@ -316,7 +351,7 @@ export function setupPlugin(): Plugin {
       })
 
       // ---------------------------------------------------------------------
-      // time: perfis de devs e times (config.local.json → team.json)
+      // time: perfis de devs e times (team.local.json → team.json)
       // ---------------------------------------------------------------------
 
       // membros + times da org no GitHub (sugestões pra importar)
@@ -346,7 +381,7 @@ export function setupPlugin(): Plugin {
         }
       })
 
-      // lê perfis/times locais + resumo do config versionado (aliases fixos)
+      // lê perfis/times locais (team.local.json)
       server.middlewares.use('/__team/config', async (req, res) => {
         if (req.method === 'POST') {
           const body = await readBody(req)
@@ -357,7 +392,7 @@ export function setupPlugin(): Plugin {
           try {
             const devProfiles = sanitizeDevProfiles(body.devProfiles)
             const teams = sanitizeTeams(body.teams)
-            saveLocalConfig({ devProfiles, teams })
+            saveConfig({ devProfiles, teams })
             json(res, 200, { ok: true, devProfiles: Object.keys(devProfiles).length, teams: teams.length })
           }
           catch (err) {
@@ -370,16 +405,11 @@ export function setupPlugin(): Plugin {
           json(res, 200, {
             devProfiles: config.devProfiles ?? {},
             teams: config.teams ?? [],
-            // aliases fixos do config.json (só leitura — edição é no repo)
-            fixed: {
-              authors: Object.keys(config.authors ?? {}),
-              githubUsers: config.githubUsers ?? {},
-            },
             githubOrg: config.githubOrg ?? null,
           })
         }
         catch (err) {
-          // config.local.json corrompida: responde erro em vez de hanguear a requisição
+          // team.local.json corrompida: responde erro em vez de hanguear a requisição
           json(res, 500, { error: String((err as Error).message ?? err) })
         }
       })
