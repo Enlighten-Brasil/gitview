@@ -1,6 +1,7 @@
 import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { filters, stats } from './data'
+import { LEGACY_TAB_ROUTES } from './nav'
 
 /**
  * Sincroniza o estado (aba + filtros) com a query string da URL — links ficam
@@ -17,7 +18,8 @@ import { filters, stats } from './data'
  */
 
 export const activeTab = ref('overview')
-const TABS = ['overview', 'team', 'health', 'repos', 'prs']
+// prs/repos viraram rotas dedicadas (/?tab=prs|repos redireciona via nav.ts)
+const TABS = ['overview', 'team', 'health']
 const RANGES = [1, 3, 6, 12, 24]
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
@@ -70,6 +72,15 @@ function parseUrl(kind: RouteKind, reset = false) {
   }
 
   const q = new URLSearchParams(location.search)
+
+  // sem parâmetros de período na URL → cai no último range usado (persistido)
+  if (!reset && !q.has('range') && !q.has('from') && !q.has('to')) {
+    const savedRange = localStorage.getItem('gitview:range')
+    if (savedRange === 'all')
+      filters.rangeMonths = null
+    else if (savedRange && RANGES.includes(Number(savedRange)))
+      filters.rangeMonths = Number(savedRange)
+  }
 
   if (kind === 'dashboard') {
     const tab = q.get('tab')
@@ -132,6 +143,15 @@ export function initUrlState() {
 
   const router = useRouter()
 
+  // compat: ?tab=prs|repos (links antigos) → rotas dedicadas
+  const legacyTab = new URLSearchParams(location.search).get('tab')
+  if (legacyTab && LEGACY_TAB_ROUTES[legacyTab] && routeKind(location.pathname) === 'dashboard') {
+    const q = new URLSearchParams(location.search)
+    q.delete('tab')
+    const qs = q.toString()
+    router.replace({ path: LEGACY_TAB_ROUTES[legacyTab], query: qs ? Object.fromEntries(q) : {} })
+  }
+
   // URL tem prioridade; sem parâmetros, cai no localStorage (aba) / defaults (filtros)
   activeTab.value = localStorage.getItem('gitview:tab') ?? 'overview'
   const initialKind = routeKind(location.pathname)
@@ -148,6 +168,7 @@ export function initUrlState() {
       return // não pisa em /setup e afins
     history.replaceState(null, '', buildUrl(kind))
     localStorage.setItem('gitview:tab', activeTab.value)
+    localStorage.setItem('gitview:range', filters.rangeMonths == null ? 'all' : String(filters.rangeMonths))
   }, { deep: true })
 
   // navegação por link (ex.: clicar num dev/repo): aplica os params presentes na

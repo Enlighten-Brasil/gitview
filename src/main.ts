@@ -15,6 +15,10 @@ const router = createRouter({
     { path: '/repo/:name', name: 'repo', component: defineAsyncComponent(() => import('./views/RepoView.vue')) },
     // time: perfis de devs, aliases e times (edição só em dev)
     { path: '/team', name: 'team', component: defineAsyncComponent(() => import('./views/TeamView.vue')) },
+    // seções dedicadas (two-pane nav); /prs e /repos redirecionam pras tabs atuais
+    { path: '/prs', name: 'prs', component: defineAsyncComponent(() => import('./views/PrsView.vue')) },
+    { path: '/repos', name: 'repos', component: defineAsyncComponent(() => import('./views/ReposView.vue')) },
+    { path: '/releases', name: 'releases', component: defineAsyncComponent(() => import('./views/ReleasesView.vue')) },
     // onboarding/configuração pela UI (só funciona em dev — endpoints do Vite)
     { path: '/setup', name: 'setup', component: defineAsyncComponent(() => import('./views/SetupView.vue')) },
   ],

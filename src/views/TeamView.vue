@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useToast } from '@nuxt/ui/composables'
+import { onBeforeRouteLeave } from 'vue-router'
 import { collecting, startCollect } from '../collect'
 import { fetchGithubTeam, fetchTeamConfig, loadTeam, saveTeamConfig, team, teamLoadError } from '../team'
 import type { GithubTeamData, TeamConfigPayload } from '../team'
@@ -105,7 +106,19 @@ function payload(): TeamConfigPayload {
   }
 }
 
-const dirty = computed(() => JSON.stringify(payload()) !== JSON.stringify(savedSnapshot.value))
+// dirty compara o estado bruto dos times (incluindo rascunhos sem nome) + o payload
+// completo (perfis/times efetivos) contra o snapshot pós-save. Time vazio conta
+// como mudança — senão o usuário perde o rascunho ao sair sem perceber.
+const dirty = computed(() => {
+  const saved = savedSnapshot.value
+  // perfis: compara payload efetivo
+  if (JSON.stringify(payload().devProfiles) !== JSON.stringify(saved.devProfiles))
+    return true
+  // times: compara estado bruto (sem filtrar nome vazio)
+  const cur = teams.value.map(t => ({ n: t.name.trim(), d: t.description.trim(), c: t.color.trim(), m: [...t.members] }))
+  const old = saved.teams.map(t => ({ n: t.name, d: t.description ?? '', c: t.color ?? '', m: t.members }))
+  return JSON.stringify(cur) !== JSON.stringify(old)
+})
 const savedSnapshot = ref<TeamConfigPayload>({ devProfiles: {}, teams: [] })
 
 async function save(): Promise<boolean> {
@@ -159,13 +172,47 @@ function confirmEdit() {
 const devNames = computed(() => (team.value?.devs ?? []).filter(d => !d.bot).map(d => d.name).sort())
 const PALETTE = ['#8b5cf6', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6', '#f97316']
 
+/** dev → nomes dos outros times em que já aparece (pra hint de duplicidade no select) */
+function otherTeamsOf(dev: string, currentIdx: number): string[] {
+  return teams.value
+    .filter((t, i) => i !== currentIdx && t.members.includes(dev) && t.name.trim())
+    .map(t => t.name.trim())
+}
+
+/** opções do select de membros de um time — marca quem já está em outro time */
+function memberItems(currentIdx: number): { label: string, value: string, hint?: string }[] {
+  return devNames.value.map(d => {
+    const others = otherTeamsOf(d, currentIdx)
+    return { label: d, value: d, hint: others.length ? `já em: ${others.join(', ')}` : undefined }
+  })
+}
+
 function addTeam() {
   teams.value.push({ name: '', description: '', color: PALETTE[teams.value.length % PALETTE.length], members: [] })
 }
 
 function removeTeam(i: number) {
+  const t = teams.value[i]
+  const label = t.name.trim() || '(sem nome)'
+  if (!window.confirm(`remover o time "${label}"? a mudança só é persistida ao salvar.`))
+    return
   teams.value.splice(i, 1)
 }
+
+// guarda de navegação: avisa antes de sair da página com mudanças não salvas
+const DIRTY_MSG = 'você tem mudanças não salvas no time — sair mesmo assim?'
+onBeforeRouteLeave(() => {
+  if (dirty.value && !window.confirm(DIRTY_MSG))
+    return false
+})
+function onBeforeUnload(e: BeforeUnloadEvent) {
+  if (dirty.value) {
+    e.preventDefault()
+    e.returnValue = ''
+  }
+}
+onMounted(() => window.addEventListener('beforeunload', onBeforeUnload))
+onUnmounted(() => window.removeEventListener('beforeunload', onBeforeUnload))
 
 function teamColor(name: string): string | null {
   return teams.value.find(t => t.name === name)?.color || team.value?.teams.find(t => t.name === name)?.color || null
@@ -316,7 +363,7 @@ const assignTarget = reactive<Record<string, string>>({})
     />
 
     <!-- times -->
-    <section class="flex flex-col gap-3">
+    <section id="times" class="flex flex-col gap-3 scroll-mt-16">
       <div class="flex items-center gap-2">
         <h2 class="font-medium">
           Times
@@ -363,12 +410,13 @@ const assignTarget = reactive<Record<string, string>>({})
             </div>
             <USelectMenu
               v-model="t.members"
-              :items="devNames"
+              :items="memberItems(i)"
               multiple
               :disabled="!isDev"
               placeholder="membros…"
               size="sm"
               class="w-full"
+              value-key="value"
             />
             <div class="flex flex-wrap gap-1">
               <UBadge v-for="m in t.members" :key="m" color="neutral" variant="soft" size="sm">
@@ -381,7 +429,7 @@ const assignTarget = reactive<Record<string, string>>({})
     </section>
 
     <!-- devs -->
-    <section class="flex flex-col gap-3">
+    <section id="devs" class="flex flex-col gap-3 scroll-mt-16">
       <div class="flex items-center gap-2">
         <h2 class="font-medium">
           Devs
@@ -446,7 +494,7 @@ const assignTarget = reactive<Record<string, string>>({})
     </section>
 
     <!-- candidatos -->
-    <section v-if="candidates.length" class="flex flex-col gap-3">
+    <section v-if="candidates.length" id="sem-mapeamento" class="flex flex-col gap-3 scroll-mt-16">
       <div class="flex items-center gap-2">
         <h2 class="font-medium">
           Sem mapeamento
