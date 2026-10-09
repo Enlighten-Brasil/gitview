@@ -26,11 +26,60 @@ export async function loadTeam(force = false) {
 }
 
 // ---------------------------------------------------------------------------
+// helpers de exibição (avatares de iniciais — sem foto, tudo offline)
+// ---------------------------------------------------------------------------
+const AVATAR_BGS = [
+  'bg-violet-500',
+  'bg-sky-500',
+  'bg-emerald-500',
+  'bg-amber-500',
+  'bg-rose-500',
+  'bg-pink-500',
+  'bg-teal-500',
+  'bg-orange-500',
+  'bg-indigo-500',
+  'bg-cyan-500',
+]
+
+/** iniciais (1ª + última palavra); nomes de uma peça usam as 2 primeiras letras */
+export function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (!parts.length)
+    return '?'
+  if (parts.length === 1)
+    return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
+
+/** classe de fundo estável por nome (hash simples) */
+export function avatarBgClass(name: string): string {
+  let h = 0
+  for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0
+  return AVATAR_BGS[h % AVATAR_BGS.length]
+}
+
+// ---------------------------------------------------------------------------
 // endpoints dev (Vite)
 // ---------------------------------------------------------------------------
 export interface TeamConfigPayload {
   devProfiles: Record<string, { title?: string, description?: string, emails?: string[], githubLogins?: string[] }>
   teams: { name: string, description?: string, color?: string, members: string[] }[]
+}
+
+/** rascunho de time no editor (campos sempre presentes, vazio = string '') */
+export interface TeamDraft {
+  name: string
+  description: string
+  color: string
+  members: string[]
+}
+
+/** métricas agregadas de um time (fontes: stats.json + github.json) */
+export interface TeamMetrics {
+  devs: number
+  commits: number
+  prs: number
+  lastCommit: string | null
 }
 
 export interface TeamConfigState extends TeamConfigPayload {
