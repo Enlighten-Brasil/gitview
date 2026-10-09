@@ -2,10 +2,19 @@
 import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import type { EChartsOption } from 'echarts'
-import { filters, inRange, isCustomRange, loadCommits, rangeLabel, recentCommits, stats } from '../data'
-import { fmtDuration, ghName, github, median } from '../github'
-import { axisLabel, ct, heatRamp, legendText, PALETTE, splitLine, tooltipBase } from '../chartTheme'
-import ChartPanel from '../components/ChartPanel.vue'
+import { filters, inRange, isCustomRange, loadCommits, rangeLabel, recentCommits, stats } from '@/data'
+import { fmtDuration, ghName, github, median } from '@/github'
+import { axisLabel, ct, heatRamp, legendText, PALETTE, splitLine, tooltipBase } from '@/chartTheme'
+import ChartPanel from '@/components/ChartPanel.vue'
+
+// rota de detalhe do dev (era /dev/:name — alias mantém os links antigos)
+definePage({
+  alias: '/dev/:name',
+  meta: {
+    section: 'dashboards',
+    filters: 'period',
+  },
+})
 
 const WEEKDAYS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
 
@@ -250,7 +259,7 @@ function commitUrl(repo: string, hash: string): string | null {
           <UButton
             v-for="s in suggestions"
             :key="s"
-            :to="`/dev/${encodeURIComponent(s)}`"
+            :to="{ name: '/devs/[name]', params: { name: s } }"
             color="neutral"
             variant="soft"
             size="sm"

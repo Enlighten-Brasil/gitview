@@ -3,11 +3,18 @@
  * Pull requests — seção dedicada (migrada da tab "prs" do dashboard).
  * Âncoras (#abertos/#cycle-time/#reviews) alimentam o sub-nav contextual.
  */
-import { github, githubError } from '../github'
-import PrSummaryCards from '../components/PrSummaryCards.vue'
-import PrOpenTable from '../components/PrOpenTable.vue'
-import PrCycleTime from '../components/PrCycleTime.vue'
-import PrReviews from '../components/PrReviews.vue'
+import { github, githubError } from '@/github'
+import PrSummaryCards from '@/components/PrSummaryCards.vue'
+import PrOpenTable from '@/components/PrOpenTable.vue'
+import PrCycleTime from '@/components/PrCycleTime.vue'
+import PrReviews from '@/components/PrReviews.vue'
+
+definePage({
+  meta: {
+    section: 'prs',
+    filters: 'full',
+  },
+})
 </script>
 
 <template>

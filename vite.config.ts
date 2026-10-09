@@ -1,5 +1,8 @@
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import VueRouter from 'vue-router/vite'
+import { getFileBasedRouteName } from 'vue-router/unplugin'
 import ui from '@nuxt/ui/vite'
 import { loadConfig } from './scripts/lib/config'
 import { collectPlugin } from './scripts/collect-plugin'
@@ -11,9 +14,21 @@ import { setupPlugin } from './scripts/setup-plugin'
 const config = loadConfig()
 
 export default defineConfig({
-  base: './',
+  // base absoluto: history mode + SPA fallback — deep links (/devs/x) só funcionam
+  // servidos, então assets relativo ('./') quebraria (procuraria /devs/assets/...)
+  base: '/',
   envDir: false,
   plugins: [
+    // rotas por arquivo em src/pages (vue-router 5). Nomes sem grupos (app)/(dashboard):
+    // /(app)/devs/[name] → "/devs/[name]" — navegação tipada igual às URLs
+    VueRouter({
+      dts: 'src/route-map.d.ts',
+      getRouteName: (node) => {
+        const raw = getFileBasedRouteName(node)
+        const clean = `/${raw.split('/').filter(s => s && !/^\(.*\)$/.test(s)).join('/')}`
+        return clean === '/' ? '/' : clean.replace(/\/$/, '')
+      },
+    }),
     vue(),
     collectPlugin(),
     setupPlugin(),
@@ -31,6 +46,11 @@ export default defineConfig({
       },
     }),
   ],
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
   server: {
     port: config.port ?? 5173,
     fs: {

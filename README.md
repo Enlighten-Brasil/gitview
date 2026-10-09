@@ -41,7 +41,7 @@ Perfis de devs (título, descrição), aliases (e-mails de commit, logins do Git
 
 ### Setup pela UI (`/setup`)
 
-Na primeira execução (sem dados coletados) o dashboard redireciona para o assistente de 3 passos — também acessível depois pelo botão ⚙ no navbar:
+Na primeira execução (sem dados coletados) o dashboard redireciona para o assistente de 3 passos (`/setup/github` → `/setup/repos` → `/setup/collect`) — também acessível depois pelo item **Config** da rail lateral (⚙, só em dev; com dados ele abre direto as **Configurações** `/settings`):
 
 1. **Conectar o GitHub** — device flow (o browser abre `github.com/login/device`, você digita o código; o token vai para o seu `.env`), colar um **PAT** (repo + read:org) ou a ponte do `gh auth login`. Com Client ID configurado o botão aparece; sem ele, os outros caminhos funcionam.
 2. **Escolher repositórios** — lista os repos da sua org (ou da sua conta pessoal), com busca e pré-seleção do `GITVIEW_DEFAULT_REPOS`.
@@ -76,7 +76,7 @@ O projeto não tem dado de máquina nem de time versionado: `.env` e `team.local
 
 Banco e JSONs são 100% regeneráveis a partir dos repositórios (`team.local.json` **não** é — é o cadastro do time):
 
-- **UI**: `/setup` → card "Manutenção dos dados locais" → *recoletar tudo* (re-scan completo) ou *limpar e recomeçar* (apaga banco + JSONs e recoleta; clones mantidos).
+- **UI**: **Config → Geral** (`/settings`) → card "Manutenção dos dados locais" → *recoletar tudo* (re-scan completo) ou *limpar e recomeçar* (apaga banco + JSONs e recoleta; clones mantidos).
 - **CLI**: `pnpm clean` (apaga `data/gitview.db*` + `public/data/*.json`) e depois `pnpm collect`. `pnpm clean -- --repos` apaga também os clones (a próxima coleta re-clona tudo — lento).
 
 ## Comandos
