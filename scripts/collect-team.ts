@@ -2,7 +2,7 @@
  * Coletor de perfis do time → public/data/team.json.
  *
  * Junta:
- * - perfis/times do config.local.json (devProfiles/teams — dados locais de gestão)
+ * - perfis/times do team.local.json (devProfiles/teams — dados locais de gestão)
  * - aliases detectados nos dados coletados: autores do stats.json (nome+emails)
  *   e logins do github.json (PRs/reviews)
  *

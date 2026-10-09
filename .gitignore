@@ -8,5 +8,15 @@ auto-imports.d.ts
 components.d.ts
 
 screenshot-*.png
-config.local.json
+config.local.json*
 dev-server.log
+
+# config de máquina (segredo) e config de time — regeneráveis só via setup/UI
+.env
+.env.*
+!.env.example
+team.local.json
+
+# segurança: se algum config futuro usar o dts default do vue-router na raiz
+typed-router.d.ts
+

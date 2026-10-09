@@ -2,18 +2,18 @@
  * Coletor de Pull Requests do GitHub (complemento do collect.ts).
  *
  * 1. Descobre repos em `reposRoot` e resolve owner/repo pelo remote origin
- * 2. Busca PRs abertos (todos) e mergeados (últimos 400 dias) via `gh api graphql`,
+ * 2. Busca PRs abertos (todos) e mergeados (últimos 400 dias) na API GraphQL,
  *    já com reviews inline (1 request por página de 100 PRs)
  * 3. Grava tudo em public/data/github.json — o frontend continua 100% estático
  *
- * Requer `gh` autenticado (gh auth login) com acesso aos repos.
- * Logins do GitHub são mapeados para os nomes canônicos via config.githubUsers.
+ * Auth: token do .env (GITVIEW_GITHUB_TOKEN) com fallback pro `gh auth token`.
+ * Logins do GitHub são mapeados para os nomes canônicos via devProfiles (/team).
  */
-import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { loadConfig, resolveReposRoot } from './lib/config'
+import { ghGraphql, getToken } from './lib/github'
 import { discoverRepos, mapPool, parseGitHub, remoteOf } from './lib/repos'
 import { BOT_LOGIN_RE, botLoginSet, resolveAliases } from './lib/team'
 
@@ -26,38 +26,15 @@ const MERGED_CUTOFF_DAYS = 400
 const config = loadConfig()
 
 // ---------------------------------------------------------------------------
-// gh api graphql (args em array — sem problemas de quoting do PowerShell)
-// async pra rodar repos em paralelo
+// API GraphQL (fetch direto com o token da config) — async pra rodar
+// repos em paralelo
 // ---------------------------------------------------------------------------
+const auth = getToken()
+if (!auth) console.warn('! sem token do GitHub — PRs novos não serão buscados (cache anterior é preservado). Rode o setup da UI ou "gh auth login".')
+
 function gh<T>(query: string, vars: Record<string, string>): Promise<T> {
-  return new Promise((resolvePromise, reject) => {
-    const args = ['api', 'graphql']
-    for (const [k, v] of Object.entries(vars)) args.push('-f', `${k}=${v}`)
-    args.push('-f', `query=${query}`)
-    const child = spawn('gh', args)
-    const chunks: Buffer[] = []
-    const errChunks: Buffer[] = []
-    child.stdout.on('data', (c: Buffer) => chunks.push(c))
-    child.stderr.on('data', (c: Buffer) => errChunks.push(c))
-    child.on('error', err => reject(new Error(`falha ao executar o gh: ${err.message} — instale o GitHub CLI e rode "gh auth login"`)))
-    child.on('close', (code) => {
-      if (code !== 0) {
-        reject(new Error(`gh falhou: ${Buffer.concat(errChunks).toString().trim()}`))
-        return
-      }
-      try {
-        const json = JSON.parse(Buffer.concat(chunks).toString('utf-8'))
-        if (json.errors?.length) {
-          reject(new Error(`graphql: ${json.errors[0].message}`))
-          return
-        }
-        resolvePromise(json.data as T)
-      }
-      catch (e) {
-        reject(e)
-      }
-    })
-  })
+  if (!auth) return Promise.reject(new Error('sem token do GitHub (configure no setup ou via gh auth login)'))
+  return ghGraphql<T>(query, vars, auth.token)
 }
 
 /** map assíncrono com concorrência limitada (repos em paralelo) — scripts/lib/repos.ts */
@@ -301,5 +278,5 @@ writeFileSync(outFile, JSON.stringify({
 
 console.log(`\n✓ github.json: ${allPrs.length} PRs (${fetchedCount} buscados, ${kept} mergeados preservados) de ${repos.length - skipped} repos`)
 if (unmapped.length) {
-  console.log(`⚠ logins sem mapeamento em config.githubUsers: ${unmapped.join(', ')}`)
+  console.log(`⚠ logins sem mapeamento (associe em /team): ${unmapped.join(', ')}`)
 }

@@ -2,18 +2,19 @@
  * Coletor de releases (complemento do collect.ts / collect-github.ts).
  *
  * 1. Tags git locais (`git tag` com data) — cobertura universal, sem API
- * 2. Releases do GitHub via `gh api` REST — enriquece a tag com nome, notas e URL
+ * 2. Releases do GitHub via API REST (token do .env) — enriquece a tag com nome, notas e URL
  * 3. Conta commits por release (desde a tag anterior) e commits não liberados
  *    (desde a última tag) usando o data/gitview.db
  *
  * Saída: public/data/releases.json — o frontend continua 100% estático.
  */
-import { spawn, spawnSync } from 'node:child_process'
+import { spawnSync } from 'node:child_process'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DatabaseSync } from 'node:sqlite'
 import { loadConfig, resolveReposRoot } from './lib/config'
+import { ghApi, getToken } from './lib/github'
 import { discoverRepos, mapPool, parseGitHub, remoteOf } from './lib/repos'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -23,6 +24,7 @@ const root = resolve(__dirname, '..')
 const NOTES_MAX = 3000
 
 const config = loadConfig()
+const auth = getToken()
 
 // ---------------------------------------------------------------------------
 // tags locais: nome + data (iso8601 estrito é parseável por new Date)
@@ -60,25 +62,12 @@ interface GhRelease {
 }
 
 function ghReleases(ghRepo: { owner: string; repo: string }): Promise<Map<string, GhRelease>> {
-  return new Promise((resolvePromise) => {
-    const child = spawn('gh', ['api', `repos/${ghRepo.owner}/${ghRepo.repo}/releases?per_page=100`])
-    const chunks: Buffer[] = []
-    child.stdout.on('data', (c: Buffer) => chunks.push(c))
-    child.on('error', () => resolvePromise(new Map()))
-    child.on('close', (code) => {
-      if (code !== 0) {
-        resolvePromise(new Map())
-        return
-      }
-      try {
-        const list = JSON.parse(Buffer.concat(chunks).toString('utf-8')) as GhRelease[]
-        resolvePromise(new Map(list.filter(rel => !rel.draft).map(rel => [rel.tag_name, rel])))
-      }
-      catch {
-        resolvePromise(new Map())
-      }
-    })
-  })
+  // falha silenciosa por design (igual ao spawn antigo): sem token/404/offline
+  // o repo sai só com as tags git, sem notas do GitHub
+  if (!auth) return Promise.resolve(new Map())
+  return ghApi<GhRelease[]>(`/repos/${ghRepo.owner}/${ghRepo.repo}/releases?per_page=100`, auth.token)
+    .then(list => new Map(list.filter(rel => !rel.draft).map(rel => [rel.tag_name, rel])))
+    .catch(() => new Map<string, GhRelease>())
 }
 
 /** map assíncrono com concorrência limitada (repos em paralelo) — scripts/lib/repos.ts */

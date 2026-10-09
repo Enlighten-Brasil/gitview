@@ -1,5 +1,25 @@
 # gitview
 
+## 0.32.0
+
+### Minor Changes
+
+- feat: config de máquina no .env, setup com PAT e coletores independentes do gh
+  
+  - **`.env` + `.env.example`** substituem config.json/config.local.json: chaves `GITVIEW_*` (token, client id, org, reposRoot, defaultRepos, exclude, porta) com precedência shell > .env > default. O `.env` é criado do exemplo na 1ª execução, lido fresco a cada coletor (`envDir: false` no Vite — gravar token no meio do wizard não reinicia/reanca o SSE de coleta) e negado no `server.fs.deny` + watch.
+  - **`team.local.json`** (gitignored) passa a ser a única fonte de aliases/perfis/times/bots do time (editável em /team); `config.json` sai do git (nada de pessoal versionado). Migração automática única no primeiro load (legado renomeado `.migrated`). Instrução de pull no README.
+  - **Auth do setup**: além do device flow, dá para colar um **PAT** (validado na API antes de gravar) e **desconectar** (`POST /__auth/token` / `/__auth/logout`). `gh auth login` vira ponte opcional — ninguém precisa do gh instalado para coletar/clonar.
+  - **Coletores sem `gh`**: `collect-github.ts` usa a API GraphQL via `fetch` com token, `collect-releases.ts` usa REST direto, `scripts/setup.ts` lista org via API. Token injetado no `git clone/fetch` por `GIT_CONFIG_*` (não vaza pro argv nem fica gravado no config dos clones; scrub remove headers antigos).
+  - `pnpm start` (alias do dev server) para o fluxo "clonei → install → start".
+- 788ffb8: feat: navegação two-pane (rail + painel contextual) e rotas dedicadas para PRs/Repos/Releases
+  
+  - Novo shell de navegação estilo Sentry: rail de ícones (Visão geral, PRs, Repos, Releases) + painel contextual com sub-navegação, recolhível (persistido em localStorage); navbar antigo com links de abas removido
+  - Tabs "Repos" e "PRs" saem do dashboard e viram rotas dedicadas (/repos, /prs); nova página /releases com cards por repo; ?tab= legado redireciona
+  - Fix: filtro de período persiste no localStorage e sobrevive à navegação /dev ↔ home (voltar não perde mais o período)
+  - Fix: /team — confirmação ao excluir time; guard de alterações não salvas ao trocar de rota e ao fechar a aba (rascunho de time sem nome agora conta como dirty)
+  - Fix: tab "Time" → "Equipe" e página de gerenciamento → "Times" (não eram a mesma coisa); select de membros indica quando o dev já está em outro time; /dev inexistente sugere nomes próximos
+  - Sidebar de filtros por contexto: oculta em /prs e /releases, reduzida a repositórios em /repos
+
 ## 0.31.1
 
 ### Patch Changes

@@ -66,20 +66,45 @@ export function parseGitHub(remote: string): { owner: string; repo: string } | n
 }
 
 /**
- * git fetch tolerante a falha: repo sem acesso ou rede fora não derruba a
- * coleta — usa o cache local e avisa. GIT_TERMINAL_PROMPT=0 evita prompt
- * interativo de credencial travando o processo.
+ * Env do git com o token injetado por variável GIT_CONFIG_* (equivalente a
+ * `-c`, mas sem vazar no argv dos processos): o header basic x-access-token
+ * vale só para o comando — o token nunca fica gravado em config do clone.
  */
-export function fetchRepo(path: string): Promise<string | null> {
+export function gitAuthEnv(token?: string | null): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...process.env, GIT_TERMINAL_PROMPT: '0' }
+  if (token) {
+    const basic = Buffer.from(`x-access-token:${token}`).toString('base64')
+    env.GIT_CONFIG_COUNT = '1'
+    env.GIT_CONFIG_KEY_0 = 'http.https://github.com/.extraheader'
+    env.GIT_CONFIG_VALUE_0 = `AUTHORIZATION: basic ${basic}`
+  }
+  return env
+}
+
+/**
+ * git fetch autenticado (token via gitAuthEnv) e tolerante a falha: repo sem
+ * acesso ou rede fora não derruba a coleta — usa o cache local e avisa.
+ * GIT_TERMINAL_PROMPT=0 evita prompt interativo de credencial travando o processo.
+ */
+export function fetchRepo(path: string, token?: string | null): Promise<string | null> {
   return new Promise((resolvePromise) => {
     const child = spawn('git', ['-C', path, 'fetch', '--all', '--prune', '--tags', '--quiet'], {
-      env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+      env: gitAuthEnv(token),
     })
     const errChunks: Buffer[] = []
     child.stderr.on('data', (c: Buffer) => errChunks.push(c))
     child.on('error', e => resolvePromise(String(e)))
     child.on('close', code => resolvePromise(code === 0 ? null : Buffer.concat(errChunks).toString('utf-8').trim()))
   })
+}
+
+/**
+ * Remove o header de auth que versões antigas gravavam no config do clone
+ * (token em repouso no .git/config de cada clone em data/repos). Idempotente
+ * — o collect roda a cada execução nos clones gerenciados.
+ */
+export function scrubPersistedToken(path: string): void {
+  spawnSync('git', ['-C', path, 'config', '--unset-all', 'http.https://github.com/.extraheader'], { stdio: 'ignore' })
 }
 
 /**
@@ -93,20 +118,20 @@ export function denyPush(path: string): void {
 }
 
 /**
- * clone bare autenticado. Com token: git puro — `-c` do clone grava o
- * http.extraheader (Basic x-access-token, aceito por PAT/OAuth/GitHub App)
- * no config do novo repo, então os fetches futuros já saem autenticados
- * (token local da máquina, em pasta gitignored). Sem token: fallback pro
- * `gh repo clone` (usa a auth do gh CLI). Todo clone sai com push travado
- * (denyPush) — o gitview nunca escreve nos remotes.
+ * Clone bare autenticado pelo token (via gitAuthEnv — nada de token no argv
+ * nem no config do clone). Sem token, falha com mensagem clara: a auth vem do
+ * setup da UI (device flow/PAT) ou do bridge do `gh` no getToken(). Todo clone
+ * sai com push travado (denyPush) — o gitview nunca escreve nos remotes.
  */
-export function cloneBare(fullName: string, dest: string, token?: string): Promise<string | null> {
+export function cloneBare(fullName: string, dest: string, token?: string | null): Promise<string | null> {
   return new Promise((resolvePromise) => {
-    const env = { ...process.env, GIT_TERMINAL_PROMPT: '0' }
-    const basic = token ? Buffer.from(`x-access-token:${token}`).toString('base64') : ''
-    const child = token
-      ? spawn('git', ['clone', '-c', `http.https://github.com/.extraheader=AUTHORIZATION: basic ${basic}`, '--bare', '--quiet', `https://github.com/${fullName}.git`, dest], { env })
-      : spawn('gh', ['repo', 'clone', fullName, dest, '--', '--bare', '--quiet'], { env })
+    if (!token) {
+      resolvePromise('sem token do GitHub — conecte sua conta no passo 1 do setup')
+      return
+    }
+    const child = spawn('git', ['clone', '--bare', '--quiet', `https://github.com/${fullName}.git`, dest], {
+      env: gitAuthEnv(token),
+    })
     const errChunks: Buffer[] = []
     child.stderr.on('data', (c: Buffer) => errChunks.push(c))
     child.on('error', e => resolvePromise(String(e)))

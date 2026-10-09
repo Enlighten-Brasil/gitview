@@ -87,7 +87,7 @@ export interface ReleasesData {
 }
 
 // ---------------------------------------------------------------------------
-// team.json — perfis de devs e times (config.local.json + aliases detectados)
+// team.json — perfis de devs e times (team.local.json + aliases detectados)
 // ---------------------------------------------------------------------------
 export interface DevProfileInfo {
   /** nome canônico (chave de join com stats/github) */
