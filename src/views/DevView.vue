@@ -18,6 +18,23 @@ const authorStats = computed(() =>
   stats.value?.perAuthor.find(a => a.author === dev.value) ?? null,
 )
 
+// sugestões de nomes parecidos quando o dev não existe (fuzzy por substring/lower)
+const suggestions = computed(() => {
+  if (!stats.value || authorStats.value) return []
+  const q = dev.value.toLowerCase()
+  if (!q) return []
+  const all = stats.value.perAuthor.map(a => a.author)
+  const exact = all.filter(n => n.toLowerCase().includes(q) || q.includes(n.toLowerCase()))
+  const pool = exact.length ? exact : all.filter(n => {
+    const nl = n.toLowerCase()
+    // tokens em comum (nome/sobrenome parcial)
+    const qt = q.split(/[\s._-]+/).filter(Boolean)
+    const nt = nl.split(/[\s._-]+/).filter(Boolean)
+    return qt.some(t => nt.some(x => x.startsWith(t) || t.startsWith(x)))
+  })
+  return pool.slice(0, 5)
+})
+
 // o período se aplica nesta página: com preset/range ativo, commits, gráficos e
 // PRs ficam restritos ao período; "Tudo" = histórico completo (heatmap sempre capado em 24M)
 const periodFiltered = computed(() => filters.rangeMonths !== null || isCustomRange())
@@ -217,14 +234,32 @@ function commitUrl(repo: string, hash: string): string | null {
       <span class="text-xs text-dimmed">— {{ rangeLabel }}</span>
     </div>
 
-    <UAlert
-      v-if="stats && !authorStats"
-      color="error"
-      variant="subtle"
-      icon="i-lucide-user-x"
-      title="Dev não encontrado"
-      description="Esse nome não aparece nos commits coletados. Confere a grafia ou rode pnpm collect."
-    />
+    <div v-if="stats && !authorStats" class="flex flex-col gap-3">
+      <UAlert
+        color="error"
+        variant="subtle"
+        icon="i-lucide-user-x"
+        title="Dev não encontrado"
+        description="Esse nome não aparece nos commits coletados. Confere a grafia ou rode pnpm collect."
+      />
+      <div v-if="suggestions.length" class="text-sm">
+        <p class="text-dimmed mb-2">
+          Quis dizer:
+        </p>
+        <div class="flex flex-wrap gap-2">
+          <UButton
+            v-for="s in suggestions"
+            :key="s"
+            :to="`/dev/${encodeURIComponent(s)}`"
+            color="neutral"
+            variant="soft"
+            size="sm"
+            :label="s"
+            icon="i-lucide-user-round"
+          />
+        </div>
+      </div>
+    </div>
 
     <template v-else-if="authorStats">
       <!-- cards -->
