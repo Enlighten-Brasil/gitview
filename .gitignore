@@ -9,3 +9,4 @@ components.d.ts
 
 screenshot-*.png
 config.local.json
+dev-server.log
