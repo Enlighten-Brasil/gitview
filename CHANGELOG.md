@@ -1,5 +1,15 @@
 # gitview
 
+## 0.31.1
+
+### Patch Changes
+
+- Segurança: ECharts 6 e esbuild 0.28 (alerts do Dependabot)
+  
+  - `echarts` 5.6.0 → ^6.1.0 (GHSA-fgmj-fm8m-jvvx, XSS em <6.1.0); alinha com o peer `echarts ^6.0.0` do `vue-echarts@8` que já era usado
+  - override `esbuild` → ^0.28.2 (GHSA-g7r4-m6w7-qqqr, leitura arbitrária de arquivos no dev server Windows; dependência transitória de `@nuxt/fonts`/`fontless`, só dev)
+  - Gráficos validados no browser: todas as abas + `/dev` + `/repo` renderizam sem erros de console no ECharts 6
+
 ## 0.31.0
 
 ### Minor Changes
