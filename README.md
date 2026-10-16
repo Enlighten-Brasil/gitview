@@ -41,7 +41,7 @@ Precedence: shell variable → `.env` → default. The file is read **fresh** on
 
 ### Team config (`team.local.json` — gitignored)
 
-Dev profiles (title, description), aliases (commit e-mails, GitHub logins), teams and extra bots. All editable through the **/teams** screen (dev only; persisted via `/__team/config`). It is the single source of canonical names — without it the dashboard still works, every e-mail/login becomes its own author, and the collector lists the "candidates" for you to link up.
+Dev profiles (title, description), aliases (commit e-mails, GitHub logins), teams and extra bots. All editable through the **/teams** screen (dev only; persisted via `/__team/config`). Saving regenerates `team.json` right away, so team names/colours/members show up immediately in the sidebar chips and `/teams/<name>` dashboards — identity aliases still need a re-collection (they rewrite `stats.json`). It is the single source of canonical names — without it the dashboard still works, every e-mail/login becomes its own author, and the collector lists the "candidates" for you to link up.
 
 Each team also gets a shareable dashboard at **`/teams/<name>`** — KPIs, commit timeline, PRs and off-hours with the devs locked to its members (period and repos stay filterable). Renaming a team keeps old links alive: the previous names are stored in `renamedFrom` and `/teams/<old-name>` redirects to the current one.
 

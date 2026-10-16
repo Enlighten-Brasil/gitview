@@ -153,7 +153,7 @@ async function save(): Promise<boolean> {
   saving.value = true
   try {
     const p = payload()
-    await saveTeamConfig(p)
+    const res = await saveTeamConfig(p)
     savedSnapshot.value = p
     // o que era rascunho virou salvo: savedName/renamedFrom alinham com o config
     for (const t of teams.value) {
@@ -163,7 +163,14 @@ async function save(): Promise<boolean> {
         t.renamedFrom = [...(entry.renamedFrom ?? [])]
       }
     }
-    toast.add({ title: 'perfis salvos', description: 'rode a recoleta pra aplicar nos dados', color: 'success' })
+    // o endpoint regenerou o team.json no save — refaz o fetch p/ chips da
+    // sidebar, /teams/<nome> e dashboards refletirem a edição sem recoleta
+    if (res.teamRefreshed)
+      await loadTeam(true)
+    if (res.warnings?.length)
+      toast.add({ title: 'salvo com avisos', description: res.warnings.join(' · '), color: 'warning' })
+    else
+      toast.add({ title: 'perfis salvos', description: 'times aplicados na hora; aliases de identidade pedem a recoleta', color: 'success' })
     return true
   }
   catch (err) {

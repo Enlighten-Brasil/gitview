@@ -20,13 +20,48 @@ import { Buffer } from 'node:buffer'
  *
  * Mesmo modelo do collect-plugin: só existe no dev server; localhost apenas.
  */
+import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync } from 'node:fs'
 import { rm } from 'node:fs/promises'
 import { join } from 'node:path'
+import process from 'node:process'
 import { cleanLocalData } from './lib/clean'
 import { loadConfig, rootDir, saveConfig } from './lib/config'
 import { currentUser, devicePoll, deviceStart, getToken, listOrgMembers, listOrgRepos, listOrgs, listOrgTeams, listUserRepos } from './lib/github'
 import { cloneBare, discoverRepos, MANAGED_REPOS_DIR, mapPool, resolveReposRootSafe } from './lib/repos'
+
+const tsxCli = join(rootDir, 'node_modules', 'tsx', 'dist', 'cli.mjs')
+
+/** roda um script dos coletores e captura a saída (sem SSE — usado no save do /teams) */
+function runScript(script: string, args: string[] = []): Promise<{ code: number, out: string }> {
+  return new Promise((resolvePromise) => {
+    const child = spawn(process.execPath, [tsxCli, script, ...args], { cwd: rootDir })
+    let out = ''
+    child.stdout.on('data', (c: Buffer) => out += c.toString('utf-8'))
+    child.stderr.on('data', (c: Buffer) => out += c.toString('utf-8'))
+    child.on('error', err => resolvePromise({ code: 1, out: String(err.message) }))
+    child.on('close', code => resolvePromise({ code: code ?? 1, out }))
+  })
+}
+
+/**
+ * Depois de gravar team.local.json: regenera o team.json (nomes/cores/membros e
+ * renamedFrom valem na hora — sidebar, chips e /teams/<nome>) e roda o check-data.
+ * Falha NAÕ derruba o salvar (o config já está persistido); vira warning.
+ * Aliases de identidade continuam precisando da recoleta (mexem no stats.json).
+ */
+async function refreshTeamData(): Promise<{ teamRefreshed: boolean, warnings: string[] }> {
+  const warnings: string[] = []
+  const team = await runScript('scripts/collect-team.ts')
+  if (team.code !== 0) {
+    const last = team.out.split(/\r?\n/).filter(l => l.trim()).pop() ?? `exit ${team.code}`
+    return { teamRefreshed: false, warnings: [`team.json não regenerado (${last}) — rode pnpm collect:team`] }
+  }
+  const check = await runScript('scripts/check-data.ts')
+  if (check.code !== 0)
+    warnings.push(`check-data após salvar: ${check.out.split(/\r?\n/).filter(l => l.trim()).slice(0, 3).join(' | ')}`)
+  return { teamRefreshed: true, warnings }
+}
 
 function json(res: ServerResponse, status: number, body: unknown): void {
   res.writeHead(status, { 'Content-Type': 'application/json' })
@@ -419,7 +454,16 @@ export function setupPlugin(): Plugin {
             const devProfiles = sanitizeDevProfiles(body.devProfiles)
             const teams = sanitizeTeams(body.teams)
             saveConfig({ devProfiles, teams })
-            json(res, 200, { ok: true, devProfiles: Object.keys(devProfiles).length, teams: teams.length })
+            // o config salvo vale na hora p/ chips/sidebar/dashboards de time:
+            // regenera o team.json (aliases ainda precisam da recoleta — stats.json)
+            const refresh = await refreshTeamData()
+            json(res, 200, {
+              ok: true,
+              devProfiles: Object.keys(devProfiles).length,
+              teams: teams.length,
+              teamRefreshed: refresh.teamRefreshed,
+              warnings: refresh.warnings,
+            })
           }
           catch (err) {
             json(res, 400, { error: String((err as Error).message ?? err) })

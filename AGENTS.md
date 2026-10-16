@@ -67,7 +67,7 @@ pages/
 - `GET /__setup/apply?org=&repos=a,b&dry=1&remove=c,d` — SSE com lock: remove os clones listados em `remove` (só gerenciados, nome sanitizado), clona os faltantes (pool de 4; exige token), grava `reposRoot` no `.env`; `?dry=1` valida sem efeitos. Remoção é sempre explícita (nunca prune por diferença de lista).
 - `GET /__clean[?repos=1]` — apaga banco + JSONs sem recoletar (com `repos=1`, apaga também os clones) — mesma lib do `pnpm clean`; é o botão "apagar dados" (volta ao wizard; o `/` redireciona por causa do gate).
 - `GET /__team/github` — membros + times da org (`githubOrg`) via REST (para importar). Requer token com `read:org`; falha parcial (ex.: sem permissão → times vazio) vem no campo `warnings` (a UI mostra no modal de import).
-- `GET/POST /__team/config` — lê/grava `devProfiles` + `teams` no `team.local.json` (sanitização de payload em `sanitizeDevProfiles`/`sanitizeTeams`).
+- `GET/POST /__team/config` — lê/grava `devProfiles` + `teams` no `team.local.json` (sanitização de payload em `sanitizeDevProfiles`/`sanitizeTeams`). O POST **regenera o `team.json`** em seguida (`collect-team.ts` + `check-data.ts` via `refreshTeamData`) e devolve `teamRefreshed`/`warnings` — nomes/cores/membros e `renamedFrom` valem na hora para chips, `/teams/<nome>` e dashboards; a UI recarrega o `team.json` (`loadTeam(true)`). Aliases de identidade continuam pedindo a recoleta (mexem no `stats.json`) — por isso o botão "salvar + recoletar" existe.
 
 ### Time pela UI (rota `/teams`)
 

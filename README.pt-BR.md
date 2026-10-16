@@ -41,7 +41,7 @@ Ordem de precedência: variável do shell → `.env` → default. O arquivo é l
 
 ### Config do time (`team.local.json` — gitignored)
 
-Perfis de devs (título, descrição), aliases (e-mails de commit, logins do GitHub), times e bots extras. Tudo editável pela tela **/teams** (dev only; persistido via `/__team/config`). É a única fonte de nomes canônicos — sem ela o dashboard funciona, cada e-mail/login vira um autor separado e a coleta lista os "candidatos" pra você ir associando.
+Perfis de devs (título, descrição), aliases (e-mails de commit, logins do GitHub), times e bots extras. Tudo editável pela tela **/teams** (dev only; persistido via `/__team/config`). Salvar regenera o `team.json` na hora — nomes/cores/membros dos times aparecem imediatamente nos chips da sidebar e nos dashboards `/teams/<nome>`; aliases de identidade ainda pedem recoleta (eles reescrevem o `stats.json`). É a única fonte de nomes canônicos — sem ela o dashboard funciona, cada e-mail/login vira um autor separado e a coleta lista os "candidatos" pra você ir associando.
 
 Cada time também ganha um dashboard compartilhável em **`/teams/<nome>`** — KPIs, timeline de commits, PRs e fora-do-horário com os devs travados nos membros (período e repos continuam filtráveis). Renomear um time não quebra links antigos: os nomes anteriores ficam em `renamedFrom` e `/teams/<nome-antigo>` redireciona pro atual.
 
