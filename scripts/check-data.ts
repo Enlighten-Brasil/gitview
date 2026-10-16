@@ -142,6 +142,7 @@ if (commits) {
   const list = (isArr(commits.commits) ? commits.commits : []) as Record<string, unknown>[]
   let prev = Infinity
   let checked = 0
+  let mergeLike = 0
   for (const c of list) {
     const d = String(c.date ?? '')
     if (!d.endsWith('Z')) { errors.push(`commits.json: data sem UTC uniforme ("${d}") — rode a coleta de novo`); break }
@@ -150,8 +151,15 @@ if (commits) {
     if (t > prev) { errors.push(`commits.json: fora de ordem cronológica em "${c.hash}" (${d})`); break }
     prev = t
     if (!/^[0-9a-f]{7}$/.test(String(c.hash ?? ''))) { errors.push(`commits.json: hash fora do formato 7-hex ("${c.hash}")`); break }
+    // commits de merge topológicos saem pelo --no-merges (decisão #7). Os que
+    // sobram com assunto de merge são single-parent (squash/pull regravado) —
+    // se têm diff zero, só inflam contagem: revisão manual (aviso, não bloqueia)
+    if (/^Merge (branch|remote-tracking branch|pull request|refs\/)/.test(String(c.message ?? '')) && Number(c.additions) === 0 && Number(c.deletions) === 0)
+      mergeLike++
     if (++checked >= 4000) break // amostra generosa — não precisa varrer tudo
   }
+  if (mergeLike)
+    warn(false, `commits.json: ${mergeLike} commits com assunto de merge e diff zero na amostra — single-parent (squash/pull regravado), candidate a excluir (decisão #7)`)
 }
 
 // ── github.json ───────────────────────────────────────────────────────────
