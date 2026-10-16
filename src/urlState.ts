@@ -146,7 +146,9 @@ export function initUrlState() {
     const scope = scopeOf(route)
     if (scope === 'none')
       return // não pisa em /setup e afins
-    history.replaceState(null, '', buildUrl(scope))
+    // history.state carrega os metadados internos do vue-router (scroll
+    // restoration etc.) — trocar por null dispara o aviso VUE_ROUTER_R0121
+    history.replaceState(history.state, '', buildUrl(scope))
     localStorage.setItem('gitview:range', filters.rangeMonths == null ? 'all' : String(filters.rangeMonths))
   }, { deep: true })
 
@@ -158,7 +160,7 @@ export function initUrlState() {
     if (scope === 'none')
       return
     parseUrl(scope)
-    history.replaceState(null, '', buildUrl(scope))
+    history.replaceState(history.state, '', buildUrl(scope))
   })
 
   // voltar/avançar: a URL é a fonte da verdade — reseta os params da rota e aplica o que houver
