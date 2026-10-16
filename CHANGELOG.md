@@ -1,5 +1,11 @@
 # gitview
 
+## 0.36.4
+
+### Patch Changes
+
+- 019b9f1: fix(collect-github): paginação de reviews além de 100 (cursor + totalCount) e releases REST paginado com warning em falha de API, sem truncamento silencioso (#6)
+
 ## 0.36.3
 
 ### Patch Changes
