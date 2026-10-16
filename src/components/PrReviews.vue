@@ -10,7 +10,8 @@ const option = computed<EChartsOption>(() => {
   return {
     tooltip: tooltipBase({ trigger: 'axis' }),
     legend: { top: 0, right: 0, textStyle: legendText() },
-    grid: { left: 8, right: 30, top: 30, bottom: 10, containLabel: true },
+    // ECharts 6: outerBoundsMode/Contain substituem o legado `grid.containLabel`
+    grid: { left: 8, right: 30, top: 30, bottom: 10, outerBoundsMode: 'same', outerBoundsContain: 'axisLabel' },
     xAxis: { type: 'value', axisLabel: axisLabel(), splitLine: splitLine() },
     yAxis: { type: 'category', data: rows.map(r => r.dev), axisLabel: axisLabel() },
     series: [

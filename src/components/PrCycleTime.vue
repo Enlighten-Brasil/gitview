@@ -15,7 +15,8 @@ const option = computed<EChartsOption>(() => {
         return `${r.repo}: <b>${fmtDuration(r.medianHours)}</b> (mediana de ${r.count} PRs)`
       },
     }),
-    grid: { left: 8, right: 60, top: 10, bottom: 10, containLabel: true },
+    // ECharts 6: outerBoundsMode/Contain substituem o legado `grid.containLabel`
+    grid: { left: 8, right: 60, top: 10, bottom: 10, outerBoundsMode: 'same', outerBoundsContain: 'axisLabel' },
     xAxis: {
       type: 'value',
       axisLabel: axisLabel({ formatter: (v: number) => fmtDuration(v) }),

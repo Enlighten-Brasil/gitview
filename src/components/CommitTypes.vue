@@ -91,7 +91,8 @@ const repoOption = computed<EChartsOption>(() => {
       },
     }),
     legend: { top: 0, right: 0, textStyle: legendText() },
-    grid: { left: 8, right: 30, top: 30, bottom: 10, containLabel: true },
+    // ECharts 6: outerBoundsMode/Contain substituem o legado `grid.containLabel`
+    grid: { left: 8, right: 30, top: 30, bottom: 10, outerBoundsMode: 'same', outerBoundsContain: 'axisLabel' },
     xAxis: { type: 'value', max: 100, axisLabel: axisLabel({ formatter: '{value}%' }), splitLine: splitLine() },
     yAxis: { type: 'category', data: rows.map(r => r.repo), inverse: true, axisLabel: axisLabel() },
     series: CATEGORIES.map((t, i) => ({

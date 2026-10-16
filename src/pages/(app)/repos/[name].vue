@@ -175,7 +175,8 @@ const devsOption = computed<EChartsOption>(() => {
   const rows = devsByCommits.value.slice(0, 10)
   return {
     tooltip: tooltipBase({ trigger: 'axis' }),
-    grid: { left: 8, right: 30, top: 10, bottom: 10, containLabel: true },
+    // ECharts 6: outerBoundsMode/Contain substituem o legado `grid.containLabel`
+    grid: { left: 8, right: 30, top: 10, bottom: 10, outerBoundsMode: 'same', outerBoundsContain: 'axisLabel' },
     xAxis: { type: 'value', axisLabel: axisLabel(), splitLine: splitLine() },
     yAxis: { type: 'category', data: rows.map(r => r.author), inverse: true, axisLabel: axisLabel() },
     series: [{ type: 'bar', data: rows.map(r => r.commits), itemStyle: { color: ct.primary }, barMaxWidth: 18 }],
