@@ -2,7 +2,17 @@
 import { computed } from 'vue'
 import { filteredWeekly } from '../data'
 
-/** campeão de cada semana + total de "títulos" por dev (no filtro atual) */
+/**
+ * Campeão da semana por EVOLUÇÃO (issue #10), não por volume: o volume puro
+ * premiava sempre a mesma pessoa (dados reais: 82% das semanas pro mesmo dev)
+ * e incentivava commit-splitting. Vitória = maior `commits / (média das 8
+ * semanas anteriores + 1)` na semana, com piso de 3 commits para matar o ruído
+ * de médias pequenas. O "+1" no denominador dá às 2× a quem começa do zero —
+ * quem volta de férias vence uma semana, não o placar inteiro.
+ */
+const MIN_WEEK_COMMITS = 3
+const BASELINE_WEEKS = 8
+
 const data = computed(() => {
   const byWeek = new Map<string, Map<string, number>>()
   for (const r of filteredWeekly.value) {
@@ -12,21 +22,38 @@ const data = computed(() => {
     m.set(r.author, (m.get(r.author) ?? 0) + r.commits)
   }
 
-  const weeks = [...byWeek.entries()]
-    .map(([week, authors]) => {
-      const [champion, commits] = [...authors.entries()].sort((a, b) => b[1] - a[1])[0]
-      return { week, champion, commits }
-    })
-    .sort((a, b) => b.week.localeCompare(a.week))
+  const weeks = [...byWeek.keys()].sort()
+  const wins: { week: string, author: string, commits: number, ratio: number }[] = []
+  for (let i = 0; i < weeks.length; i++) {
+    const window = weeks.slice(Math.max(0, i - BASELINE_WEEKS), i)
+    let best: { author: string, commits: number, ratio: number } | null = null
+    for (const [author, commits] of byWeek.get(weeks[i])!) {
+      if (commits < MIN_WEEK_COMMITS)
+        continue
+      const prev = window.reduce((s, w) => s + (byWeek.get(w)?.get(author) ?? 0), 0)
+      const ratio = commits / (prev / Math.max(window.length, 1) + 1)
+      if (!best || ratio > best.ratio
+        || (ratio === best.ratio && (commits > best.commits || (commits === best.commits && author < best.author)))) {
+        best = { author, commits, ratio }
+      }
+    }
+    if (best)
+      wins.push({ week: weeks[i], ...best })
+  }
 
+  // vitórias por dev (todas as semanas do período filtrado)
   const titles = new Map<string, number>()
-  for (const w of weeks) titles.set(w.champion, (titles.get(w.champion) ?? 0) + 1)
+  for (const w of wins) titles.set(w.author, (titles.get(w.author) ?? 0) + 1)
   const titleRank = [...titles.entries()]
     .map(([author, count]) => ({ author, count }))
-    .sort((a, b) => b.count - a.count)
+    .sort((a, b) => b.count - a.count || a.author.localeCompare(b.author))
 
-  return { recent: weeks.slice(0, 12), titleRank }
+  return { recent: wins.slice().reverse().slice(0, 12), titleRank, weeksWithWins: wins.length }
 })
+
+function fmtRatio(x: number): string {
+  return `${x.toFixed(1).replace('.', ',')}×`
+}
 </script>
 
 <template>
@@ -34,15 +61,17 @@ const data = computed(() => {
     <template #header>
       <div class="flex items-center gap-2">
         <UIcon name="i-lucide-trophy" class="size-4 text-warning" />
-        <span class="text-sm font-semibold text-highlighted">Campeão da semana</span>
+        <span class="text-sm font-semibold text-highlighted">Campeão da semana — maior evolução</span>
       </div>
     </template>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div v-if="data.weeksWithWins" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <table class="data-table">
         <thead>
           <tr>
             <th>semana</th><th>dev</th><th class="num">
+              vs média
+            </th><th class="num">
               commits
             </th>
           </tr>
@@ -52,8 +81,11 @@ const data = computed(() => {
             <td class="text-muted">
               {{ w.week }}
             </td>
-            <td>{{ w.champion }}</td>
-            <td class="num font-semibold">
+            <td>{{ w.author }}</td>
+            <td class="num font-semibold text-success">
+              {{ fmtRatio(w.ratio) }}
+            </td>
+            <td class="num text-muted">
               {{ w.commits }}
             </td>
           </tr>
@@ -62,7 +94,7 @@ const data = computed(() => {
       <table class="data-table">
         <thead>
           <tr>
-            <th>títulos (período)</th><th class="num">
+            <th>vitórias (período)</th><th class="num">
               🏆
             </th>
           </tr>
@@ -79,5 +111,12 @@ const data = computed(() => {
         </tbody>
       </table>
     </div>
+    <div v-else class="py-6 text-center text-sm text-muted">
+      Nenhuma semana com {{ MIN_WEEK_COMMITS }}+ commits no período — sem campeão.
+    </div>
+
+    <p class="text-xs text-dimmed mt-3">
+      Vitória = maior salto sobre a própria média das {{ BASELINE_WEEKS }} semanas anteriores (commits ÷ (média + 1), mínimo {{ MIN_WEEK_COMMITS }} na semana) — premia ritmo, não volume puro. A média usa as semanas anteriores dentro do período filtrado; semanas sem candidato são puladas.
+    </p>
   </UCard>
 </template>
