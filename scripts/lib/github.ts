@@ -29,6 +29,33 @@ export function getToken(): GhAuth | null {
 
 export const NO_TOKEN_HINT = 'sem token do GitHub — conecte sua conta no setup (/setup → "Conectar com GitHub") ou rode "gh auth login"'
 
+/**
+ * Erro HTTP da API com status + janela de retry — permite backoff de 403/429
+ * (rate limit primário/secundário) usando os próprios headers da API, em vez de
+ * cair direto no fallback de cache (follow-up #11).
+ */
+export class GhHttpError extends Error {
+  status: number
+  retryAfterMs: number | null
+  constructor(message: string, status: number, retryAfterMs: number | null) {
+    super(message)
+    this.name = 'GhHttpError'
+    this.status = status
+    this.retryAfterMs = retryAfterMs
+  }
+}
+
+/** Retry-After (segundos) tem prioridade; senão x-ratelimit-reset (epoch s). Cap de 60s. */
+export function retryAfterFromHeaders(headers: Headers): number | null {
+  const ra = Number(headers.get('retry-after'))
+  if (Number.isFinite(ra) && ra > 0)
+    return Math.min(ra * 1000, 60_000)
+  const reset = Number(headers.get('x-ratelimit-reset'))
+  if (Number.isFinite(reset) && reset > 0)
+    return Math.max(0, Math.min(reset * 1000 - Date.now(), 60_000))
+  return null
+}
+
 export async function ghApi<T>(path: string, token: string): Promise<T> {
   const res = await fetch(`https://api.github.com${path}`, {
     headers: {
@@ -39,7 +66,7 @@ export async function ghApi<T>(path: string, token: string): Promise<T> {
     },
   })
   if (!res.ok)
-    throw new Error(`GitHub API ${path}: HTTP ${res.status}`)
+    throw new GhHttpError(`GitHub API ${path}: HTTP ${res.status}`, res.status, retryAfterFromHeaders(res.headers))
   return res.json() as Promise<T>
 }
 
@@ -72,7 +99,7 @@ export async function ghGraphql<T>(query: string, vars: Record<string, unknown>,
   const json = await res.json().catch(() => ({}) as Record<string, unknown>)
   if (!res.ok) {
     const detail = typeof json.message === 'string' ? ` — ${json.message}` : ''
-    throw new Error(`GitHub GraphQL: HTTP ${res.status}${detail}`)
+    throw new GhHttpError(`GitHub GraphQL: HTTP ${res.status}${detail}`, res.status, retryAfterFromHeaders(res.headers))
   }
   const errors = (json as { errors?: { message?: string }[] }).errors
   if (errors?.length)

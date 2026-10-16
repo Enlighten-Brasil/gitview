@@ -14,7 +14,7 @@ import { dirname, join, resolve } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { loadConfig, resolveReposRoot } from './lib/config'
-import { getToken, ghGraphql } from './lib/github'
+import { getToken, ghGraphql, GhHttpError } from './lib/github'
 import { discoverRepos, mapPool, parseGitHub, remoteOf } from './lib/repos'
 import { BOT_LOGIN_RE, botLoginSet, resolveAliases } from './lib/team'
 
@@ -43,8 +43,11 @@ function gh<T>(query: string, vars: Record<string, unknown>): Promise<T> {
 /** map assíncrono com concorrência limitada (repos em paralelo) — scripts/lib/repos.ts */
 
 /**
- * Retry em erros transitórios (HTTP 5xx, rede) — um 502 no meio da paginação
- * não pode derrubar o repo inteiro (no modo completo ele sairia zerado).
+ * Retry em erros transitórios (HTTP 5xx, rede e 403/429 de rate limit — com o
+ * backoff da própria API via Retry-After/x-ratelimit-reset; follow-up #11) — um
+ * 502 no meio da paginação não pode derrubar o repo inteiro (no modo completo
+ * ele sairia zerado). Erros de body do GraphQL só voltam quando falam de rate
+ * limit; os demais caem no fallback de cache como antes.
  */
 async function ghRetry<T>(query: string, vars: Record<string, unknown>): Promise<T> {
   let lastErr: Error | null = null
@@ -54,10 +57,15 @@ async function ghRetry<T>(query: string, vars: Record<string, unknown>): Promise
     }
     catch (err) {
       lastErr = err as Error
-      const transient = /HTTP 5\d\d|ECONNRESET|ETIMEDOUT|EAI_AGAIN|socket|fetch failed/i.test(lastErr.message)
+      const http = err instanceof GhHttpError ? err : null
+      const transient = http
+        ? http.status >= 500 || http.status === 403 || http.status === 429
+        : /HTTP 5\d\d|ECONNRESET|ETIMEDOUT|EAI_AGAIN|socket|fetch failed|rate limit|abuse/i.test(lastErr.message)
       if (!transient || attempt === 3)
         throw err
-      await new Promise(r => setTimeout(r, attempt * 2000))
+      const wait = Math.max(http?.retryAfterMs ?? 0, attempt * 2000)
+      console.warn(`  ! GitHub ${http ? `HTTP ${http.status}` : 'transitório'} — aguardando ${(wait / 1000).toFixed(0)}s (tentativa ${attempt + 1}/3)`)
+      await new Promise(r => setTimeout(r, wait))
     }
   }
   throw lastErr

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { GithubTeamData, TeamConfigPayload, TeamMetrics } from '@/team'
+import type { GithubTeamData, TeamConfigPayload, TeamDraft, TeamMetrics } from '@/team'
 import { useToast } from '@nuxt/ui/composables'
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
@@ -8,7 +8,7 @@ import DevCard from '@/components/team/DevCard.vue'
 import TeamCard from '@/components/team/TeamCard.vue'
 import { stats } from '@/data'
 import { github } from '@/github'
-import { fetchGithubTeam, fetchTeamConfig, loadTeam, saveTeamConfig, team, teamLoadError } from '@/team'
+import { fetchGithubTeam, fetchTeamConfig, loadTeam, saveTeamConfig, team, TEAM_PALETTE, teamLoadError } from '@/team'
 
 // gerência do time (era /team — alias mantém links/bookmarks)
 definePage({
@@ -24,7 +24,7 @@ const isDev = import.meta.env.DEV
 const toast = useToast()
 
 // estados de draft declarados antes dos usos (guards/onMounted rodam em runtime,
-// mas o padrão exige ordem — os tipos ProfileDraft/TeamDraft abaixo são hoisted)
+// mas o padrão exige ordem — o tipo ProfileDraft abaixo é hoisted; TeamDraft vem de @/team)
 const profiles = reactive<Record<string, ProfileDraft>>({})
 const teams = ref<TeamDraft[]>([])
 const savedSnapshot = ref<TeamConfigPayload>({ devProfiles: {}, teams: [] })
@@ -54,20 +54,6 @@ interface ProfileDraft {
   description: string
   emails: string
   githubLogins: string
-}
-interface TeamDraft {
-  /** id estável de sessão (v-for key) — times são removíveis/reordenáveis;
-   * índice como key faz o estado local do card ("confirmar remoção" armado,
-   * popover aberto) herdar o time errado depois de um splice */
-  cid: string
-  name: string
-  description: string
-  color: string
-  members: string[]
-  /** nomes antigos vindos do último save (renomeado mantém /teams/<antigo> vivo) */
-  renamedFrom: string[]
-  /** nome como está salvo (comparado no payload p/ detectar rename) */
-  savedName: string
 }
 
 const configLoaded = ref(false)
@@ -225,7 +211,6 @@ function confirmEdit() {
 // times
 // ---------------------------------------------------------------------------
 const devNames = computed(() => (team.value?.devs ?? []).filter(d => !d.bot).map(d => d.name).sort())
-const PALETTE = ['#8b5cf6', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6', '#f97316']
 
 /** dev → nomes dos outros times em que já aparece (pra hint de duplicidade no select) */
 function otherTeamsOf(dev: string, currentIdx: number): string[] {
@@ -279,7 +264,7 @@ function metricsFor(members: string[]): TeamMetrics {
 }
 
 function addTeam() {
-  teams.value.push({ cid: crypto.randomUUID(), name: '', description: '', color: PALETTE[teams.value.length % PALETTE.length], members: [], renamedFrom: [], savedName: '' })
+  teams.value.push({ cid: crypto.randomUUID(), name: '', description: '', color: TEAM_PALETTE[teams.value.length % TEAM_PALETTE.length], members: [], renamedFrom: [], savedName: '' })
 }
 
 function removeTeam(i: number) {
@@ -384,7 +369,7 @@ function importTeam(t: { name: string, description: string | null, members: stri
     cid: prev?.cid ?? crypto.randomUUID(),
     name: t.name,
     description: t.description ?? '',
-    color: PALETTE[teams.value.length % PALETTE.length],
+    color: TEAM_PALETTE[teams.value.length % TEAM_PALETTE.length],
     members,
     renamedFrom: [...(prev?.renamedFrom ?? [])],
     savedName: prev?.savedName ?? '',
@@ -426,7 +411,7 @@ const assignTarget = reactive<Record<string, string>>({})
 // ---------------------------------------------------------------------------
 // sugestão de match para candidatos — e-mail corporativo costuma ser
 // nome.sobrenome@: cruza os tokens do local-part com os tokens do nome do dev.
-// Conservadoro de propósito: exige ≥2 tokens casando; a associação continua
+// Conservador de propósito: exige ≥2 tokens casando; a associação continua
 // manual (a sugestão só pré-seleciona o dropdown — um clique confirma).
 // ---------------------------------------------------------------------------
 function normTokens(s: string): string[] {
