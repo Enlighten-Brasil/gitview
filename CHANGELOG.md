@@ -1,5 +1,11 @@
 # gitview
 
+## 0.37.0
+
+### Minor Changes
+
+- 8a8b5ca: feat(collect): commits de merge excluídos de todas as métricas (--no-merges), decisão documentada no AGENTS.md e aviso não-bloqueante no check-data (#7)
+
 ## 0.36.4
 
 ### Patch Changes
