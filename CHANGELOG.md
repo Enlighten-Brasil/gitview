@@ -1,5 +1,11 @@
 # gitview
 
+## 0.42.3
+
+### Patch Changes
+
+- d50b799: fix(deps): override de katex para ^0.18.2 (advisory; cadeia dev-only via @eslint/markdown) — encerra os runs do Dependabot falhando com security_update_not_possible
+
 ## 0.42.2
 
 ### Patch Changes
