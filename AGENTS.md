@@ -1,6 +1,6 @@
 # AGENTS.md — gitview
 
-Dashboard do gestor de dev (open-source, MIT) para acompanhar commits, PRs e releases do time nos repositórios da org do GitHub. Qualquer pessoa que clona roda `pnpm install && pnpm dev` — a config de máquina vive no `.env` (criado do `.env.example`) e o cadastro do time no `team.local.json` (gitignored); nada pessoal/Enspace é versionado. Ferramenta **read-only** sobre os dados — nunca escreve nos repos analisados.
+Dashboard do gestor de dev (open-source, MIT) para acompanhar commits, PRs e releases do time nos repositórios da org do GitHub. Qualquer pessoa que clona roda `pnpm install && pnpm dev` — a config de máquina vive no `.env` (criado do `.env.example`) e o cadastro do time no `team.local.json` (gitignored); nada pessoal é versionado. Ferramenta **read-only** sobre os dados — nunca escreve nos repos analisados.
 
 ## Arquitetura
 
@@ -102,7 +102,7 @@ pnpm version:packages   # aplicar changesets (bumps + CHANGELOG)
 - **Toda mudança** = changeset (`minor` feature / `patch` fix) → `pnpm version:packages` → commit único com `chore(release): X.Y.Z` no corpo. Versão atual: ver `package.json` / `CHANGELOG.md`.
 - **Commits em pt-BR** (Conventional Commits), código em inglês, comentários em pt-BR.
 - **Windows / PowerShell 5.1**: usar `pnpm.cmd` (o shim `pnpm.ps1` é bloqueado pela Execution Policy). **Nunca** editar arquivos UTF-8 via PowerShell (mojibake) — usar as ferramentas de edição. **Nunca** piper CLI que muta arquivos com `2>&1 | Select-Object` (pode abortar no meio).
-- ESLint `@antfu/eslint-config` (`eslint.config.js`, padrão da org — espelha o `@be-enlighten/eslint-config` interno direto, já que o repo é OSS): sem ponto-e-vírgula, aspas simples. `pnpm lint` é gate (zero erros).
+- ESLint `@antfu/eslint-config` (`eslint.config.js`, padrão do maintainer do gitview — espelhado direto no arquivo, já que o repo é OSS): sem ponto-e-vírgula, aspas simples. `pnpm lint` é gate (zero erros).
 - Deleção de arquivos: `rm -- <path>` (launcher recuperável), nunca `Remove-Item`.
 
 ## Estrutura do `src/`

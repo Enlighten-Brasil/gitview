@@ -1,10 +1,10 @@
 import antfu from '@antfu/eslint-config'
 
 /**
- * Padrão Enspace/Enlighten de lint (mesma base do @be-enlighten/eslint-config
- * interno, espelhada aqui direto porque o gitview é MIT/open-source e não pode
- * depender de pacote privado): antfu com markdown off, as regras default do
- * time e os ignores de código gerado/dados locais.
+ * Padrão de lint do maintainer do gitview (espelhado direto aqui porque o
+ * projeto é MIT/open-source e não pode depender de pacote privado): antfu com
+ * markdown off, as regras default do time e os ignores de código gerado/dados
+ * locais.
  */
 export default antfu(
   {
@@ -33,7 +33,7 @@ export default antfu(
         registeredComponentsOnly: false,
         ignores: ['/^i-/'],
       }],
-      // mesmas exceções de vue do padrão Enspace (en-space/eslint.config.js):
+      // exceções de vue do padrão do maintainer do gitview:
       // os editors de draft mutam objetos do pai de propósito (barra sticky de gravação)
       'vue/no-mutating-props': 'off',
       'vue/prefer-separate-static-class': 'off',

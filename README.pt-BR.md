@@ -35,7 +35,7 @@ Nada para copiar ou editar antes de rodar: o `.env` é criado automaticamente a 
 | `GITVIEW_PORT` | porta do dev server (default 5173) |
 | `GITVIEW_TIMEZONE` | fuso IANA de todos os buckets de tempo (dia/mês/semana ISO/fim de semana/madrugada/heatmap) — os agregados independem do relógio da máquina que coleta. Default: `America/Sao_Paulo` |
 
-Ordem de precedência: variável do shell → `.env` → default. O arquivo é lido **fresco** a cada execução de coletor (token novo vale sem reiniciar o dev server). Caminhos em Windows: use barra normal (`C:/Users/...`), ou aspas simples se houver espaços.
+Ordem de precedência: variável do shell → `.env` → default. O arquivo é lido **fresco** a cada execução de coletor (token novo vale sem reiniciar o dev server). Caminhos em Windows: use barra normal (`C:/dev/repos/api`), ou aspas simples se houver espaços.
 
 > ⚠ **Pull para o time**: quem ainda tem `config.json`/`config.local.json` (formato antigo) e ainda não rodou nada deste release, rode `pnpm dev` **antes** de dar pull — a migração move tudo para `.env` + `team.local.json` (os aliases do `config.json` versionado vivem desde então no `team.local.json` de cada máquina; `pnpm clean` não apaga esse arquivo).
 
