@@ -16,10 +16,11 @@ definePage({
 })
 
 const route = useRoute()
-const STEPS: Record<string, { n: number, label: string }> = {
+const STEPS: Record<string, { n: number, label: string, optional?: boolean }> = {
   '/setup/github': { n: 1, label: 'conectar o GitHub' },
   '/setup/repos': { n: 2, label: 'escolher repositórios' },
   '/setup/collect': { n: 3, label: 'clonar e coletar' },
+  '/setup/team': { n: 4, label: 'definir o time', optional: true },
 }
 const step = computed(() => STEPS[String(route.name)] ?? null)
 </script>
@@ -31,7 +32,7 @@ const step = computed(() => STEPS[String(route.name)] ?? null)
         Configurar gitview
       </h1>
       <p v-if="step" class="text-sm text-dimmed">
-        passo {{ step.n }} de 3 — {{ step.label }}
+        passo {{ step.n }} de {{ step.optional ? 4 : 3 }}{{ step.optional ? ' (opcional)' : '' }} — {{ step.label }}
       </p>
     </div>
 
