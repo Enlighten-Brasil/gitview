@@ -1,15 +1,15 @@
 <script setup lang="ts">
+import type { SetupStatus } from '@/setup'
 /**
  * Geral: repos no dashboard + manutenção dos dados locais + resumo da conta.
  * Gerenciar repositórios e conta agora têm rotas próprias (/settings/*).
  */
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { collectError, collectLog, collectSucceeded, collecting, startCollect } from '@/collect'
-import { cleanLocalData } from '@/setup'
-import { getCachedStatus, resetBoot } from '@/router/guards'
-import type { SetupStatus } from '@/setup'
+import { collectError, collecting, collectLog, collectSucceeded, startCollect } from '@/collect'
 import { stats } from '@/data'
+import { getCachedStatus, resetBoot } from '@/router/guards'
+import { cleanLocalData } from '@/setup'
 
 const router = useRouter()
 const status = ref<SetupStatus | null>(null)

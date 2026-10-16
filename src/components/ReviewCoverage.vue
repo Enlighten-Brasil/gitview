@@ -7,9 +7,11 @@ const pct = computed(() => mergedWithoutReview.value.pct)
 const count = computed(() => mergedWithoutReview.value.count)
 const total = computed(() => mergedPrs.value.length)
 
-const status = computed<{ color: 'error' | 'warning' | 'success'; label: string }>(() => {
-  if (pct.value >= 20) return { color: 'error', label: 'alto' }
-  if (pct.value >= 10) return { color: 'warning', label: 'atenção' }
+const status = computed<{ color: 'error' | 'warning' | 'success', label: string }>(() => {
+  if (pct.value >= 20)
+    return { color: 'error', label: 'alto' }
+  if (pct.value >= 10)
+    return { color: 'warning', label: 'atenção' }
   return { color: 'success', label: 'ok' }
 })
 </script>

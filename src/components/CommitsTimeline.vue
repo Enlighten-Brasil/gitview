@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
 import type { EChartsOption } from 'echarts'
-import { filteredMonthly, filteredWeekly } from '../data'
+import { computed, ref } from 'vue'
 import { axisLabel, legendText, PALETTE, splitLine, tooltipBase } from '../chartTheme'
+import { filteredMonthly, filteredWeekly } from '../data'
 import ChartPanel from './ChartPanel.vue'
 
 const granularity = ref<'week' | 'month'>('week')
@@ -14,10 +14,11 @@ const option = computed<EChartsOption>(() => {
   const periods = [...new Set(rows.map(r => r[keyField as 'week' | 'month']))].sort()
   const authors = [...new Set(rows.map(r => r.author))].sort()
 
-  const series = authors.map(author => {
+  const series = authors.map((author) => {
     const byPeriod = new Map<string, number>()
     for (const r of rows) {
-      if (r.author !== author) continue
+      if (r.author !== author)
+        continue
       const k = r[keyField as 'week' | 'month']
       byPeriod.set(k, (byPeriod.get(k) ?? 0) + r.commits)
     }

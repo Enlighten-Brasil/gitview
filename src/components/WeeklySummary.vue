@@ -8,14 +8,16 @@ const copied = ref(false)
 const summary = computed(() => (open.value ? buildWeeklySummary() : null))
 
 async function copy() {
-  if (!summary.value) return
+  if (!summary.value)
+    return
   await navigator.clipboard.writeText(summary.value.markdown)
   copied.value = true
   setTimeout(() => (copied.value = false), 2000)
 }
 
 function download() {
-  if (!summary.value) return
+  if (!summary.value)
+    return
   const blob = new Blob([summary.value.markdown], { type: 'text/markdown;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')

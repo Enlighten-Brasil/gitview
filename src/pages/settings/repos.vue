@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { SetupStatus } from '@/setup'
 /**
  * Gerenciar repositórios (modo manage do RepoPicker) + aplicar mudanças:
  * remove clones desmarcados, clona os novos e recoleta — SSE ao vivo, com o
@@ -6,12 +7,11 @@
  */
 import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { collectSucceeded, collecting, startCollect } from '@/collect'
-import { setupApplying, setupDone, setupError, startSetupApply } from '@/setup'
-import { getCachedStatus } from '@/router/guards'
-import type { SetupStatus } from '@/setup'
+import { collecting, collectSucceeded, startCollect } from '@/collect'
 import RepoPicker from '@/components/setup/RepoPicker.vue'
 import RunLog from '@/components/setup/RunLog.vue'
+import { getCachedStatus } from '@/router/guards'
+import { setupApplying, setupDone, setupError, startSetupApply } from '@/setup'
 
 const router = useRouter()
 const status = ref<SetupStatus | null>(null)

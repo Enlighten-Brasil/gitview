@@ -11,10 +11,10 @@
 import { spawnSync } from 'node:child_process'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { DatabaseSync } from 'node:sqlite'
+import { fileURLToPath } from 'node:url'
 import { loadConfig, resolveReposRoot } from './lib/config'
-import { ghApiAll, getToken } from './lib/github'
+import { getToken, ghApiAll } from './lib/github'
 import { discoverRepos, mapPool, parseGitHub, remoteOf } from './lib/repos'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -29,15 +29,18 @@ const auth = getToken()
 // ---------------------------------------------------------------------------
 // tags locais: nome + data (iso8601 estrito é parseável por new Date)
 // ---------------------------------------------------------------------------
-interface Tag { tag: string; date: string }
+interface Tag { tag: string, date: string }
 
 function gitTags(repoPath: string): Tag[] {
   const r = spawnSync('git', [
-    '-C', repoPath,
-    'tag', '--sort=creatordate',
+    '-C',
+    repoPath,
+    'tag',
+    '--sort=creatordate',
     '--format=%(refname:short)%09%(creatordate:iso8601-strict)',
   ], { encoding: 'utf-8' })
-  if (r.status !== 0) return []
+  if (r.status !== 0)
+    return []
   return r.stdout.split('\n')
     .map(line => line.trim())
     .filter(Boolean)
@@ -61,10 +64,11 @@ interface GhRelease {
   body: string | null
 }
 
-async function ghReleases(ghRepo: { owner: string; repo: string }): Promise<Map<string, GhRelease>> {
+async function ghReleases(ghRepo: { owner: string, repo: string }): Promise<Map<string, GhRelease>> {
   // sem token, o repo sai só com as tags git (comportamento histórico); com
   // token, falha de API é AVISADA — não engolida em silêncio (issue #6)
-  if (!auth) return new Map()
+  if (!auth)
+    return new Map()
   try {
     const list = await ghApiAll<GhRelease>(`/repos/${ghRepo.owner}/${ghRepo.repo}/releases`, auth.token)
     return new Map(list.filter(rel => !rel.draft).map(rel => [rel.tag_name, rel]))

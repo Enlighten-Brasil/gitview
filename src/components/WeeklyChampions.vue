@@ -6,7 +6,8 @@ import { filteredWeekly } from '../data'
 const data = computed(() => {
   const byWeek = new Map<string, Map<string, number>>()
   for (const r of filteredWeekly.value) {
-    if (!byWeek.has(r.week)) byWeek.set(r.week, new Map())
+    if (!byWeek.has(r.week))
+      byWeek.set(r.week, new Map())
     const m = byWeek.get(r.week)!
     m.set(r.author, (m.get(r.author) ?? 0) + r.commits)
   }
@@ -40,25 +41,39 @@ const data = computed(() => {
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <table class="data-table">
         <thead>
-          <tr><th>semana</th><th>dev</th><th class="num">commits</th></tr>
+          <tr>
+            <th>semana</th><th>dev</th><th class="num">
+              commits
+            </th>
+          </tr>
         </thead>
         <tbody>
           <tr v-for="w in data.recent" :key="w.week">
-            <td class="text-muted">{{ w.week }}</td>
+            <td class="text-muted">
+              {{ w.week }}
+            </td>
             <td>{{ w.champion }}</td>
-            <td class="num font-semibold">{{ w.commits }}</td>
+            <td class="num font-semibold">
+              {{ w.commits }}
+            </td>
           </tr>
         </tbody>
       </table>
       <table class="data-table">
         <thead>
-          <tr><th>títulos (período)</th><th class="num">🏆</th></tr>
+          <tr>
+            <th>títulos (período)</th><th class="num">
+              🏆
+            </th>
+          </tr>
         </thead>
         <tbody>
           <tr v-for="t in data.titleRank" :key="t.author">
             <td>{{ t.author }}</td>
             <td class="num">
-              <UBadge color="warning" variant="soft">{{ t.count }}</UBadge>
+              <UBadge color="warning" variant="soft">
+                {{ t.count }}
+              </UBadge>
             </td>
           </tr>
         </tbody>

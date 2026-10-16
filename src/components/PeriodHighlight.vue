@@ -8,7 +8,8 @@ import { commitsByAuthor, filteredCommitCount } from '../data'
 
 const top = computed(() => {
   const t = commitsByAuthor.value[0]
-  if (!t) return null
+  if (!t)
+    return null
   const share = filteredCommitCount.value > 0
     ? Math.round((t.commits / filteredCommitCount.value) * 100)
     : 0

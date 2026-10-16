@@ -20,7 +20,8 @@ interface RepoRisk {
 const rows = computed<RepoRisk[]>(() => {
   const byRepo = new Map<string, Map<string, number>>()
   for (const r of filteredMonthly.value) {
-    if (!byRepo.has(r.repo)) byRepo.set(r.repo, new Map())
+    if (!byRepo.has(r.repo))
+      byRepo.set(r.repo, new Map())
     const m = byRepo.get(r.repo)!
     m.set(r.author, (m.get(r.author) ?? 0) + r.commits)
   }
@@ -50,9 +51,11 @@ const rows = computed<RepoRisk[]>(() => {
     .sort((a, b) => (Number(b.blindSpot) - Number(a.blindSpot)) || (b.topShare - a.topShare))
 })
 
-function risk(r: RepoRisk): { color: 'error' | 'warning' | 'success'; label: string; hex: string } {
-  if ((r.topShare >= 0.7 && r.devs <= 2) || (r.blindSpot && r.topShare >= 0.5)) return { color: 'error', label: 'alto', hex: 'var(--ui-error)' }
-  if (r.topShare >= 0.5) return { color: 'warning', label: 'médio', hex: 'var(--ui-warning)' }
+function risk(r: RepoRisk): { color: 'error' | 'warning' | 'success', label: string, hex: string } {
+  if ((r.topShare >= 0.7 && r.devs <= 2) || (r.blindSpot && r.topShare >= 0.5))
+    return { color: 'error', label: 'alto', hex: 'var(--ui-error)' }
+  if (r.topShare >= 0.5)
+    return { color: 'warning', label: 'médio', hex: 'var(--ui-warning)' }
   return { color: 'success', label: 'ok', hex: 'var(--ui-success)' }
 }
 </script>
@@ -75,27 +78,45 @@ function risk(r: RepoRisk): { color: 'error' | 'warning' | 'success'; label: str
         <thead>
           <tr>
             <th>repo</th>
-            <th style="width: 22%">concentração</th>
+            <th style="width: 22%">
+              concentração
+            </th>
             <th>dev principal</th>
-            <th class="num">% de 1 dev</th>
-            <th class="num">devs ativos</th>
-            <th class="num">commits</th>
+            <th class="num">
+              % de 1 dev
+            </th>
+            <th class="num">
+              devs ativos
+            </th>
+            <th class="num">
+              commits
+            </th>
             <th>review dominante</th>
-            <th class="num">risco</th>
+            <th class="num">
+              risco
+            </th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="r in rows" :key="r.repo">
-            <td class="font-medium">{{ r.repo }}</td>
+            <td class="font-medium">
+              {{ r.repo }}
+            </td>
             <td>
               <div class="h-2 rounded bg-accented overflow-hidden">
                 <div class="h-full rounded" :style="{ width: `${Math.round(r.topShare * 100)}%`, background: risk(r).hex }" />
               </div>
             </td>
             <td>{{ r.topAuthor }}</td>
-            <td class="num">{{ Math.round(r.topShare * 100) }}%</td>
-            <td class="num">{{ r.devs }}</td>
-            <td class="num">{{ r.total }}</td>
+            <td class="num">
+              {{ Math.round(r.topShare * 100) }}%
+            </td>
+            <td class="num">
+              {{ r.devs }}
+            </td>
+            <td class="num">
+              {{ r.total }}
+            </td>
             <td>
               <span v-if="r.topReviewer" :class="r.blindSpot ? 'text-error font-medium' : ''">
                 {{ r.topReviewer }} · {{ Math.round(r.reviewShare * 100) }}%
@@ -104,7 +125,9 @@ function risk(r: RepoRisk): { color: 'error' | 'warning' | 'success'; label: str
               <span v-else class="text-dimmed">—</span>
             </td>
             <td class="num">
-              <UBadge :color="risk(r).color" variant="soft">{{ risk(r).label }}</UBadge>
+              <UBadge :color="risk(r).color" variant="soft">
+                {{ risk(r).label }}
+              </UBadge>
             </td>
           </tr>
         </tbody>

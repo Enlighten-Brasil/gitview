@@ -88,6 +88,7 @@ pnpm collect            # os 4 coletores em sequência + check-data no fim
 pnpm collect:github     # só PRs
 pnpm collect:releases   # só releases
 pnpm check:data         # só a validação de shape + invariantes dos JSONs
+pnpm lint               # eslint (@antfu/eslint-config — padrão da org; config em eslint.config.js)
 pnpm typecheck          # tsc --noEmit (scripts + src; templates .vue fora)
 pnpm dev                # http://localhost:5173 (Vite)
 pnpm start              # alias do dev (setup/coleta só existem no dev server)
@@ -101,7 +102,7 @@ pnpm version:packages   # aplicar changesets (bumps + CHANGELOG)
 - **Toda mudança** = changeset (`minor` feature / `patch` fix) → `pnpm version:packages` → commit único com `chore(release): X.Y.Z` no corpo. Versão atual: ver `package.json` / `CHANGELOG.md`.
 - **Commits em pt-BR** (Conventional Commits), código em inglês, comentários em pt-BR.
 - **Windows / PowerShell 5.1**: usar `pnpm.cmd` (o shim `pnpm.ps1` é bloqueado pela Execution Policy). **Nunca** editar arquivos UTF-8 via PowerShell (mojibake) — usar as ferramentas de edição. **Nunca** piper CLI que muta arquivos com `2>&1 | Select-Object` (pode abortar no meio).
-- ESLint `@antfu/eslint-config`: sem ponto-e-vírgula, aspas simples.
+- ESLint `@antfu/eslint-config` (`eslint.config.js`, padrão da org — espelha o `@example-org/eslint-config` interno direto, já que o repo é OSS): sem ponto-e-vírgula, aspas simples. `pnpm lint` é gate (zero erros).
 - Deleção de arquivos: `rm -- <path>` (launcher recuperável), nunca `Remove-Item`.
 
 ## Estrutura do `src/`

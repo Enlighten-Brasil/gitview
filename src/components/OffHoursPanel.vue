@@ -23,11 +23,13 @@ const rows = computed<Row[]>(() => (mode.value === '8sem' ? burnout.value : offH
 
 /** padrão: ≥25% fora do horário (ou 3+ fds seguidos na janela de 8 semanas) */
 function status(b: Row): { color: 'error' | 'warning' | 'success', label: string, hex: string } {
-  if (b.offHoursPct >= 0.25 || (b.weekendsActive ?? 0) >= 3) return { color: 'error', label: 'padrão', hex: 'var(--ui-error)' }
+  if (b.offHoursPct >= 0.25 || (b.weekendsActive ?? 0) >= 3)
+    return { color: 'error', label: 'padrão', hex: 'var(--ui-error)' }
   // a contagem absoluta (fds+madrugada ≥5) só tem sentido na janela fixa de 8
   // semanas; no modo "período" (1–24 meses) ela acumularia trivialmente — lá o
   // status é só por pct (como no antigo OffHoursPeriod)
-  if (b.offHoursPct >= 0.15 || (mode.value === '8sem' && b.weekend + b.night >= 5)) return { color: 'warning', label: 'atenção', hex: 'var(--ui-warning)' }
+  if (b.offHoursPct >= 0.15 || (mode.value === '8sem' && b.weekend + b.night >= 5))
+    return { color: 'warning', label: 'atenção', hex: 'var(--ui-warning)' }
   return { color: 'success', label: 'pontual', hex: 'var(--ui-success)' }
 }
 </script>
@@ -68,12 +70,24 @@ function status(b: Row): { color: 'error' | 'warning' | 'success', label: string
         <thead>
           <tr>
             <th>dev</th>
-            <th style="width: 22%">% fora do horário</th>
-            <th class="num">fds</th>
-            <th class="num">madrugada</th>
-            <th class="num">commits</th>
-            <th v-if="mode === '8sem'" class="num">fds ativos (últ. 4)</th>
-            <th class="num">status</th>
+            <th style="width: 22%">
+              % fora do horário
+            </th>
+            <th class="num">
+              fds
+            </th>
+            <th class="num">
+              madrugada
+            </th>
+            <th class="num">
+              commits
+            </th>
+            <th v-if="mode === '8sem'" class="num">
+              fds ativos (últ. 4)
+            </th>
+            <th class="num">
+              status
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -87,18 +101,32 @@ function status(b: Row): { color: 'error' | 'warning' | 'success', label: string
                 <span class="num text-xs w-9">{{ Math.round(b.offHoursPct * 100) }}%</span>
               </div>
             </td>
-            <td class="num">{{ b.weekend }}</td>
-            <td class="num">{{ b.night }}</td>
-            <td class="num">{{ b.total }}</td>
-            <td v-if="mode === '8sem'" class="num">{{ b.weekendsActive }}/4</td>
             <td class="num">
-              <UBadge :color="status(b).color" variant="soft">{{ status(b).label }}</UBadge>
+              {{ b.weekend }}
+            </td>
+            <td class="num">
+              {{ b.night }}
+            </td>
+            <td class="num">
+              {{ b.total }}
+            </td>
+            <td v-if="mode === '8sem'" class="num">
+              {{ b.weekendsActive }}/4
+            </td>
+            <td class="num">
+              <UBadge :color="status(b).color" variant="soft">
+                {{ status(b).label }}
+              </UBadge>
             </td>
           </tr>
         </tbody>
       </table>
       <p class="text-dimmed text-xs mt-2.5">
-        fds = sáb/dom · madrugada = 22h–6h · padrão = ≥25% fora do horário<template v-if="mode === '8sem'"> ou 3+ fds seguidos (janela fixa de 8 semanas, ignora o filtro de período)</template><template v-else> no período · devs com &lt;20 commits no período são ignorados</template>
+        fds = sáb/dom · madrugada = 22h–6h · padrão = ≥25% fora do horário<template v-if="mode === '8sem'">
+          ou 3+ fds seguidos (janela fixa de 8 semanas, ignora o filtro de período)
+        </template><template v-else>
+          no período · devs com &lt;20 commits no período são ignorados
+        </template>
       </p>
     </template>
   </UCard>

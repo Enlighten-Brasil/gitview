@@ -15,7 +15,10 @@ const showReposDevs = computed(() => scope.value === 'full')
 const showBots = computed(() => scope.value === 'full' || scope.value === 'period-bots')
 
 // times como atalho de filtro: carrega o team.json sob demanda (só no escopo full)
-watch(showReposDevs, v => { if (v) loadTeam() }, { immediate: true })
+watch(showReposDevs, (v) => {
+  if (v)
+    loadTeam()
+}, { immediate: true })
 
 const ranges = [
   { label: '1M', months: 1 },

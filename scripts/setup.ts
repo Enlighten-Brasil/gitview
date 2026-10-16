@@ -1,3 +1,4 @@
+import type { RepoEntry } from './lib/github'
 /**
  * Setup interativo de repositórios (terminal).
  *
@@ -15,11 +16,10 @@
  */
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { stdin as input, stdout as output } from 'node:process'
+import process, { stdin as input, stdout as output } from 'node:process'
 import * as readline from 'node:readline/promises'
 import { loadConfig, saveConfig } from './lib/config'
-import { ghApiAll, getToken, NO_TOKEN_HINT } from './lib/github'
-import type { RepoEntry } from './lib/github'
+import { getToken, ghApiAll, NO_TOKEN_HINT } from './lib/github'
 import { cloneBare, discoverRepos, MANAGED_REPOS_DIR, mapPool, resolveReposRootSafe } from './lib/repos'
 
 const YES = process.argv.includes('--yes') || process.argv.includes('-y')
@@ -51,13 +51,16 @@ function parseSelection(text: string, max: number): number[] | null {
     if (range) {
       const from = Number(range[1])
       const to = Number(range[2])
-      if (from < 1 || to > max || from > to) return null
+      if (from < 1 || to > max || from > to)
+        return null
       for (let i = from; i <= to; i++) picked.add(i - 1)
       continue
     }
-    if (!/^\d+$/.test(token)) return null
+    if (!/^\d+$/.test(token))
+      return null
     const n = Number(token)
-    if (n < 1 || n > max) return null
+    if (n < 1 || n > max)
+      return null
     picked.add(n - 1)
   }
   return picked.size ? [...picked].sort((a, b) => a - b) : null
@@ -67,16 +70,19 @@ function parseSelection(text: string, max: number): number[] | null {
 // main
 // ---------------------------------------------------------------------------
 const auth = getToken()
-if (!auth) fail(`${NO_TOKEN_HINT}.`)
+if (!auth)
+  fail(`${NO_TOKEN_HINT}.`)
 
 const config = loadConfig()
 let org = config.githubOrg
 if (!org) {
-  if (YES) fail('defina GITVIEW_GITHUB_ORG no .env (ex.: "minha-org") ou rode o wizard sem --yes.')
+  if (YES)
+    fail('defina GITVIEW_GITHUB_ORG no .env (ex.: "minha-org") ou rode o wizard sem --yes.')
   const rl = readline.createInterface({ input, output })
   org = (await rl.question('Org do GitHub para listar os repos: ')).trim()
   rl.close()
-  if (!org) fail('org não informada.')
+  if (!org)
+    fail('org não informada.')
 }
 
 // já existe uma fonte de repos funcionando?
@@ -92,7 +98,7 @@ if (current && currentRepos.length && !alreadyManaged) {
   const rl = readline.createInterface({ input, output })
   const answer = await rl.question('Migrar pros clones gerenciados em data/repos? [y/N] ')
   rl.close()
-  if (!/^y(es)?$/i.test(answer.trim())) {
+  if (!/^y(?:es)?$/i.test(answer.trim())) {
     console.log('Ok, mantido como está.')
     process.exit(0)
   }
@@ -101,7 +107,8 @@ if (current && currentRepos.length && !alreadyManaged) {
 console.log(`\nListando repos de ${org}...`)
 const ghRepos = (await listOrgRepos(org, auth.token))
   .sort((a, b) => (b.pushed_at ?? '').localeCompare(a.pushed_at ?? ''))
-if (!ghRepos.length) fail(`nenhum repo encontrado em ${org} — confira o acesso da sua conta.`)
+if (!ghRepos.length)
+  fail(`nenhum repo encontrado em ${org} — confira o acesso da sua conta.`)
 
 mkdirSync(MANAGED_REPOS_DIR, { recursive: true })
 const cloned = new Set(discoverRepos(MANAGED_REPOS_DIR).map(r => r.name))
@@ -117,7 +124,8 @@ const defaultNames = (config.defaultRepos ?? []).map(n => n.toLowerCase())
 const defaultIdx = ghRepos.map((_, i) => i)
   .filter(i => !ghRepos[i].archived && (!defaultNames.length || defaultNames.includes(ghRepos[i].name.toLowerCase())))
 const notInOrg = (config.defaultRepos ?? []).filter(n => !ghRepos.some(r => r.name.toLowerCase() === n.toLowerCase()))
-if (notInOrg.length) console.warn(`! defaultRepos fora da org (ignorados): ${notInOrg.join(', ')}`)
+if (notInOrg.length)
+  console.warn(`! defaultRepos fora da org (ignorados): ${notInOrg.join(', ')}`)
 
 let selected: number[] | null
 if (YES) {
@@ -137,7 +145,8 @@ else {
   }
   else {
     selected = parseSelection(text, ghRepos.length)
-    if (!selected) fail('seleção inválida — rode de novo e use números/ranges dentro da lista.')
+    if (!selected)
+      fail('seleção inválida — rode de novo e use números/ranges dentro da lista.')
   }
 }
 
@@ -159,7 +168,8 @@ await mapPool(missing, 4, async (repo) => {
     console.log(`✓ ${repo.name} clonado (${((Date.now() - t0) / 1000).toFixed(0)}s)`)
   }
 })
-if (failures) console.warn(`\n! ${failures} repo(s) falharam — rode o setup de novo pra tentar outra vez.`)
+if (failures)
+  console.warn(`\n! ${failures} repo(s) falharam — rode o setup de novo pra tentar outra vez.`)
 
 // .env: reposRoot gerenciado (relativo = portátil)
 saveConfig({ reposRoot: 'data/repos' })

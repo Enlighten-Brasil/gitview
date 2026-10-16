@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import type { EChartsOption } from 'echarts'
-import { cycleByRepo, fmtDuration, medianCycleHours } from '../github'
+import { computed } from 'vue'
 import { axisLabel, ct, splitLine, tooltipBase } from '../chartTheme'
+import { cycleByRepo, fmtDuration, medianCycleHours } from '../github'
 import ChartPanel from './ChartPanel.vue'
 
 const option = computed<EChartsOption>(() => {

@@ -1,10 +1,10 @@
 <script setup lang="ts">
+import type { SetupStatus } from '@/setup'
 /** Passo 1 do wizard: conectar o GitHub (device flow / PAT / gh). */
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { getCachedStatus } from '@/router/guards'
-import type { SetupStatus } from '@/setup'
 import GithubConnect from '@/components/setup/GithubConnect.vue'
+import { getCachedStatus } from '@/router/guards'
 
 definePage({
   meta: {

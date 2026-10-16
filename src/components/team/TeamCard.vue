@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { TeamDraft, TeamMetrics } from '@/team'
 /**
  * Card de time editável: identidade (avatar/nome/descrição), paleta de cor em
  * popover, membros como chips removíveis + combobox de adição (marca quem já
@@ -6,7 +7,6 @@
  * `disabled` (build estático) esconde toda a UI de edição.
  */
 import { ref } from 'vue'
-import type { TeamDraft, TeamMetrics } from '@/team'
 import { avatarBgClass, initialsOf } from '@/team'
 
 const props = defineProps<{

@@ -11,9 +11,10 @@
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
+import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { loadConfig, resolveReposRoot } from './lib/config'
-import { ghGraphql, getToken } from './lib/github'
+import { getToken, ghGraphql } from './lib/github'
 import { discoverRepos, mapPool, parseGitHub, remoteOf } from './lib/repos'
 import { BOT_LOGIN_RE, botLoginSet, resolveAliases } from './lib/team'
 
@@ -30,10 +31,12 @@ const config = loadConfig()
 // repos em paralelo
 // ---------------------------------------------------------------------------
 const auth = getToken()
-if (!auth) console.warn('! sem token do GitHub — PRs novos não serão buscados (cache anterior é preservado). Rode o setup da UI ou "gh auth login".')
+if (!auth)
+  console.warn('! sem token do GitHub — PRs novos não serão buscados (cache anterior é preservado). Rode o setup da UI ou "gh auth login".')
 
 function gh<T>(query: string, vars: Record<string, unknown>): Promise<T> {
-  if (!auth) return Promise.reject(new Error('sem token do GitHub (configure no setup ou via gh auth login)'))
+  if (!auth)
+    return Promise.reject(new Error('sem token do GitHub (configure no setup ou via gh auth login)'))
   return ghGraphql<T>(query, vars, auth.token)
 }
 
@@ -52,7 +55,8 @@ async function ghRetry<T>(query: string, vars: Record<string, unknown>): Promise
     catch (err) {
       lastErr = err as Error
       const transient = /HTTP 5\d\d|ECONNRESET|ETIMEDOUT|EAI_AGAIN|socket|fetch failed/i.test(lastErr.message)
-      if (!transient || attempt === 3) throw err
+      if (!transient || attempt === 3)
+        throw err
       await new Promise(r => setTimeout(r, attempt * 2000))
     }
   }
@@ -108,8 +112,8 @@ interface GhPr {
   author: { login: string } | null
   reviews: {
     totalCount?: number
-    nodes: { author: { login: string } | null; state: string; submittedAt: string }[]
-    pageInfo?: { hasNextPage: boolean; endCursor: string | null }
+    nodes: { author: { login: string } | null, state: string, submittedAt: string }[]
+    pageInfo?: { hasNextPage: boolean, endCursor: string | null }
   }
 }
 
@@ -117,14 +121,14 @@ interface QueryResult {
   repository: {
     pullRequests: {
       nodes: GhPr[]
-      pageInfo: { hasNextPage: boolean; endCursor: string | null }
+      pageInfo: { hasNextPage: boolean, endCursor: string | null }
     }
   } | null
   rateLimit: { remaining: number }
 }
 
 async function fetchPrs(
-  ghRepo: { owner: string; repo: string },
+  ghRepo: { owner: string, repo: string },
   states: 'OPEN' | 'MERGED',
   cutoff: Date | null,
 ): Promise<GhPr[]> {
@@ -135,15 +139,19 @@ async function fetchPrs(
 
   for (let page = 0; page < 30; page++) {
     const vars: Record<string, string> = { owner: ghRepo.owner, name: ghRepo.repo }
-    if (cursor) vars.cursor = cursor
+    if (cursor)
+      vars.cursor = cursor
     const data = await ghRetry<QueryResult>(query, vars)
     const prs = data.repository?.pullRequests
-    if (!prs) break
+    if (!prs)
+      break
     out.push(...prs.nodes)
-    if (!prs.pageInfo.hasNextPage) break
+    if (!prs.pageInfo.hasNextPage)
+      break
     // mergeados vêm por UPDATED_AT desc: para quando a página já passou do cutoff
     const oldest = prs.nodes[prs.nodes.length - 1]
-    if (cutoff && oldest && new Date(oldest.updatedAt) < cutoff) break
+    if (cutoff && oldest && new Date(oldest.updatedAt) < cutoff)
+      break
     cursor = prs.pageInfo.endCursor
   }
   return out
@@ -152,7 +160,7 @@ async function fetchPrs(
 interface ReviewsPage {
   repository: {
     pullRequest: {
-      reviews: { nodes: GhPr['reviews']['nodes']; pageInfo: { hasNextPage: boolean; endCursor: string | null } }
+      reviews: { nodes: GhPr['reviews']['nodes'], pageInfo: { hasNextPage: boolean, endCursor: string | null } }
     } | null
   } | null
 }
@@ -161,15 +169,17 @@ interface ReviewsPage {
  * PR com mais reviews que a página inline (100): continua por cursor com o
  * mesmo CREATED_AT ASC (issue #6). O resto é anexado ao nó da lista.
  */
-async function fetchRestReviews(ghRepo: { owner: string; repo: string }, pr: GhPr): Promise<void> {
+async function fetchRestReviews(ghRepo: { owner: string, repo: string }, pr: GhPr): Promise<void> {
   const total = pr.reviews.totalCount ?? pr.reviews.nodes.length
   let cursor = pr.reviews.pageInfo?.endCursor ?? null
   for (let page = 0; page < 10 && cursor && pr.reviews.nodes.length < total; page++) {
     const data = await ghRetry<ReviewsPage>(REVIEWS_QUERY, { owner: ghRepo.owner, name: ghRepo.repo, number: pr.number, cursor })
     const rev = data.repository?.pullRequest?.reviews
-    if (!rev || !rev.nodes.length) break
+    if (!rev || !rev.nodes.length)
+      break
     pr.reviews.nodes.push(...rev.nodes)
-    if (!rev.pageInfo.hasNextPage) break
+    if (!rev.pageInfo.hasNextPage)
+      break
     cursor = rev.pageInfo.endCursor
   }
   // teto de páginas atingido com reviews restantes: avisa (nunca trunca em silêncio)
@@ -207,7 +217,7 @@ const outFile = join(outDir, 'github.json')
 // para o FETCH, mas o arquivo anterior segue carregado como rede de segurança:
 // um repo que falha no modo completo não pode sair zerado do painel.
 const cached = existsSync(outFile)
-  ? JSON.parse(readFileSync(outFile, 'utf-8')) as { generatedAt: string; prs: PrRow[] }
+  ? JSON.parse(readFileSync(outFile, 'utf-8')) as { generatedAt: string, prs: PrRow[] }
   : null
 const prev = FULL ? null : cached
 
@@ -301,13 +311,17 @@ await mapPool(repos, 4, async (repo) => {
     // sem mergedAt válido não têm como respeitar a janela — descartados.
     let restored = 0
     for (const p of cached?.prs ?? []) {
-      if (p.repo !== repo.name) continue
-      if (p.state !== 'OPEN' && p.state !== 'MERGED') continue
-      if (p.state === 'MERGED' && (typeof p.mergedAt !== 'string' || Number.isNaN(Date.parse(p.mergedAt)) || new Date(p.mergedAt) < windowCutoff)) continue
+      if (p.repo !== repo.name)
+        continue
+      if (p.state !== 'OPEN' && p.state !== 'MERGED')
+        continue
+      if (p.state === 'MERGED' && (typeof p.mergedAt !== 'string' || Number.isNaN(Date.parse(p.mergedAt)) || new Date(p.mergedAt) < windowCutoff))
+        continue
       fresh.set(`${p.repo}#${p.number}`, p)
       restored++
     }
-    if (restored) console.log(`  ↳ ${restored} PRs mantidos do cache anterior`)
+    if (restored)
+      console.log(`  ↳ ${restored} PRs mantidos do cache anterior`)
   }
 })
 
@@ -320,9 +334,11 @@ if (prev) {
   // MERGED sem mergedAt válido é descartado (não tem como janelar — o check-data o reprovaria)
   for (const p of prev.prs) {
     const key = `${p.repo}#${p.number}`
-    if (p.state !== 'MERGED' || fresh.has(key)) continue
+    if (p.state !== 'MERGED' || fresh.has(key))
+      continue
     const mergedAt = p.mergedAt as string | null
-    if (!mergedAt || Number.isNaN(Date.parse(mergedAt)) || new Date(mergedAt) < windowCutoff) continue
+    if (!mergedAt || Number.isNaN(Date.parse(mergedAt)) || new Date(mergedAt) < windowCutoff)
+      continue
     fresh.set(key, p)
     kept++
   }
@@ -334,7 +350,10 @@ const allPrs = [...fresh.values()]
 const seenLogins = new Set<string>()
 for (const p of allPrs) {
   seenLogins.add(p.author)
-  for (const r of p.reviews) if (r.author) seenLogins.add(r.author)
+  for (const r of p.reviews) {
+    if (r.author)
+      seenLogins.add(r.author)
+  }
 }
 
 // logins sem mapeamento para nome do time (avisar pra completar o config)
@@ -342,7 +361,7 @@ const unmapped = [...seenLogins]
   .filter(l => !userMap.has(l.toLowerCase()) && !isBotLogin(l))
   .sort()
 
-const users: Record<string, { name: string; bot: boolean }> = {}
+const users: Record<string, { name: string, bot: boolean }> = {}
 for (const login of seenLogins) {
   users[login] = { name: userMap.get(login.toLowerCase()) ?? login, bot: isBotLogin(login) }
 }

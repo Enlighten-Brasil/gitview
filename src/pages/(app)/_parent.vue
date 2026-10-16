@@ -7,13 +7,13 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { collectError, collecting, collectLog, collectStep, collectSucceeded, startCollect } from '@/collect'
-import { loadGithub } from '@/github'
-import { loadReleases } from '@/releases'
-import { rangeLabel, stats } from '@/data'
-import { initUrlState } from '@/urlState'
 import AppNav from '@/components/AppNav.vue'
 import CandidatesBanner from '@/components/CandidatesBanner.vue'
 import WeeklySummary from '@/components/WeeklySummary.vue'
+import { rangeLabel, stats } from '@/data'
+import { loadGithub } from '@/github'
+import { loadReleases } from '@/releases'
+import { initUrlState } from '@/urlState'
 
 definePage({
   meta: {
@@ -60,7 +60,8 @@ watch(() => collectLog.value.length, async () => {
 
 // frescor dos dados no navbar — uso manual antes de reuniões, destacar dados velhos
 const dataAge = computed(() => {
-  if (!stats.value) return null
+  if (!stats.value)
+    return null
   const hours = (Date.now() - new Date(stats.value.generatedAt).getTime()) / 3_600_000
   const label = hours < 1
     ? 'agora mesmo'

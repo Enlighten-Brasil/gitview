@@ -29,7 +29,8 @@ async function reloadData() {
 }
 
 export function startCollect(full = false, clean = false, light = false) {
-  if (collecting.value) return
+  if (collecting.value)
+    return
   collecting.value = true
   collectStep.value = null
   collectLog.value = []
@@ -37,9 +38,12 @@ export function startCollect(full = false, clean = false, light = false) {
   collectSucceeded.value = false
 
   const params = new URLSearchParams()
-  if (full || clean) params.set('full', '1')
-  if (clean) params.set('clean', '1')
-  if (light && !full && !clean) params.set('light', '1')
+  if (full || clean)
+    params.set('full', '1')
+  if (clean)
+    params.set('clean', '1')
+  if (light && !full && !clean)
+    params.set('light', '1')
   const qs = params.toString()
   const es = new EventSource(`/__collect${qs ? `?${qs}` : ''}`)
 

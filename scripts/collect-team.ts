@@ -32,8 +32,8 @@ mkdirSync(outDir, { recursive: true })
 // ---------------------------------------------------------------------------
 // dados já coletados (podem não existir ainda — primeiro setup)
 // ---------------------------------------------------------------------------
-interface StatsJson { authors?: { name: string; emails: string[]; bot: boolean }[] }
-interface GithubJson { users?: Record<string, { name: string; bot: boolean }>, prs?: { author: string; reviews: { author: string }[] }[] }
+interface StatsJson { authors?: { name: string, emails: string[], bot: boolean }[] }
+interface GithubJson { users?: Record<string, { name: string, bot: boolean }>, prs?: { author: string, reviews: { author: string }[] }[] }
 
 function readJson<T>(file: string): T | null {
   const path = join(outDir, file)
@@ -56,7 +56,8 @@ const canonicalNames = new Set<string>(Object.keys(profiles))
 for (const a of stats?.authors ?? []) canonicalNames.add(a.name)
 // 'ghost' = autor de PR apagado (collect-github) — não é dev
 for (const [login, u] of Object.entries(github?.users ?? {})) {
-  if (login.toLowerCase() !== 'ghost') canonicalNames.add(u.name)
+  if (login.toLowerCase() !== 'ghost')
+    canonicalNames.add(u.name)
 }
 
 const botAuthors = stats ? botAuthorNames(config, stats.authors ?? []) : new Set<string>()
@@ -73,7 +74,8 @@ const canonicalByLower = new Map([...canonicalNames].map(n => [n.toLowerCase(), 
 for (const t of teams) {
   for (const member of t.members) {
     const canonical = canonicalByLower.get(member.toLowerCase()) ?? member
-    if (!teamsByDev.has(canonical)) teamsByDev.set(canonical, [])
+    if (!teamsByDev.has(canonical))
+      teamsByDev.set(canonical, [])
     teamsByDev.get(canonical)!.push(t.name)
     canonicalNames.add(canonical)
   }
@@ -82,7 +84,8 @@ for (const t of teams) {
 // e-mails: config (authors + perfis) + detectados no git
 const emailsByDev = new Map<string, Set<string>>()
 function addEmail(dev: string, email: string) {
-  if (!emailsByDev.has(dev)) emailsByDev.set(dev, new Set())
+  if (!emailsByDev.has(dev))
+    emailsByDev.set(dev, new Set())
   emailsByDev.get(dev)!.add(email)
 }
 for (const [email, canonical] of emailToCanonical) addEmail(canonical, email)
@@ -96,12 +99,14 @@ for (const a of stats?.authors ?? []) {
 // logins: config (githubUsers + perfis) + detectados no github.json
 const loginsByDev = new Map<string, Set<string>>()
 function addLogin(dev: string, login: string) {
-  if (!loginsByDev.has(dev)) loginsByDev.set(dev, new Set())
+  if (!loginsByDev.has(dev))
+    loginsByDev.set(dev, new Set())
   const set = loginsByDev.get(dev)!
   // dedupe por case: a chave do mapa de aliases é lowercase e a API traz o case
   // real — sem isso 'devlogin-a' + 'devlogin-bDev' viravam 2 logins do dev
   for (const existing of set) {
-    if (existing.toLowerCase() !== login.toLowerCase()) continue
+    if (existing.toLowerCase() !== login.toLowerCase())
+      continue
     if (existing === existing.toLowerCase() && login !== existing) {
       set.delete(existing)
       set.add(login)
@@ -112,7 +117,8 @@ function addLogin(dev: string, login: string) {
 }
 for (const [login, canonical] of loginToCanonical) addLogin(canonical, login)
 for (const [login, u] of Object.entries(github?.users ?? {})) {
-  if (login.toLowerCase() === 'ghost') continue
+  if (login.toLowerCase() === 'ghost')
+    continue
   addLogin(loginToCanonical.get(login.toLowerCase()) ?? u.name, login)
 }
 
@@ -125,7 +131,7 @@ const devs = [...canonicalNames]
     githubLogins: [...(loginsByDev.get(name) ?? [])].sort(),
     teams: (teamsByDev.get(name) ?? []).sort(),
     bot: botAuthors.has(name)
-      || [...(loginsByDev.get(name) ?? [])].some(l => {
+      || [...(loginsByDev.get(name) ?? [])].some((l) => {
         const k = l.toLowerCase()
         return botLogins.has(k) || ghBotLogins.has(k) || BOT_LOGIN_RE.test(l)
       }),
@@ -149,12 +155,14 @@ const prCountByLogin = new Map<string, number>()
 for (const pr of github?.prs ?? []) {
   prCountByLogin.set(pr.author, (prCountByLogin.get(pr.author) ?? 0) + 1)
   for (const r of pr.reviews) {
-    if (r.author) prCountByLogin.set(r.author, (prCountByLogin.get(r.author) ?? 0) + 1)
+    if (r.author)
+      prCountByLogin.set(r.author, (prCountByLogin.get(r.author) ?? 0) + 1)
   }
 }
 for (const login of Object.keys(github?.users ?? {})) {
   const k = login.toLowerCase()
-  if (k === 'ghost' || loginToCanonical.has(k) || botLogins.has(k) || ghBotLogins.has(k) || BOT_LOGIN_RE.test(login)) continue
+  if (k === 'ghost' || loginToCanonical.has(k) || botLogins.has(k) || ghBotLogins.has(k) || BOT_LOGIN_RE.test(login))
+    continue
   candidates.push({ kind: 'login', id: login, prs: prCountByLogin.get(login) ?? 0 })
 }
 

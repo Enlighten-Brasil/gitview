@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { ghName, openAging, stalePrs } from '../github'
+import { ghName, stalePrs } from '../github'
 
 const STALE_DAYS = 14
 
@@ -34,8 +34,12 @@ const shown = computed(() => stale.value.slice(0, 5))
                 #{{ pr.number }} {{ pr.title }}
               </a>
             </td>
-            <td class="whitespace-nowrap text-muted">{{ pr.repo }}</td>
-            <td class="whitespace-nowrap text-muted">{{ ghName(pr.author) }}</td>
+            <td class="whitespace-nowrap text-muted">
+              {{ pr.repo }}
+            </td>
+            <td class="whitespace-nowrap text-muted">
+              {{ ghName(pr.author) }}
+            </td>
             <td class="num whitespace-nowrap">
               <span :class="pr.ageDays >= 30 ? 'text-error font-medium' : 'text-warning'">{{ pr.ageDays }}d</span>
             </td>
@@ -43,7 +47,9 @@ const shown = computed(() => stale.value.slice(0, 5))
         </tbody>
       </table>
       <p class="text-dimmed text-xs mt-2.5">
-        <template v-if="stale.length > shown.length">mostrando {{ shown.length }} de {{ stale.length }} · </template>
+        <template v-if="stale.length > shown.length">
+          mostrando {{ shown.length }} de {{ stale.length }} ·
+        </template>
         mais antigo: <b>{{ oldest?.ageDays }}d</b> · lista completa na aba Pull requests
       </p>
     </template>

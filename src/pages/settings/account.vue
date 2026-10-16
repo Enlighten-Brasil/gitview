@@ -1,12 +1,12 @@
 <script setup lang="ts">
+import type { SetupStatus } from '@/setup'
 /**
  * Conta GitHub: conectar/trocar/desconectar sem sair das configurações.
  * O device flow e a sonda de `gh auth login` vivem no GithubConnect.
  */
 import { onMounted, ref } from 'vue'
-import { getCachedStatus } from '@/router/guards'
-import type { SetupStatus } from '@/setup'
 import GithubConnect from '@/components/setup/GithubConnect.vue'
+import { getCachedStatus } from '@/router/guards'
 
 const status = ref<SetupStatus | null>(null)
 const loading = ref(true)

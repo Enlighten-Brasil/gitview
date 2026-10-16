@@ -3,14 +3,17 @@ import { computed } from 'vue'
 import { filteredTotals, previousTotals, rangeLabel, stats } from '../data'
 
 function fmt(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 10_000) return `${(n / 1_000).toFixed(0)}k`
+  if (n >= 1_000_000)
+    return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 10_000)
+    return `${(n / 1_000).toFixed(0)}k`
   return n.toLocaleString('pt-BR')
 }
 
 /** delta % vs janela anterior equivalente; null sem base de comparação */
 function delta(cur: number, prev: number | undefined) {
-  if (prev == null || prev === 0) return null
+  if (prev == null || prev === 0)
+    return null
   const pct = Math.round(((cur - prev) / prev) * 100)
   return { pct: Math.abs(pct), dir: pct > 2 ? 'up' : pct < -2 ? 'down' : 'flat' } as const
 }
@@ -29,16 +32,20 @@ const periodCards = computed(() => {
 
 /** cor do delta: commits/devs/repos sobem = bom; linhas +/- são neutras */
 function deltaClass(dir: 'up' | 'down' | 'flat', judge: boolean): string {
-  if (!judge) return 'text-dimmed'
-  if (dir === 'up') return 'text-success'
-  if (dir === 'down') return 'text-error'
+  if (!judge)
+    return 'text-dimmed'
+  if (dir === 'up')
+    return 'text-success'
+  if (dir === 'down')
+    return 'text-error'
   return 'text-dimmed'
 }
 
 /** totais históricos em linha discreta (contexto, sem duplicar o grid) */
 const historyLine = computed(() => {
   const t = stats.value?.totals
-  if (!t) return ''
+  if (!t)
+    return ''
   return `histórico total: ${fmt(t.commits)} commits · ${fmt(t.additions)} linhas + · ${fmt(t.deletions)} linhas − · ${t.authors} devs · ${t.repos} repos`
 })
 </script>

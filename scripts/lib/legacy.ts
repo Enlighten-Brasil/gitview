@@ -1,3 +1,4 @@
+import type { DevProfile, TeamConfig } from './config'
 /**
  * Migração única e idempotente do formato antigo de config:
  * config.json + config.local.json → `.env` + `team.local.json`.
@@ -10,16 +11,18 @@
  */
 import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { DevProfile, TeamConfig } from './config'
+import process from 'node:process'
 import { rootDir, teamConfigPath, upsertEnvFile } from './config'
 
 let attempted = false
 
 export function migrateLegacyConfig(): void {
-  if (attempted) return
+  if (attempted)
+    return
   attempted = true
   const localPath = join(rootDir, 'config.local.json')
-  if (!existsSync(localPath)) return
+  if (!existsSync(localPath))
+    return
   try {
     migrate(localPath)
   }
@@ -29,7 +32,8 @@ export function migrateLegacyConfig(): void {
 }
 
 function readJson(path: string): Record<string, unknown> {
-  if (!existsSync(path)) return {}
+  if (!existsSync(path))
+    return {}
   try {
     return JSON.parse(readFileSync(path, 'utf-8')) as Record<string, unknown>
   }
@@ -46,7 +50,8 @@ function migrate(localPath: string): void {
   const envEntries: Record<string, string> = {}
   const setEnv = (key: string, value: unknown) => {
     const v = typeof value === 'string' ? value.trim() : ''
-    if (v && !process.env[key]?.trim()) envEntries[key] = v
+    if (v && !process.env[key]?.trim())
+      envEntries[key] = v
   }
   const csv = (value: unknown) => Array.isArray(value) ? (value as string[]).join(',') : ''
   setEnv('GITVIEW_GITHUB_TOKEN', local.githubToken)
@@ -55,19 +60,22 @@ function migrate(localPath: string): void {
   setEnv('GITVIEW_GITHUB_CLIENT_ID', shared.oauthClientId)
   setEnv('GITVIEW_DEFAULT_REPOS', csv(shared.defaultRepos))
   setEnv('GITVIEW_EXCLUDE', csv(shared.exclude))
-  if (Object.keys(envEntries).length) upsertEnvFile(envEntries)
+  if (Object.keys(envEntries).length)
+    upsertEnvFile(envEntries)
 
   // 2) team.local.json: aliases do config.json + perfis/times do config.local.json
   const profiles: Record<string, DevProfile> = {}
   const safeKey = (name: string) => name !== '__proto__' && name !== 'constructor' && name !== 'prototype'
   const profileFor = (canonical: string): DevProfile => {
     const key = canonical.trim()
-    if (!key || !safeKey(key)) return {}
+    if (!key || !safeKey(key))
+      return {}
     return (profiles[key] ??= {})
   }
   const push = (list: string[] | undefined, value: string | undefined) => {
     const v = (value ?? '').trim()
-    if (v && list && !list.includes(v)) list.push(v)
+    if (v && list && !list.includes(v))
+      list.push(v)
   }
   for (const [canonical, emails] of Object.entries((shared.authors ?? {}) as Record<string, string[]>)) {
     for (const email of emails ?? []) push((profileFor(canonical).emails ??= []), email)
@@ -77,14 +85,17 @@ function migrate(localPath: string): void {
   }
   for (const [canonical, p] of Object.entries((local.devProfiles ?? {}) as Record<string, DevProfile>)) {
     const target = profileFor(canonical)
-    if (p.title) target.title = p.title
-    if (p.description) target.description = p.description
+    if (p.title)
+      target.title = p.title
+    if (p.description)
+      target.description = p.description
     for (const email of p.emails ?? []) push((target.emails ??= []), email)
     for (const login of p.githubLogins ?? []) push((target.githubLogins ??= []), login)
   }
   // remove perfis que ficaram sem nenhum dado (nomes só de login viram aliases)
   for (const [name, p] of Object.entries(profiles)) {
-    if (!p.title && !p.description && !p.emails?.length && !p.githubLogins?.length) delete profiles[name]
+    if (!p.title && !p.description && !p.emails?.length && !p.githubLogins?.length)
+      delete profiles[name]
   }
 
   const existing = existsSync(teamConfigPath)
@@ -105,8 +116,10 @@ function migrate(localPath: string): void {
       devProfiles: profiles,
       teams: (local.teams ?? []) as TeamConfig[],
     }
-    if (Array.isArray(shared.bots) && shared.bots.length) teamFile.bots = shared.bots as string[]
-    if (Array.isArray(shared.githubBots) && shared.githubBots.length) teamFile.githubBots = shared.githubBots as string[]
+    if (Array.isArray(shared.bots) && shared.bots.length)
+      teamFile.bots = shared.bots as string[]
+    if (Array.isArray(shared.githubBots) && shared.githubBots.length)
+      teamFile.githubBots = shared.githubBots as string[]
     writeFileSync(teamConfigPath, `${JSON.stringify(teamFile, null, 2)}\n`)
   }
 

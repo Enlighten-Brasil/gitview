@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import type { EChartsOption } from 'echarts'
-import { commitsByRepo } from '../data'
+import { computed } from 'vue'
 import { ct, legendText, PALETTE, tooltipBase } from '../chartTheme'
+import { commitsByRepo } from '../data'
 import ChartPanel from './ChartPanel.vue'
 
 const option = computed<EChartsOption>(() => ({

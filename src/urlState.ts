@@ -1,6 +1,6 @@
+import type { RouteLocationNormalized } from 'vue-router'
 import { watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import type { RouteLocationNormalized } from 'vue-router'
 import { filters, stats } from './data'
 
 /**

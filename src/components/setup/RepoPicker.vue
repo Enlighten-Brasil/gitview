@@ -1,11 +1,11 @@
 <script setup lang="ts">
+import type { OrgEntry, RepoEntry, SetupStatus } from '@/setup'
 /**
  * Escolha de repositórios da org — usado pelo passo 2 do wizard e pelo
  * "gerenciar repositórios" nas configurações. `manage` pré-seleciona os repos
  * atuais e detecta desmarcações como remoção explícita do disco.
  */
 import { computed, onMounted, ref, watch } from 'vue'
-import type { OrgEntry, RepoEntry, SetupStatus } from '@/setup'
 import { fetchOrgs, fetchRepos } from '@/setup'
 
 const props = defineProps<{

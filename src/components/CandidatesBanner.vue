@@ -28,7 +28,7 @@ const candidates = computed(() => team.value?.candidates ?? [])
 const visible = computed(() => candidates.value.some(c => !dismissed.value.has(idOf(c))))
 
 // carregado por preguiça: FilterBar/times já usam o mesmo cache do team.json
-onMounted(() => { loadTeam() })
+onMounted(() => loadTeam())
 
 function dismiss() {
   dismissed.value = new Set(candidates.value.map(idOf))

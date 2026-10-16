@@ -1,11 +1,11 @@
 import { fileURLToPath } from 'node:url'
-import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue'
-import VueRouter from 'vue-router/vite'
-import { getFileBasedRouteName } from 'vue-router/unplugin'
 import ui from '@nuxt/ui/vite'
-import { loadConfig } from './scripts/lib/config'
+import vue from '@vitejs/plugin-vue'
+import { defineConfig } from 'vite'
+import { getFileBasedRouteName } from 'vue-router/unplugin'
+import VueRouter from 'vue-router/vite'
 import { collectPlugin } from './scripts/collect-plugin'
+import { loadConfig } from './scripts/lib/config'
 import { setupPlugin } from './scripts/setup-plugin'
 
 // porta do dev server vem do .env (GITVIEW_PORT) — lida no boot, sem restart
