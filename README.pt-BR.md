@@ -6,6 +6,8 @@
 
 Dashboard interno de métricas do time: commits, PRs e releases dos repositórios da org, tudo local e read-only sobre os repos.
 
+**Demo ao vivo** (apenas dados sintéticos — nenhum dado real do time): https://enlighten-brasil.github.io/gitview/
+
 ## Setup
 
 Requisitos:

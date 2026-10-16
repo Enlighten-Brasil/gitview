@@ -15,7 +15,7 @@ export async function loadTeam(force = false) {
   if (team.value && !force)
     return
   try {
-    const res = await fetch(force ? `/data/team.json?t=${Date.now()}` : '/data/team.json')
+    const res = await fetch(force ? `${import.meta.env.BASE_URL}data/team.json?t=${Date.now()}` : `${import.meta.env.BASE_URL}data/team.json`)
     if (!res.ok)
       throw new Error(`HTTP ${res.status}`)
     team.value = await res.json()

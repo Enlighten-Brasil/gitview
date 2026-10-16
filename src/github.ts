@@ -7,7 +7,7 @@ export const githubError = ref<string | null>(null)
 
 export async function loadGithub(force = false) {
   try {
-    const res = await fetch(force ? `/data/github.json?t=${Date.now()}` : '/data/github.json')
+    const res = await fetch(force ? `${import.meta.env.BASE_URL}data/github.json?t=${Date.now()}` : `${import.meta.env.BASE_URL}data/github.json`)
     if (!res.ok)
       throw new Error(`HTTP ${res.status}`)
     github.value = await res.json()

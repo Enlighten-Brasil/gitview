@@ -109,7 +109,7 @@ function addLogin(dev: string, login: string) {
     loginsByDev.set(dev, new Set())
   const set = loginsByDev.get(dev)!
   // dedupe por case: a chave do mapa de aliases é lowercase e a API traz o case
-  // real — sem isso 'devlogin-a' + 'devlogin-bDev' viravam 2 logins do dev
+  // real — sem isso 'jsmithdev' + 'jsmithDev' viravam 2 logins do dev
   for (const existing of set) {
     if (existing.toLowerCase() !== login.toLowerCase())
       continue

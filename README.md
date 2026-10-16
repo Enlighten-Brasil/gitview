@@ -6,6 +6,8 @@
 
 An engineering-manager dashboard for team metrics: commits, PRs and releases across your GitHub org's repositories — everything runs locally and is strictly read-only over the repos it analyzes.
 
+**Live demo** (synthetic data only — no real team data): https://enlighten-brasil.github.io/gitview/
+
 ## Setup
 
 Requirements:

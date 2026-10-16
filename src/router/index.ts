@@ -8,7 +8,7 @@ import { setupScroll } from './scroll'
 // chunk por rota vem do importMode async default do plugin.
 export const router = createRouter({
   routes,
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
 })
 
 // gate de dados/wizard (?tab= legado, /setup vs /settings, passos do wizard)

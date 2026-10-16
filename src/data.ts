@@ -10,7 +10,7 @@ export async function loadCommits(force = false) {
   if (recentCommits.value && !force)
     return
   try {
-    const res = await fetch(force ? `/data/commits.json?t=${Date.now()}` : '/data/commits.json')
+    const res = await fetch(force ? `${import.meta.env.BASE_URL}data/commits.json?t=${Date.now()}` : `${import.meta.env.BASE_URL}data/commits.json`)
     if (!res.ok)
       throw new Error(`HTTP ${res.status}`)
     recentCommits.value = (await res.json()).commits
@@ -42,7 +42,7 @@ export function isBot(author: string) {
 
 export async function loadStats(force = false) {
   try {
-    const res = await fetch(force ? `/data/stats.json?t=${Date.now()}` : '/data/stats.json')
+    const res = await fetch(force ? `${import.meta.env.BASE_URL}data/stats.json?t=${Date.now()}` : `${import.meta.env.BASE_URL}data/stats.json`)
     if (!res.ok)
       throw new Error(`HTTP ${res.status} — rode "pnpm collect" primeiro`)
     stats.value = await res.json()

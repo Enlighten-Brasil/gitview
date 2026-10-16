@@ -6,7 +6,7 @@ export const releasesError = ref<string | null>(null)
 
 export async function loadReleases(force = false) {
   try {
-    const res = await fetch(force ? `/data/releases.json?t=${Date.now()}` : '/data/releases.json')
+    const res = await fetch(force ? `${import.meta.env.BASE_URL}data/releases.json?t=${Date.now()}` : `${import.meta.env.BASE_URL}data/releases.json`)
     if (!res.ok)
       throw new Error(`HTTP ${res.status}`)
     releases.value = await res.json()

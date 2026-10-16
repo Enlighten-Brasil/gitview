@@ -7,7 +7,7 @@ import { filters, stats } from './data'
  * Sincroniza os filtros com a query string da URL — links ficam
  * compartilháveis/bookmarkáveis.
  *
- * Formato: ?range=6&from=2026-01-01&to=2026-06-30&bots=1&repos=api&devs=Dev A
+ * Formato: ?range=6&from=2026-01-01&to=2026-06-30&bots=1&repos=api&devs=Ana
  * Valores default são omitidos para manter a URL limpa.
  * Usa replaceState (não polui o histórico a cada clique em filtro).
  *
