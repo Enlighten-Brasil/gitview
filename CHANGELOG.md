@@ -1,5 +1,11 @@
 # gitview
 
+## 0.36.1
+
+### Patch Changes
+
+- e67509e: docs: CONTRIBUTING.md (setup de dev, gates, estilo, changesets, dev-only vs estático) + seção "Publicar o dashboard" no README (#3)
+
 ## 0.36.0
 
 ### Minor Changes
