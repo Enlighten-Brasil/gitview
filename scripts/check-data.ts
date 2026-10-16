@@ -170,13 +170,24 @@ if (github) {
   }
   // invariantes dos PRs: estado válido, mergedAt presente em MERGED, sem duplicados
   const seenPr = new Set<string>()
+  // janela de mergeados (issue #5): nada com mergedAt mais velho que 400d +
+  // folga de 1 dia (corte do script vs generatedAt) pode sobreviver na coleta
+  const windowMs = Date.parse(String(github.generatedAt)) - 401 * 86_400_000
+  let staleMerged = 0
+  let oldestStale = ''
   for (const p of (isArr(github.prs) ? github.prs : []) as Record<string, unknown>[]) {
     if (p.state !== 'OPEN' && p.state !== 'MERGED') { errors.push(`github.prs ${p.repo}#${p.number}: state inesperado "${p.state}"`); break }
     if (p.state === 'MERGED' && (typeof p.mergedAt !== 'string' || Number.isNaN(Date.parse(p.mergedAt)))) { errors.push(`github.prs ${p.repo}#${p.number}: MERGED sem mergedAt válido`); break }
+    if (p.state === 'MERGED' && typeof p.mergedAt === 'string' && Number.isFinite(windowMs) && Date.parse(p.mergedAt) < windowMs) {
+      staleMerged++
+      if (!oldestStale || p.mergedAt < oldestStale) oldestStale = p.mergedAt
+    }
     const key = `${p.repo}#${p.number}`
     if (seenPr.has(key)) { errors.push(`github.prs: PR duplicado ${key}`); break }
     seenPr.add(key)
   }
+  if (staleMerged)
+    errors.push(`github.prs: ${staleMerged} MERGED fora da janela de 400d (mais antigo ${oldestStale}) — a coleta precisa podar por mergedAt`)
 }
 
 // ── releases.json ─────────────────────────────────────────────────────────
