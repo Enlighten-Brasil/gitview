@@ -1,25 +1,38 @@
 <script setup lang="ts">
 /**
  * Banner discreto enquanto houver identidades sem mapeamento (team.json#candidates).
- * Aparece só nas rotas de escopo full (decidido pelo chamador). A dispensa guarda a
- * contagem vista — o banner volta se a próxima coleta trouxer identidades novas;
- * some sozinho quando candidates chega a 0.
+ * Aparece só nas rotas de escopo full (decidido pelo chamador). A dispensa grava o
+ * CONJUNTO de identidades visto — o banner volta se a próxima coleta trouxer
+ * identidades novas (mesmo que o total caia); some sozinho quando candidates chega a 0.
  */
 import { computed, onMounted, ref } from 'vue'
 import { loadTeam, team } from '@/team'
 
-const KEY = 'gitview:candidates-dismissed'
+const KEY = 'gitview-candidates-dismissed'
 
-const dismissed = ref(Number(localStorage.getItem(KEY) ?? 0))
+const idOf = (c: { kind: string, id: string }) => `${c.kind}:${c.id}`
+
+function readDismissed(): Set<string> {
+  try {
+    const raw = JSON.parse(localStorage.getItem(KEY) ?? '[]')
+    return new Set(Array.isArray(raw) ? raw.map(String) : [])
+  }
+  catch {
+    // storage corrompido (ou formato antigo numérico) = nada dispensado
+    return new Set()
+  }
+}
+
+const dismissed = ref(readDismissed())
 const candidates = computed(() => team.value?.candidates ?? [])
-const visible = computed(() => candidates.value.length > 0 && candidates.value.length > dismissed.value)
+const visible = computed(() => candidates.value.some(c => !dismissed.value.has(idOf(c))))
 
 // carregado por preguiça: FilterBar/times já usam o mesmo cache do team.json
 onMounted(() => { loadTeam() })
 
 function dismiss() {
-  dismissed.value = candidates.value.length
-  localStorage.setItem(KEY, String(dismissed.value))
+  dismissed.value = new Set(candidates.value.map(idOf))
+  localStorage.setItem(KEY, JSON.stringify([...dismissed.value]))
 }
 </script>
 

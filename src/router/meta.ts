@@ -13,7 +13,7 @@ declare module 'vue-router' {
     onboarding?: boolean
     /** usa endpoints locais (/__*): build estático não entra */
     requiresServer?: boolean
-    /** passo mínimo do wizard (2 repos, 3 coletar) — auth obrigatória a partir dele */
+    /** passo mínimo do wizard (2 repos, 3 coletar, 4 time opcional) — 2/3 exigem auth; 4 exige dados coletados */
     setupStep?: number
     /** seção ativa na rail (nav.ts) — substitui o match por prefixo */
     section?: 'dashboards' | 'teams' | 'prs' | 'repos' | 'releases' | 'settings' | null

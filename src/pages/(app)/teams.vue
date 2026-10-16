@@ -28,6 +28,7 @@ onMounted(async () => {
   // build estático: sem endpoints de config — times vêm do team.json (somente leitura)
   if (!isDev) {
     teams.value = (team.value?.teams ?? []).map(t => ({
+      cid: crypto.randomUUID(),
       name: t.name,
       description: t.description ?? '',
       color: t.color ?? '',
@@ -47,6 +48,10 @@ interface ProfileDraft {
   githubLogins: string
 }
 interface TeamDraft {
+  /** id estável de sessão (v-for key) — times são removíveis/reordenáveis;
+   * índice como key faz o estado local do card ("confirmar remoção" armado,
+   * popover aberto) herdar o time errado depois de um splice */
+  cid: string
   name: string
   description: string
   color: string
@@ -74,6 +79,7 @@ async function loadConfigState() {
     for (const k of Object.keys(profiles)) delete profiles[k]
     for (const [name, p] of Object.entries(cfg.devProfiles)) profiles[name] = toDraft(p)
     teams.value = cfg.teams.map(t => ({
+      cid: crypto.randomUUID(),
       name: t.name,
       description: t.description ?? '',
       color: t.color ?? '',
@@ -237,7 +243,7 @@ function metricsFor(members: string[]): TeamMetrics {
 }
 
 function addTeam() {
-  teams.value.push({ name: '', description: '', color: PALETTE[teams.value.length % PALETTE.length], members: [] })
+  teams.value.push({ cid: crypto.randomUUID(), name: '', description: '', color: PALETTE[teams.value.length % PALETTE.length], members: [] })
 }
 
 function removeTeam(i: number) {
@@ -252,6 +258,7 @@ function revert() {
   for (const [name, p] of Object.entries(saved.devProfiles))
     profiles[name] = toDraft(p)
   teams.value = saved.teams.map(t => ({
+    cid: crypto.randomUUID(),
     name: t.name,
     description: t.description ?? '',
     color: t.color ?? '',
@@ -328,6 +335,7 @@ function importTeam(t: { name: string, description: string | null, members: stri
   )]
   const existing = teams.value.findIndex(x => x.name.toLowerCase() === t.name.toLowerCase())
   const draftTeam: TeamDraft = {
+    cid: crypto.randomUUID(),
     name: t.name,
     description: t.description ?? '',
     color: PALETTE[teams.value.length % PALETTE.length],
@@ -480,7 +488,7 @@ watch(suggestions, (s) => {
         <div class="grid gap-4 md:grid-cols-2">
           <TeamCard
             v-for="(t, i) in teams"
-            :key="i"
+            :key="t.cid"
             :team="t"
             :items="memberAddItems(i)"
             :metrics="metricsFor(t.members)"
