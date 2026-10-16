@@ -2,7 +2,8 @@
  * Coletor de estatísticas git multi-repo.
  *
  * 1. Descobre repos git dentro de `reposRoot` (GITVIEW_REPOS_ROOT do .env/shell → data/repos)
- * 2. Roda `git log --all --numstat` em cada um (streaming)
+ * 2. Roda `git log --all --no-merges --numstat` em cada um (streaming) — merges
+ *    ficam fora de todas as métricas (decisão #7; retroativo via `pnpm clean`)
  * 3. Grava commits normalizados em data/gitview.db (node:sqlite nativo)
  * 4. Exporta agregados prontos em public/data/stats.json
  *
@@ -91,7 +92,10 @@ function gitLog(repoPath: string, extraArgs: string[] = []): Promise<RawCommit[]
   return new Promise((resolvePromise, reject) => {
     const child = spawn('git', [
       '-C', repoPath,
-      'log', '--all', '--no-renames',
+      // --no-merges: commits de merge ficam fora de TODAS as métricas
+      // (decisão issue #7 — inflavam commits/dia, ritmo e streaks com +0−0;
+      // a "produção" do merge já está no PR). Retroativo: pnpm clean && pnpm collect.
+      'log', '--all', '--no-renames', '--no-merges',
       '--pretty=format:%x1e%H%x1f%an%x1f%ae%x1f%aI%x1f%s',
       '--numstat',
       ...extraArgs,
