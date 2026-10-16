@@ -205,29 +205,85 @@ function sinceArgs(repoName: string): string[] {
 // ---------------------------------------------------------------------------
 // helpers de agregação
 // ---------------------------------------------------------------------------
-function isoWeekKey(d: Date): string {
-  const date = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
+/**
+ * Fuso canônico (issue #8): TODOS os buckets (dia/mês/ISO-semana/fim de
+ * semana/madrugada/heatmap) são calculados em GITVIEW_TIMEZONE, nunca no
+ * relógio da máquina que coleta — o mesmo banco produz os mesmos buckets em
+ * qualquer máquina. Default: o fuso do time (São Paulo); UTC não modela a
+ * "madrugada/fd" de ninguém na prática.
+ */
+const CANON_TZ = (() => {
+  const tz = config.timezone ?? 'America/Sao_Paulo'
+  try {
+    new Intl.DateTimeFormat('en-CA', { timeZone: tz })
+    return tz
+  }
+  catch {
+    console.warn(`! GITVIEW_TIMEZONE inválido ("${tz}") — caindo para America/Sao_Paulo`)
+    return 'America/Sao_Paulo'
+  }
+})()
+
+const partsFmt = new Intl.DateTimeFormat('en-CA', {
+  timeZone: CANON_TZ,
+  year: 'numeric', month: '2-digit', day: '2-digit',
+  hour: '2-digit', hour12: false,
+})
+
+interface Canon { y: number, m: number, d: number, h: number, weekday: number }
+
+/** partes do calendário (ano/mês/dia/hora/dia-da-semana) da data no fuso canônico */
+function canonParts(date: Date): Canon {
+  const fp = partsFmt.formatToParts(date)
+  const num = (type: Intl.DateTimeFormatPartTypes) => Number(fp.find(p => p.type === type)?.value ?? '0')
+  const y = num('year')
+  const m = num('month')
+  const d = num('day')
+  const h = num('hour') % 24 // alguns engines devolvem 24 para meia-noite
+  // dia da semana vem do CALENDÁRIO canônico (nunca do Date do fuso local)
+  const weekday = new Date(Date.UTC(y, m - 1, d)).getUTCDay()
+  return { y, m, d, h, weekday }
+}
+
+const pad2 = (n: number) => String(n).padStart(2, '0')
+
+function isoWeekKeyOf(p: Canon): string {
+  const date = new Date(Date.UTC(p.y, p.m - 1, p.d))
   const dayNum = (date.getUTCDay() + 6) % 7 // seg=0
   date.setUTCDate(date.getUTCDate() - dayNum + 3)
   const firstThursday = new Date(Date.UTC(date.getUTCFullYear(), 0, 4))
   const fday = (firstThursday.getUTCDay() + 6) % 7
   firstThursday.setUTCDate(firstThursday.getUTCDate() - fday + 3)
   const week = 1 + Math.round((date.getTime() - firstThursday.getTime()) / (7 * 864e5))
-  return `${date.getUTCFullYear()}-W${String(week).padStart(2, '0')}`
+  return `${date.getUTCFullYear()}-W${pad2(week)}`
+}
+
+function isoWeekKey(d: Date): string {
+  return isoWeekKeyOf(canonParts(d))
+}
+
+function monthKeyOf(p: Canon): string {
+  return `${p.y}-${pad2(p.m)}`
 }
 
 function monthKey(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  return monthKeyOf(canonParts(d))
+}
+
+function dayKeyOf(p: Canon): string {
+  return `${p.y}-${pad2(p.m)}-${pad2(p.d)}`
 }
 
 function dayKey(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return dayKeyOf(canonParts(d))
 }
 
 function nextDayKey(dayKeyStr: string): string {
-  const d = new Date(`${dayKeyStr}T00:00:00`)
-  d.setDate(d.getDate() + 1)
-  return dayKey(d)
+  // aritmética calendária pura em UTC (nunca Date local — atravessa DST/TZ da
+  // máquina e quebraria streaks na mesma data vista de fusos diferentes)
+  const [y, m, d] = dayKeyStr.split('-').map(Number)
+  const t = new Date(Date.UTC(y, m - 1, d) + 86_400_000)
+  return `${t.getUTCFullYear()}-${pad2(t.getUTCMonth() + 1)}-${pad2(t.getUTCDate())}`
 }
 
 /** streak atual (dias consecutivos terminando no último dia ativo) e recorde */
@@ -345,7 +401,9 @@ async function main() {
   // heatmap ganha dimensão de mês pro filtro de período funcionar no frontend;
   // limita aos últimos 24 meses (cobre o maior range do filtro) pra não inflar o JSON
   const heatmapCutoff = new Date()
-  heatmapCutoff.setMonth(heatmapCutoff.getMonth() - 24)
+  // setUTC* em vez de local: o corte é de instantes; local addiria ruído de
+  // fuso no limiar (o monthKey do resultado continua canônico)
+  heatmapCutoff.setUTCMonth(heatmapCutoff.getUTCMonth() - 24)
   const heatmapCutoffKey = monthKey(heatmapCutoff)
   const perAuthor = new Map<string, { commits: number; additions: number; deletions: number; repos: Set<string>; days: Set<string>; last: string }>()
   const perRepo = new Map<string, { commits: number; additions: number; deletions: number; authors: Set<string>; last: string }>()
@@ -356,18 +414,20 @@ async function main() {
   for (const r of rows) {
     const d = new Date(r.date)
     if (Number.isNaN(d.getTime())) continue
+    const cp = canonParts(d) // uma única vez por linha — todos os buckets vêm dela
+    const month = monthKeyOf(cp)
 
     if (!emailsByAuthor.has(r.author)) emailsByAuthor.set(r.author, new Set())
     emailsByAuthor.get(r.author)!.add(r.email)
 
-    const wk = `${isoWeekKey(d)}|${r.repo}|${r.author}`
+    const wk = `${isoWeekKeyOf(cp)}|${r.repo}|${r.author}`
     const wkCur = weekly.get(wk) ?? { commits: 0, weekend: 0, night: 0 }
     wkCur.commits++
-    if (d.getDay() === 0 || d.getDay() === 6) wkCur.weekend++
-    if (d.getHours() >= 22 || d.getHours() < 6) wkCur.night++
+    if (cp.weekday === 0 || cp.weekday === 6) wkCur.weekend++
+    if (cp.h >= 22 || cp.h < 6) wkCur.night++
     weekly.set(wk, wkCur)
 
-    const mk = `${monthKey(d)}|${r.repo}|${r.author}`
+    const mk = `${month}|${r.repo}|${r.author}`
     const mCur = monthly.get(mk) ?? { commits: 0, additions: 0, deletions: 0 }
     mCur.commits++
     mCur.additions += r.additions
@@ -377,13 +437,12 @@ async function main() {
     const tk = `${mk}|${commitType(r.subject)}`
     monthlyTypes.set(tk, (monthlyTypes.get(tk) ?? 0) + 1)
 
-    const month = monthKey(d)
     if (month >= heatmapCutoffKey) {
-      const hk = `${r.author}|${r.repo}|${month}|${d.getDay()}|${d.getHours()}`
+      const hk = `${r.author}|${r.repo}|${month}|${cp.weekday}|${cp.h}`
       heatmap.set(hk, (heatmap.get(hk) ?? 0) + 1)
     }
 
-    const dk = dayKey(d)
+    const dk = dayKeyOf(cp)
     allDays.add(dk)
 
     if (!perAuthor.has(r.author)) perAuthor.set(r.author, { commits: 0, additions: 0, deletions: 0, repos: new Set(), days: new Set(), last: '' })

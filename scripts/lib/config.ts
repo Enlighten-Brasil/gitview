@@ -54,6 +54,8 @@ export interface Config {
   exclude?: string[]
   /** globs de arquivos gerados ignorados nas métricas de linhas (substitui o padrão) */
   excludePaths?: string[]
+  /** fuso canônico dos buckets de tempo (issue #8); default America/Sao_Paulo */
+  timezone?: string
   /** porta do dev server */
   port?: number
   /** perfis de devs (aliases de e-mail/login, título, descrição) */
@@ -84,6 +86,7 @@ const ENV_KEYS: Record<string, keyof Config> = {
   GITVIEW_EXCLUDE: 'exclude',
   GITVIEW_EXCLUDE_PATHS: 'excludePaths',
   GITVIEW_PORT: 'port',
+  GITVIEW_TIMEZONE: 'timezone',
 }
 
 /**
@@ -186,6 +189,8 @@ export function loadConfig(): Config {
     const n = Number(port)
     if (Number.isInteger(n) && n > 0 && n < 65536) config.port = n
   }
+  const timezone = envValue('GITVIEW_TIMEZONE', file)
+  if (timezone) config.timezone = timezone
 
   return { ...config, ...readTeamFile() }
 }
