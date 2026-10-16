@@ -120,12 +120,18 @@ async function req<T>(url: string, init?: RequestInit): Promise<T> {
   return data as T
 }
 
+export interface SaveTeamResult {
+  ok: true
+  teamRefreshed?: boolean
+  warnings?: string[]
+}
+
 export function fetchTeamConfig(): Promise<TeamConfigState> {
   return req<TeamConfigState>('/__team/config')
 }
 
-export function saveTeamConfig(payload: TeamConfigPayload): Promise<{ ok: true }> {
-  return req<{ ok: true }>('/__team/config', {
+export function saveTeamConfig(payload: TeamConfigPayload): Promise<SaveTeamResult> {
+  return req<SaveTeamResult>('/__team/config', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
