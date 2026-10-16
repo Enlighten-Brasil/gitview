@@ -63,6 +63,12 @@ export function avatarBgClass(name: string): string {
 // ---------------------------------------------------------------------------
 // endpoints dev (Vite)
 // ---------------------------------------------------------------------------
+/**
+ * Paleta canônica de cor de time — única fonte (popover do TeamCard + default
+ * atribuído pelo editor em /teams; a cor sobrevive só no team.local.json)
+ */
+export const TEAM_PALETTE = ['#8b5cf6', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16']
+
 export interface TeamConfigPayload {
   devProfiles: Record<string, { title?: string, description?: string, emails?: string[], githubLogins?: string[] }>
   teams: { name: string, description?: string, color?: string, members: string[], renamedFrom?: string[] }[]
@@ -70,10 +76,20 @@ export interface TeamConfigPayload {
 
 /** rascunho de time no editor (campos sempre presentes, vazio = string '') */
 export interface TeamDraft {
+  /**
+   * id estável de sessão (v-for key) — times são removíveis; índice como key
+   * faz o estado local do card ("confirmar remoção" armado, popover aberto)
+   * herdar o time errado depois de um splice
+   */
+  cid: string
   name: string
   description: string
   color: string
   members: string[]
+  /** nomes antigos vindos do último save (renomeado mantém /teams/<antigo> vivo) */
+  renamedFrom: string[]
+  /** nome como está salvo (comparado no payload p/ detectar rename) */
+  savedName: string
 }
 
 /** métricas agregadas de um time (fontes: stats.json + github.json) */

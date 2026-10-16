@@ -75,16 +75,22 @@ function toUtcIso(date: string): string {
  */
 const EXCLUDE_PATTERNS = config.excludePaths ?? []
 
-/** glob simples: '*' dentro do segmento; padrão com '/' casa o caminho todo (em qualquer profundidade), sem '/' casa o basename */
+/**
+ * glob simples: '*' dentro do segmento; '**' casa caminho qualquer; padrão com
+ * '/' casa o caminho todo (em qualquer profundidade), sem '/' casa o basename.
+ * Case-sensitive como gitignore. O placeholder de '**' é um control char — com
+ * espaço literal, um glob tipo 'My Dir/*.lock' virava over-match `.*` (follow-up #11)
+ */
 function matchesGlob(path: string, pattern: string): boolean {
   const body = pattern
     .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-    .replace(/\*\*/g, ' ')
+    .replace(/\*\*/g, '\u0000')
     .replace(/\*/g, '[^/]*')
-    .replace(/ /g, '.*')
+    .split('\u0000')
+    .join('.*')
   const re = pattern.includes('/')
-    ? new RegExp(`(^|.*/)${body}$`, 'i')
-    : new RegExp(`^${body}$`, 'i')
+    ? new RegExp(`(^|.*/)${body}$`)
+    : new RegExp(`^${body}$`)
   return re.test(pattern.includes('/') ? path : (path.split('/').pop() ?? path))
 }
 
@@ -418,10 +424,13 @@ async function main() {
   `).all() as { repo: string, author: string, email: string, date: string, subject: string, additions: number, deletions: number }[]
 
   const emailsByAuthor = new Map<string, Set<string>>()
-  const weekly = new Map<string, { commits: number, weekend: number, night: number }>() // week|repo|author
-  const monthly = new Map<string, { commits: number, additions: number, deletions: number }>() // month|repo|author
-  const monthlyTypes = new Map<string, number>() // month|repo|author|type
-  const heatmap = new Map<string, number>() // author|repo|month|weekday|hour
+  // separador das chaves de agregação: \u0001 — nome de autor/repo com '|'
+  // colidia e deslocava campos no split (follow-up #11)
+  const KEY_SEP = '\u0001'
+  const weekly = new Map<string, { commits: number, weekend: number, night: number }>() // week/repo/author
+  const monthly = new Map<string, { commits: number, additions: number, deletions: number }>() // month/repo/author
+  const monthlyTypes = new Map<string, number>() // month/repo/author/type
+  const heatmap = new Map<string, number>() // author/repo/month/weekday/hour
   // heatmap ganha dimensão de mês pro filtro de período funcionar no frontend;
   // limita aos últimos 24 meses (cobre o maior range do filtro) pra não inflar o JSON
   const heatmapCutoff = new Date()
@@ -434,11 +443,19 @@ async function main() {
   let totalAdd = 0
   let totalDel = 0
   const allDays = new Set<string>()
+  // linhas com data quebrada ficam fora de TODO bucket — os totals derivam das
+  // linhas agregadas (senão o invariante Σmonthly == totals do check-data aponta
+  // a diferença sem dizer a origem — follow-up #11)
+  let aggregated = 0
+  let skippedBadDate = 0
 
   for (const r of rows) {
     const d = new Date(r.date)
-    if (Number.isNaN(d.getTime()))
+    if (Number.isNaN(d.getTime())) {
+      skippedBadDate++
       continue
+    }
+    aggregated++
     const cp = canonParts(d) // uma única vez por linha — todos os buckets vêm dela
     const month = monthKeyOf(cp)
 
@@ -446,7 +463,7 @@ async function main() {
       emailsByAuthor.set(r.author, new Set())
     emailsByAuthor.get(r.author)!.add(r.email)
 
-    const wk = `${isoWeekKeyOf(cp)}|${r.repo}|${r.author}`
+    const wk = `${isoWeekKeyOf(cp)}${KEY_SEP}${r.repo}${KEY_SEP}${r.author}`
     const wkCur = weekly.get(wk) ?? { commits: 0, weekend: 0, night: 0 }
     wkCur.commits++
     if (cp.weekday === 0 || cp.weekday === 6)
@@ -455,18 +472,18 @@ async function main() {
       wkCur.night++
     weekly.set(wk, wkCur)
 
-    const mk = `${month}|${r.repo}|${r.author}`
+    const mk = `${month}${KEY_SEP}${r.repo}${KEY_SEP}${r.author}`
     const mCur = monthly.get(mk) ?? { commits: 0, additions: 0, deletions: 0 }
     mCur.commits++
     mCur.additions += r.additions
     mCur.deletions += r.deletions
     monthly.set(mk, mCur)
 
-    const tk = `${mk}|${commitType(r.subject)}`
+    const tk = `${mk}${KEY_SEP}${commitType(r.subject)}`
     monthlyTypes.set(tk, (monthlyTypes.get(tk) ?? 0) + 1)
 
     if (month >= heatmapCutoffKey) {
-      const hk = `${r.author}|${r.repo}|${month}|${cp.weekday}|${cp.h}`
+      const hk = `${r.author}${KEY_SEP}${r.repo}${KEY_SEP}${month}${KEY_SEP}${cp.weekday}${KEY_SEP}${cp.h}`
       heatmap.set(hk, (heatmap.get(hk) ?? 0) + 1)
     }
 
@@ -508,7 +525,7 @@ async function main() {
       .map(([name, emails]) => ({ name, emails: [...emails].sort(), bot: isBot(name) }))
       .sort((a, b) => a.name.localeCompare(b.name)),
     totals: {
-      commits: rows.length,
+      commits: aggregated,
       additions: totalAdd,
       deletions: totalDel,
       activeDays: allDays.size,
@@ -522,19 +539,19 @@ async function main() {
       .map(([author, v]) => ({ author, commits: v.commits, additions: v.additions, deletions: v.deletions, repos: v.repos.size, activeDays: v.days.size, lastCommit: v.last, ...calcStreaks(v.days) }))
       .sort((a, b) => b.commits - a.commits),
     weekly: [...weekly.entries()].map(([k, v]) => {
-      const [week, repo, author] = k.split('|')
+      const [week, repo, author] = k.split(KEY_SEP)
       return { week, repo, author, commits: v.commits, weekend: v.weekend, night: v.night }
     }),
     monthly: [...monthly.entries()].map(([k, v]) => {
-      const [month, repo, author] = k.split('|')
+      const [month, repo, author] = k.split(KEY_SEP)
       return { month, repo, author, commits: v.commits, additions: v.additions, deletions: v.deletions }
     }),
     heatmap: [...heatmap.entries()].map(([k, commits]) => {
-      const [author, repo, month, weekday, hour] = k.split('|')
+      const [author, repo, month, weekday, hour] = k.split(KEY_SEP)
       return { author, repo, month, weekday: Number(weekday), hour: Number(hour), commits }
     }),
     monthlyTypes: [...monthlyTypes.entries()].map(([k, commits]) => {
-      const [month, repo, author, type] = k.split('|')
+      const [month, repo, author, type] = k.split(KEY_SEP)
       return { month, repo, author, type, commits }
     }),
   }
@@ -542,7 +559,9 @@ async function main() {
   const out = join(root, 'public', 'data', 'stats.json')
   writeFileSync(out, JSON.stringify(stats))
   const kb = (JSON.stringify(stats).length / 1024).toFixed(0)
-  console.log(`\nstats.json gerado (${kb} KB) com ${rows.length} commits de ${stats.totals.authors} autores em ${repos.length} repos.`)
+  console.log(`\nstats.json gerado (${kb} KB) com ${stats.totals.commits} commits de ${stats.totals.authors} autores em ${repos.length} repos.`)
+  if (skippedBadDate > 0)
+    console.warn(`⚠ ${skippedBadDate}/${rows.length} linhas no banco têm data inválida e ficaram fora de TODAS as métricas — rode pnpm clean && pnpm collect se o número parecer errado`)
 
   // commits recentes por autor (página de perfil do dev) — últimos 100 de cada
   const recent = db.prepare(`

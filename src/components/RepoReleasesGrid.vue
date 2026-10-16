@@ -14,7 +14,8 @@ const rows = computed(() =>
       days: daysSinceLastRelease(r.repo),
       cadence: releasesPerMonth(r.repo),
     }))
-    // com tag primeiro (mais recente primeiro), sem tag por último (mais não-liberados primeiro)
+    // com tag primeiro; dentro, os que estão há MAIS tempo sem release na frente
+    // (dias desde a última tag desc) — sem tag vão por último, com mais não-liberados na frente
     .sort((a, b) => (b.days ?? -1) - (a.days ?? -1) || b.unreleased - a.unreleased)
     .sort((a, b) => Number(b.tags.length > 0) - Number(a.tags.length > 0)),
 )

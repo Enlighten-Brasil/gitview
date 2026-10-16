@@ -7,7 +7,7 @@ import type { TeamDraft, TeamMetrics } from '@/team'
  * `disabled` (build estático) esconde toda a UI de edição.
  */
 import { ref } from 'vue'
-import { avatarBgClass, initialsOf } from '@/team'
+import { avatarBgClass, initialsOf, TEAM_PALETTE } from '@/team'
 
 const props = defineProps<{
   team: TeamDraft
@@ -18,7 +18,6 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ remove: [] }>()
 
-const PALETTE = ['#8b5cf6', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16']
 const colorOpen = ref(false)
 const customColor = ref('')
 const confirmRemove = ref(false)
@@ -108,7 +107,7 @@ function daysAgo(iso: string): string {
               <div class="p-3 flex flex-col gap-2 w-48">
                 <div class="grid grid-cols-5 gap-1.5">
                   <button
-                    v-for="c in PALETTE"
+                    v-for="c in TEAM_PALETTE"
                     :key="c"
                     class="size-7 rounded-md border transition-transform hover:scale-110"
                     :class="team.color === c ? 'border-strong ring-2 ring-primary/40' : 'border-default'"
