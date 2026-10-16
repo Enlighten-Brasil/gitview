@@ -1,5 +1,11 @@
 # gitview
 
+## 0.36.2
+
+### Patch Changes
+
+- 00b2b7e: docs: README público em inglês como principal, pt-BR completo mantido em README.pt-BR.md (decisão #4) + nota do passo opcional do wizard
+
 ## 0.36.1
 
 ### Patch Changes
