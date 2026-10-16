@@ -1,0 +1,31 @@
+# Gates da org em CI: pnpm lint → pnpm typecheck → pnpm build, em PR e push
+# em main. O check:data fica FORA de propósito: ele valida os JSONs de
+# public/data/ (gitignored), que só existem depois de uma coleta com token —
+# o CI não coleta e não deve precisar de segredo.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      # lê o campo packageManager do package.json (corepack/pin do pnpm)
+      - uses: pnpm/action-setup@v4
+
+      # node:sqlite exige node >= 22.5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm build
