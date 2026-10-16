@@ -33,6 +33,7 @@ Nothing to copy or edit before running: `.env` is created automatically from `.e
 | `GITVIEW_EXCLUDE` | CSV of folders skipped during repo discovery |
 | `GITVIEW_EXCLUDE_PATHS` | CSV of generated-file globs excluded from line metrics (adds to the default lockfile/minified list). Only affects new commits — for history: `pnpm clean && pnpm collect` |
 | `GITVIEW_PORT` | dev server port (default 5173) |
+| `GITVIEW_TIMEZONE` | IANA timezone of every time bucket (day/month/ISO week/weekend/night/heatmap) — aggregates no longer depend on the collecting machine's clock. Default: `America/Sao_Paulo` |
 
 Precedence: shell variable → `.env` → default. The file is read **fresh** on every collector run (a new token takes effect without restarting the dev server). Windows paths: use forward slashes (`C:/Users/...`), or single quotes if they contain spaces.
 
