@@ -11,7 +11,7 @@ An engineering-manager dashboard for team metrics: commits, PRs and releases acr
 Requirements:
 
 - **Node 22.13+** (collectors use `node:sqlite`, flag-free since 22.13; the CI runs Node 22)
-- **pnpm 11.28** (pinned in the `packageManager` field — corepack activates it automatically)
+- **pnpm 11.28** (pinned in the `packageManager` field — `corepack enable` once, or install pnpm 11.28 directly)
 - A GitHub account — authenticated through the UI itself (**device flow** or pasting a **PAT**), or via **GitHub CLI** (`gh auth login`), which works as a bridge when no token is set in `.env`
 
 ```bash
