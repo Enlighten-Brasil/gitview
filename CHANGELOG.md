@@ -1,5 +1,11 @@
 # gitview
 
+## 0.38.1
+
+### Patch Changes
+
+- fix: achados da revisão pré-push — chave estável nos cards de time, thresholds do OffHoursPanel por modo, guard do passo 4 sem exigir auth, dispensa do banner por identidade, restore de cache filtrado e avisos de teto de paginação; rótulos de docs corrigidos
+
 ## 0.38.0
 
 ### Minor Changes
