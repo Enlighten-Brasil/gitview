@@ -32,14 +32,14 @@ export const NAV_SECTIONS: NavSection[] = [
     to: '/',
     subs: [
       { label: 'Visão geral', icon: 'i-lucide-layout-dashboard', to: '/' },
-      { label: 'Equipe', icon: 'i-lucide-users', to: '/devs' },
+      { label: 'Devs', icon: 'i-lucide-users', to: '/devs' },
       { label: 'Saúde', icon: 'i-lucide-heart-pulse', to: '/health' },
     ],
   },
   {
     key: 'teams',
     label: 'Times',
-    icon: 'i-lucide-users',
+    icon: 'i-lucide-users-round',
     to: '/teams',
     subs: [
       { label: 'Times', icon: 'i-lucide-users-round', hash: 'times' },
@@ -71,14 +71,8 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: 'Distribuição', icon: 'i-lucide-chart-pie', hash: 'distribuicao' },
       { label: 'Por mês', icon: 'i-lucide-calendar-days', hash: 'por-mes' },
       { label: 'Tipos de commit', icon: 'i-lucide-tag', hash: 'tipos' },
+      { label: 'Releases', icon: 'i-lucide-rocket', hash: 'releases' },
     ],
-  },
-  {
-    key: 'releases',
-    label: 'Releases',
-    icon: 'i-lucide-tag',
-    to: '/releases',
-    subs: [],
   },
 ]
 

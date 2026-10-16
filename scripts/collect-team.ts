@@ -97,7 +97,18 @@ for (const a of stats?.authors ?? []) {
 const loginsByDev = new Map<string, Set<string>>()
 function addLogin(dev: string, login: string) {
   if (!loginsByDev.has(dev)) loginsByDev.set(dev, new Set())
-  loginsByDev.get(dev)!.add(login)
+  const set = loginsByDev.get(dev)!
+  // dedupe por case: a chave do mapa de aliases é lowercase e a API traz o case
+  // real — sem isso 'devlogin-a' + 'devlogin-bDev' viravam 2 logins do dev
+  for (const existing of set) {
+    if (existing.toLowerCase() !== login.toLowerCase()) continue
+    if (existing === existing.toLowerCase() && login !== existing) {
+      set.delete(existing)
+      set.add(login)
+    }
+    return
+  }
+  set.add(login)
 }
 for (const [login, canonical] of loginToCanonical) addLogin(canonical, login)
 for (const [login, u] of Object.entries(github?.users ?? {})) {

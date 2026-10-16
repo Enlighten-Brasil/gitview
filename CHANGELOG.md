@@ -1,5 +1,15 @@
 # gitview
 
+## 0.35.0
+
+### Minor Changes
+
+- feat: reorganização das dashboards e times de verdade — Visão geral ganha faixa de alertas (PRs parados, merges sem review, ritmo caindo, fora do horário, não liberados, inatividade) com deep-links; "destaque do período" e heatmap de horários mudam para /devs; Saúde funde "Fora do horário" 8 semanas + período num card com toggle; PRs parados e tendência de cycle time mudam para /prs (casa canônica de PR); /releases vira seção de /repos com cadência (releases/mês, dias desde a tag) e a rota antiga redireciona; Times viram filtro na sidebar (chip (des)marca todos os membros); /teams sugere a associação de identidades (tokens do e-mail × nome do dev, pré-selecionado); "salvar + recoletar" usa recoleta leve (?light=1 / collect --reaggregate, sem re-escanear o git); aba "Equipe" renomeada para "Devs"; InactiveWatch rotula que ignora todos os filtros da sidebar
+
+### Patch Changes
+
+- fix: qualidade de dados — datas de commits normalizadas para UTC no banco (migração automática; corrige commits atribuídos à release errada e ordenação dos commits recentes, quebrados por offsets de timezone mistos), contagem de commits por release comparando timestamps em vez de texto, logins do GitHub sem duplicata por case no team.json, métricas de linhas sem lockfiles/arquivos gerados (GITVIEW_EXCLUDE_PATHS com lista padrão; retroage no histórico após `pnpm clean && pnpm collect`), e check-data com invariantes numéricas/datas/ordenação + avisos de qualidade não bloqueantes (membro de time sem mapeamento, dev sem alias, data futura)
+
 ## 0.34.0
 
 ### Minor Changes

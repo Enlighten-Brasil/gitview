@@ -17,7 +17,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = join(__dirname, '..')
 const tsxCli = join(root, 'node_modules', 'tsx', 'dist', 'cli.mjs')
 
-const STEPS = [
+interface CollectStep { script: string, label: string, args?: string[] }
+
+const STEPS: CollectStep[] = [
   { script: 'scripts/collect.ts', label: 'commits' },
   { script: 'scripts/collect-github.ts', label: 'pull requests' },
   { script: 'scripts/collect-releases.ts', label: 'releases' },
@@ -25,13 +27,20 @@ const STEPS = [
   { script: 'scripts/check-data.ts', label: 'verificação' },
 ]
 
+// ?light=1 (edição de time/aliases em /teams): sem git fetch/scan nem releases —
+// re-agrega o banco com os aliases novos, incremental de PRs, team + verificação
+const STEPS_LIGHT: CollectStep[] = [
+  { script: 'scripts/collect.ts', label: 'commits (reagregação)', args: ['--reaggregate'] },
+  { script: 'scripts/collect-github.ts', label: 'pull requests' },
+  { script: 'scripts/collect-team.ts', label: 'time' },
+  { script: 'scripts/check-data.ts', label: 'verificação' },
+]
+
 let running = false
 
-function runStep(script: string, full: boolean, onLine: (line: string) => void): Promise<void> {
+function runStep(script: string, args: string[], onLine: (line: string) => void): Promise<void> {
   return new Promise((resolvePromise, reject) => {
-    const args = [tsxCli, script]
-    if (full) args.push('--full')
-    const child = spawn(process.execPath, args, { cwd: root })
+    const child = spawn(process.execPath, [tsxCli, script, ...args], { cwd: root })
     let buf = ''
     const onData = (c: Buffer) => {
       buf += c.toString('utf-8')
@@ -74,15 +83,17 @@ export function collectPlugin(): Plugin {
         const params = new URL(req.url ?? '', 'http://localhost').searchParams
         const clean = params.get('clean') === '1'
         const full = clean || params.get('full') === '1'
+        const light = !full && params.get('light') === '1'
 
         ;(async () => {
           if (clean) {
             const removed = cleanLocalData()
             send('log', { line: `Limpeza: ${removed.length ? `${removed.length} itens removidos (${removed.join(', ')})` : 'nada a remover'}` })
           }
-          for (const step of STEPS) {
+          const steps = light ? STEPS_LIGHT : STEPS
+          for (const step of steps) {
             send('step', { label: step.label })
-            await runStep(step.script, full, line => send('log', { line }))
+            await runStep(step.script, step.args ?? (full ? ['--full'] : []), line => send('log', { line }))
           }
           send('done', {})
         })()

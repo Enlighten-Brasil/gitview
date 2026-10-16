@@ -29,6 +29,7 @@ Nada para copiar ou editar antes de rodar: o `.env` é criado automaticamente a 
 | `GITVIEW_REPOS_ROOT` | pasta com os clones. Vazio = `data/repos` (criado pelo setup) |
 | `GITVIEW_DEFAULT_REPOS` | CSV de repos pré-selecionados no setup (vazio = todos não arquivados) |
 | `GITVIEW_EXCLUDE` | CSV de pastas ignoradas na descoberta de repos |
+| `GITVIEW_EXCLUDE_PATHS` | CSV de globs de arquivos gerados ignorados nas métricas de linhas (acrescenta à lista padrão de lockfiles/minificados). Só vale para commits novos — histórico: `pnpm clean && pnpm collect` |
 | `GITVIEW_PORT` | porta do dev server (default 5173) |
 
 Ordem de precedência: variável do shell → `.env` → default. O arquivo é lido **fresco** a cada execução de coletor (token novo vale sem reiniciar o dev server). Caminhos em Windows: use barra normal (`C:/Users/...`), ou aspas simples se houver espaços.

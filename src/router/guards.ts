@@ -58,6 +58,10 @@ export function setupGuards(router: Router): void {
       return { path: LEGACY_TABS[tab], query }
     }
 
+    // 0b) legado: /releases virou seção de /repos (0.35)
+    if (to.path === '/releases')
+      return { path: '/repos', hash: '#releases', query: to.query }
+
     // 1) dados: exige o boot (loadStats 1x — também no estático, onde o
     //    stats.json pode vir embutido no dist) antes de qualquer rota de dashboard
     await ensureBoot()

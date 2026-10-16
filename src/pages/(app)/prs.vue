@@ -2,11 +2,14 @@
 /**
  * Pull requests — seção dedicada (migrada da tab "prs" do dashboard).
  * Âncoras (#abertos/#cycle-time/#reviews) alimentam o sub-nav contextual.
+ * Casa canônica de PR: parados (PrStaleAlert) e tendência (CycleTrend) moram aqui.
  */
 import { github, githubError } from '@/github'
 import PrSummaryCards from '@/components/PrSummaryCards.vue'
 import PrOpenTable from '@/components/PrOpenTable.vue'
+import PrStaleAlert from '@/components/PrStaleAlert.vue'
 import PrCycleTime from '@/components/PrCycleTime.vue'
+import CycleTrend from '@/components/CycleTrend.vue'
 import PrReviews from '@/components/PrReviews.vue'
 
 definePage({
@@ -30,16 +33,16 @@ definePage({
     <div v-else-if="github" class="flex flex-col gap-4">
       <section id="abertos" class="flex flex-col gap-4 scroll-mt-16">
         <PrSummaryCards />
+        <PrStaleAlert />
         <PrOpenTable />
       </section>
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <section id="cycle-time" class="scroll-mt-16">
-          <PrCycleTime />
-        </section>
-        <section id="reviews" class="scroll-mt-16">
-          <PrReviews />
-        </section>
-      </div>
+      <section id="cycle-time" class="flex flex-col gap-4 scroll-mt-16">
+        <PrCycleTime />
+        <CycleTrend />
+      </section>
+      <section id="reviews" class="scroll-mt-16">
+        <PrReviews />
+      </section>
     </div>
     <div v-else class="flex flex-col gap-4">
       <div class="grid grid-cols-2 md:grid-cols-5 gap-3">

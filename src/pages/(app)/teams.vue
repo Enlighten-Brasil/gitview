@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useToast } from '@nuxt/ui/composables'
 import { onBeforeRouteLeave } from 'vue-router'
 import { collecting, startCollect } from '@/collect'
@@ -150,9 +150,12 @@ async function save(): Promise<boolean> {
 }
 
 async function saveAndRecollect() {
-  // não recoleta se o salvar falhou (a coleta usaria a config antiga)
+  // não recoleta se o salvar falhou (a coleta usaria a config antiga).
+  // A recoleta leve (--reaggregate) re-aplica aliases no banco e re-gera os
+  // JSONs SEM re-escanear o git — segundos em vez de minutos. (Remover alias
+  // não reverte nomes já gravados — isso só a limpeza completa refaz.)
   if (await save())
-    startCollect(true)
+    startCollect(false, false, true)
 }
 
 // ---------------------------------------------------------------------------
@@ -361,6 +364,45 @@ function assignEmails(dev: string, emails: string[]) {
 const devs = computed(() => team.value?.devs ?? [])
 const candidates = computed(() => team.value?.candidates ?? [])
 const assignTarget = reactive<Record<string, string>>({})
+
+// ---------------------------------------------------------------------------
+// sugestão de match para candidatos — e-mail corporativo costuma ser
+// nome.sobrenome@: cruza os tokens do local-part com os tokens do nome do dev.
+// Conservadoro de propósito: exige ≥2 tokens casando; a associação continua
+// manual (a sugestão só pré-seleciona o dropdown — um clique confirma).
+// ---------------------------------------------------------------------------
+function normTokens(s: string): string[] {
+  return s.normalize('NFD').replace(/[\u0300-\u036F]/g, '').toLowerCase().split(/[^a-z0-9]+/).filter(t => t.length >= 2)
+}
+
+const suggestions = computed(() => {
+  const out: Record<string, string> = {}
+  const humanDevs = devs.value.filter(d => !d.bot)
+  for (const c of candidates.value) {
+    const sources = c.kind === 'author' ? (c.emails ?? []).map(e => e.split('@')[0] ?? '') : []
+    let best: { name: string, ratio: number, matched: number } | null = null
+    for (const src of sources) {
+      const tokens = normTokens(src)
+      if (tokens.length < 2) continue
+      for (const d of humanDevs) {
+        const nameTokens = new Set(normTokens(d.name))
+        const matched = tokens.filter(t => nameTokens.has(t)).length
+        if (matched < 2) continue
+        const ratio = matched / Math.max(tokens.length, nameTokens.size)
+        if (!best || ratio > best.ratio || (ratio === best.ratio && matched > best.matched))
+          best = { name: d.name, ratio, matched }
+      }
+    }
+    if (best && best.ratio >= 0.5) out[c.id] = best.name
+  }
+  return out
+})
+
+// pré-seleciona a sugestão sem sobrescrever escolha manual
+watch(suggestions, (s) => {
+  for (const [id, name] of Object.entries(s))
+    if (!assignTarget[id]) assignTarget[id] = name
+}, { immediate: true })
 </script>
 
 <template>
@@ -514,6 +556,15 @@ const assignTarget = reactive<Record<string, string>>({})
             <span v-if="c.prs != null" class="text-xs text-dimmed ml-2">{{ c.prs }} PRs/reviews</span>
           </div>
           <template v-if="isDev && configLoaded">
+            <UBadge
+              v-if="suggestions[c.id] && assignTarget[c.id] === suggestions[c.id]"
+              color="primary"
+              variant="soft"
+              size="xs"
+              class="shrink-0"
+            >
+              sugestão
+            </UBadge>
             <USelectMenu
               v-model="assignTarget[c.id]"
               :items="devNames"
@@ -526,7 +577,7 @@ const assignTarget = reactive<Record<string, string>>({})
               color="neutral"
               variant="soft"
               :disabled="!assignTarget[c.id]"
-              label="associar"
+              :label="suggestions[c.id] && assignTarget[c.id] === suggestions[c.id] ? 'confirmar' : 'associar'"
               @click="c.kind === 'login' ? assignLogin(assignTarget[c.id], c.id) : assignEmails(assignTarget[c.id], c.emails ?? [])"
             />
           </template>
@@ -566,7 +617,7 @@ const assignTarget = reactive<Record<string, string>>({})
           label="salvar"
           @click="save"
         />
-        <UTooltip text="salva e roda a coleta completa (recria stats/github com os novos aliases)">
+        <UTooltip text="salva e roda a recoleta leve (re-agrega os dados com os novos aliases, sem re-escanear o git)">
           <UButton
             icon="i-lucide-refresh-cw"
             color="neutral"

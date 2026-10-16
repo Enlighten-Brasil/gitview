@@ -52,6 +52,8 @@ export interface Config {
   defaultRepos?: string[]
   /** pastas ignoradas na descoberta de repos */
   exclude?: string[]
+  /** globs de arquivos gerados ignorados nas métricas de linhas (substitui o padrão) */
+  excludePaths?: string[]
   /** porta do dev server */
   port?: number
   /** perfis de devs (aliases de e-mail/login, título, descrição) */
@@ -80,8 +82,37 @@ const ENV_KEYS: Record<string, keyof Config> = {
   GITVIEW_REPOS_ROOT: 'reposRoot',
   GITVIEW_DEFAULT_REPOS: 'defaultRepos',
   GITVIEW_EXCLUDE: 'exclude',
+  GITVIEW_EXCLUDE_PATHS: 'excludePaths',
   GITVIEW_PORT: 'port',
 }
+
+/**
+ * Arquivos gerados/lockfiles ignorados por padrão nas métricas de linhas —
+ * sem isso um "chore: update version" carrega +300k de lockfile e distorce
+ * tudo. GITVIEW_EXCLUDE_PATHS (CSV de globs) ACRESCENTA padrões a esta lista.
+ */
+export const DEFAULT_EXCLUDE_PATHS = [
+  'package-lock.json',
+  'pnpm-lock.yaml',
+  'yarn.lock',
+  'bun.lock',
+  'bun.lockb',
+  'Cargo.lock',
+  'composer.lock',
+  'Gemfile.lock',
+  'poetry.lock',
+  'Pipfile.lock',
+  'pubspec.lock',
+  'Package.resolved',
+  'go.sum',
+  '*.min.js',
+  '*.min.css',
+  '*.min.map',
+  '*.snap',
+  '*.generated.ts',
+  '*.generated.js',
+  '*.designer.cs',
+]
 
 /** campos que vivem no team.local.json (não vão para o .env) */
 const TEAM_FIELDS = new Set<keyof Config>(['devProfiles', 'teams', 'bots', 'githubBots'])
@@ -148,6 +179,8 @@ export function loadConfig(): Config {
   if (defaults) config.defaultRepos = parseCsv(defaults)
   const exclude = envValue('GITVIEW_EXCLUDE', file)
   if (exclude) config.exclude = parseCsv(exclude)
+  const excludePaths = envValue('GITVIEW_EXCLUDE_PATHS', file)
+  config.excludePaths = [...DEFAULT_EXCLUDE_PATHS, ...(excludePaths ? parseCsv(excludePaths) : [])]
   const port = envValue('GITVIEW_PORT', file)
   if (port) {
     const n = Number(port)

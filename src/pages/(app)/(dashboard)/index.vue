@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { loadError, stats } from '@/data'
 import SummaryCards from '@/components/SummaryCards.vue'
+import AlertStrip from '@/components/AlertStrip.vue'
 import CommitsTimeline from '@/components/CommitsTimeline.vue'
-import ActivityHeatmap from '@/components/ActivityHeatmap.vue'
 </script>
 
 <template>
@@ -21,7 +21,7 @@ import ActivityHeatmap from '@/components/ActivityHeatmap.vue'
 
   <div v-else-if="stats" class="flex flex-col gap-4">
     <SummaryCards />
+    <AlertStrip />
     <CommitsTimeline />
-    <ActivityHeatmap />
   </div>
 </template>

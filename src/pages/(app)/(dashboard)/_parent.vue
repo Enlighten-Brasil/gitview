@@ -13,7 +13,7 @@ definePage({
 
 const tabs = [
   { label: 'Visão geral', icon: 'i-lucide-layout-dashboard', to: '/' },
-  { label: 'Equipe', icon: 'i-lucide-users', to: '/devs' },
+  { label: 'Devs', icon: 'i-lucide-users', to: '/devs' },
   { label: 'Saúde', icon: 'i-lucide-heart-pulse', to: '/health' },
 ]
 
