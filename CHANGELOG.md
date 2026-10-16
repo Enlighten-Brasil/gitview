@@ -1,5 +1,11 @@
 # gitview
 
+## 0.36.3
+
+### Patch Changes
+
+- b9d84ed: fix(collect-github): poda PRs mergeados pela janela de 400d via mergedAt (não só updatedAt) + assert no check-data (#5)
+
 ## 0.36.2
 
 ### Patch Changes
