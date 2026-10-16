@@ -32,7 +32,7 @@ const config = loadConfig()
 const auth = getToken()
 if (!auth) console.warn('! sem token do GitHub — PRs novos não serão buscados (cache anterior é preservado). Rode o setup da UI ou "gh auth login".')
 
-function gh<T>(query: string, vars: Record<string, string>): Promise<T> {
+function gh<T>(query: string, vars: Record<string, unknown>): Promise<T> {
   if (!auth) return Promise.reject(new Error('sem token do GitHub (configure no setup ou via gh auth login)'))
   return ghGraphql<T>(query, vars, auth.token)
 }
@@ -43,7 +43,7 @@ function gh<T>(query: string, vars: Record<string, string>): Promise<T> {
  * Retry em erros transitórios (HTTP 5xx, rede) — um 502 no meio da paginação
  * não pode derrubar o repo inteiro (no modo completo ele sairia zerado).
  */
-async function ghRetry<T>(query: string, vars: Record<string, string>): Promise<T> {
+async function ghRetry<T>(query: string, vars: Record<string, unknown>): Promise<T> {
   let lastErr: Error | null = null
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
@@ -67,12 +67,30 @@ query($owner: String!, $name: String!, $cursor: String) {
         number title url state isDraft createdAt updatedAt mergedAt
         additions deletions changedFiles
         author { login }
-        reviews(first: 20) { nodes { author { login } state submittedAt } }
+        reviews(first: 100) {
+          totalCount
+          nodes { author { login } state submittedAt }
+          pageInfo { hasNextPage endCursor }
+        }
       }
       pageInfo { hasNextPage endCursor }
     }
   }
   rateLimit { remaining }
+}`
+
+/** continuação de reviews de um PR específico (só usado quando reviewCount estoura a 1ª página) */
+const REVIEWS_QUERY = `
+query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) {
+      reviews(first: 100, after: $cursor) {
+        totalCount
+        nodes { author { login } state submittedAt }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  }
 }`
 
 interface GhPr {
@@ -88,7 +106,11 @@ interface GhPr {
   deletions: number
   changedFiles: number
   author: { login: string } | null
-  reviews: { nodes: { author: { login: string } | null; state: string; submittedAt: string }[] }
+  reviews: {
+    totalCount?: number
+    nodes: { author: { login: string } | null; state: string; submittedAt: string }[]
+    pageInfo?: { hasNextPage: boolean; endCursor: string | null }
+  }
 }
 
 interface QueryResult {
@@ -125,6 +147,31 @@ async function fetchPrs(
     cursor = prs.pageInfo.endCursor
   }
   return out
+}
+
+interface ReviewsPage {
+  repository: {
+    pullRequest: {
+      reviews: { nodes: GhPr['reviews']['nodes']; pageInfo: { hasNextPage: boolean; endCursor: string | null } }
+    } | null
+  } | null
+}
+
+/**
+ * PR com mais reviews que a página inline (100): continua por cursor com o
+ * mesmo CREATED_AT ASC (issue #6). O resto é anexado ao nó da lista.
+ */
+async function fetchRestReviews(ghRepo: { owner: string; repo: string }, pr: GhPr): Promise<void> {
+  const total = pr.reviews.totalCount ?? pr.reviews.nodes.length
+  let cursor = pr.reviews.pageInfo?.endCursor ?? null
+  for (let page = 0; page < 10 && cursor && pr.reviews.nodes.length < total; page++) {
+    const data = await ghRetry<ReviewsPage>(REVIEWS_QUERY, { owner: ghRepo.owner, name: ghRepo.repo, number: pr.number, cursor })
+    const rev = data.repository?.pullRequest?.reviews
+    if (!rev || !rev.nodes.length) break
+    pr.reviews.nodes.push(...rev.nodes)
+    if (!rev.pageInfo.hasNextPage) break
+    cursor = rev.pageInfo.endCursor
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -199,6 +246,19 @@ await mapPool(repos, 4, async (repo) => {
       fetchPrs(ghRepo, 'OPEN', null),
       fetchPrs(ghRepo, 'MERGED', cutoff),
     ])
+
+    // PRs com mais reviews que a página inline (100) — continua por cursor;
+    // se a continuação falhar, mantém o que veio e avisa (nunca silencia)
+    for (const pr of [...open, ...merged]) {
+      if ((pr.reviews.totalCount ?? pr.reviews.nodes.length) > pr.reviews.nodes.length) {
+        try {
+          await fetchRestReviews(ghRepo, pr)
+        }
+        catch (err) {
+          console.warn(`  ! ${repo.name}#${pr.number}: reviews incompletos (${pr.reviews.nodes.length}/${pr.reviews.totalCount}) — ${(err as Error).message}`)
+        }
+      }
+    }
 
     for (const pr of [...open, ...merged]) {
       // PR antigo com atividade recente entra pelo incremental (updatedAt) —
