@@ -474,8 +474,12 @@ export function setupPlugin(): Plugin {
             const teams = sanitizeTeams(body.teams)
             saveConfig({ devProfiles, teams })
             // o config salvo vale na hora p/ chips/sidebar/dashboards de time:
-            // regenera o team.json (aliases ainda precisam da recoleta — stats.json)
-            const refresh = await refreshTeamData()
+            // regenera o team.json (aliases ainda precisam da recoleta — stats.json).
+            // skipRefresh: o cliente vai recoletar em seguida ("salvar + recoletar")
+            // e a recoleta já regenera o team.json — pula o duplo (follow-up #12)
+            const refresh = body.skipRefresh === true
+              ? { teamRefreshed: false, warnings: [] }
+              : await refreshTeamData()
             json(res, 200, {
               ok: true,
               devProfiles: Object.keys(devProfiles).length,

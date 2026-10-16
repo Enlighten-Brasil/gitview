@@ -65,8 +65,15 @@ const botAuthors = stats ? botAuthorNames(config, stats.authors ?? []) : new Set
 // times por dev (chave = nome canônico exato; match case-insensitive pra ser tolerante)
 const teams = (config.teams ?? []).map((t) => {
   // Array.isArray: team.local.json editado à mão pode trazer renamedFrom como
-  // string — [...new Set('abc')] viraria 1 entrada POR CARACTERE no team.json
-  const renamedFrom = [...new Set(Array.isArray(t.renamedFrom) ? t.renamedFrom : [])].filter(n => n.toLowerCase() !== t.name.toLowerCase())
+  // string — [...new Set('abc')] viraria 1 entrada POR CARACTERE no team.json.
+  // Itens não-string dentro da lista também são descartados (o write-side
+  // strList já filtra; aqui é a porta do read — follow-up #12). A comparação
+  // com o nome atual normaliza NFC: um renamedFrom NFD (macOS) igual ao nome
+  // atual não deve sobreviver no JSON.
+  const currentNorm = t.name.normalize('NFC').toLowerCase()
+  const renamedFrom = [...new Set(
+    (Array.isArray(t.renamedFrom) ? t.renamedFrom : []).filter((n): n is string => typeof n === 'string'),
+  )].filter(n => n.normalize('NFC').toLowerCase() !== currentNorm)
   return {
     name: t.name,
     description: t.description ?? null,

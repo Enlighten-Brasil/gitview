@@ -130,11 +130,13 @@ export function fetchTeamConfig(): Promise<TeamConfigState> {
   return req<TeamConfigState>('/__team/config')
 }
 
-export function saveTeamConfig(payload: TeamConfigPayload): Promise<SaveTeamResult> {
+export function saveTeamConfig(payload: TeamConfigPayload, opts?: { skipRefresh?: boolean }): Promise<SaveTeamResult> {
   return req<SaveTeamResult>('/__team/config', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    // skipRefresh: o chamador vai recoletar em seguida — o POST pula a
+    // regeneração do team.json (collect-team + check-data rodariam 2×)
+    body: JSON.stringify(opts?.skipRefresh ? { ...payload, skipRefresh: true } : payload),
   })
 }
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { filteredWeekly } from '../data'
+import { filteredWeekly, isoWeekKeyBefore } from '../data'
 
 /**
  * Campeão da semana por EVOLUÇÃO (issue #10), não por volume: o volume puro
@@ -9,6 +9,9 @@ import { filteredWeekly } from '../data'
  * semanas anteriores + 1)` na semana, com piso de 3 commits para matar o ruído
  * de médias pequenas. O "+1" no denominador dá às 2× a quem começa do zero —
  * quem volta de férias vence uma semana, não o placar inteiro.
+ * A janela de baseline é calendário (follow-up #12): as 8 semanas ISO
+ * anteriores, com semana vazia contando 0 — antes usava as 8 semanas COM
+ * dados, que esticavam além de 8 calendárias em períodos esparsos.
  */
 const MIN_WEEK_COMMITS = 3
 const BASELINE_WEEKS = 8
@@ -25,7 +28,14 @@ const data = computed(() => {
   const weeks = [...byWeek.keys()].sort()
   const wins: { week: string, author: string, commits: number, ratio: number }[] = []
   for (let i = 0; i < weeks.length; i++) {
-    const window = weeks.slice(Math.max(0, i - BASELINE_WEEKS), i)
+    // janela = as BASELINE_WEEKS semanas calendário anteriores (vazia = 0);
+    // chave fora do formato "YYYY-Www" só encurta a janela (não deve ocorrer)
+    const window: string[] = []
+    for (let k = BASELINE_WEEKS; k >= 1; k--) {
+      const wk = isoWeekKeyBefore(weeks[i], k)
+      if (wk)
+        window.push(wk)
+    }
     let best: { author: string, commits: number, ratio: number } | null = null
     for (const [author, commits] of byWeek.get(weeks[i])!) {
       if (commits < MIN_WEEK_COMMITS)
@@ -116,7 +126,7 @@ function fmtRatio(x: number): string {
     </div>
 
     <p class="text-xs text-dimmed mt-3">
-      Vitória = maior salto sobre a própria média das {{ BASELINE_WEEKS }} semanas anteriores (commits ÷ (média + 1), mínimo {{ MIN_WEEK_COMMITS }} na semana) — premia ritmo, não volume puro. A média usa as semanas anteriores dentro do período filtrado; semanas sem candidato são puladas.
+      Vitória = maior salto sobre a própria média das {{ BASELINE_WEEKS }} semanas anteriores (commits ÷ (média + 1), mínimo {{ MIN_WEEK_COMMITS }} na semana) — premia ritmo, não volume puro. A média usa as {{ BASELINE_WEEKS }} semanas calendário anteriores dentro do período filtrado (semana vazia conta 0); semanas sem candidato são puladas.
     </p>
   </UCard>
 </template>

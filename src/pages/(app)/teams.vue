@@ -96,6 +96,23 @@ function splitList(s: string): string[] {
   return s.split(',').map(x => x.trim()).filter(Boolean)
 }
 
+/** entrada de payload DE um draft específico — usada por payload() e pelo pós-save (alinhamento por construção, não por nome: dois rascunhos homônimos não cruzam — follow-up #12) */
+function teamEntry(t: TeamDraft): TeamConfigPayload['teams'][number] {
+  const name = t.name.trim()
+  // rename desde o último save → o nome antigo entra no histórico
+  // (comparado por cid, não por índice: remoções não desalinhiam os times)
+  const history = [...new Set(
+    t.savedName && t.savedName !== name ? [...t.renamedFrom, t.savedName] : t.renamedFrom,
+  )].filter(n => n !== name)
+  return {
+    name,
+    ...(t.description.trim() ? { description: t.description.trim() } : {}),
+    ...(t.color.trim() ? { color: t.color.trim() } : {}),
+    members: t.members,
+    ...(history.length ? { renamedFrom: history } : {}),
+  }
+}
+
 function payload(): TeamConfigPayload {
   const devProfiles: TeamConfigPayload['devProfiles'] = {}
   for (const [name, p] of Object.entries(profiles)) {
@@ -117,21 +134,7 @@ function payload(): TeamConfigPayload {
     devProfiles,
     teams: teams.value
       .filter(t => t.name.trim())
-      .map((t) => {
-        const name = t.name.trim()
-        // rename desde o último save → o nome antigo entra no histórico
-        // (comparado por cid, não por índice: remoções não desalinhiam os times)
-        const history = [...new Set(
-          t.savedName && t.savedName !== name ? [...t.renamedFrom, t.savedName] : t.renamedFrom,
-        )].filter(n => n !== name)
-        return {
-          name,
-          ...(t.description.trim() ? { description: t.description.trim() } : {}),
-          ...(t.color.trim() ? { color: t.color.trim() } : {}),
-          members: t.members,
-          ...(history.length ? { renamedFrom: history } : {}),
-        }
-      }),
+      .map(teamEntry),
   }
 }
 
@@ -149,19 +152,20 @@ const dirty = computed(() => {
   return JSON.stringify(cur) !== JSON.stringify(old)
 })
 
-async function save(): Promise<boolean> {
+async function save(skipRefresh = false): Promise<boolean> {
   saving.value = true
   try {
     const p = payload()
-    const res = await saveTeamConfig(p)
+    const res = await saveTeamConfig(p, { skipRefresh })
     savedSnapshot.value = p
-    // o que era rascunho virou salvo: savedName/renamedFrom alinham com o config
+    // o que era rascunho virou salvo: savedName/renamedFrom alinham por
+    // construção (a entrada do PRÓPRIO draft), não por find-por-nome
     for (const t of teams.value) {
-      const entry = p.teams.find(x => x.name === t.name.trim())
-      if (entry) {
-        t.savedName = entry.name
-        t.renamedFrom = [...(entry.renamedFrom ?? [])]
-      }
+      if (!t.name.trim())
+        continue
+      const entry = teamEntry(t)
+      t.savedName = entry.name
+      t.renamedFrom = [...(entry.renamedFrom ?? [])]
     }
     // o endpoint regenerou o team.json no save — refaz o fetch p/ chips da
     // sidebar, /teams/<nome> e dashboards refletirem a edição sem recoleta
@@ -169,6 +173,8 @@ async function save(): Promise<boolean> {
       await loadTeam(true)
     if (res.warnings?.length)
       toast.add({ title: 'salvo com avisos', description: res.warnings.join(' · '), color: 'warning' })
+    else if (skipRefresh)
+      toast.add({ title: 'perfis salvos', description: 'a recoleta leve aplica as mudanças nos JSONs', color: 'success' })
     else
       toast.add({ title: 'perfis salvos', description: 'times aplicados na hora; aliases de identidade pedem a recoleta', color: 'success' })
     return true
@@ -187,7 +193,9 @@ async function saveAndRecollect() {
   // A recoleta leve (--reaggregate) re-aplica aliases no banco e re-gera os
   // JSONs SEM re-escanear o git — segundos em vez de minutos. (Remover alias
   // não reverte nomes já gravados — isso só a limpeza completa refaz.)
-  if (await save())
+  // skipRefresh: a recoleta já regenera o team.json — pular o refresh do POST
+  // evita rodar collect-team + check-data duas vezes (follow-up #12).
+  if (await save(true))
     startCollect(false, false, true)
 }
 

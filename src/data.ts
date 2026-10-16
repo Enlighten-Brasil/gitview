@@ -205,6 +205,31 @@ export function isoWeekKey(d: Date): string {
   return `${date.getUTCFullYear()}-W${String(week).padStart(2, '0')}`
 }
 
+/** segunda UTC da semana ISO "YYYY-Www" (inverso de isoWeekKey; null se o formato não bate) */
+function isoWeekMonday(key: string): Date | null {
+  const m = /^(\d{4})-W(\d{2})$/.exec(key)
+  if (!m)
+    return null
+  const jan4 = new Date(Date.UTC(Number(m[1]), 0, 4))
+  const dayNum = (jan4.getUTCDay() + 6) % 7 // 0 = segunda
+  const monday = new Date(jan4)
+  monday.setUTCDate(jan4.getUTCDate() - dayNum + (Number(m[2]) - 1) * 7)
+  return monday
+}
+
+/**
+ * chave da semana ISO `n` semanas calendário antes de `key` — aritmética pura
+ * (não depende de a semana ter dados). Usada por janelas de baseline: semanas
+ * vazias contam como 0 em vez de esticar a janela além das N calendárias.
+ */
+export function isoWeekKeyBefore(key: string, n: number): string | null {
+  const monday = isoWeekMonday(key)
+  if (!monday)
+    return null
+  monday.setUTCDate(monday.getUTCDate() - n * 7)
+  return isoWeekKey(monday)
+}
+
 function lastNWeekKeys(n: number): string[] {
   const keys: string[] = []
   const d = new Date()
