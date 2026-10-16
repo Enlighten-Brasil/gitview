@@ -1,7 +1,7 @@
 {
   "name": "gitview",
   "type": "module",
-  "version": "0.40.0",
+  "version": "0.40.1",
   "private": true,
   "license": "MIT",
   "repository": {
