@@ -1,5 +1,11 @@
 # gitview
 
+## 0.36.0
+
+### Minor Changes
+
+- 4a260b6: feat(setup): passo opcional "definir time" no wizard (/setup/team) + banner de identidades sem mapear nas rotas full (#2)
+
 ## 0.35.0
 
 ### Minor Changes
