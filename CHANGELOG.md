@@ -1,5 +1,11 @@
 # gitview
 
+## 0.41.0
+
+### Minor Changes
+
+- 2d214d0: feat(oss): aceite de fresh-clone — `packageManager` pinado (`pnpm@11.28.2`, corepack) e scrub de referências ao empregador em arquivos versionados (eslint.config.js, AGENTS.md, CONTRIBUTING.md, README par, .env.example, exemplo de query em src/urlState.ts)
+
 ## 0.40.3
 
 ### Patch Changes
