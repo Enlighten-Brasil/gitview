@@ -10,8 +10,8 @@ An engineering-manager dashboard for team metrics: commits, PRs and releases acr
 
 Requirements:
 
-- **Node 24+** (collectors use `node:sqlite` and read `.env` natively)
-- **pnpm 10+**
+- **Node 22.13+** (collectors use `node:sqlite`, flag-free since 22.13; the CI runs Node 22)
+- **pnpm 11.28** (pinned in the `packageManager` field — corepack activates it automatically)
 - A GitHub account — authenticated through the UI itself (**device flow** or pasting a **PAT**), or via **GitHub CLI** (`gh auth login`), which works as a bridge when no token is set in `.env`
 
 ```bash
@@ -111,11 +111,12 @@ The frontend only reads the JSONs in `public/data/` — `pnpm build` produces a 
 2. Serve `dist/` from any static host (GitHub Pages, Netlify, nginx…). It needs **SPA fallback**: deep links like `/devs/<name>` must serve `index.html` (the router uses `createWebHistory`).
 3. Fresh data = repeat steps 1–2 periodically (a cron/CI job with the token works).
 
-**In the static build the dashboard is read-only**: `/setup`, `/settings` and collection (↻) don't exist, and the `/teams` editor is disabled — the `/__*` endpoints are dev-server middleware (details in `CONTRIBUTING.md`, currently pt-BR). Unify identities and tune teams in dev, re-collect, then publish.
+**In the static build the dashboard is read-only**: `/setup`, `/settings` and collection (↻) don't exist, and the `/teams` editor is disabled — the `/__*` endpoints are dev-server middleware (details in `CONTRIBUTING.md`). Unify identities and tune teams in dev, re-collect, then publish.
 
 ## Conventions
 
-- Every change = changeset (`minor` feature / `patch` fix) → `pnpm version:packages` → a single commit with `chore(release): X.Y.Z` in the body.
+- Every change = changeset (`minor` feature / `patch` fix) → `pnpm version:packages` → a single `chore(release): X.Y.Z` commit.
 - Commit messages in pt-BR (Conventional Commits), code in English, comments in pt-BR.
 - `data/` (database + clones), `public/data/`, `.env` and `team.local.json` are local and gitignored.
 - Architecture details and filter rules: see `AGENTS.md`.
+- Contributing guide (setup, gates, release ritual): `CONTRIBUTING.md` — pt-BR version: `CONTRIBUTING.pt-BR.md`.

@@ -10,8 +10,8 @@ Dashboard interno de métricas do time: commits, PRs e releases dos repositório
 
 Requisitos:
 
-- **Node 24+** (a coleta usa `node:sqlite` e lê o `.env` nativamente)
-- **pnpm 10+**
+- **Node 22.13+** (os coletores usam `node:sqlite`, sem flag desde a 22.13; o CI roda Node 22)
+- **pnpm 11.28** (pinado no campo `packageManager` — o corepack ativa sozinho)
 - Uma conta GitHub — autenticada pela própria UI (**device flow** ou colando um **PAT**), ou via **GitHub CLI** (`gh auth login`), que serve de ponte quando não há token no `.env`
 
 ```bash
@@ -111,11 +111,12 @@ O frontend só lê os JSON de `public/data/` — `pnpm build` gera um `dist/` 10
 2. Publique `dist/` em qualquer servidor estático (GitHub Pages, Netlify, nginx…). Precisa de **fallback de SPA**: deep links como `/devs/<nome>` devem servir o `index.html` (o router usa `createWebHistory`).
 3. Dados frescos = repetir 1–2 de tempos em tempos (um cron/CI com o token serve).
 
-**No build estático o dashboard é somente leitura**: `/setup`, `/settings` e a coleta (↻) não existem, e a edição do `/teams` fica desabilitada — os endpoints `/__*` são middleware do dev server (detalhes em `CONTRIBUTING.md`). Unifique identidades e ajuste times no dev, recolete e só então publique.
+**No build estático o dashboard é somente leitura**: `/setup`, `/settings` e a coleta (↻) não existem, e a edição do `/teams` fica desabilitada — os endpoints `/__*` são middleware do dev server (detalhes em `CONTRIBUTING.pt-BR.md`). Unifique identidades e ajuste times no dev, recolete e só então publique.
 
 ## Convenções
 
-- Toda mudança = changeset (`minor` feature / `patch` fix) → `pnpm version:packages` → commit único com `chore(release): X.Y.Z` no corpo.
+- Toda mudança = changeset (`minor` feature / `patch` fix) → `pnpm version:packages` → commit único `chore(release): X.Y.Z`.
 - Commits em pt-BR (Conventional Commits), código em inglês, comentários em pt-BR.
 - `data/` (banco + clones), `public/data/`, `.env` e `team.local.json` são locais e gitignored.
 - Detalhes de arquitetura e regras de filtro: ver `AGENTS.md`.
+- Guia de contribuição (setup, gates, ritual de release): `CONTRIBUTING.pt-BR.md` — versão em inglês: `CONTRIBUTING.md`.
