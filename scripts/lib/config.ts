@@ -52,7 +52,7 @@ export interface Config {
   defaultRepos?: string[]
   /** pastas ignoradas na descoberta de repos */
   exclude?: string[]
-  /** globs de arquivos gerados ignorados nas métricas de linhas (substitui o padrão) */
+  /** globs de arquivos gerados ignorados nas métricas de linhas (ACRESCENTA à lista padrão) */
   excludePaths?: string[]
   /** fuso canônico dos buckets de tempo (issue #8); default America/Sao_Paulo */
   timezone?: string

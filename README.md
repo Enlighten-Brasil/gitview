@@ -81,13 +81,13 @@ The project ships no machine or team data: `.env` and `team.local.json` are giti
 
 The database and JSONs are 100% regenerable from the repositories (`team.local.json` is **not** — it's your team roster):
 
-- **UI**: **Config → Geral** (`/settings`) → "Manutenção dos dados locais" card → *recoletar tudo* (full re-scan) or *limpar e recomeçar* (wipes database + JSONs and re-collects; clones are kept).
+- **UI**: **Config → Geral** (`/settings`) → "Manutenção dos dados locais" card → *recoletar tudo* (full re-scan), *limpar e recoletar* (wipes database + JSONs and re-collects; clones are kept) or *apagar dados* (wipe without re-collecting — returns to the /setup wizard).
 - **CLI**: `pnpm clean` (deletes `data/gitview.db*` + `public/data/*.json`) and then `pnpm collect`. `pnpm clean -- --repos` also deletes the clones (the next collection re-clones everything — slow).
 
 ## Commands
 
 ```bash
-pnpm dev / start        # dashboard at http://localhost:5173 (navbar: ↻ re-collect, ⚙ opens the /setup wizard)
+pnpm dev / start        # dashboard at http://localhost:5173 (navbar: ↻ re-collect; the Config rail item ⚙ opens Settings — with no data it falls back to the /setup wizard)
 pnpm setup              # terminal wizard: choose/clone the org's repos
 pnpm collect            # the 4 collectors in sequence + validation (incremental)
 pnpm collect:github     # PRs/reviews only
