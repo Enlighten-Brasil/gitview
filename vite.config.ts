@@ -20,11 +20,22 @@ export default defineConfig({
   envDir: false,
   plugins: [
     // rotas por arquivo em src/pages (vue-router 5). Nomes sem grupos (app)/(dashboard):
-    // /(app)/devs/[name] → "/devs/[name]" — navegação tipada igual às URLs
+    // /(app)/devs/[name] → "/devs/[name]" — navegação tipada igual às URLs.
+    // Ditos do nome plano viram barra (teams.[name] → /teams/[name]) — mantém o
+    // nome igual à URL também nas rotas escritas com '.' p/ não aninhar UI.
     VueRouter({
       dts: 'src/route-map.d.ts',
       getRouteName: (node) => {
-        const raw = getFileBasedRouteName(node)
+        // separadores '.' do nome plano viram '/' (teams.[name] → /teams/[name]);
+        // dots DENTRO de colchetes são sintaxe de param ([...path]) — preservados
+        let depth = 0
+        const raw = [...getFileBasedRouteName(node)].map((c) => {
+          if (c === '[')
+            depth++
+          else if (c === ']')
+            depth--
+          return c === '.' && depth === 0 ? '/' : c
+        }).join('')
         const clean = `/${raw.split('/').filter(s => s && !/^\(.*\)$/.test(s)).join('/')}`
         return clean === '/' ? '/' : clean.replace(/\/$/, '')
       },

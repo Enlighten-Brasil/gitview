@@ -134,6 +134,10 @@ function sanitizeTeams(input: unknown): TeamConfig[] {
       team.description = description
     if (color && /^#[0-9a-f]{3,8}$/i.test(color))
       team.color = color
+    // histórico de nomes (renames na UI) — descarta o nome atual e duplicados
+    const renamedFrom = strList(t.renamedFrom, 20)?.filter(n => n.toLowerCase() !== name.toLowerCase())
+    if (renamedFrom?.length)
+      team.renamedFrom = renamedFrom
     return team
   })
 }

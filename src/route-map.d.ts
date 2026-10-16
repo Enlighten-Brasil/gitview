@@ -87,6 +87,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/teams/[name]': RouteRecordInfo<
+      '/teams/[name]',
+      '/teams/:name',
+      { name: ParamValue<true> },
+      { name: ParamValue<false> },
+      | never
+    >,
     '/[...path]': RouteRecordInfo<
       '/[...path]',
       '/:path(.*)',
@@ -173,6 +180,7 @@ declare module 'vue-router/auto-routes' {
         | '/repos'
         | '/repos/[name]'
         | '/teams'
+        | '/teams/[name]'
       views:
         | 'default'
       pathParamNames:
@@ -251,6 +259,14 @@ declare module 'vue-router/auto-routes' {
         | never
       pathParamNames:
         | never
+    }
+    'src/pages/(app)/teams.[name].vue': {
+      routes:
+        | '/teams/[name]'
+      views:
+        | never
+      pathParamNames:
+        | 'name'
     }
     'src/pages/[...path].vue': {
       routes:

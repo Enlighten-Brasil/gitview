@@ -38,6 +38,8 @@ export interface TeamConfig {
   color?: string
   /** nomes canônicos dos devs */
   members: string[]
+  /** nomes anteriores do time (renomeado na UI /teams) — mantém links /teams/<nome> vivos */
+  renamedFrom?: string[]
 }
 
 export interface Config {

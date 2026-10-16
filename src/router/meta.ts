@@ -17,8 +17,11 @@ declare module 'vue-router' {
     setupStep?: number
     /** seção ativa na rail (nav.ts) — substitui o match por prefixo */
     section?: 'dashboards' | 'teams' | 'prs' | 'repos' | 'releases' | 'settings' | null
-    /** quais filtros a sidebar e a URL carregam nesta rota */
-    filters?: 'full' | 'period' | 'period-bots' | 'none'
+    /**
+     * quais filtros a sidebar e a URL carregam nesta rota
+     * ('team' = período + repos; os devs são travados pela página em filters.authors)
+     */
+    filters?: 'full' | 'team' | 'period' | 'period-bots' | 'none'
     /** título fixo do navbar (rota de detalhe usa o param no lugar) */
     title?: string
   }
