@@ -65,7 +65,7 @@ export function avatarBgClass(name: string): string {
 // ---------------------------------------------------------------------------
 export interface TeamConfigPayload {
   devProfiles: Record<string, { title?: string, description?: string, emails?: string[], githubLogins?: string[] }>
-  teams: { name: string, description?: string, color?: string, members: string[] }[]
+  teams: { name: string, description?: string, color?: string, members: string[], renamedFrom?: string[] }[]
 }
 
 /** rascunho de time no editor (campos sempre presentes, vazio = string '') */

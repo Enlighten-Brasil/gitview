@@ -7,15 +7,16 @@ import { loadTeam, team } from '@/team'
 const route = useRoute()
 
 // escopo por rota (route.meta.filters): período vale em todas as rotas de
-// dados; repos/devs só no escopo 'full'; o switch de bots some em 'period'
-// (página de um dev específico não tem o que incluir/excluir de bot)
-type FilterScope = 'full' | 'period' | 'period-bots' | 'none'
+// dados; repos no escopo 'full' e no 'team'; devs/bots só no 'full' — no 'team'
+// a página trava os devs nos membros do time (a sidebar não pode editar)
+type FilterScope = 'full' | 'team' | 'period' | 'period-bots' | 'none'
 const scope = computed<FilterScope>(() => (route.meta.filters as FilterScope | undefined) ?? 'none')
-const showReposDevs = computed(() => scope.value === 'full')
+const showRepos = computed(() => scope.value === 'full' || scope.value === 'team')
+const showDevs = computed(() => scope.value === 'full')
 const showBots = computed(() => scope.value === 'full' || scope.value === 'period-bots')
 
 // times como atalho de filtro: carrega o team.json sob demanda (só no escopo full)
-watch(showReposDevs, (v) => {
+watch(showDevs, (v) => {
   if (v)
     loadTeam()
 }, { immediate: true })
@@ -142,9 +143,10 @@ function clearList(list: ListKey) {
       <USwitch v-if="showBots" v-model="filters.showBots" label="incluir bots" size="sm" class="mt-1" />
     </section>
 
-    <!-- repos e devs só no escopo 'full' (dashboard e seções agregadas) -->
-    <template v-if="showReposDevs">
-      <template v-if="teamFilters.length">
+    <!-- repos no escopo 'full' e no 'team'; devs/chips de time só no 'full'
+         (no 'team' os devs são travados pela página /teams/:name) -->
+    <template v-if="showRepos">
+      <template v-if="showDevs && teamFilters.length">
         <USeparator />
 
         <section class="flex flex-col gap-2">
@@ -207,52 +209,55 @@ function clearList(list: ListKey) {
         </div>
       </section>
 
-      <USeparator />
+      <!-- devs editáveis só no escopo 'full' (no 'team' a página trava os membros) -->
+      <template v-if="showDevs">
+        <USeparator />
 
-      <section class="flex flex-col gap-2">
-        <span class="filter-label flex items-center gap-1.5">
-          <UIcon name="i-lucide-users" class="size-3.5" />
-          Devs
-          <UBadge v-if="filters.authors.length" color="primary" variant="soft" size="sm">
-            {{ filters.authors.length }}
-          </UBadge>
-          <span class="ml-auto flex items-center">
-            <UTooltip text="selecionar todos">
-              <UButton icon="i-lucide-check-check" color="neutral" variant="ghost" size="xs" @click="selectAll('authors')" />
-            </UTooltip>
-            <UTooltip text="inverter seleção">
-              <UButton icon="i-lucide-arrow-left-right" color="neutral" variant="ghost" size="xs" @click="invert('authors')" />
-            </UTooltip>
-            <UTooltip text="limpar">
-              <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" @click="clearList('authors')" />
-            </UTooltip>
+        <section class="flex flex-col gap-2">
+          <span class="filter-label flex items-center gap-1.5">
+            <UIcon name="i-lucide-users" class="size-3.5" />
+            Devs
+            <UBadge v-if="filters.authors.length" color="primary" variant="soft" size="sm">
+              {{ filters.authors.length }}
+            </UBadge>
+            <span class="ml-auto flex items-center">
+              <UTooltip text="selecionar todos">
+                <UButton icon="i-lucide-check-check" color="neutral" variant="ghost" size="xs" @click="selectAll('authors')" />
+              </UTooltip>
+              <UTooltip text="inverter seleção">
+                <UButton icon="i-lucide-arrow-left-right" color="neutral" variant="ghost" size="xs" @click="invert('authors')" />
+              </UTooltip>
+              <UTooltip text="limpar">
+                <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" @click="clearList('authors')" />
+              </UTooltip>
+            </span>
           </span>
-        </span>
-        <div class="flex flex-wrap gap-1.5">
-          <UButton
-            v-for="a in visibleAuthors"
-            :key="a.name"
-            size="xs"
-            :color="filters.authors.includes(a.name) ? 'primary' : 'neutral'"
-            :variant="filters.authors.includes(a.name) ? 'solid' : 'ghost'"
-            @click="toggle(filters.authors, a.name)"
-          >
-            {{ a.name }}
-          </UButton>
-        </div>
-      </section>
+          <div class="flex flex-wrap gap-1.5">
+            <UButton
+              v-for="a in visibleAuthors"
+              :key="a.name"
+              size="xs"
+              :color="filters.authors.includes(a.name) ? 'primary' : 'neutral'"
+              :variant="filters.authors.includes(a.name) ? 'solid' : 'ghost'"
+              @click="toggle(filters.authors, a.name)"
+            >
+              {{ a.name }}
+            </UButton>
+          </div>
+        </section>
 
-      <UButton
-        v-if="hasSelection"
-        size="xs"
-        color="error"
-        variant="ghost"
-        icon="i-lucide-x"
-        block
-        @click="clearSelection"
-      >
-        limpar filtros
-      </UButton>
+        <UButton
+          v-if="hasSelection"
+          size="xs"
+          color="error"
+          variant="ghost"
+          icon="i-lucide-x"
+          block
+          @click="clearSelection"
+        >
+          limpar filtros
+        </UButton>
+      </template>
     </template>
   </div>
 </template>

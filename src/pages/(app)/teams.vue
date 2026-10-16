@@ -39,6 +39,8 @@ onMounted(async () => {
       description: t.description ?? '',
       color: t.color ?? '',
       members: [...t.members],
+      renamedFrom: [...(t.renamedFrom ?? [])],
+      savedName: t.name,
     }))
   }
 })
@@ -62,6 +64,10 @@ interface TeamDraft {
   description: string
   color: string
   members: string[]
+  /** nomes antigos vindos do último save (renomeado mantém /teams/<antigo> vivo) */
+  renamedFrom: string[]
+  /** nome como está salvo (comparado no payload p/ detectar rename) */
+  savedName: string
 }
 
 const configLoaded = ref(false)
@@ -89,6 +95,8 @@ async function loadConfigState() {
       description: t.description ?? '',
       color: t.color ?? '',
       members: [...t.members],
+      renamedFrom: [...(t.renamedFrom ?? [])],
+      savedName: t.name,
     }))
     savedSnapshot.value = payload()
     configLoaded.value = true
@@ -123,12 +131,21 @@ function payload(): TeamConfigPayload {
     devProfiles,
     teams: teams.value
       .filter(t => t.name.trim())
-      .map(t => ({
-        name: t.name.trim(),
-        ...(t.description.trim() ? { description: t.description.trim() } : {}),
-        ...(t.color.trim() ? { color: t.color.trim() } : {}),
-        members: t.members,
-      })),
+      .map((t) => {
+        const name = t.name.trim()
+        // rename desde o último save → o nome antigo entra no histórico
+        // (comparado por cid, não por índice: remoções não desalinhiam os times)
+        const history = [...new Set(
+          t.savedName && t.savedName !== name ? [...t.renamedFrom, t.savedName] : t.renamedFrom,
+        )].filter(n => n !== name)
+        return {
+          name,
+          ...(t.description.trim() ? { description: t.description.trim() } : {}),
+          ...(t.color.trim() ? { color: t.color.trim() } : {}),
+          members: t.members,
+          ...(history.length ? { renamedFrom: history } : {}),
+        }
+      }),
   }
 }
 
@@ -152,6 +169,14 @@ async function save(): Promise<boolean> {
     const p = payload()
     await saveTeamConfig(p)
     savedSnapshot.value = p
+    // o que era rascunho virou salvo: savedName/renamedFrom alinham com o config
+    for (const t of teams.value) {
+      const entry = p.teams.find(x => x.name === t.name.trim())
+      if (entry) {
+        t.savedName = entry.name
+        t.renamedFrom = [...(entry.renamedFrom ?? [])]
+      }
+    }
     toast.add({ title: 'perfis salvos', description: 'rode a recoleta pra aplicar nos dados', color: 'success' })
     return true
   }
@@ -254,7 +279,7 @@ function metricsFor(members: string[]): TeamMetrics {
 }
 
 function addTeam() {
-  teams.value.push({ cid: crypto.randomUUID(), name: '', description: '', color: PALETTE[teams.value.length % PALETTE.length], members: [] })
+  teams.value.push({ cid: crypto.randomUUID(), name: '', description: '', color: PALETTE[teams.value.length % PALETTE.length], members: [], renamedFrom: [], savedName: '' })
 }
 
 function removeTeam(i: number) {
@@ -274,6 +299,8 @@ function revert() {
     description: t.description ?? '',
     color: t.color ?? '',
     members: [...t.members],
+    renamedFrom: [...(t.renamedFrom ?? [])],
+    savedName: t.name,
   }))
   toast.add({ title: 'mudanças descartadas', color: 'neutral' })
 }
@@ -350,12 +377,17 @@ function importTeam(t: { name: string, description: string | null, members: stri
     t.members.map(l => loginToDev.get(l.toLowerCase())).filter((m): m is string => !!m),
   )]
   const existing = teams.value.findIndex(x => x.name.toLowerCase() === t.name.toLowerCase())
+  // sobrescrever um time salvo mantém a identidade "salva" dele (cid, savedName,
+  // histórico de nomes) — senão o rename anterior desapareceria do config no save
+  const prev = existing >= 0 ? teams.value[existing] : undefined
   const draftTeam: TeamDraft = {
-    cid: crypto.randomUUID(),
+    cid: prev?.cid ?? crypto.randomUUID(),
     name: t.name,
     description: t.description ?? '',
     color: PALETTE[teams.value.length % PALETTE.length],
     members,
+    renamedFrom: [...(prev?.renamedFrom ?? [])],
+    savedName: prev?.savedName ?? '',
   }
   if (existing >= 0)
     teams.value[existing] = draftTeam

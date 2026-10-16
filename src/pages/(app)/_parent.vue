@@ -33,7 +33,7 @@ initUrlState()
 
 // navbar: título por rota — param nas páginas de detalhe, meta.title nas demais,
 // e no dashboard em geral o período atual
-const DETAIL_ROUTES = new Set(['/devs/[name]', '/repos/[name]'])
+const DETAIL_ROUTES = new Set(['/devs/[name]', '/repos/[name]', '/teams/[name]'])
 const navTitle = computed(() => {
   if (DETAIL_ROUTES.has(String(route.name)))
     return String(route.params.name ?? '')

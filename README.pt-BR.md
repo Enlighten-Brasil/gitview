@@ -43,6 +43,8 @@ Ordem de precedência: variável do shell → `.env` → default. O arquivo é l
 
 Perfis de devs (título, descrição), aliases (e-mails de commit, logins do GitHub), times e bots extras. Tudo editável pela tela **/teams** (dev only; persistido via `/__team/config`). É a única fonte de nomes canônicos — sem ela o dashboard funciona, cada e-mail/login vira um autor separado e a coleta lista os "candidatos" pra você ir associando.
 
+Cada time também ganha um dashboard compartilhável em **`/teams/<nome>`** — KPIs, timeline de commits, PRs e fora-do-horário com os devs travados nos membros (período e repos continuam filtráveis). Renomear um time não quebra links antigos: os nomes anteriores ficam em `renamedFrom` e `/teams/<nome-antigo>` redireciona pro atual.
+
 ### Setup pela UI (`/setup`)
 
 Na primeira execução (sem dados coletados) o dashboard redireciona para o assistente de 3 passos + 1 opcional (`/setup/github` → `/setup/repos` → `/setup/collect` → `/setup/team`) — também acessível depois pelo item **Config** da rail lateral (⚙, só em dev; com dados ele abre direto as **Configurações** `/settings`):

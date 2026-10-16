@@ -13,6 +13,8 @@ import { filters, stats } from './data'
  *
  * Escopo por rota = route.meta.filters (definido por página em src/pages):
  * - 'full' (dashboard e seções com dados agregados): período + repos + devs + bots
+ * - 'team' (/teams/:name): período + repos — os devs NÃO vão pra URL nem pra
+ *   sidebar: a página trava filters.authors nos membros do time (fonte = team.json)
  * - 'period' (/devs/:name): só o período
  * - 'period-bots' (/repos/:name): período + bots
  * - 'none' (/setup, /settings, 404...): urlState não atua
@@ -20,7 +22,7 @@ import { filters, stats } from './data'
  * pelo guard (router/guards.ts), não aqui.
  */
 
-type FilterScope = 'full' | 'period' | 'period-bots' | 'none'
+type FilterScope = 'full' | 'team' | 'period' | 'period-bots' | 'none'
 const RANGES = [1, 3, 6, 12, 24]
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
@@ -46,7 +48,7 @@ function applyRangeParams(q: URLSearchParams, scope: FilterScope) {
       filters.rangeMonths = Number(range)
   }
 
-  if (scope !== 'period' && q.has('bots'))
+  if ((scope === 'full' || scope === 'period-bots') && q.has('bots'))
     filters.showBots = q.get('bots') === '1'
 }
 
@@ -57,10 +59,10 @@ function parseUrl(scope: FilterScope, reset = false) {
     filters.dateFrom = null
     filters.dateTo = null
     filters.showBots = false
-    if (scope === 'full') {
+    if (scope === 'full' || scope === 'team')
       filters.repos = []
+    if (scope === 'full')
       filters.authors = []
-    }
   }
 
   const q = new URLSearchParams(location.search)
@@ -74,11 +76,13 @@ function parseUrl(scope: FilterScope, reset = false) {
       filters.rangeMonths = Number(savedRange)
   }
 
-  if (scope === 'full') {
+  if (scope === 'full' || scope === 'team') {
     const repos = q.get('repos')
     if (repos)
       filters.repos = repos.split(',').filter(Boolean)
+  }
 
+  if (scope === 'full') {
     const devs = q.get('devs')
     if (devs)
       filters.authors = devs.split(',').filter(Boolean)
@@ -89,12 +93,12 @@ function parseUrl(scope: FilterScope, reset = false) {
 
 function buildUrl(scope: FilterScope): string {
   const q = new URLSearchParams()
-  if (scope === 'full') {
+  if (scope === 'full' || scope === 'team') {
     if (filters.repos.length)
       q.set('repos', filters.repos.join(','))
-    if (filters.authors.length)
-      q.set('devs', filters.authors.join(','))
   }
+  if (scope === 'full' && filters.authors.length)
+    q.set('devs', filters.authors.join(','))
   if (filters.dateFrom || filters.dateTo) {
     if (filters.dateFrom)
       q.set('from', filters.dateFrom)
@@ -104,7 +108,7 @@ function buildUrl(scope: FilterScope): string {
   else if (filters.rangeMonths !== 12) {
     q.set('range', filters.rangeMonths == null ? 'all' : String(filters.rangeMonths))
   }
-  if (filters.showBots && scope !== 'period')
+  if (filters.showBots && (scope === 'full' || scope === 'period-bots'))
     q.set('bots', '1')
   const s = q.toString()
   return s ? `${location.pathname}?${s}` : location.pathname

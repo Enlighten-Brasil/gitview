@@ -197,6 +197,17 @@ function daysAgo(iso: string): string {
           <UIcon name="i-lucide-clock" class="size-3.5" />
           {{ daysAgo(metrics.lastCommit) }}
         </span>
+        <!-- dashboard do time (rota funciona também no build estático) -->
+        <UButton
+          v-if="team.name.trim()"
+          :to="`/teams/${encodeURIComponent(team.name.trim())}`"
+          icon="i-lucide-layout-dashboard"
+          color="neutral"
+          variant="ghost"
+          size="xs"
+          :aria-label="`abrir dashboard do time ${team.name.trim()}`"
+          :class="!metrics.lastCommit && 'ml-auto'"
+        />
       </div>
     </div>
   </UCard>

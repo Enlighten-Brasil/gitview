@@ -63,12 +63,16 @@ for (const [login, u] of Object.entries(github?.users ?? {})) {
 const botAuthors = stats ? botAuthorNames(config, stats.authors ?? []) : new Set<string>()
 
 // times por dev (chave = nome canônico exato; match case-insensitive pra ser tolerante)
-const teams = (config.teams ?? []).map(t => ({
-  name: t.name,
-  description: t.description ?? null,
-  color: t.color ?? null,
-  members: t.members,
-}))
+const teams = (config.teams ?? []).map((t) => {
+  const renamedFrom = [...new Set(t.renamedFrom ?? [])].filter(n => n.toLowerCase() !== t.name.toLowerCase())
+  return {
+    name: t.name,
+    description: t.description ?? null,
+    color: t.color ?? null,
+    members: t.members,
+    ...(renamedFrom.length ? { renamedFrom } : {}),
+  }
+})
 const teamsByDev = new Map<string, string[]>()
 const canonicalByLower = new Map([...canonicalNames].map(n => [n.toLowerCase(), n]))
 for (const t of teams) {

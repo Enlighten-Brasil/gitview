@@ -108,6 +108,8 @@ export interface TeamInfo {
   description: string | null
   color: string | null
   members: string[]
+  /** nomes antigos do time (renomeado na UI) — /teams/<nome-antigo> redireciona */
+  renamedFrom?: string[]
 }
 
 /** identidade vista nos dados mas sem perfil/mapeamento — candidata a cadastro */
