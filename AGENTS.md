@@ -88,6 +88,7 @@ pnpm collect            # os 4 coletores em sequência + check-data no fim
 pnpm collect:github     # só PRs
 pnpm collect:releases   # só releases
 pnpm check:data         # só a validação de shape + invariantes dos JSONs
+pnpm check:scrub        # gate anti-regressão do scrub de identidade (roda no CI)
 pnpm lint               # eslint (@antfu/eslint-config — padrão da org; config em eslint.config.js)
 pnpm typecheck          # tsc --noEmit (scripts + src; templates .vue fora)
 pnpm dev                # http://localhost:5173 (Vite)

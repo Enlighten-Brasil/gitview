@@ -3,7 +3,7 @@
   "type": "module",
   "version": "0.42.4",
   "private": true,
-  "packageManager": "pnpm@11.28.2",
+  "packageManager": "pnpm@11.28.6",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -13,6 +13,7 @@
     "setup": "tsx scripts/setup.ts",
     "collect": "tsx scripts/collect.ts && tsx scripts/collect-github.ts && tsx scripts/collect-releases.ts && tsx scripts/collect-team.ts && tsx scripts/check-data.ts",
     "check:data": "tsx scripts/check-data.ts",
+    "check:scrub": "tsx scripts/check-scrub.ts",
     "collect:github": "tsx scripts/collect-github.ts",
     "collect:releases": "tsx scripts/collect-releases.ts",
     "collect:team": "tsx scripts/collect-team.ts",

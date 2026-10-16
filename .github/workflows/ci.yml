@@ -28,6 +28,8 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+      # gate anti-regressão do scrub de identidade (issue #17)
+      - run: pnpm check:scrub
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm build
