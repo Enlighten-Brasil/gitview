@@ -35,7 +35,7 @@ Nothing to copy or edit before running: `.env` is created automatically from `.e
 | `GITVIEW_PORT` | dev server port (default 5173) |
 | `GITVIEW_TIMEZONE` | IANA timezone of every time bucket (day/month/ISO week/weekend/night/heatmap) — aggregates no longer depend on the collecting machine's clock. Default: `America/Sao_Paulo` |
 
-Precedence: shell variable → `.env` → default. The file is read **fresh** on every collector run (a new token takes effect without restarting the dev server). Windows paths: use forward slashes (`C:/Users/...`), or single quotes if they contain spaces.
+Precedence: shell variable → `.env` → default. The file is read **fresh** on every collector run (a new token takes effect without restarting the dev server). Windows paths: use forward slashes (`C:/dev/repos/api`), or single quotes if they contain spaces.
 
 > ⚠ **Upgrading from the old format**: if you still have `config.json`/`config.local.json` and haven't run anything from this release, run `pnpm dev` **before** pulling — the migration moves everything into `.env` + `team.local.json` (since then, each machine keeps its aliases in its own `team.local.json`; `pnpm clean` never deletes it).
 

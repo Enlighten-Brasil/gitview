@@ -25,7 +25,7 @@ pnpm check:data # valida shape + invariantes dos JSONs coletados (roda no fim do
 ## Estilo
 
 - Código em inglês; comentários e mensagens de commit em **pt-BR**, no formato Conventional Commits (`feat(...)`, `fix(...)`, `docs(...)`, `chore(release): ...`).
-- Formatação é verificada por `pnpm lint` — `eslint.config.js` aplica o `@antfu/eslint-config` (padrão da org; **sem ponto-e-vírgula**, **aspas simples**) com as mesmas exceções de vue do example (`no-mutating-props` e `prefer-separate-static-class` off — os editors de draft mutam objetos do pai de propósito).
+- Formatação é verificada por `pnpm lint` — `eslint.config.js` aplica o `@antfu/eslint-config` (padrão do maintainer do gitview; **sem ponto-e-vírgula**, **aspas simples**) com as exceções de vue do mesmo padrão (`no-mutating-props` e `prefer-separate-static-class` off — os editors de draft mutam objetos do pai de propósito).
 - Edite arquivos UTF-8 com editor de verdade — em Windows/PowerShell, nada de `Set-Content`/redireção (mojibake).
 
 ## Changesets — obrigatório em toda mudança
