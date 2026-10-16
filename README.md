@@ -95,6 +95,16 @@ pnpm changeset          # registrar mudança
 pnpm version:packages   # aplicar changesets (bump + CHANGELOG)
 ```
 
+## Publicar o dashboard (build estático)
+
+O frontend só lê os JSON de `public/data/` — `pnpm build` gera um `dist/` 100% estático, sem servidor próprio. O fluxo de publicação:
+
+1. Na máquina com token e clones: atualize os dados (`pnpm collect`, ou o ↻ da navbar em `pnpm dev`) e rode `pnpm build`.
+2. Publique `dist/` em qualquer servidor estático (GitHub Pages, Netlify, nginx…). Precisa de **fallback de SPA**: deep links como `/devs/<nome>` devem servir o `index.html` (o router usa `createWebHistory`).
+3. Dados frescos = repetir 1–2 de tempos em tempos (um cron/CI com o token serve).
+
+**No build estático o dashboard é somente leitura**: `/setup`, `/settings` e a coleta (↻) não existem, e a edição do `/teams` fica desabilitada — os endpoints `/__*` são middleware do dev server (detalhes em `CONTRIBUTING.md`). Unifique identidades e ajuste times no dev, recolete e só então publique.
+
 ## Convenções
 
 - Toda mudança = changeset (`minor` feature / `patch` fix) → `pnpm version:packages` → commit único com `chore(release): X.Y.Z` no corpo.
