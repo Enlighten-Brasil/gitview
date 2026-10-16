@@ -171,10 +171,18 @@ else {
   console.log(`Modo: completo (mergeados dos últimos ${MERGED_CUTOFF_DAYS} dias)`)
 }
 
+// janela de mergeados: updatedAt dentro da janela não basta — PRs antigos com
+// atividade recente (rebase, comentário) entram pelo fetch incremental e
+// poluíam os painéis de 12M. Nada com mergedAt mais velho que 400d permanece.
+const windowCutoff = new Date()
+windowCutoff.setDate(windowCutoff.getDate() - MERGED_CUTOFF_DAYS)
+
 const repos = discoverRepos(resolveReposRoot(config), config.exclude ?? [])
 const fresh = new Map<string, PrRow>() // repo#number -> PR
 let fetchedCount = 0
 let skipped = 0
+
+let outOfWindow = 0
 
 await mapPool(repos, 4, async (repo) => {
   const remote = remoteOf(repo.path)
@@ -193,6 +201,12 @@ await mapPool(repos, 4, async (repo) => {
     ])
 
     for (const pr of [...open, ...merged]) {
+      // PR antigo com atividade recente entra pelo incremental (updatedAt) —
+      // descarta aqui os que caem fora da janela de mergedAt
+      if (pr.state === 'MERGED' && pr.mergedAt && new Date(pr.mergedAt) < windowCutoff) {
+        outOfWindow++
+        continue
+      }
       fresh.set(`${repo.name}#${pr.number}`, {
         repo: repo.name,
         number: pr.number,
@@ -220,12 +234,10 @@ await mapPool(repos, 4, async (repo) => {
     console.error(`✗ ${repo.name}: ${(err as Error).message}`)
     // rede de segurança: repo que falhou não pode sumir do painel — reaproveita
     // o cache (mergeados respeitam a janela de MERGED_CUTOFF_DAYS, como no merge)
-    const pruneCutoff = new Date()
-    pruneCutoff.setDate(pruneCutoff.getDate() - MERGED_CUTOFF_DAYS)
     let restored = 0
     for (const p of cached?.prs ?? []) {
       if (p.repo !== repo.name) continue
-      if (p.state === 'MERGED' && p.mergedAt && new Date(p.mergedAt as string) < pruneCutoff) continue
+      if (p.state === 'MERGED' && p.mergedAt && new Date(p.mergedAt as string) < windowCutoff) continue
       fresh.set(`${p.repo}#${p.number}`, p)
       restored++
     }
@@ -239,13 +251,11 @@ await mapPool(repos, 4, async (repo) => {
 let kept = 0
 if (prev) {
   // mergeados fora da janela de MERGED_CUTOFF_DAYS expiram (o incremental não os revalida mais)
-  const pruneCutoff = new Date()
-  pruneCutoff.setDate(pruneCutoff.getDate() - MERGED_CUTOFF_DAYS)
   for (const p of prev.prs) {
     const key = `${p.repo}#${p.number}`
     if (p.state !== 'MERGED' || fresh.has(key)) continue
     const mergedAt = p.mergedAt as string | null
-    if (mergedAt && new Date(mergedAt) < pruneCutoff) continue
+    if (mergedAt && new Date(mergedAt) < windowCutoff) continue
     fresh.set(key, p)
     kept++
   }
@@ -277,6 +287,8 @@ writeFileSync(outFile, JSON.stringify({
 }))
 
 console.log(`\n✓ github.json: ${allPrs.length} PRs (${fetchedCount} buscados, ${kept} mergeados preservados) de ${repos.length - skipped} repos`)
+if (outOfWindow)
+  console.log(`⚑ ${outOfWindow} PRs mergeados fora da janela de ${MERGED_CUTOFF_DAYS} dias descartados`)
 if (unmapped.length) {
   console.log(`⚠ logins sem mapeamento (associe em /team): ${unmapped.join(', ')}`)
 }
