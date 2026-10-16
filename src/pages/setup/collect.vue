@@ -9,6 +9,7 @@ import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { collectError, collectSucceeded, collecting, startCollect } from '@/collect'
 import { setupApplying, setupDone, setupError, startSetupApply } from '@/setup'
+import { loadTeam, team } from '@/team'
 import { resetBoot } from '@/router/guards'
 import { readWizardSelection } from '@/wizard'
 import RunLog from '@/components/setup/RunLog.vue'
@@ -54,10 +55,15 @@ watch(collectSucceeded, (ok) => {
     allDone.value = true
 })
 
-function openDashboard() {
+async function openDashboard() {
   // boot antigo marcou "sem dados"; descarta p/ o guard reler o stats.json fresco
   resetBoot()
-  router.push('/')
+  // passo 4 opcional: candidatos sem mapeamento aparecem na etapa de time
+  await loadTeam()
+  if (team.value?.candidates?.length)
+    router.push('/setup/team')
+  else
+    router.push('/')
 }
 
 function back() {

@@ -143,6 +143,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/setup/team': RouteRecordInfo<
+      '/setup/team',
+      '/setup/team',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
   }
 
   /**
@@ -293,6 +300,7 @@ declare module 'vue-router/auto-routes' {
         | '/setup/collect'
         | '/setup/github'
         | '/setup/repos'
+        | '/setup/team'
       views:
         | 'default'
       pathParamNames:
@@ -325,6 +333,14 @@ declare module 'vue-router/auto-routes' {
     'src/pages/setup/repos.vue': {
       routes:
         | '/setup/repos'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/setup/team.vue': {
+      routes:
+        | '/setup/team'
       views:
         | never
       pathParamNames:

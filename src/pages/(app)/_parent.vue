@@ -12,6 +12,7 @@ import { loadReleases } from '@/releases'
 import { rangeLabel, stats } from '@/data'
 import { initUrlState } from '@/urlState'
 import AppNav from '@/components/AppNav.vue'
+import CandidatesBanner from '@/components/CandidatesBanner.vue'
 import WeeklySummary from '@/components/WeeklySummary.vue'
 
 definePage({
@@ -143,6 +144,7 @@ function fmtDate(iso: string) {
       </template>
 
       <template #body>
+        <CandidatesBanner v-if="route.meta.filters === 'full'" />
         <RouterView />
       </template>
     </UDashboardPanel>

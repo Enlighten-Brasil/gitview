@@ -67,8 +67,9 @@ export function setupGuards(router: Router): void {
     await ensureBoot()
     const hasData = stats.value != null
 
-    // 2) wizard concluído não reabre: /setup/* com dados vira /settings
-    if (to.meta.onboarding && hasData)
+    // 2) wizard concluído não reabre: /setup/* com dados vira /settings —
+    //    exceto o passo 4 (mapear time), que existe justamente pós-coleta
+    if (to.meta.onboarding && hasData && to.meta.setupStep !== 4)
       return '/settings'
 
     // 3) rota de dados sem dados → onboarding (no build estático o layout do
@@ -94,6 +95,9 @@ export function setupGuards(router: Router): void {
       }
       if (to.meta.setupStep === 3 && !readWizardSelection())
         return '/setup/repos'
+      // passo 4 só faz sentido com dados coletados (vêm da coleta do passo 3)
+      if (to.meta.setupStep === 4 && !hasData)
+        return '/setup'
     }
 
     return true
