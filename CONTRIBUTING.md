@@ -11,6 +11,8 @@ pnpm dev        # http://localhost:5173 — first run lands on the /setup wizard
 
 Requirements: **Node 22.13+** (the collectors use `node:sqlite`, flag-free since 22.13; the CI runs Node 22) and **pnpm 11.28** (pinned in the `packageManager` field — run `corepack enable` once so corepack picks it up, or install pnpm 11.28 directly). The `.env` is created automatically from `.env.example` on first run; the team roster lives in `team.local.json` (gitignored). To run it without a real org, point `GITVIEW_REPOS_ROOT` at your own clones (section "Pointing at existing clones" of the README) — a token with access to a small public org is enough.
 
+The repo pins pnpm's supply-chain policy `minimumReleaseAge: 1440` in `pnpm-workspace.yaml`: only packages published at least 24h ago install. A fresh dependency bump that trips `ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION` is expected — wait for the version to mature or list it under `minimumReleaseAgeExclude`.
+
 ## Gates before opening a PR
 
 There is no test suite; these are the checks:

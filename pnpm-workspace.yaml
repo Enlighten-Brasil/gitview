@@ -1,3 +1,8 @@
+# Policy de supply chain explícita (default do pnpm ≥ 11 é 1440; pinada porque
+# config global de máquina pode zerar e o CI/CI local divergiriam): só instala
+# pacote publicado há ≥ 24h. Bump novo que falhar com ERR_PNPM_MINIMUM_RELEASE_AGE
+# é esperado — esperar amadurecer ou listar em minimumReleaseAgeExclude.
+minimumReleaseAge: 1440
 minimumReleaseAgeExcludePrune: true
 trustPolicy: no-downgrade
 shellEmulator: true
