@@ -13,9 +13,15 @@ import { fileURLToPath } from 'node:url'
 const DATA_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'data')
 
 const errors: string[] = []
+/** avisos de qualidade (não bloqueiam a coleta) — anomalias que valem revisão */
+const warnings: string[] = []
 
 function check(cond: boolean, msg: string): void {
   if (!cond) errors.push(msg)
+}
+
+function warn(cond: boolean, msg: string): void {
+  if (!cond) warnings.push(msg)
 }
 
 function load(file: string): Record<string, unknown> | null {
@@ -76,6 +82,7 @@ function stringList(data: Record<string, unknown>, key: string, where: string): 
 
 // ── stats.json ────────────────────────────────────────────────────────────
 const stats = load('stats.json')
+const perRepoCommits = new Map<string, number>()
 if (stats) {
   genAt(stats, 'stats.json')
   stringList(stats, 'repos', 'stats.json')
@@ -93,6 +100,36 @@ if (stats) {
       if (typeof a.bot !== 'boolean') { errors.push(`stats.authors["${a.name}"].bot: não booleano`); break }
     }
   }
+
+  // invariantes numéricas e de datas (todas as listas já foram geradas — varre tudo)
+  const totals = stats.totals as Record<string, unknown> | undefined
+  const sum = (list: unknown, key: string) => (isArr(list) ? (list as Record<string, unknown>[]).reduce((s, r) => s + (Number(r[key]) || 0), 0) : -1)
+  if (totals && typeof totals.commits === 'number') {
+    check(sum(stats.perAuthor, 'commits') === totals.commits, `stats.json: ΣperAuthor.commits (${sum(stats.perAuthor, 'commits')}) != totals.commits (${totals.commits})`)
+    check(sum(stats.perRepo, 'commits') === totals.commits, `stats.json: ΣperRepo.commits (${sum(stats.perRepo, 'commits')}) != totals.commits (${totals.commits})`)
+    check(sum(stats.monthly, 'commits') === totals.commits, `stats.json: Σmonthly.commits (${sum(stats.monthly, 'commits')}) != totals.commits (${totals.commits})`)
+    check(typeof totals.additions === 'number' && totals.additions >= 0 && typeof totals.deletions === 'number' && totals.deletions >= 0, 'stats.json.totals: additions/deletions negativos')
+  }
+  const now = Date.now()
+  for (const r of (isArr(stats.perRepo) ? stats.perRepo : []) as Record<string, unknown>[]) {
+    perRepoCommits.set(String(r.repo), Number(r.commits) || 0)
+    const t = Date.parse(String(r.lastCommit ?? ''))
+    if (Number.isNaN(t)) { errors.push(`stats.perRepo["${r.repo}"].lastCommit: data inválida`); continue }
+    warn(t <= now + 86_400_000, `stats.perRepo["${r.repo}"].lastCommit no futuro (${r.lastCommit}) — relógio do autor errado? (quebra o watermark incremental)`)
+  }
+  for (const a of (isArr(stats.perAuthor) ? stats.perAuthor : []) as Record<string, unknown>[]) {
+    if (Number(a.commits) < 0 || Number(a.additions) < 0 || Number(a.deletions) < 0)
+      errors.push(`stats.perAuthor["${a.author}"]: contagem negativa`)
+  }
+  for (const h of (isArr(stats.heatmap) ? stats.heatmap : []) as Record<string, unknown>[]) {
+    if (Number(h.weekday) < 0 || Number(h.weekday) > 6 || Number(h.hour) < 0 || Number(h.hour) > 23) {
+      errors.push(`stats.heatmap: weekday/hour fora da faixa (${h.weekday}/${h.hour})`)
+      break
+    }
+  }
+  for (const m of (isArr(stats.monthly) ? stats.monthly : []) as Record<string, unknown>[]) {
+    if (!/^\d{4}-\d{2}$/.test(String(m.month))) { errors.push(`stats.monthly: month fora do formato YYYY-MM ("${m.month}")`); break }
+  }
 }
 
 // ── commits.json ──────────────────────────────────────────────────────────
@@ -100,6 +137,21 @@ const commits = load('commits.json')
 if (commits) {
   genAt(commits, 'commits.json')
   listShape(commits, 'commits', ['hash', 'repo', 'author', 'date', 'message'], 'commits.json')
+  // datas em UTC uniforme (o coletor normaliza; offset misto quebra a ordenação)
+  // e ordem desc por timestamp real — a página de perfil assume isso
+  const list = (isArr(commits.commits) ? commits.commits : []) as Record<string, unknown>[]
+  let prev = Infinity
+  let checked = 0
+  for (const c of list) {
+    const d = String(c.date ?? '')
+    if (!d.endsWith('Z')) { errors.push(`commits.json: data sem UTC uniforme ("${d}") — rode a coleta de novo`); break }
+    const t = Date.parse(d)
+    if (Number.isNaN(t)) { errors.push(`commits.json: data inválida ("${d}")`); break }
+    if (t > prev) { errors.push(`commits.json: fora de ordem cronológica em "${c.hash}" (${d})`); break }
+    prev = t
+    if (!/^[0-9a-f]{7}$/.test(String(c.hash ?? ''))) { errors.push(`commits.json: hash fora do formato 7-hex ("${c.hash}")`); break }
+    if (++checked >= 4000) break // amostra generosa — não precisa varrer tudo
+  }
 }
 
 // ── github.json ───────────────────────────────────────────────────────────
@@ -116,6 +168,15 @@ if (github) {
       errors.push('github.json.users[*]: esperado {name: string, bot: boolean}')
     }
   }
+  // invariantes dos PRs: estado válido, mergedAt presente em MERGED, sem duplicados
+  const seenPr = new Set<string>()
+  for (const p of (isArr(github.prs) ? github.prs : []) as Record<string, unknown>[]) {
+    if (p.state !== 'OPEN' && p.state !== 'MERGED') { errors.push(`github.prs ${p.repo}#${p.number}: state inesperado "${p.state}"`); break }
+    if (p.state === 'MERGED' && (typeof p.mergedAt !== 'string' || Number.isNaN(Date.parse(p.mergedAt)))) { errors.push(`github.prs ${p.repo}#${p.number}: MERGED sem mergedAt válido`); break }
+    const key = `${p.repo}#${p.number}`
+    if (seenPr.has(key)) { errors.push(`github.prs: PR duplicado ${key}`); break }
+    seenPr.add(key)
+  }
 }
 
 // ── releases.json ─────────────────────────────────────────────────────────
@@ -123,6 +184,26 @@ const releases = load('releases.json')
 if (releases) {
   genAt(releases, 'releases.json')
   listShape(releases, 'repos', ['repo', 'url', 'tags', 'unreleased'], 'releases.json')
+  // invariantes por repo: tags em ordem desc, contadores >= 0, cobertura total
+  // (unreleased + Σcommits das tags == commits do repo no stats.json)
+  for (const r of (isArr(releases.repos) ? releases.repos : []) as Record<string, unknown>[]) {
+    const tags = (isArr(r.tags) ? r.tags : []) as Record<string, unknown>[]
+    let prevT = Infinity
+    let tagCommits = 0
+    for (const t of tags) {
+      const ms = Date.parse(String(t.date ?? ''))
+      if (Number.isNaN(ms)) { errors.push(`releases["${r.repo}"]: tag "${t.tag}" com data inválida`); break }
+      if (ms > prevT) { errors.push(`releases["${r.repo}"]: tags fora de ordem desc ("${t.tag}")`); break }
+      prevT = ms
+      if (Number(t.commits) < 0) { errors.push(`releases["${r.repo}"]: tag "${t.tag}" com commits negativos`); break }
+      tagCommits += Number(t.commits) || 0
+    }
+    const unreleased = Number(r.unreleased)
+    if (!Number.isFinite(unreleased) || unreleased < 0) { errors.push(`releases["${r.repo}"]: unreleased inválido`); continue }
+    const expected = perRepoCommits.get(String(r.repo))
+    if (expected != null && expected > 0 && unreleased + tagCommits !== expected)
+      errors.push(`releases["${r.repo}"]: unreleased (${unreleased}) + commits em tags (${tagCommits}) != commits do repo (${expected})`)
+  }
 }
 
 // ── team.json (shape + invariantes do 4º coletor) ─────────────────────────
@@ -155,13 +236,44 @@ if (team) {
       if (c.kind !== 'login' && c.kind !== 'author') errors.push(`team.json.candidates: kind inesperado "${c.kind}"`)
     }
   }
+
+  // logins sem duplicata por case dentro do mesmo dev (collect-team deduplica)
+  for (const d of devs) {
+    const seen = new Set<string>()
+    for (const l of (isArr(d.githubLogins) ? d.githubLogins : []) as string[]) {
+      const k = l.toLowerCase()
+      if (seen.has(k)) { errors.push(`team.json.devs["${d.name}"]: login duplicado por case ("${l}")`); break }
+      seen.add(k)
+    }
+  }
+
+  // avisos de qualidade (não bloqueiam): identidade candidata já em um time
+  // (mesma pessoa contada 2× nas métricas do time) e dev humano sem nenhum alias
+  const candidateIds = new Set((isArr(team.candidates) ? team.candidates : []).map(c => String((c as Record<string, unknown>).id).toLowerCase()))
+  if (isArr(team.teams)) {
+    for (const t of team.teams as Record<string, unknown>[]) {
+      for (const m of (isArr(t.members) ? t.members : []) as string[]) {
+        warn(!candidateIds.has(m.toLowerCase()), `team.json.teams["${t.name}"]: membro "${m}" também está em "Sem mapeamento" — associar o alias unifica as métricas`)
+      }
+    }
+  }
+  for (const d of devs) {
+    if (d.bot) continue
+    const noAlias = (isArr(d.emails) ? d.emails : []).length === 0 && (isArr(d.githubLogins) ? d.githubLogins : []).length === 0
+    warn(!noAlias, `team.json.devs["${d.name}"]: sem e-mails nem logins mapeados — identidade crua do git, revisar em /teams`)
+  }
 }
 
 // ── veredito ──────────────────────────────────────────────────────────────
+if (warnings.length) {
+  console.warn(`\n⚠ check-data: ${warnings.length} aviso(s) de qualidade (não bloqueiam):`)
+  for (const w of warnings) console.warn(`  - ${w}`)
+}
+
 if (errors.length) {
   console.error(`\n✗ check-data: ${errors.length} problema(s) em public/data/:`)
   for (const e of errors) console.error(`  - ${e}`)
   process.exit(1)
 }
 
-console.log('✓ check-data: stats/commits/github/releases/team com shape ok')
+console.log('✓ check-data: stats/commits/github/releases/team com shape e invariantes ok')

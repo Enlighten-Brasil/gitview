@@ -89,14 +89,21 @@ await mapPool(repos, 4, async (repo) => {
   const ghRepo = remote ? parseGitHub(remote) : null
   const ghMap = ghRepo ? await ghReleases(ghRepo) : new Map<string, GhRelease>()
 
-  // datas dos commits do repo (asc) — para contar commits entre tags
-  const dates = (datesStmt.all(repo.name) as { date: string }[]).map(r => r.date)
+  // datas dos commits do repo (asc) — para contar commits entre tags.
+  // Compara por timestamp (epoch): datas gravadas antes da normalização UTC
+  // tinham offsets mistos e a comparação lexicográfica atribuía commits à tag
+  // errada (ex.: '2026-01-23T21:06:42Z' > '2026-01-23T22:00:00-03:00' como texto)
+  const dates = (datesStmt.all(repo.name) as { date: string }[])
+    .map(r => new Date(r.date).getTime())
+    .filter(t => Number.isFinite(t))
+    .sort((a, b) => a - b)
 
-  /** commits em (after, until] — as datas estão ordenadas, two-pointer simples */
+  /** commits em (after, until] — timestamps ordenados, two-pointer simples */
   let cursor = 0
   const tagRows = tags.map((t) => {
     let count = 0
-    while (cursor < dates.length && dates[cursor] <= t.date) {
+    const tagMs = new Date(t.date).getTime()
+    while (cursor < dates.length && dates[cursor] <= tagMs) {
       cursor++
       count++
     }

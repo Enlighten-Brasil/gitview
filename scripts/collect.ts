@@ -52,6 +52,41 @@ interface RawCommit {
   deletions: number
 }
 
+/**
+ * Normaliza a author date para UTC ISO com milis ('2026-10-08T18:05:13.000Z').
+ * O %aI do git emite o offset original do autor (-03:00, Z…) e, gravado cru,
+ * quebrava ordenação e comparação lexicográfica (releases/commits recentes).
+ * O instante é preservado — buckets de hora/dia seguem no tz de quem coleta.
+ */
+function toUtcIso(date: string): string {
+  const d = new Date(date)
+  return Number.isNaN(d.getTime()) ? date : d.toISOString()
+}
+
+/**
+ * Exclusão de arquivos gerados/lockfiles nas métricas de LINHAS — filtrada
+ * linha a linha no numstat (não no pathspec do git log: pathspec também
+ * removeria commits que só tocam lockfile, distorcendo contagens de commits,
+ * releases e heatmaps). O commit entra; as linhas do arquivo gerado, não.
+ * Nota: o numstat é somado no insert — pra reaplicar no histórico: pnpm clean.
+ */
+const EXCLUDE_PATTERNS = config.excludePaths ?? []
+
+/** glob simples: '*' dentro do segmento; padrão com '/' casa o caminho todo (em qualquer profundidade), sem '/' casa o basename */
+function matchesGlob(path: string, pattern: string): boolean {
+  const body = pattern
+    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*\*/g, ' ')
+    .replace(/\*/g, '[^/]*')
+    .replace(/ /g, '.*')
+  const re = pattern.includes('/')
+    ? new RegExp(`(^|.*/)${body}$`, 'i')
+    : new RegExp(`^${body}$`, 'i')
+  return re.test(pattern.includes('/') ? path : (path.split('/').pop() ?? path))
+}
+
+const isExcludedPath = (path: string): boolean => EXCLUDE_PATTERNS.some(p => matchesGlob(path, p))
+
 function gitLog(repoPath: string, extraArgs: string[] = []): Promise<RawCommit[]> {
   return new Promise((resolvePromise, reject) => {
     const child = spawn('git', [
@@ -92,6 +127,8 @@ function parseGitLog(raw: string): RawCommit[] {
       if (!line) continue
       const parts = line.split('\t')
       if (parts.length < 3) continue
+      // linhas de arquivos gerados/lockfiles não somam (o commit entra igual)
+      if (isExcludedPath(parts.slice(2).join('\t'))) continue
       const add = Number(parts[0])
       const del = Number(parts[1])
       if (Number.isFinite(add)) additions += add
@@ -130,12 +167,25 @@ const insert = db.prepare(`
   VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `)
 
+// migração: datas gravadas por versões antigas tinham o offset original do
+// autor (-03:00, Z…), o que quebra comparação/ordenação lexicográfica —
+// normaliza tudo para UTC ISO com milis (idempotente; instante preservado)
+const migratedDates = db.prepare(`
+  UPDATE commits SET date = strftime('%Y-%m-%dT%H:%M:%fZ', date)
+  WHERE instr(date, '.') = 0 AND date GLOB '*T*'
+`).run()
+if (migratedDates.changes)
+  console.log(`🔧 ${migratedDates.changes} datas normalizadas para UTC (formato antigo com offset)`)
+
 // ---------------------------------------------------------------------------
 // incremental: --since por repo a partir do watermark no banco (max date - margem).
 // A margem cobre commits com committer date antiga mergeados depois do watermark;
 // o INSERT OR IGNORE torna a sobreposição inócua. `--full` força re-scan completo.
 // ---------------------------------------------------------------------------
 const FULL = process.argv.includes('--full')
+// --reaggregate: pula fetch + git log (nada novo entra) e só re-aplica aliases
+// e re-exporta os JSONs — usado pela recoleta leve pós-edição de time (/teams)
+const REAGGREGATE = process.argv.includes('--reaggregate')
 const SINCE_MARGIN_DAYS = 7
 const maxDateStmt = db.prepare('SELECT MAX(date) AS max FROM commits WHERE repo = ?')
 
@@ -221,7 +271,7 @@ async function main() {
   // scrubPersistedToken apaga o extraheader que versões antigas gravavam no
   // clone (token em repouso) — o fetch agora injeta o token só no processo.
   const managed = repos.filter(r => isManagedRepo(r.path))
-  if (managed.length) {
+  if (managed.length && !REAGGREGATE) {
     const token = getToken()?.token
     if (!token) console.warn(`! ${NO_TOKEN_HINT} — fetch dos clones vai usar só o cache local`)
     console.log(`\nAtualizando ${managed.length} clones gerenciados (git fetch)...`)
@@ -233,7 +283,7 @@ async function main() {
     })
   }
 
-  console.log(FULL ? 'Modo: completo (--full)' : 'Modo: incremental (--since por repo)')
+  console.log(FULL ? 'Modo: completo (--full)' : REAGGREGATE ? 'Modo: reagregação (--reaggregate, sem git)' : 'Modo: incremental (--since por repo)')
 
   // repos que saíram da seleção (setup refeito, exclude, etc.) somem do banco —
   // se voltarem um dia, o watermark vazio força re-scan completo deles
@@ -243,30 +293,31 @@ async function main() {
     if (pruned.changes) console.log(`🧹 ${pruned.changes} commits removidos de repos fora da seleção`)
   }
 
-  await mapPool(repos, 4, async (repo) => {
-    const t0 = Date.now()
-    let inTransaction = false
-    try {
-      const commits = await gitLog(repo.path, sinceArgs(repo.name))
-      let inserted = 0
-      db.exec('BEGIN')
-      inTransaction = true
-      for (const c of commits) {
-        const res = insert.run(
-          repo.name, c.hash, canonicalAuthor(c.name, c.email), c.email.toLowerCase(),
-          c.date, c.subject.slice(0, 500), c.additions, c.deletions,
-        )
-        inserted += Number(res.changes)
+  if (!REAGGREGATE)
+    await mapPool(repos, 4, async (repo) => {
+      const t0 = Date.now()
+      let inTransaction = false
+      try {
+        const commits = await gitLog(repo.path, sinceArgs(repo.name))
+        let inserted = 0
+        db.exec('BEGIN')
+        inTransaction = true
+        for (const c of commits) {
+          const res = insert.run(
+            repo.name, c.hash, canonicalAuthor(c.name, c.email), c.email.toLowerCase(),
+            toUtcIso(c.date), c.subject.slice(0, 500), c.additions, c.deletions,
+          )
+          inserted += Number(res.changes)
+        }
+        db.exec('COMMIT')
+        inTransaction = false
+        console.log(`✓ ${repo.name}: ${commits.length} commits lidos, ${inserted} novos (${((Date.now() - t0) / 1000).toFixed(1)}s)`)
       }
-      db.exec('COMMIT')
-      inTransaction = false
-      console.log(`✓ ${repo.name}: ${commits.length} commits lidos, ${inserted} novos (${((Date.now() - t0) / 1000).toFixed(1)}s)`)
-    }
-    catch (err) {
-      if (inTransaction) db.exec('ROLLBACK')
-      console.error(`✗ ${repo.name}: ${(err as Error).message}`)
-    }
-  })
+      catch (err) {
+        if (inTransaction) db.exec('ROLLBACK')
+        console.error(`✗ ${repo.name}: ${(err as Error).message}`)
+      }
+    })
 
   // re-normaliza autores já gravados caso os aliases tenham mudado no config
   const updateAuthor = db.prepare('UPDATE commits SET author = ? WHERE email = ? AND author != ?')

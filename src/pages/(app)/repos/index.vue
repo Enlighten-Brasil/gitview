@@ -1,13 +1,14 @@
 <script setup lang="ts">
 /**
  * Repositórios — seção dedicada (migrada da tab "repos" do dashboard).
- * Âncoras alimentam o sub-nav contextual.
+ * Âncoras alimentam o sub-nav contextual. Releases virou seção aqui (#releases).
  */
 import RepoTable from '@/components/RepoTable.vue'
 import LinesFlow from '@/components/LinesFlow.vue'
 import RepoShare from '@/components/RepoShare.vue'
 import RepoMonthHeatmap from '@/components/RepoMonthHeatmap.vue'
 import CommitTypes from '@/components/CommitTypes.vue'
+import RepoReleasesGrid from '@/components/RepoReleasesGrid.vue'
 
 definePage({
   meta: {
@@ -33,6 +34,9 @@ definePage({
     </section>
     <section id="tipos" class="scroll-mt-16">
       <CommitTypes />
+    </section>
+    <section id="releases" class="scroll-mt-16">
+      <RepoReleasesGrid />
     </section>
   </div>
 </template>

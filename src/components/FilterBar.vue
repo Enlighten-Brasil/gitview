@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { filters, isCustomRange, stats } from '@/data'
+import { loadTeam, team } from '@/team'
 
 const route = useRoute()
 
@@ -12,6 +13,9 @@ type FilterScope = 'full' | 'period' | 'period-bots' | 'none'
 const scope = computed<FilterScope>(() => (route.meta.filters as FilterScope | undefined) ?? 'none')
 const showReposDevs = computed(() => scope.value === 'full')
 const showBots = computed(() => scope.value === 'full' || scope.value === 'period-bots')
+
+// times como atalho de filtro: carrega o team.json sob demanda (só no escopo full)
+watch(showReposDevs, v => { if (v) loadTeam() }, { immediate: true })
 
 const ranges = [
   { label: '1M', months: 1 },
@@ -48,6 +52,30 @@ function toggleCustom() {
 const visibleAuthors = computed(() =>
   (stats.value?.authors ?? []).filter(a => filters.showBots || !a.bot),
 )
+
+// times com membros presentes nos autores visíveis — clicar no chip do time
+// (des)marca todos os membros de uma vez no filtro de devs
+const teamFilters = computed(() => {
+  const visible = new Set(visibleAuthors.value.map(a => a.name))
+  return (team.value?.teams ?? [])
+    .map(t => ({ name: t.name, color: t.color, members: t.members.filter(m => visible.has(m)) }))
+    .filter(t => t.members.length > 0)
+})
+
+/** 'all' = todos os membros selecionados · 'some' = parcial · 'none' = nenhum */
+function teamState(members: string[]): 'all' | 'some' | 'none' {
+  const sel = members.filter(m => filters.authors.includes(m)).length
+  return sel === 0 ? 'none' : sel === members.length ? 'all' : 'some'
+}
+
+function toggleTeam(members: string[]) {
+  if (teamState(members) === 'all') {
+    filters.authors = filters.authors.filter(a => !members.includes(a))
+  }
+  else {
+    filters.authors = [...new Set([...filters.authors, ...members])]
+  }
+}
 
 const hasSelection = computed(() => filters.repos.length > 0 || filters.authors.length > 0)
 
@@ -113,6 +141,34 @@ function clearList(list: ListKey) {
 
     <!-- repos e devs só no escopo 'full' (dashboard e seções agregadas) -->
     <template v-if="showReposDevs">
+      <template v-if="teamFilters.length">
+        <USeparator />
+
+        <section class="flex flex-col gap-2">
+          <span class="filter-label flex items-center gap-1.5">
+            <UIcon name="i-lucide-users-round" class="size-3.5" />
+            Times
+          </span>
+          <div class="flex flex-wrap gap-1.5">
+            <UButton
+              v-for="t in teamFilters"
+              :key="t.name"
+              size="xs"
+              :color="teamState(t.members) === 'all' ? 'primary' : teamState(t.members) === 'some' ? 'primary' : 'neutral'"
+              :variant="teamState(t.members) === 'all' ? 'solid' : teamState(t.members) === 'some' ? 'soft' : 'ghost'"
+              @click="toggleTeam(t.members)"
+            >
+              <span
+                class="size-2 rounded-full inline-block"
+                :style="{ backgroundColor: t.color ?? 'currentColor' }"
+              />
+              {{ t.name }}
+              <span class="opacity-60">{{ t.members.length }}</span>
+            </UButton>
+          </div>
+        </section>
+      </template>
+
       <USeparator />
 
       <section class="flex flex-col gap-2">

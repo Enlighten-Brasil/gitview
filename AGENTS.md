@@ -18,7 +18,7 @@ O frontend (Vue 3 + TS + Vite + ECharts + Nuxt UI v4 / Tailwind v4) é **100% es
 
 | script | saída | fonte |
 |---|---|---|
-| `collect.ts` | `stats.json` (agregados weekly/monthly/heatmap por mês/monthlyTypes/perAuthor/perRepo/repoUrls) + `commits.json` (100 últimos/autor) | `git log --all --numstat --since=<watermark-7d>` → SQLite (`INSERT OR IGNORE`, incremental; `--full` = re-scan) |
+| `collect.ts` | `stats.json` (agregados weekly/monthly/heatmap por mês/monthlyTypes/perAuthor/perRepo/repoUrls) + `commits.json` (100 últimos/autor) | `git log --all --numstat --since=<watermark-7d>` → SQLite (`INSERT OR IGNORE`, incremental; `--full` = re-scan; `--reaggregate` = sem git, só re-aplica aliases + re-exporta). Datas gravadas em **UTC ISO com milis** (migração automática na 1ª execução; o %aI do git emite o offset do autor, que quebrava comparação lexicográfica). Linhas de lockfiles/gerados são filtradas **no parse do numstat** (nunca via pathspec — isso removeria commits inteiros); lista em `DEFAULT_EXCLUDE_PATHS` + `GITVIEW_EXCLUDE_PATHS` |
 | `collect-github.ts` | `github.json` (PRs OPEN todos + MERGED últimos 400d, reviews inline, mapa login→dev) | API GraphQL do GitHub via `fetch` (`ghGraphql` em lib/github.ts, token do `.env`/`gh auth token`) — incremental: refetch só de PRs atualizados desde a última coleta, merge com o JSON anterior; `--full` ignora o cache |
 | `collect-releases.ts` | `releases.json` (tags com data, commits entre tags, não liberados, notas do GitHub) | `git tag` + API REST do GitHub (`ghApi`; sem token → só tags) |
 | `collect-team.ts` | `team.json` (devs: perfil título/descrição + e-mails + logins + times; times; candidatos sem mapeamento) | `team.local.json` (`devProfiles`/`teams`/bots) + stats/github.json já gerados |

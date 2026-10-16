@@ -83,7 +83,7 @@ function fmtDate(iso: string): string {
     </div>
 
     <p class="text-dimmed text-xs mt-2.5">
-      ignora o filtro de período (inatividade é medida até hoje) · dev inativo pode estar de férias ou travado — vale um 1:1
+      ignora os filtros da sidebar (inatividade é medida até hoje, sobre todos os repos/devs) · dev inativo pode estar de férias ou travado — vale um 1:1
     </p>
   </UCard>
 </template>
