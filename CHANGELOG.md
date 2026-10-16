@@ -1,5 +1,11 @@
 # gitview
 
+## 0.42.4
+
+### Patch Changes
+
+- e17f2ff: ci(demo): rebuild mensal agendado do Pages — o fixture ancora as datas em "hoje" no build, então sem pushes a demo envelhecia fora dos presets curtos
+
 ## 0.42.3
 
 ### Patch Changes
