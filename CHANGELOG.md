@@ -1,5 +1,11 @@
 # gitview
 
+## 0.42.5
+
+### Patch Changes
+
+- 73e203a: ci: gate anti-regressão do scrub de identidade (check:scrub, roda no CI) + bump do pin packageManager para pnpm 11.28.6
+
 ## 0.42.4
 
 ### Patch Changes
