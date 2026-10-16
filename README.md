@@ -1,5 +1,7 @@
 # gitview
 
+[![CI](https://github.com/Enlighten-Brasil/gitview/actions/workflows/ci.yml/badge.svg)](https://github.com/Enlighten-Brasil/gitview/actions/workflows/ci.yml)
+
 **Português (pt-BR):** [README.pt-BR.md](README.pt-BR.md)
 
 An engineering-manager dashboard for team metrics: commits, PRs and releases across your GitHub org's repositories — everything runs locally and is strictly read-only over the repos it analyzes.

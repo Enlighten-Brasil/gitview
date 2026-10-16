@@ -1,5 +1,7 @@
 # gitview
 
+[![CI](https://github.com/Enlighten-Brasil/gitview/actions/workflows/ci.yml/badge.svg)](https://github.com/Enlighten-Brasil/gitview/actions/workflows/ci.yml)
+
 **English:** [README.md](README.md)
 
 Dashboard interno de métricas do time: commits, PRs e releases dos repositórios da org, tudo local e read-only sobre os repos.
