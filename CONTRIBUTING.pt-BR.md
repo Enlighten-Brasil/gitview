@@ -11,6 +11,8 @@ pnpm dev        # http://localhost:5173 — na primeira execução cai no assist
 
 Requisitos: **Node 22.13+** (os coletores usam `node:sqlite`, sem flag desde a 22.13; o CI roda Node 22) e **pnpm 11.28** (pinado no campo `packageManager` — rode `corepack enable` uma vez para o corepack assumir, ou instale o pnpm 11.28 direto). O `.env` é criado sozinho a partir do `.env.example` na primeira execução; o cadastro do time vive no `team.local.json` (gitignored). Para usar sem a org real, dá para apontar `GITVIEW_REPOS_ROOT` para clones seus (seção "Apontar para clones existentes" do README) — token com acesso a uma org pública pequena basta.
 
+O repo pina a policy de supply chain do pnpm `minimumReleaseAge: 1440` no `pnpm-workspace.yaml`: só instala pacote publicado há pelo menos 24h. Um bump de dependência recente que esbarre no `ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION` é esperado — espere a versão amadurecer ou liste-a em `minimumReleaseAgeExclude`.
+
 ## Gates antes de abrir PR
 
 Não há suíte de testes; estes são os checks:
