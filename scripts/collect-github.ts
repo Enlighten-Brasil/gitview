@@ -79,7 +79,7 @@ query($owner: String!, $name: String!, $cursor: String) {
   rateLimit { remaining }
 }`
 
-/** continuação de reviews de um PR específico (só usado quando reviewCount estoura a 1ª página) */
+/** continuação de reviews de um PR específico (só usado quando reviews.totalCount estoura a 1ª página) */
 const REVIEWS_QUERY = `
 query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
   repository(owner: $owner, name: $name) {
@@ -172,6 +172,9 @@ async function fetchRestReviews(ghRepo: { owner: string; repo: string }, pr: GhP
     if (!rev.pageInfo.hasNextPage) break
     cursor = rev.pageInfo.endCursor
   }
+  // teto de páginas atingido com reviews restantes: avisa (nunca trunca em silêncio)
+  if (pr.reviews.nodes.length < total)
+    console.warn(`  ! ${ghRepo.repo}#${pr.number}: reviews truncados em ${pr.reviews.nodes.length}/${total} (teto de 10 páginas de continuação)`)
 }
 
 // ---------------------------------------------------------------------------
@@ -293,11 +296,14 @@ await mapPool(repos, 4, async (repo) => {
   catch (err) {
     console.error(`✗ ${repo.name}: ${(err as Error).message}`)
     // rede de segurança: repo que falhou não pode sumir do painel — reaproveita
-    // o cache (mergeados respeitam a janela de MERGED_CUTOFF_DAYS, como no merge)
+    // o cache, mas só nos estados que o modelo conhece (OPEN/MERGED): um cache
+    // legado/corrompido não pode re-propagar CLOSED todo santo dia. Mergeados
+    // sem mergedAt válido não têm como respeitar a janela — descartados.
     let restored = 0
     for (const p of cached?.prs ?? []) {
       if (p.repo !== repo.name) continue
-      if (p.state === 'MERGED' && p.mergedAt && new Date(p.mergedAt as string) < windowCutoff) continue
+      if (p.state !== 'OPEN' && p.state !== 'MERGED') continue
+      if (p.state === 'MERGED' && (typeof p.mergedAt !== 'string' || Number.isNaN(Date.parse(p.mergedAt)) || new Date(p.mergedAt) < windowCutoff)) continue
       fresh.set(`${p.repo}#${p.number}`, p)
       restored++
     }
@@ -310,12 +316,13 @@ await mapPool(repos, 4, async (repo) => {
 // (PR fechado sem merge some do painel, como no modo completo)
 let kept = 0
 if (prev) {
-  // mergeados fora da janela de MERGED_CUTOFF_DAYS expiram (o incremental não os revalida mais)
+  // mergeados fora da janela de MERGED_CUTOFF_DAYS expiram (o incremental não os revalida mais);
+  // MERGED sem mergedAt válido é descartado (não tem como janelar — o check-data o reprovaria)
   for (const p of prev.prs) {
     const key = `${p.repo}#${p.number}`
     if (p.state !== 'MERGED' || fresh.has(key)) continue
     const mergedAt = p.mergedAt as string | null
-    if (mergedAt && new Date(mergedAt) < windowCutoff) continue
+    if (!mergedAt || Number.isNaN(Date.parse(mergedAt)) || new Date(mergedAt) < windowCutoff) continue
     fresh.set(key, p)
     kept++
   }

@@ -24,7 +24,7 @@ pnpm check:data  # valida shape + invariantes dos JSONs coletados (roda no fim d
 ## Estilo
 
 - Código em inglês; comentários e mensagens de commit em **pt-BR**, no formato Conventional Commits (`feat(...)`, `fix(...)`, `docs(...)`, `chore(release): ...`).
-- Formatação segue o `@antfu/eslint-config`: **sem ponto-e-vírgula**, **aspas simples**.
+- Formatação segue o estilo `@antfu/eslint-config` — **sem ponto-e-vírgula**, **aspas simples**. Não há config de ESLint nem script `lint` no repo: espelhe os arquivos vizinhos (o `pnpm typecheck` pega o resto).
 - Edite arquivos UTF-8 com editor de verdade — em Windows/PowerShell, nada de `Set-Content`/redireção (mojibake).
 
 ## Changesets — obrigatório em toda mudança

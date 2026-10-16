@@ -41,7 +41,7 @@ Ordem de precedência: variável do shell → `.env` → default. O arquivo é l
 
 ### Config do time (`team.local.json` — gitignored)
 
-Perfis de devs (título, descrição), aliases (e-mails de commit, logins do GitHub), times e bots extras. Tudo editável pela tela **/team** (dev only; persistido via `/__team/config`). É a única fonte de nomes canônicos — sem ela o dashboard funciona, cada e-mail/login vira um autor separado e a coleta lista os "candidatos" pra você ir associando.
+Perfis de devs (título, descrição), aliases (e-mails de commit, logins do GitHub), times e bots extras. Tudo editável pela tela **/teams** (dev only; persistido via `/__team/config`). É a única fonte de nomes canônicos — sem ela o dashboard funciona, cada e-mail/login vira um autor separado e a coleta lista os "candidatos" pra você ir associando.
 
 ### Setup pela UI (`/setup`)
 
@@ -81,13 +81,13 @@ O projeto não tem dado de máquina nem de time versionado: `.env` e `team.local
 
 Banco e JSONs são 100% regeneráveis a partir dos repositórios (`team.local.json` **não** é — é o cadastro do time):
 
-- **UI**: **Config → Geral** (`/settings`) → card "Manutenção dos dados locais" → *recoletar tudo* (re-scan completo) ou *limpar e recomeçar* (apaga banco + JSONs e recoleta; clones mantidos).
+- **UI**: **Config → Geral** (`/settings`) → card "Manutenção dos dados locais" → *recoletar tudo* (re-scan completo), *limpar e recoletar* (apaga banco + JSONs e recoleta; clones mantidos) ou *apagar dados* (apaga sem recoletar — volta ao assistente /setup).
 - **CLI**: `pnpm clean` (apaga `data/gitview.db*` + `public/data/*.json`) e depois `pnpm collect`. `pnpm clean -- --repos` apaga também os clones (a próxima coleta re-clona tudo — lento).
 
 ## Comandos
 
 ```bash
-pnpm dev / start        # dashboard em http://localhost:5173 (navbar: ↻ recoleta, ⚙ abre o assistente /setup)
+pnpm dev / start        # dashboard em http://localhost:5173 (navbar: ↻ recoleta; o item Config ⚙ da rail abre as Configurações — sem dados, cai no assistente /setup)
 pnpm setup              # wizard de terminal: escolher/clonar repos da org
 pnpm collect            # os 4 coletores em sequência + validação (incremental)
 pnpm collect:github     # só PRs/reviews
