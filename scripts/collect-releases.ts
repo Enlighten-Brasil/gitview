@@ -14,7 +14,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DatabaseSync } from 'node:sqlite'
 import { loadConfig, resolveReposRoot } from './lib/config'
-import { ghApi, getToken } from './lib/github'
+import { ghApiAll, getToken } from './lib/github'
 import { discoverRepos, mapPool, parseGitHub, remoteOf } from './lib/repos'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -49,7 +49,7 @@ function gitTags(repoPath: string): Tag[] {
 }
 
 // ---------------------------------------------------------------------------
-// releases do GitHub (notas/nome/url) — 1 request por repo, últimas 100
+// releases do GitHub (notas/nome/url) — REST paginado (100/página)
 // ---------------------------------------------------------------------------
 interface GhRelease {
   tag_name: string
@@ -61,13 +61,18 @@ interface GhRelease {
   body: string | null
 }
 
-function ghReleases(ghRepo: { owner: string; repo: string }): Promise<Map<string, GhRelease>> {
-  // falha silenciosa por design (igual ao spawn antigo): sem token/404/offline
-  // o repo sai só com as tags git, sem notas do GitHub
-  if (!auth) return Promise.resolve(new Map())
-  return ghApi<GhRelease[]>(`/repos/${ghRepo.owner}/${ghRepo.repo}/releases?per_page=100`, auth.token)
-    .then(list => new Map(list.filter(rel => !rel.draft).map(rel => [rel.tag_name, rel])))
-    .catch(() => new Map<string, GhRelease>())
+async function ghReleases(ghRepo: { owner: string; repo: string }): Promise<Map<string, GhRelease>> {
+  // sem token, o repo sai só com as tags git (comportamento histórico); com
+  // token, falha de API é AVISADA — não engolida em silêncio (issue #6)
+  if (!auth) return new Map()
+  try {
+    const list = await ghApiAll<GhRelease>(`/repos/${ghRepo.owner}/${ghRepo.repo}/releases`, auth.token)
+    return new Map(list.filter(rel => !rel.draft).map(rel => [rel.tag_name, rel]))
+  }
+  catch (err) {
+    console.warn(`! ${ghRepo.owner}/${ghRepo.repo}: releases do GitHub indisponíveis (${(err as Error).message}) — saindo só com as tags git`)
+    return new Map<string, GhRelease>()
+  }
 }
 
 /** map assíncrono com concorrência limitada (repos em paralelo) — scripts/lib/repos.ts */
