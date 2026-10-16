@@ -24,7 +24,10 @@ const rows = computed<Row[]>(() => (mode.value === '8sem' ? burnout.value : offH
 /** padrão: ≥25% fora do horário (ou 3+ fds seguidos na janela de 8 semanas) */
 function status(b: Row): { color: 'error' | 'warning' | 'success', label: string, hex: string } {
   if (b.offHoursPct >= 0.25 || (b.weekendsActive ?? 0) >= 3) return { color: 'error', label: 'padrão', hex: 'var(--ui-error)' }
-  if (b.offHoursPct >= 0.15 || (b.weekend + b.night) >= 5) return { color: 'warning', label: 'atenção', hex: 'var(--ui-warning)' }
+  // a contagem absoluta (fds+madrugada ≥5) só tem sentido na janela fixa de 8
+  // semanas; no modo "período" (1–24 meses) ela acumularia trivialmente — lá o
+  // status é só por pct (como no antigo OffHoursPeriod)
+  if (b.offHoursPct >= 0.15 || (mode.value === '8sem' && b.weekend + b.night >= 5)) return { color: 'warning', label: 'atenção', hex: 'var(--ui-warning)' }
   return { color: 'success', label: 'pontual', hex: 'var(--ui-success)' }
 }
 </script>

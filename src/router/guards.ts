@@ -81,10 +81,11 @@ export function setupGuards(router: Router): void {
     if (to.meta.requiresServer && !serverMode)
       return stats.value != null ? '/' : '/setup'
 
-    // 5) wizard: passo >= 2 precisa de auth; index decide o passo pela auth;
+    // 5) wizard: passos 2-3 precisam de auth (clonam/coletam); o passo 4 só lê
+    //    team.json e exige dados, não token — index decide o passo pela auth;
     //    passo 3 precisa de seleção feita no passo 2 (sessionStorage)
     if (to.meta.onboarding && serverMode) {
-      if (to.meta.setupStep && to.meta.setupStep >= 2) {
+      if (to.meta.setupStep === 2 || to.meta.setupStep === 3) {
         const status = await getCachedStatus()
         if (!status?.auth)
           return '/setup/github'
