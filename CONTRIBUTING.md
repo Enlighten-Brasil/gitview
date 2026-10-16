@@ -1,52 +1,63 @@
-# Contribuindo com o gitview
+# Contributing to gitview
 
-O gitview é **read-only** sobre os dados: nem os coletores nem a UI escrevem nos repositórios analisados — eles leem `git log`/tags e a API do GitHub e geram JSON em `public/data/` (local e gitignored). PRs que proponham escrever em repos fora dessa linha não serão aceitos.
+gitview is **read-only** over data: neither the collectors nor the UI write to the analyzed repositories — they read `git log`/tags and the GitHub API and generate JSON in `public/data/` (local, gitignored). PRs proposing to write to repos outside that line will not be accepted.
 
-## Ambiente de dev
+## Dev environment
 
 ```bash
 pnpm install
-pnpm dev        # http://localhost:5173 — na primeira execução cai no assistente /setup
+pnpm dev        # http://localhost:5173 — first run lands on the /setup wizard
 ```
 
-Requisitos: **Node 24+** (o `node:sqlite` é nativo) e **pnpm 10+**. O `.env` é criado sozinho a partir do `.env.example` na primeira execução; o cadastro do time vive no `team.local.json` (gitignored). Para usar sem a org real, dá para apontar `GITVIEW_REPOS_ROOT` para clones seus (seção "Apontar para clones existentes" do README) — token com acesso a uma org pública pequena basta.
+Requirements: **Node 22.13+** (the collectors use `node:sqlite`, flag-free since 22.13; the CI runs Node 22) and **pnpm 11.28** (pinned in the `packageManager` field — corepack activates it automatically). The `.env` is created automatically from `.env.example` on first run; the team roster lives in `team.local.json` (gitignored). To run it without a real org, point `GITVIEW_REPOS_ROOT` at your own clones (section "Pointing at existing clones" of the README) — a token with access to a small public org is enough.
 
-## Gates antes de abrir PR
+## Gates before opening a PR
 
-Não há suíte de testes; estes são os checks:
+There is no test suite; these are the checks:
 
 ```bash
-pnpm lint      # eslint (@antfu/eslint-config, padrão do time) — zero erros é requisito
-pnpm typecheck # tsc --noEmit (scripts + src; templates .vue ficam fora)
-pnpm build     # vite build — o check de compilação
-pnpm check:data # valida shape + invariantes dos JSONs coletados (roda no fim do pnpm collect)
+pnpm lint       # eslint (@antfu/eslint-config) — zero errors is required
+pnpm typecheck  # tsc --noEmit (scripts + src; .vue templates are out of scope)
+pnpm build      # vite build — the compilation check
+pnpm check:data # shape + invariants of the collected JSONs (runs at the end of pnpm collect)
 ```
 
-## Estilo
+The CI (`.github/workflows/ci.yml`) runs `pnpm lint`, `pnpm typecheck` and `pnpm build` on every PR and on pushes to `main`. `check:data` stays out of the CI on purpose: it validates `public/data/`, which only exists after a local collection.
 
-- Código em inglês; comentários e mensagens de commit em **pt-BR**, no formato Conventional Commits (`feat(...)`, `fix(...)`, `docs(...)`, `chore(release): ...`).
-- Formatação é verificada por `pnpm lint` — `eslint.config.js` aplica o `@antfu/eslint-config` (padrão do maintainer do gitview; **sem ponto-e-vírgula**, **aspas simples**) com as exceções de vue do mesmo padrão (`no-mutating-props` e `prefer-separate-static-class` off — os editors de draft mutam objetos do pai de propósito).
-- Edite arquivos UTF-8 com editor de verdade — em Windows/PowerShell, nada de `Set-Content`/redireção (mojibake).
+## Style
 
-## Changesets — obrigatório em toda mudança
+- Code in English; comments and commit messages in **pt-BR**, Conventional Commits format (`feat(...)`, `fix(...)`, `docs(...)`, `chore(release): ...`).
+  - Why pt-BR: the team that builds and maintains gitview works in pt-BR and the commit history is that team's working log; code and public docs stay in English so the open-source community can use the project.
+- Formatting is enforced by `pnpm lint` — `eslint.config.js` applies `@antfu/eslint-config` (the maintainer's standard; **no semicolons**, **single quotes**) with the same vue exceptions as that standard (`no-mutating-props` and `prefer-separate-static-class` off — draft editors intentionally mutate parent objects).
+- Edit UTF-8 files with a real editor — on Windows/PowerShell, never `Set-Content`/redirection (mojibake).
 
-Toda mudança de código vem com um changeset:
+## Changesets — mandatory for every change
+
+Every code change ships with a changeset:
 
 ```bash
 pnpm changeset   # minor = feature · patch = fix
 ```
 
-A release é aplicada por quem mantém: `pnpm version:packages` bumpa a versão, escreve o `CHANGELOG.md` e resulta num commit único `chore(release): X.Y.Z`. PR com mudança de código sem changeset pedido = revisão devolve.
+The release is applied by the maintainer: `pnpm version:packages` bumps the version, writes the `CHANGELOG.md` and results in a single `chore(release): X.Y.Z` commit. Work commits that close roadmap issues end their body with `Ref: #N`. A PR with code changes and no changeset comes back in review.
 
-## dev-only vs build estático (importante)
+## dev-only vs static build (important)
 
-Os endpoints de escrita (`/__setup/*`, `/__collect`, `/__clean`, `/__team/config`, `/__team/github`) são **middleware do dev server** — não existem no `pnpm build`. Consequências:
+The write endpoints (`/__setup/*`, `/__collect`, `/__clean`, `/__team/config`, `/__team/github`) are **dev-server middleware** — they do not exist in `pnpm build`. Consequences:
 
-- `/setup` (wizard), `/settings` e o botão de coleta (↻) só funcionam em `pnpm dev`.
-- `/teams` e `/repos` renderizam sempre (os dados vêm dos JSONs), mas **editam** só no dev — no build estático são somente leitura.
+- `/setup` (wizard), `/settings` and the re-collect button (↻) only work under `pnpm dev`.
+- `/teams` and `/repos` always render (the data comes from the JSONs), but only **edit** in dev — in the static build they are read-only.
 
-Se sua feature depende de escrever config/dados pela UI, ela nasce atrás de `import.meta.env.DEV` e **precisa degradar bem no estático**: a página continua renderizando os dados, só sem os controles de edição. Feature nova que não respeita isso não entra.
+If your feature needs to write config/data through the UI, it is born behind `import.meta.env.DEV` and **must degrade gracefully in the static build**: the page keeps rendering the data, just without the editing controls. A new feature that does not respect this will not land.
 
-## Arquitetura
+## The doc pairs (README + CONTRIBUTING)
 
-O `AGENTS.md` na raiz documenta o pipeline (git → SQLite → `public/data/*.json`), o contrato de `route.meta`/guards e as regras dos filtros — leia antes de mexer em coletores ou métricas; vários comportamentos "estranhos" dos filtros são intencionais e estão rotulados na UI.
+`README.md` (English) is the primary document and `README.pt-BR.md` is a section-by-section mirror — this file and `CONTRIBUTING.pt-BR.md` follow the same rule. Any documentation change updates both files of the pair in the same change, and any command or label you cite must exist in `package.json`/the components.
+
+## Reporting bugs
+
+Open a GitHub issue with what you did, what you expected and what happened — collector output and `check:data` warnings make bugs much faster to pin down. Remember the tool is read-only over analyzed repos and never writes to them.
+
+## Architecture
+
+The `AGENTS.md` at the root documents the pipeline (git → SQLite → `public/data/*.json`), the `route.meta`/guards contract and the filter rules — read it before touching collectors or metrics; several "weird" filter behaviors are intentional and labeled in the UI.
