@@ -64,7 +64,9 @@ const botAuthors = stats ? botAuthorNames(config, stats.authors ?? []) : new Set
 
 // times por dev (chave = nome canônico exato; match case-insensitive pra ser tolerante)
 const teams = (config.teams ?? []).map((t) => {
-  const renamedFrom = [...new Set(t.renamedFrom ?? [])].filter(n => n.toLowerCase() !== t.name.toLowerCase())
+  // Array.isArray: team.local.json editado à mão pode trazer renamedFrom como
+  // string — [...new Set('abc')] viraria 1 entrada POR CARACTERE no team.json
+  const renamedFrom = [...new Set(Array.isArray(t.renamedFrom) ? t.renamedFrom : [])].filter(n => n.toLowerCase() !== t.name.toLowerCase())
   return {
     name: t.name,
     description: t.description ?? null,

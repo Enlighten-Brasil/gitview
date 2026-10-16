@@ -38,26 +38,33 @@ loadTeam()
 const wanted = computed(() => String(route.params.name ?? ''))
 const loaded = computed(() => team.value != null)
 
+// NFC: o config pode ter sido editado em macOS (NFD) e a URL chega NFC —
+// comparar sem normalizar faria um nome válido cair em "não encontrado"
+const norm = (s: string) => s.normalize('NFC').toLowerCase()
+
 /** casa exato (case-insensitive) — o nome atual do time */
 const current = computed(() => {
-  const w = wanted.value.toLowerCase()
+  const w = norm(wanted.value)
   if (!w)
     return null
-  return (team.value?.teams ?? []).find(t => t.name.toLowerCase() === w) ?? null
+  return (team.value?.teams ?? []).find(t => norm(t.name) === w) ?? null
 })
 
 /** nome antigo (time renomeado) — mantém links compartilhados vivos via redirect */
 const former = computed(() => {
   if (current.value)
     return null
-  const w = wanted.value.toLowerCase()
-  return (team.value?.teams ?? []).find(t => (t.renamedFrom ?? []).some(n => n.toLowerCase() === w)) ?? null
+  const w = norm(wanted.value)
+  return (team.value?.teams ?? []).find(t => (t.renamedFrom ?? []).some(n => norm(n) === w)) ?? null
 })
 
+// immediate: com o team.json QUENTE (navegação interna após um loadTeam(true) —
+// ex.: renomeou/salvou e voltou), 'former' já nasce verdadeiro no mount e sem
+// immediate o watch nunca dispararia: a página ficaria presa no skeleton
 watch(former, (t) => {
   if (t)
     router.replace({ path: `/teams/${encodeURIComponent(t.name)}`, query: route.query })
-})
+}, { immediate: true })
 
 // travamento dos devs: mudou o time (ou o team.json chegou), trava os membros.
 // O segundo watch devolve o lock se algo limpar/alterar filters.authors nesta

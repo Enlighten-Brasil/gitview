@@ -33,14 +33,33 @@ import { cloneBare, discoverRepos, MANAGED_REPOS_DIR, mapPool, resolveReposRootS
 const tsxCli = join(rootDir, 'node_modules', 'tsx', 'dist', 'cli.mjs')
 
 /** roda um script dos coletores e captura a saída (sem SSE — usado no save do /teams) */
-function runScript(script: string, args: string[] = []): Promise<{ code: number, out: string }> {
+function runScript(script: string, args: string[] = [], timeoutMs = 45_000): Promise<{ code: number, out: string }> {
   return new Promise((resolvePromise) => {
     const child = spawn(process.execPath, [tsxCli, script, ...args], { cwd: rootDir })
     let out = ''
+    let done = false
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const finish = (code: number) => {
+      if (done)
+        return
+      done = true
+      if (timer)
+        clearTimeout(timer)
+      resolvePromise({ code, out })
+    }
+    // JSON POST sem canal de progresso: um filho pendurado travaria o request
+    timer = setTimeout(() => {
+      child.kill()
+      out += `\n! timeout de ${timeoutMs / 1000}s — ${script} interrompido`
+      finish(1)
+    }, timeoutMs)
     child.stdout.on('data', (c: Buffer) => out += c.toString('utf-8'))
     child.stderr.on('data', (c: Buffer) => out += c.toString('utf-8'))
-    child.on('error', err => resolvePromise({ code: 1, out: String(err.message) }))
-    child.on('close', code => resolvePromise({ code: code ?? 1, out }))
+    child.on('error', (err) => {
+      out += String(err.message)
+      finish(1)
+    })
+    child.on('close', code => finish(code ?? 1))
   })
 }
 
