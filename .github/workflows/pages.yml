@@ -9,6 +9,12 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # rebuild mensal: o fixture ancora as datas em "hoje" na hora do build, então
+  # sem pushes a demo envelheceria fora dos presets curtos (issue #21).
+  # Aviso: o GitHub desabilita schedules após ~60 dias sem atividade no repo —
+  # nesse caso o workflow_dispatch manual continua disponível.
+  schedule:
+    - cron: '0 6 1 * *'
 
 permissions:
   contents: read
