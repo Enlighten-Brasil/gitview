@@ -7,12 +7,12 @@
  */
 import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { collectError, collectSucceeded, collecting, startCollect } from '@/collect'
+import { collectError, collecting, collectSucceeded, startCollect } from '@/collect'
+import RunLog from '@/components/setup/RunLog.vue'
+import { resetBoot } from '@/router/guards'
 import { setupApplying, setupDone, setupError, startSetupApply } from '@/setup'
 import { loadTeam, team } from '@/team'
-import { resetBoot } from '@/router/guards'
 import { readWizardSelection } from '@/wizard'
-import RunLog from '@/components/setup/RunLog.vue'
 
 definePage({
   meta: {

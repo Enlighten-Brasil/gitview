@@ -16,15 +16,16 @@ Requisitos: **Node 24+** (o `node:sqlite` é nativo) e **pnpm 10+**. O `.env` é
 Não há suíte de testes; estes são os checks:
 
 ```bash
-pnpm typecheck   # tsc --noEmit (scripts + src; templates .vue ficam fora)
-pnpm build       # vite build — o check de compilação
-pnpm check:data  # valida shape + invariantes dos JSONs coletados (roda no fim do pnpm collect)
+pnpm lint      # eslint (@antfu/eslint-config, padrão do time) — zero erros é requisito
+pnpm typecheck # tsc --noEmit (scripts + src; templates .vue ficam fora)
+pnpm build     # vite build — o check de compilação
+pnpm check:data # valida shape + invariantes dos JSONs coletados (roda no fim do pnpm collect)
 ```
 
 ## Estilo
 
 - Código em inglês; comentários e mensagens de commit em **pt-BR**, no formato Conventional Commits (`feat(...)`, `fix(...)`, `docs(...)`, `chore(release): ...`).
-- Formatação segue o estilo `@antfu/eslint-config` — **sem ponto-e-vírgula**, **aspas simples**. Não há config de ESLint nem script `lint` no repo: espelhe os arquivos vizinhos (o `pnpm typecheck` pega o resto).
+- Formatação é verificada por `pnpm lint` — `eslint.config.js` aplica o `@antfu/eslint-config` (padrão da org; **sem ponto-e-vírgula**, **aspas simples**) com as mesmas exceções de vue do en-space (`no-mutating-props` e `prefer-separate-static-class` off — os editors de draft mutam objetos do pai de propósito).
 - Edite arquivos UTF-8 com editor de verdade — em Windows/PowerShell, nada de `Set-Content`/redireção (mojibake).
 
 ## Changesets — obrigatório em toda mudança

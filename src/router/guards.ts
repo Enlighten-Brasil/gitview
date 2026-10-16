@@ -1,7 +1,7 @@
 import type { Router } from 'vue-router'
+import type { SetupStatus } from '@/setup'
 import { loadStats, stats } from '@/data'
 import { fetchSetupStatus } from '@/setup'
-import type { SetupStatus } from '@/setup'
 import { readWizardSelection } from '@/wizard'
 
 /** endpoints /__* só existem no dev server (middleware do Vite) */

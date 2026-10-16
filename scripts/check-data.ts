@@ -8,6 +8,7 @@
  */
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
+import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
 const DATA_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'data')
@@ -17,11 +18,13 @@ const errors: string[] = []
 const warnings: string[] = []
 
 function check(cond: boolean, msg: string): void {
-  if (!cond) errors.push(msg)
+  if (!cond)
+    errors.push(msg)
 }
 
 function warn(cond: boolean, msg: string): void {
-  if (!cond) warnings.push(msg)
+  if (!cond)
+    warnings.push(msg)
 }
 
 function load(file: string): Record<string, unknown> | null {
@@ -56,7 +59,8 @@ function listShape(data: Record<string, unknown>, key: string, fields: string[],
     return
   }
   if (!v.length) {
-    if (!allowEmpty) errors.push(`${where}.${key}: lista vazia`)
+    if (!allowEmpty)
+      errors.push(`${where}.${key}: lista vazia`)
     return
   }
   const first = v[0]
@@ -65,19 +69,22 @@ function listShape(data: Record<string, unknown>, key: string, fields: string[],
     return
   }
   for (const f of fields) {
-    if (!(f in (first as Record<string, unknown>))) errors.push(`${where}.${key}[0]: campo ausente "${f}"`)
+    if (!(f in (first as Record<string, unknown>)))
+      errors.push(`${where}.${key}[0]: campo ausente "${f}"`)
   }
 }
 
 function genAt(data: Record<string, unknown>, where: string): void {
   const g = data.generatedAt
-  if (typeof g !== 'string' || Number.isNaN(Date.parse(g))) errors.push(`${where}.generatedAt: ISO inválido`)
+  if (typeof g !== 'string' || Number.isNaN(Date.parse(g)))
+    errors.push(`${where}.generatedAt: ISO inválido`)
 }
 
 /** lista de strings (ex.: stats.repos) */
 function stringList(data: Record<string, unknown>, key: string, where: string): void {
   const v = data[key]
-  if (!isArr(v) || !v.every(x => typeof x === 'string')) errors.push(`${where}.${key}: esperado lista de strings`)
+  if (!isArr(v) || !v.every(x => typeof x === 'string'))
+    errors.push(`${where}.${key}: esperado lista de strings`)
 }
 
 // ── stats.json ────────────────────────────────────────────────────────────
@@ -93,11 +100,15 @@ if (stats) {
   listShape(stats, 'monthly', ['month', 'commits'], 'stats.json')
   listShape(stats, 'heatmap', ['author', 'weekday', 'hour', 'commits'], 'stats.json')
   listShape(stats, 'monthlyTypes', ['month', 'type', 'commits'], 'stats.json')
-  if (!stats.repoUrls || typeof stats.repoUrls !== 'object') errors.push('stats.json.repoUrls: esperado objeto')
+  if (!stats.repoUrls || typeof stats.repoUrls !== 'object')
+    errors.push('stats.json.repoUrls: esperado objeto')
   // commits por autor somam >= 0 e authors tem flag bot booleana
   if (isArr(stats.authors)) {
     for (const a of stats.authors as Record<string, unknown>[]) {
-      if (typeof a.bot !== 'boolean') { errors.push(`stats.authors["${a.name}"].bot: não booleano`); break }
+      if (typeof a.bot !== 'boolean') {
+        errors.push(`stats.authors["${a.name}"].bot: não booleano`)
+        break
+      }
     }
   }
 
@@ -114,7 +125,10 @@ if (stats) {
   for (const r of (isArr(stats.perRepo) ? stats.perRepo : []) as Record<string, unknown>[]) {
     perRepoCommits.set(String(r.repo), Number(r.commits) || 0)
     const t = Date.parse(String(r.lastCommit ?? ''))
-    if (Number.isNaN(t)) { errors.push(`stats.perRepo["${r.repo}"].lastCommit: data inválida`); continue }
+    if (Number.isNaN(t)) {
+      errors.push(`stats.perRepo["${r.repo}"].lastCommit: data inválida`)
+      continue
+    }
     warn(t <= now + 86_400_000, `stats.perRepo["${r.repo}"].lastCommit no futuro (${r.lastCommit}) — relógio do autor errado? (quebra o watermark incremental)`)
   }
   for (const a of (isArr(stats.perAuthor) ? stats.perAuthor : []) as Record<string, unknown>[]) {
@@ -128,7 +142,10 @@ if (stats) {
     }
   }
   for (const m of (isArr(stats.monthly) ? stats.monthly : []) as Record<string, unknown>[]) {
-    if (!/^\d{4}-\d{2}$/.test(String(m.month))) { errors.push(`stats.monthly: month fora do formato YYYY-MM ("${m.month}")`); break }
+    if (!/^\d{4}-\d{2}$/.test(String(m.month))) {
+      errors.push(`stats.monthly: month fora do formato YYYY-MM ("${m.month}")`)
+      break
+    }
   }
 }
 
@@ -145,18 +162,31 @@ if (commits) {
   let mergeLike = 0
   for (const c of list) {
     const d = String(c.date ?? '')
-    if (!d.endsWith('Z')) { errors.push(`commits.json: data sem UTC uniforme ("${d}") — rode a coleta de novo`); break }
+    if (!d.endsWith('Z')) {
+      errors.push(`commits.json: data sem UTC uniforme ("${d}") — rode a coleta de novo`)
+      break
+    }
     const t = Date.parse(d)
-    if (Number.isNaN(t)) { errors.push(`commits.json: data inválida ("${d}")`); break }
-    if (t > prev) { errors.push(`commits.json: fora de ordem cronológica em "${c.hash}" (${d})`); break }
+    if (Number.isNaN(t)) {
+      errors.push(`commits.json: data inválida ("${d}")`)
+      break
+    }
+    if (t > prev) {
+      errors.push(`commits.json: fora de ordem cronológica em "${c.hash}" (${d})`)
+      break
+    }
     prev = t
-    if (!/^[0-9a-f]{7}$/.test(String(c.hash ?? ''))) { errors.push(`commits.json: hash fora do formato 7-hex ("${c.hash}")`); break }
+    if (!/^[0-9a-f]{7}$/.test(String(c.hash ?? ''))) {
+      errors.push(`commits.json: hash fora do formato 7-hex ("${c.hash}")`)
+      break
+    }
     // commits de merge topológicos saem pelo --no-merges (decisão #7). Os que
     // sobram com assunto de merge são single-parent (squash/pull regravado) —
     // se têm diff zero, só inflam contagem: revisão manual (aviso, não bloqueia)
-    if (/^Merge (branch|remote-tracking branch|pull request|refs\/)/.test(String(c.message ?? '')) && Number(c.additions) === 0 && Number(c.deletions) === 0)
+    if (/^Merge (?:branch|remote-tracking branch|pull request|refs\/)/.test(String(c.message ?? '')) && Number(c.additions) === 0 && Number(c.deletions) === 0)
       mergeLike++
-    if (++checked >= 4000) break // amostra generosa — não precisa varrer tudo
+    if (++checked >= 4000)
+      break // amostra generosa — não precisa varrer tudo
   }
   if (mergeLike)
     warn(false, `commits.json: ${mergeLike} commits com assunto de merge e diff zero na amostra — single-parent (squash/pull regravado), candidate a excluir (decisão #7)`)
@@ -184,14 +214,24 @@ if (github) {
   let staleMerged = 0
   let oldestStale = ''
   for (const p of (isArr(github.prs) ? github.prs : []) as Record<string, unknown>[]) {
-    if (p.state !== 'OPEN' && p.state !== 'MERGED') { errors.push(`github.prs ${p.repo}#${p.number}: state inesperado "${p.state}"`); break }
-    if (p.state === 'MERGED' && (typeof p.mergedAt !== 'string' || Number.isNaN(Date.parse(p.mergedAt)))) { errors.push(`github.prs ${p.repo}#${p.number}: MERGED sem mergedAt válido`); break }
+    if (p.state !== 'OPEN' && p.state !== 'MERGED') {
+      errors.push(`github.prs ${p.repo}#${p.number}: state inesperado "${p.state}"`)
+      break
+    }
+    if (p.state === 'MERGED' && (typeof p.mergedAt !== 'string' || Number.isNaN(Date.parse(p.mergedAt)))) {
+      errors.push(`github.prs ${p.repo}#${p.number}: MERGED sem mergedAt válido`)
+      break
+    }
     if (p.state === 'MERGED' && typeof p.mergedAt === 'string' && Number.isFinite(windowMs) && Date.parse(p.mergedAt) < windowMs) {
       staleMerged++
-      if (!oldestStale || p.mergedAt < oldestStale) oldestStale = p.mergedAt
+      if (!oldestStale || p.mergedAt < oldestStale)
+        oldestStale = p.mergedAt
     }
     const key = `${p.repo}#${p.number}`
-    if (seenPr.has(key)) { errors.push(`github.prs: PR duplicado ${key}`); break }
+    if (seenPr.has(key)) {
+      errors.push(`github.prs: PR duplicado ${key}`)
+      break
+    }
     seenPr.add(key)
   }
   if (staleMerged)
@@ -211,14 +251,26 @@ if (releases) {
     let tagCommits = 0
     for (const t of tags) {
       const ms = Date.parse(String(t.date ?? ''))
-      if (Number.isNaN(ms)) { errors.push(`releases["${r.repo}"]: tag "${t.tag}" com data inválida`); break }
-      if (ms > prevT) { errors.push(`releases["${r.repo}"]: tags fora de ordem desc ("${t.tag}")`); break }
+      if (Number.isNaN(ms)) {
+        errors.push(`releases["${r.repo}"]: tag "${t.tag}" com data inválida`)
+        break
+      }
+      if (ms > prevT) {
+        errors.push(`releases["${r.repo}"]: tags fora de ordem desc ("${t.tag}")`)
+        break
+      }
       prevT = ms
-      if (Number(t.commits) < 0) { errors.push(`releases["${r.repo}"]: tag "${t.tag}" com commits negativos`); break }
+      if (Number(t.commits) < 0) {
+        errors.push(`releases["${r.repo}"]: tag "${t.tag}" com commits negativos`)
+        break
+      }
       tagCommits += Number(t.commits) || 0
     }
     const unreleased = Number(r.unreleased)
-    if (!Number.isFinite(unreleased) || unreleased < 0) { errors.push(`releases["${r.repo}"]: unreleased inválido`); continue }
+    if (!Number.isFinite(unreleased) || unreleased < 0) {
+      errors.push(`releases["${r.repo}"]: unreleased inválido`)
+      continue
+    }
     const expected = perRepoCommits.get(String(r.repo))
     if (expected != null && expected > 0 && unreleased + tagCommits !== expected)
       errors.push(`releases["${r.repo}"]: unreleased (${unreleased}) + commits em tags (${tagCommits}) != commits do repo (${expected})`)
@@ -235,13 +287,15 @@ if (team) {
 
   const devs = (isArr(team.devs) ? team.devs : []) as Record<string, unknown>[]
   const names = new Set(devs.map(d => d.name))
-  if (names.size !== devs.length) errors.push('team.json.devs: nomes duplicados')
+  if (names.size !== devs.length)
+    errors.push('team.json.devs: nomes duplicados')
 
   // membro de time precisa ser dev conhecido (senão badge/membro órfão na UI)
   if (isArr(team.teams)) {
     for (const t of team.teams as Record<string, unknown>[]) {
       for (const m of (isArr(t.members) ? t.members : []) as string[]) {
-        if (!names.has(m)) errors.push(`team.json.teams["${t.name}"]: membro "${m}" não é dev conhecido`)
+        if (!names.has(m))
+          errors.push(`team.json.teams["${t.name}"]: membro "${m}" não é dev conhecido`)
       }
     }
   }
@@ -250,9 +304,12 @@ if (team) {
   if (isArr(team.candidates)) {
     for (const c of team.candidates as Record<string, unknown>[]) {
       const id = String(c.id).toLowerCase()
-      if (id === 'ghost') errors.push('team.json.candidates: "ghost" (PR apagado) não deveria ser candidato')
-      if (/(?:\[bot\]|-bot$|^dependabot)/.test(id)) errors.push(`team.json.candidates: bot "${c.id}" não deveria ser candidato`)
-      if (c.kind !== 'login' && c.kind !== 'author') errors.push(`team.json.candidates: kind inesperado "${c.kind}"`)
+      if (id === 'ghost')
+        errors.push('team.json.candidates: "ghost" (PR apagado) não deveria ser candidato')
+      if (/\[bot\]|-bot$|^dependabot/.test(id))
+        errors.push(`team.json.candidates: bot "${c.id}" não deveria ser candidato`)
+      if (c.kind !== 'login' && c.kind !== 'author')
+        errors.push(`team.json.candidates: kind inesperado "${c.kind}"`)
     }
   }
 
@@ -261,7 +318,10 @@ if (team) {
     const seen = new Set<string>()
     for (const l of (isArr(d.githubLogins) ? d.githubLogins : []) as string[]) {
       const k = l.toLowerCase()
-      if (seen.has(k)) { errors.push(`team.json.devs["${d.name}"]: login duplicado por case ("${l}")`); break }
+      if (seen.has(k)) {
+        errors.push(`team.json.devs["${d.name}"]: login duplicado por case ("${l}")`)
+        break
+      }
       seen.add(k)
     }
   }
@@ -277,7 +337,8 @@ if (team) {
     }
   }
   for (const d of devs) {
-    if (d.bot) continue
+    if (d.bot)
+      continue
     const noAlias = (isArr(d.emails) ? d.emails : []).length === 0 && (isArr(d.githubLogins) ? d.githubLogins : []).length === 0
     warn(!noAlias, `team.json.devs["${d.name}"]: sem e-mails nem logins mapeados — identidade crua do git, revisar em /teams`)
   }

@@ -7,16 +7,19 @@ const rows = computed(() => cycleTrend.value)
 /** últimos 4 meses com dados em qualquer repo (header alinhado) */
 const monthsHeader = computed(() => {
   const all = new Set<string>()
-  for (const r of rows.value) for (const m of r.months) all.add(m.month)
+  for (const r of rows.value) {
+    for (const m of r.months) all.add(m.month)
+  }
   return [...all].sort().slice(-4)
 })
 
-function medianOf(r: { months: { month: string; medianHours: number; count: number }[] }, month: string) {
+function medianOf(r: { months: { month: string, medianHours: number, count: number }[] }, month: string) {
   return r.months.find(x => x.month === month)
 }
 
-function trend(r: { months: { medianHours: number }[]; rising: boolean }): { color: 'error' | 'warning' | 'success'; label: string } {
-  if (r.rising) return { color: 'error', label: 'subindo' }
+function trend(r: { months: { medianHours: number }[], rising: boolean }): { color: 'error' | 'warning' | 'success', label: string } {
+  if (r.rising)
+    return { color: 'error', label: 'subindo' }
   const last3 = r.months.slice(-3)
   if (last3.length === 3 && last3[0].medianHours > last3[1].medianHours && last3[1].medianHours > last3[2].medianHours) {
     return { color: 'success', label: 'caindo' }
@@ -46,13 +49,19 @@ function trend(r: { months: { medianHours: number }[]; rising: boolean }): { col
         <thead>
           <tr>
             <th>repo</th>
-            <th class="num" v-for="m in monthsHeader" :key="m">{{ m }}</th>
-            <th class="num">tendência</th>
+            <th v-for="m in monthsHeader" :key="m" class="num">
+              {{ m }}
+            </th>
+            <th class="num">
+              tendência
+            </th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="r in rows" :key="r.repo">
-            <td class="font-medium">{{ r.repo }}</td>
+            <td class="font-medium">
+              {{ r.repo }}
+            </td>
             <td v-for="m in monthsHeader" :key="m" class="num whitespace-nowrap">
               <template v-if="medianOf(r, m)">
                 {{ fmtDuration(medianOf(r, m)!.medianHours) }}
@@ -61,7 +70,9 @@ function trend(r: { months: { medianHours: number }[]; rising: boolean }): { col
               <span v-else class="text-dimmed">—</span>
             </td>
             <td class="num">
-              <UBadge :color="trend(r).color" variant="soft">{{ trend(r).label }}</UBadge>
+              <UBadge :color="trend(r).color" variant="soft">
+                {{ trend(r).label }}
+              </UBadge>
             </td>
           </tr>
         </tbody>

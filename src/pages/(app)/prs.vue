@@ -1,16 +1,16 @@
 <script setup lang="ts">
+import CycleTrend from '@/components/CycleTrend.vue'
+import PrCycleTime from '@/components/PrCycleTime.vue'
+import PrOpenTable from '@/components/PrOpenTable.vue'
+import PrReviews from '@/components/PrReviews.vue'
+import PrStaleAlert from '@/components/PrStaleAlert.vue'
+import PrSummaryCards from '@/components/PrSummaryCards.vue'
 /**
  * Pull requests — seção dedicada (migrada da tab "prs" do dashboard).
  * Âncoras (#abertos/#cycle-time/#reviews) alimentam o sub-nav contextual.
  * Casa canônica de PR: parados (PrStaleAlert) e tendência (CycleTrend) moram aqui.
  */
 import { github, githubError } from '@/github'
-import PrSummaryCards from '@/components/PrSummaryCards.vue'
-import PrOpenTable from '@/components/PrOpenTable.vue'
-import PrStaleAlert from '@/components/PrStaleAlert.vue'
-import PrCycleTime from '@/components/PrCycleTime.vue'
-import CycleTrend from '@/components/CycleTrend.vue'
-import PrReviews from '@/components/PrReviews.vue'
 
 definePage({
   meta: {

@@ -5,7 +5,7 @@
  * ação ficam no slot #actions do chamador.
  */
 import { computed } from 'vue'
-import { collectError, collectLog, collecting } from '@/collect'
+import { collectError, collecting, collectLog } from '@/collect'
 import { setupApplying, setupError, setupLog } from '@/setup'
 
 const props = defineProps<{

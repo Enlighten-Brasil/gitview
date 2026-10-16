@@ -1,5 +1,5 @@
-import { computed, ref } from 'vue'
 import type { GitHubData, PullRequest } from './types'
+import { computed, ref } from 'vue'
 import { filters } from './data'
 
 export const github = ref<GitHubData | null>(null)
@@ -8,7 +8,8 @@ export const githubError = ref<string | null>(null)
 export async function loadGithub(force = false) {
   try {
     const res = await fetch(force ? `/data/github.json?t=${Date.now()}` : '/data/github.json')
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    if (!res.ok)
+      throw new Error(`HTTP ${res.status}`)
     github.value = await res.json()
     githubError.value = null
   }
@@ -34,22 +35,28 @@ function repoOk(repo: string) {
   return filters.repos.length === 0 || filters.repos.includes(repo)
 }
 function authorOk(login: string) {
-  if (!filters.showBots && ghIsBot(login)) return false
+  if (!filters.showBots && ghIsBot(login))
+    return false
   return filters.authors.length === 0 || filters.authors.includes(ghName(login))
 }
 function cutoff(): Date | null {
-  if (filters.dateFrom) return new Date(`${filters.dateFrom}T00:00:00`)
-  if (filters.rangeMonths == null) return null
+  if (filters.dateFrom)
+    return new Date(`${filters.dateFrom}T00:00:00`)
+  if (filters.rangeMonths == null)
+    return null
   const d = new Date()
   d.setMonth(d.getMonth() - filters.rangeMonths)
   return d
 }
 function inPeriod(iso: string | null): boolean {
-  if (!iso) return false
+  if (!iso)
+    return false
   const d = new Date(iso)
   const c = cutoff()
-  if (c && d < c) return false
-  if (filters.dateTo && d > new Date(`${filters.dateTo}T23:59:59`)) return false
+  if (c && d < c)
+    return false
+  if (filters.dateTo && d > new Date(`${filters.dateTo}T23:59:59`))
+    return false
   return true
 }
 
@@ -76,7 +83,8 @@ function cycleHours(pr: PullRequest): number {
 }
 
 export function median(values: number[]): number {
-  if (!values.length) return 0
+  if (!values.length)
+    return 0
   const s = [...values].sort((a, b) => a - b)
   const mid = Math.floor(s.length / 2)
   return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2
@@ -100,15 +108,18 @@ export const cycleByRepo = computed(() => {
 
 /** reviews feitas por dev no período (exclui self-review e bots) */
 export const reviewsByDev = computed(() => {
-  const byDev = new Map<string, { total: number; approvals: number; changes: number }>()
+  const byDev = new Map<string, { total: number, approvals: number, changes: number }>()
   for (const pr of mergedPrs.value) {
     for (const r of pr.reviews) {
-      if (r.author === pr.author || ghIsBot(r.author)) continue
+      if (r.author === pr.author || ghIsBot(r.author))
+        continue
       const name = ghName(r.author)
       const cur = byDev.get(name) ?? { total: 0, approvals: 0, changes: 0 }
       cur.total++
-      if (r.state === 'APPROVED') cur.approvals++
-      if (r.state === 'CHANGES_REQUESTED') cur.changes++
+      if (r.state === 'APPROVED')
+        cur.approvals++
+      if (r.state === 'CHANGES_REQUESTED')
+        cur.changes++
       byDev.set(name, cur)
     }
   }
@@ -120,18 +131,20 @@ export const reviewsByDev = computed(() => {
 /** concentração de reviews por repo no período filtrado (exclui self-review e bots) */
 export interface RepoReviewShare {
   repo: string
-  total: number          // reviews de terceiros no período
+  total: number // reviews de terceiros no período
   topReviewer: string
   topCount: number
-  topShare: number       // topCount / total
+  topShare: number // topCount / total
 }
 
 export const reviewShareByRepo = computed<RepoReviewShare[]>(() => {
   const byRepo = new Map<string, Map<string, number>>()
   for (const pr of mergedPrs.value) {
     for (const r of pr.reviews) {
-      if (r.author === pr.author || ghIsBot(r.author)) continue
-      if (!byRepo.has(pr.repo)) byRepo.set(pr.repo, new Map())
+      if (r.author === pr.author || ghIsBot(r.author))
+        continue
+      if (!byRepo.has(pr.repo))
+        byRepo.set(pr.repo, new Map())
       const m = byRepo.get(pr.repo)!
       const name = ghName(r.author)
       m.set(name, (m.get(name) ?? 0) + 1)
@@ -158,10 +171,13 @@ export const mergedWithoutReview = computed(() => {
 
 /** horas -> "18h" / "2,3d" / "1,5sem" */
 export function fmtDuration(hours: number): string {
-  if (hours < 1) return '<1h'
-  if (hours < 48) return `${Math.round(hours)}h`
+  if (hours < 1)
+    return '<1h'
+  if (hours < 48)
+    return `${Math.round(hours)}h`
   const days = hours / 24
-  if (days < 14) return `${days.toFixed(1).replace('.', ',')}d`
+  if (days < 14)
+    return `${days.toFixed(1).replace('.', ',')}d`
   return `${(days / 7).toFixed(1).replace('.', ',')}sem`
 }
 
@@ -172,7 +188,7 @@ export function fmtDuration(hours: number): string {
 export interface CycleTrendRow {
   repo: string
   /** medianas por mês, mais antigo -> mais recente (só meses com PRs) */
-  months: { month: string; medianHours: number; count: number }[]
+  months: { month: string, medianHours: number, count: number }[]
   /** últimos 3 meses com dados estão estritamente subindo */
   rising: boolean
 }
@@ -188,9 +204,11 @@ export const cycleTrend = computed<CycleTrendRow[]>(() => {
   const byRepo = new Map<string, Map<string, number[]>>()
   for (const pr of prs) {
     const month = pr.mergedAt!.slice(0, 7)
-    if (!byRepo.has(pr.repo)) byRepo.set(pr.repo, new Map())
+    if (!byRepo.has(pr.repo))
+      byRepo.set(pr.repo, new Map())
     const m = byRepo.get(pr.repo)!
-    if (!m.has(month)) m.set(month, [])
+    if (!m.has(month))
+      m.set(month, [])
     m.get(month)!.push(cycleHours(pr))
   }
 

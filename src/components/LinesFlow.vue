@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
 import type { EChartsOption } from 'echarts'
-import { filteredMonthly } from '../data'
+import { computed, ref } from 'vue'
 import { axisLabel, ct, legendText, splitLine, tooltipBase } from '../chartTheme'
+import { filteredMonthly } from '../data'
 import ChartPanel from './ChartPanel.vue'
 
 // fluxo de linhas (+ adicionadas / − removidas) por mês ou acumulado — "andamento" do código
@@ -11,15 +11,17 @@ const mode = ref<'month' | 'cumulative'>('month')
 /** 2.2M / 350k / 42 (pt-BR) */
 function compact(v: number): string {
   const abs = Math.abs(v)
-  if (abs >= 1e6) return `${(v / 1e6).toFixed(1).replace('.', ',')}M`
-  if (abs >= 1e3) return `${Math.round(v / 1e3)}k`
+  if (abs >= 1e6)
+    return `${(v / 1e6).toFixed(1).replace('.', ',')}M`
+  if (abs >= 1e3)
+    return `${Math.round(v / 1e3)}k`
   return String(v)
 }
 
 const fmtFull = (v: unknown) => Number(v).toLocaleString('pt-BR')
 
 const option = computed<EChartsOption>(() => {
-  const byMonth = new Map<string, { additions: number; deletions: number }>()
+  const byMonth = new Map<string, { additions: number, deletions: number }>()
   for (const r of filteredMonthly.value) {
     const cur = byMonth.get(r.month) ?? { additions: 0, deletions: 0 }
     cur.additions += r.additions

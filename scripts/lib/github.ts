@@ -16,11 +16,12 @@
 import { spawnSync } from 'node:child_process'
 import { loadConfig } from './config'
 
-export interface GhAuth { token: string; via: 'token (.env)' | 'gh cli' }
+export interface GhAuth { token: string, via: 'token (.env)' | 'gh cli' }
 
 export function getToken(): GhAuth | null {
   const envToken = loadConfig().githubToken
-  if (envToken) return { token: envToken, via: 'token (.env)' }
+  if (envToken)
+    return { token: envToken, via: 'token (.env)' }
   const r = spawnSync('gh', ['auth', 'token'], { encoding: 'utf-8' })
   const token = r.status === 0 ? r.stdout.trim() : ''
   return token ? { token, via: 'gh cli' } : null
@@ -37,7 +38,8 @@ export async function ghApi<T>(path: string, token: string): Promise<T> {
       'User-Agent': 'gitview',
     },
   })
-  if (!res.ok) throw new Error(`GitHub API ${path}: HTTP ${res.status}`)
+  if (!res.ok)
+    throw new Error(`GitHub API ${path}: HTTP ${res.status}`)
   return res.json() as Promise<T>
 }
 
@@ -48,7 +50,8 @@ export async function ghApiAll<T>(path: string, token: string): Promise<T[]> {
     const sep = path.includes('?') ? '&' : '?'
     const items = await ghApi<T[]>(`${path}${sep}per_page=100&page=${page}`, token)
     out.push(...items)
-    if (items.length < 100) break
+    if (items.length < 100)
+      break
   }
   return out
 }
@@ -72,7 +75,8 @@ export async function ghGraphql<T>(query: string, vars: Record<string, unknown>,
     throw new Error(`GitHub GraphQL: HTTP ${res.status}${detail}`)
   }
   const errors = (json as { errors?: { message?: string }[] }).errors
-  if (errors?.length) throw new Error(`graphql: ${String(errors[0].message ?? 'erro sem mensagem')}`)
+  if (errors?.length)
+    throw new Error(`graphql: ${String(errors[0].message ?? 'erro sem mensagem')}`)
   return (json as { data: T }).data
 }
 
@@ -81,7 +85,7 @@ export function currentUser(token: string): Promise<{ login: string }> {
 }
 
 export interface OrgEntry { login: string }
-export interface RepoEntry { name: string; archived: boolean; pushed_at: string | null; private: boolean }
+export interface RepoEntry { name: string, archived: boolean, pushed_at: string | null, private: boolean }
 
 export function listOrgs(token: string): Promise<OrgEntry[]> {
   return ghApiAll<OrgEntry>('/user/orgs', token)
@@ -135,9 +139,11 @@ export async function deviceStart(clientId: string): Promise<DeviceStart> {
     headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
     body: JSON.stringify(isGitHubApp ? { client_id: clientId } : { client_id: clientId, scope: 'repo read:org' }),
   })
-  if (!res.ok) throw new Error(`device flow: HTTP ${res.status}`)
+  if (!res.ok)
+    throw new Error(`device flow: HTTP ${res.status}`)
   const json = await res.json() as Record<string, unknown>
-  if (!json.device_code) throw new Error(`device flow: ${String(json.error_description ?? json.error ?? 'resposta inesperada')}`)
+  if (!json.device_code)
+    throw new Error(`device flow: ${String(json.error_description ?? json.error ?? 'resposta inesperada')}`)
   return {
     deviceCode: String(json.device_code),
     userCode: String(json.user_code),
@@ -146,9 +152,9 @@ export async function deviceStart(clientId: string): Promise<DeviceStart> {
   }
 }
 
-export type DevicePollResult =
-  | { status: 'pending' | 'slow_down' | 'expired' | 'denied' }
-  | { status: 'ok'; token: string }
+export type DevicePollResult
+  = | { status: 'pending' | 'slow_down' | 'expired' | 'denied' }
+    | { status: 'ok', token: string }
 
 export async function devicePoll(clientId: string, deviceCode: string): Promise<DevicePollResult> {
   const res = await fetch('https://github.com/login/oauth/access_token', {
@@ -160,9 +166,11 @@ export async function devicePoll(clientId: string, deviceCode: string): Promise<
       grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
     }),
   })
-  if (!res.ok) throw new Error(`device poll: HTTP ${res.status}`)
+  if (!res.ok)
+    throw new Error(`device poll: HTTP ${res.status}`)
   const json = await res.json() as Record<string, unknown>
-  if (json.access_token) return { status: 'ok', token: String(json.access_token) }
+  if (json.access_token)
+    return { status: 'ok', token: String(json.access_token) }
   switch (json.error) {
     case 'authorization_pending': return { status: 'pending' }
     case 'slow_down': return { status: 'slow_down' }

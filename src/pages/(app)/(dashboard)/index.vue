@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { loadError, stats } from '@/data'
-import SummaryCards from '@/components/SummaryCards.vue'
 import AlertStrip from '@/components/AlertStrip.vue'
 import CommitsTimeline from '@/components/CommitsTimeline.vue'
+import SummaryCards from '@/components/SummaryCards.vue'
+import { loadError, stats } from '@/data'
 </script>
 
 <template>

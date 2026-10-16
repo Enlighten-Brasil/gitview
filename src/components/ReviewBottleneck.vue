@@ -7,9 +7,11 @@ const rows = computed(() =>
   reviewShareByRepo.value.filter(r => r.total >= 5),
 )
 
-function risk(r: { topShare: number }): { color: 'error' | 'warning' | 'success'; label: string; hex: string } {
-  if (r.topShare >= 0.7) return { color: 'error', label: 'gargalo', hex: 'var(--ui-error)' }
-  if (r.topShare >= 0.5) return { color: 'warning', label: 'atenção', hex: 'var(--ui-warning)' }
+function risk(r: { topShare: number }): { color: 'error' | 'warning' | 'success', label: string, hex: string } {
+  if (r.topShare >= 0.7)
+    return { color: 'error', label: 'gargalo', hex: 'var(--ui-error)' }
+  if (r.topShare >= 0.5)
+    return { color: 'warning', label: 'atenção', hex: 'var(--ui-warning)' }
   return { color: 'success', label: 'ok', hex: 'var(--ui-success)' }
 }
 </script>
@@ -32,15 +34,23 @@ function risk(r: { topShare: number }): { color: 'error' | 'warning' | 'success'
         <thead>
           <tr>
             <th>repo</th>
-            <th style="width: 34%">concentração</th>
+            <th style="width: 34%">
+              concentração
+            </th>
             <th>reviewer principal</th>
-            <th class="num">reviews</th>
-            <th class="num">status</th>
+            <th class="num">
+              reviews
+            </th>
+            <th class="num">
+              status
+            </th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="r in rows" :key="r.repo">
-            <td class="font-medium">{{ r.repo }}</td>
+            <td class="font-medium">
+              {{ r.repo }}
+            </td>
             <td>
               <div class="flex items-center gap-2">
                 <div class="h-2 flex-1 rounded bg-accented overflow-hidden">
@@ -50,9 +60,13 @@ function risk(r: { topShare: number }): { color: 'error' | 'warning' | 'success'
               </div>
             </td>
             <td>{{ r.topReviewer }}</td>
-            <td class="num">{{ r.total }}</td>
             <td class="num">
-              <UBadge :color="risk(r).color" variant="soft">{{ risk(r).label }}</UBadge>
+              {{ r.total }}
+            </td>
+            <td class="num">
+              <UBadge :color="risk(r).color" variant="soft">
+                {{ risk(r).label }}
+              </UBadge>
             </td>
           </tr>
         </tbody>

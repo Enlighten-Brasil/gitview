@@ -1,10 +1,10 @@
 <script setup lang="ts">
+import type { EChartsOption } from 'echarts'
 import * as echarts from 'echarts/core'
 import { ref } from 'vue'
 import VChart from 'vue-echarts'
-import type { EChartsOption } from 'echarts'
-import '../echarts' // registro dos charts/renderers (side-effect) — chunk só das rotas com gráfico
 import { ct } from '../chartTheme'
+import '../echarts' // registro dos charts/renderers (side-effect) — chunk só das rotas com gráfico
 
 const props = defineProps<{
   title: string
@@ -18,7 +18,8 @@ const wrap = ref<HTMLElement>()
 function exportPng() {
   const dom = wrap.value?.querySelector('[_echarts_instance_]') as HTMLElement | null
   const instance = dom ? echarts.getInstanceByDom(dom) : undefined
-  if (!instance) return
+  if (!instance)
+    return
   const url = instance.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: ct.bg })
   const a = document.createElement('a')
   a.href = url

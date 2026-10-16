@@ -51,8 +51,12 @@ function fmtDate(iso: string): string {
         <table v-else class="data-table">
           <tbody>
             <tr v-for="r in staleRepos" :key="r.repo">
-              <td class="font-medium">{{ r.repo }}</td>
-              <td class="num whitespace-nowrap text-muted">{{ fmtDate(r.last) }}</td>
+              <td class="font-medium">
+                {{ r.repo }}
+              </td>
+              <td class="num whitespace-nowrap text-muted">
+                {{ fmtDate(r.last) }}
+              </td>
               <td class="num whitespace-nowrap">
                 <span :class="r.days >= 90 ? 'text-error font-medium' : 'text-warning'">{{ r.days }}d</span>
               </td>
@@ -72,7 +76,9 @@ function fmtDate(iso: string): string {
           <tbody>
             <tr v-for="d in staleDevs" :key="d.author">
               <td>{{ d.author }}</td>
-              <td class="num whitespace-nowrap text-muted">{{ fmtDate(d.last) }}</td>
+              <td class="num whitespace-nowrap text-muted">
+                {{ fmtDate(d.last) }}
+              </td>
               <td class="num whitespace-nowrap">
                 <span :class="d.days >= 60 ? 'text-error font-medium' : 'text-warning'">{{ d.days }}d</span>
               </td>

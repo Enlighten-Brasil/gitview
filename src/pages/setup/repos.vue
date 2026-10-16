@@ -1,11 +1,11 @@
 <script setup lang="ts">
+import type { SetupStatus } from '@/setup'
 /** Passo 2 do wizard: escolher os repositórios que entram no dashboard. */
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { getCachedStatus } from '@/router/guards'
-import type { SetupStatus } from '@/setup'
-import { writeWizardSelection } from '@/wizard'
 import RepoPicker from '@/components/setup/RepoPicker.vue'
+import { getCachedStatus } from '@/router/guards'
+import { writeWizardSelection } from '@/wizard'
 
 definePage({
   meta: {

@@ -1,11 +1,11 @@
 <script setup lang="ts">
+import type { EChartsOption } from 'echarts'
 import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import type { EChartsOption } from 'echarts'
-import { filters, inRange, isCustomRange, loadCommits, rangeLabel, recentCommits, stats } from '@/data'
-import { fmtDuration, ghName, github, median } from '@/github'
 import { axisLabel, ct, heatRamp, legendText, PALETTE, splitLine, tooltipBase } from '@/chartTheme'
 import ChartPanel from '@/components/ChartPanel.vue'
+import { filters, inRange, isCustomRange, loadCommits, rangeLabel, recentCommits, stats } from '@/data'
+import { fmtDuration, ghName, github, median } from '@/github'
 
 // rota de detalhe do dev (era /dev/:name — alias mantém os links antigos)
 definePage({
@@ -29,18 +29,22 @@ const authorStats = computed(() =>
 
 // sugestões de nomes parecidos quando o dev não existe (fuzzy por substring/lower)
 const suggestions = computed(() => {
-  if (!stats.value || authorStats.value) return []
+  if (!stats.value || authorStats.value)
+    return []
   const q = dev.value.toLowerCase()
-  if (!q) return []
+  if (!q)
+    return []
   const all = stats.value.perAuthor.map(a => a.author)
   const exact = all.filter(n => n.toLowerCase().includes(q) || q.includes(n.toLowerCase()))
-  const pool = exact.length ? exact : all.filter(n => {
-    const nl = n.toLowerCase()
-    // tokens em comum (nome/sobrenome parcial)
-    const qt = q.split(/[\s._-]+/).filter(Boolean)
-    const nt = nl.split(/[\s._-]+/).filter(Boolean)
-    return qt.some(t => nt.some(x => x.startsWith(t) || t.startsWith(x)))
-  })
+  const pool = exact.length
+    ? exact
+    : all.filter((n) => {
+        const nl = n.toLowerCase()
+        // tokens em comum (nome/sobrenome parcial)
+        const qt = q.split(/[\s._-]+/).filter(Boolean)
+        const nt = nl.split(/[\s._-]+/).filter(Boolean)
+        return qt.some(t => nt.some(x => x.startsWith(t) || t.startsWith(x)))
+      })
   return pool.slice(0, 5)
 })
 

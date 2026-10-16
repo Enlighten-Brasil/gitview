@@ -6,7 +6,7 @@
  */
 import { avatarBgClass, initialsOf } from '@/team'
 
-const props = defineProps<{
+defineProps<{
   name: string
   title: string | null
   description: string | null

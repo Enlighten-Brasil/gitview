@@ -1,5 +1,5 @@
-import { computed, reactive, ref } from 'vue'
 import type { CommitRow, Stats } from './types'
+import { computed, reactive, ref } from 'vue'
 
 export const stats = ref<Stats | null>(null)
 export const loadError = ref<string | null>(null)
@@ -7,10 +7,12 @@ export const loadError = ref<string | null>(null)
 /** commits recentes (últimos 100/autor) — carregado sob demanda pela página do dev */
 export const recentCommits = ref<CommitRow[] | null>(null)
 export async function loadCommits(force = false) {
-  if (recentCommits.value && !force) return
+  if (recentCommits.value && !force)
+    return
   try {
     const res = await fetch(force ? `/data/commits.json?t=${Date.now()}` : '/data/commits.json')
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    if (!res.ok)
+      throw new Error(`HTTP ${res.status}`)
     recentCommits.value = (await res.json()).commits
   }
   catch {
@@ -19,8 +21,8 @@ export async function loadCommits(force = false) {
 }
 
 export const filters = reactive({
-  repos: [] as string[],      // vazio = todos
-  authors: [] as string[],    // vazio = todos
+  repos: [] as string[], // vazio = todos
+  authors: [] as string[], // vazio = todos
   rangeMonths: 12 as number | null, // null = todo o histórico
   /** range customizado (YYYY-MM-DD) — quando preenchido, prevalece sobre rangeMonths */
   dateFrom: null as string | null,
@@ -41,7 +43,8 @@ export function isBot(author: string) {
 export async function loadStats(force = false) {
   try {
     const res = await fetch(force ? `/data/stats.json?t=${Date.now()}` : '/data/stats.json')
-    if (!res.ok) throw new Error(`HTTP ${res.status} — rode "pnpm collect" primeiro`)
+    if (!res.ok)
+      throw new Error(`HTTP ${res.status} — rode "pnpm collect" primeiro`)
     stats.value = await res.json()
     loadError.value = null
   }
@@ -51,8 +54,10 @@ export async function loadStats(force = false) {
 }
 
 function cutoffDate(): Date | null {
-  if (filters.dateFrom) return new Date(`${filters.dateFrom}T00:00:00`)
-  if (filters.rangeMonths == null) return null
+  if (filters.dateFrom)
+    return new Date(`${filters.dateFrom}T00:00:00`)
+  if (filters.rangeMonths == null)
+    return null
   const d = new Date()
   d.setMonth(d.getMonth() - filters.rangeMonths)
   return d
@@ -63,12 +68,15 @@ export function inRange(periodKey: string): boolean {
   const key = periodKey.slice(0, 7)
   // range customizado: compara mês a mês com from/to
   if (isCustomRange()) {
-    if (filters.dateFrom && key < filters.dateFrom.slice(0, 7)) return false
-    if (filters.dateTo && key > filters.dateTo.slice(0, 7)) return false
+    if (filters.dateFrom && key < filters.dateFrom.slice(0, 7))
+      return false
+    if (filters.dateTo && key > filters.dateTo.slice(0, 7))
+      return false
     return true
   }
   const cutoff = cutoffDate()
-  if (!cutoff) return true
+  if (!cutoff)
+    return true
   // periodKey é "YYYY-Www" ou "YYYY-MM" — compara pelo começo do período
   return key >= `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, '0')}`
 }
@@ -77,7 +85,8 @@ function selectedRepo(repo: string) {
   return filters.repos.length === 0 || filters.repos.includes(repo)
 }
 function selectedAuthor(author: string) {
-  if (!filters.showBots && isBot(author)) return false
+  if (!filters.showBots && isBot(author))
+    return false
   return filters.authors.length === 0 || filters.authors.includes(author)
 }
 
@@ -105,8 +114,23 @@ export const rangeLabel = computed(() => {
     const t = filters.dateTo ? new Date(`${filters.dateTo}T00:00:00`).toLocaleDateString('pt-BR') : 'hoje'
     return `${f} → ${t}`
   }
-  if (filters.rangeMonths == null) return 'histórico completo'
+  if (filters.rangeMonths == null)
+    return 'histórico completo'
   return filters.rangeMonths === 1 ? 'último mês' : `últimos ${filters.rangeMonths} meses`
+})
+
+/** commits por repo no filtro atual (para o donut) */
+export const commitsByRepo = computed(() => {
+  const map = new Map<string, number>()
+  for (const r of filteredMonthly.value) map.set(r.repo, (map.get(r.repo) ?? 0) + r.commits)
+  return [...map.entries()].map(([repo, commits]) => ({ repo, commits })).sort((a, b) => b.commits - a.commits)
+})
+
+/** commits por autor no filtro atual */
+export const commitsByAuthor = computed(() => {
+  const map = new Map<string, number>()
+  for (const r of filteredMonthly.value) map.set(r.author, (map.get(r.author) ?? 0) + r.commits)
+  return [...map.entries()].map(([author, commits]) => ({ author, commits })).sort((a, b) => b.commits - a.commits)
 })
 
 /** totais do período filtrado (cards "no período") */
@@ -132,7 +156,8 @@ export const filteredTotals = computed(() => {
  */
 export const previousTotals = computed(() => {
   // sem janela comparável quando o filtro é "tudo" ou range customizado
-  if (filters.rangeMonths == null || isCustomRange() || !stats.value) return null
+  if (filters.rangeMonths == null || isCustomRange() || !stats.value)
+    return null
   const cutoff = cutoffDate()!
   const prevStart = new Date(cutoff)
   prevStart.setMonth(prevStart.getMonth() - filters.rangeMonths)
@@ -145,8 +170,10 @@ export const previousTotals = computed(() => {
   const authors = new Set<string>()
   const repos = new Set<string>()
   for (const r of stats.value.monthly) {
-    if (r.month < prevKey || r.month >= cutKey) continue
-    if (!selectedRepo(r.repo) || !selectedAuthor(r.author)) continue
+    if (r.month < prevKey || r.month >= cutKey)
+      continue
+    if (!selectedRepo(r.repo) || !selectedAuthor(r.author))
+      continue
     commits += r.commits
     additions += r.additions
     deletions += r.deletions
@@ -160,22 +187,8 @@ export const previousTotals = computed(() => {
 export const filteredTypes = computed(() =>
   (stats.value?.monthlyTypes ?? []).filter(r =>
     selectedRepo(r.repo) && selectedAuthor(r.author) && inRange(r.month),
-  )
+  ),
 )
-
-/** commits por repo no filtro atual (para o donut) */
-export const commitsByRepo = computed(() => {
-  const map = new Map<string, number>()
-  for (const r of filteredMonthly.value) map.set(r.repo, (map.get(r.repo) ?? 0) + r.commits)
-  return [...map.entries()].map(([repo, commits]) => ({ repo, commits })).sort((a, b) => b.commits - a.commits)
-})
-
-/** commits por autor no filtro atual */
-export const commitsByAuthor = computed(() => {
-  const map = new Map<string, number>()
-  for (const r of filteredMonthly.value) map.set(r.author, (map.get(r.author) ?? 0) + r.commits)
-  return [...map.entries()].map(([author, commits]) => ({ author, commits })).sort((a, b) => b.commits - a.commits)
-})
 
 // ---------------------------------------------------------------------------
 // ritmo (últimas 4 semanas vs média das 8 anteriores) — ignora o filtro de período
@@ -205,8 +218,8 @@ function lastNWeekKeys(n: number): string[] {
 
 export interface PaceRow {
   author: string
-  recent: number      // commits nas últimas 4 semanas
-  prevAvg: number     // média semanal das 8 semanas anteriores
+  recent: number // commits nas últimas 4 semanas
+  prevAvg: number // média semanal das 8 semanas anteriores
   ratio: number | null // (recent/4) / prevAvg
 }
 
@@ -214,7 +227,8 @@ export const pace = computed<PaceRow[]>(() => {
   const rows = (stats.value?.weekly ?? []).filter(r => selectedRepo(r.repo) && selectedAuthor(r.author))
   const byAuthor = new Map<string, Map<string, number>>()
   for (const r of rows) {
-    if (!byAuthor.has(r.author)) byAuthor.set(r.author, new Map())
+    if (!byAuthor.has(r.author))
+      byAuthor.set(r.author, new Map())
     const m = byAuthor.get(r.author)!
     m.set(r.week, (m.get(r.week) ?? 0) + r.commits)
   }
@@ -239,10 +253,10 @@ export const pace = computed<PaceRow[]>(() => {
 // ---------------------------------------------------------------------------
 export interface BurnoutRow {
   author: string
-  weekend: number        // commits sáb/dom nas últimas 8 sem
-  night: number          // commits 22h–6h nas últimas 8 sem
-  total: number          // commits totais nas últimas 8 sem
-  offHoursPct: number    // (weekend + night) / total
+  weekend: number // commits sáb/dom nas últimas 8 sem
+  night: number // commits 22h–6h nas últimas 8 sem
+  total: number // commits totais nas últimas 8 sem
+  offHoursPct: number // (weekend + night) / total
   weekendsActive: number // dos últimos 4 fins de semana, em quantos commitou
 }
 
@@ -250,16 +264,19 @@ export const burnout = computed<BurnoutRow[]>(() => {
   const rows = (stats.value?.weekly ?? []).filter(r => selectedRepo(r.repo) && selectedAuthor(r.author))
   const weeks = lastNWeekKeys(8)
   const last4 = new Set(weeks.slice(-4))
-  const byAuthor = new Map<string, { weekend: number; night: number; total: number; weekendsActive: number }>()
+  const byAuthor = new Map<string, { weekend: number, night: number, total: number, weekendsActive: number }>()
 
   for (const r of rows) {
-    if (!weeks.includes(r.week)) continue
-    if (!byAuthor.has(r.author)) byAuthor.set(r.author, { weekend: 0, night: 0, total: 0, weekendsActive: 0 })
+    if (!weeks.includes(r.week))
+      continue
+    if (!byAuthor.has(r.author))
+      byAuthor.set(r.author, { weekend: 0, night: 0, total: 0, weekendsActive: 0 })
     const b = byAuthor.get(r.author)!
     b.weekend += r.weekend
     b.night += r.night
     b.total += r.commits
-    if (last4.has(r.week) && r.weekend > 0) b.weekendsActive++
+    if (last4.has(r.week) && r.weekend > 0)
+      b.weekendsActive++
   }
 
   return [...byAuthor.entries()]
@@ -287,9 +304,10 @@ export const offHoursPeriod = computed<OffHoursRow[]>(() => {
   const rows = (stats.value?.weekly ?? []).filter(r =>
     selectedRepo(r.repo) && selectedAuthor(r.author) && inRange(r.week),
   )
-  const byAuthor = new Map<string, { total: number; weekend: number; night: number }>()
+  const byAuthor = new Map<string, { total: number, weekend: number, night: number }>()
   for (const r of rows) {
-    if (!byAuthor.has(r.author)) byAuthor.set(r.author, { total: 0, weekend: 0, night: 0 })
+    if (!byAuthor.has(r.author))
+      byAuthor.set(r.author, { total: 0, weekend: 0, night: 0 })
     const b = byAuthor.get(r.author)!
     b.total += r.commits
     b.weekend += r.weekend

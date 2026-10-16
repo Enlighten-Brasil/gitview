@@ -6,7 +6,7 @@
 import { ref } from 'vue'
 
 export interface SetupStatus {
-  auth: { login: string; via: string } | null
+  auth: { login: string, via: string } | null
   oauthConfigured: boolean
   reposRoot: string | null
   repos: string[]
@@ -15,13 +15,14 @@ export interface SetupStatus {
   defaultRepos: string[]
 }
 
-export interface OrgEntry { login: string; personal?: boolean }
-export interface RepoEntry { name: string; archived: boolean; pushed_at: string | null; private: boolean }
+export interface OrgEntry { login: string, personal?: boolean }
+export interface RepoEntry { name: string, archived: boolean, pushed_at: string | null, private: boolean }
 
 async function getJson<T>(url: string): Promise<T> {
   const res = await fetch(url)
   const body = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`)
+  if (!res.ok)
+    throw new Error(body.error ?? `HTTP ${res.status}`)
   return body as T
 }
 
@@ -47,9 +48,9 @@ export interface DeviceFlowStart {
   interval: number
 }
 
-export type DeviceFlowPoll =
-  | { status: 'pending' | 'slow_down' | 'expired' | 'denied' }
-  | { status: 'ok'; login: string }
+export type DeviceFlowPoll
+  = | { status: 'pending' | 'slow_down' | 'expired' | 'denied' }
+    | { status: 'ok', login: string }
 
 // ---------------------------------------------------------------------------
 // PAT colado + desconexão
@@ -69,7 +70,8 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   })
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error((data as { error?: string }).error ?? `HTTP ${res.status}`)
+  if (!res.ok)
+    throw new Error((data as { error?: string }).error ?? `HTTP ${res.status}`)
   return data as T
 }
 
@@ -84,7 +86,8 @@ export async function pollDeviceFlow(deviceCode: string): Promise<DeviceFlowPoll
     body: JSON.stringify({ deviceCode }),
   })
   const body = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`)
+  if (!res.ok)
+    throw new Error(body.error ?? `HTTP ${res.status}`)
   return body as DeviceFlowPoll
 }
 
@@ -107,15 +110,18 @@ export const setupDone = ref(false)
 const MAX_LOG_LINES = 300
 
 export function startSetupApply(org: string, repos: string[], opts: { dry?: boolean, remove?: string[] } = {}) {
-  if (setupApplying.value) return
+  if (setupApplying.value)
+    return
   setupApplying.value = true
   setupLog.value = []
   setupError.value = null
   setupDone.value = false
 
   const params = new URLSearchParams({ org, repos: repos.join(',') })
-  if (opts.dry) params.set('dry', '1')
-  if (opts.remove?.length) params.set('remove', opts.remove.join(','))
+  if (opts.dry)
+    params.set('dry', '1')
+  if (opts.remove?.length)
+    params.set('remove', opts.remove.join(','))
   const es = new EventSource(`/__setup/apply?${params}`)
 
   es.addEventListener('log', (e) => {

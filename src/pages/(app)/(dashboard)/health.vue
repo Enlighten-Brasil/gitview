@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import OffHoursPanel from '@/components/OffHoursPanel.vue'
+import BusFactor from '@/components/BusFactor.vue'
 import FixHotspots from '@/components/FixHotspots.vue'
+import InactiveWatch from '@/components/InactiveWatch.vue'
+import OffHoursPanel from '@/components/OffHoursPanel.vue'
 import ReviewBottleneck from '@/components/ReviewBottleneck.vue'
 import ReviewCoverage from '@/components/ReviewCoverage.vue'
-import InactiveWatch from '@/components/InactiveWatch.vue'
-import BusFactor from '@/components/BusFactor.vue'
 </script>
 
 <template>

@@ -3,8 +3,10 @@ import { ghName, openAging } from '../github'
 
 /** cor da idade: >7d vermelho, >3d amarelo, senão neutro */
 function ageColor(days: number): string {
-  if (days > 7) return 'text-error font-semibold'
-  if (days > 3) return 'text-warning font-semibold'
+  if (days > 7)
+    return 'text-error font-semibold'
+  if (days > 3)
+    return 'text-warning font-semibold'
   return 'text-muted'
 }
 </script>

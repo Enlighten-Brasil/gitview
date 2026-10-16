@@ -1,10 +1,10 @@
 <script setup lang="ts">
+import ActivityHeatmap from '@/components/ActivityHeatmap.vue'
+import AuthorMonthHeatmap from '@/components/AuthorMonthHeatmap.vue'
+import DevTable from '@/components/DevTable.vue'
+import PaceAlert from '@/components/PaceAlert.vue'
 import PeriodHighlight from '@/components/PeriodHighlight.vue'
 import WeeklyChampions from '@/components/WeeklyChampions.vue'
-import PaceAlert from '@/components/PaceAlert.vue'
-import AuthorMonthHeatmap from '@/components/AuthorMonthHeatmap.vue'
-import ActivityHeatmap from '@/components/ActivityHeatmap.vue'
-import DevTable from '@/components/DevTable.vue'
 </script>
 
 <template>

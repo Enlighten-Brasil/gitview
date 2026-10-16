@@ -1,3 +1,4 @@
+import process from 'node:process'
 /**
  * `pnpm clean` — apaga os dados gerados (banco + JSONs), mantendo os clones
  * bare de data/repos. `--repos` também apaga os clones (a próxima coleta

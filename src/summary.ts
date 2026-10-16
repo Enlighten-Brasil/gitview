@@ -27,21 +27,24 @@ function fmtDay(d: Date): string {
 }
 
 function inRange(iso: string | null, a: Date, b: Date): boolean {
-  if (!iso) return false
+  if (!iso)
+    return false
   const d = new Date(iso)
   return d >= a && d <= b
 }
 
 /** delta percentual vs semana anterior; vazio quando não há base */
 function delta(cur: number, prev: number): string {
-  if (!prev) return ''
+  if (!prev)
+    return ''
   const pct = Math.round(((cur - prev) / prev) * 100)
   return ` (${pct >= 0 ? '+' : ''}${pct}% vs semana anterior)`
 }
 
 export function buildWeeklySummary(): WeeklySummary | null {
   const s = stats.value
-  if (!s) return null
+  if (!s)
+    return null
 
   // última semana ISO FECHADA (segunda passada → domingo passado)
   const thisMonday = mondayOf(new Date())
@@ -64,7 +67,7 @@ export function buildWeeklySummary(): WeeklySummary | null {
   const weekRows = s.weekly.filter(r => r.week === wk && !isBot(r.author))
   const prevWeekRows = s.weekly.filter(r => r.week === prevWk && !isBot(r.author))
 
-  const byAuthor = new Map<string, { commits: number; weekend: number; night: number }>()
+  const byAuthor = new Map<string, { commits: number, weekend: number, night: number }>()
   const byRepo = new Map<string, number>()
   for (const r of weekRows) {
     const a = byAuthor.get(r.author) ?? { commits: 0, weekend: 0, night: 0 }
@@ -113,7 +116,8 @@ export function buildWeeklySummary(): WeeklySummary | null {
     const reviews = new Map<string, number>()
     for (const pr of merged) {
       for (const r of pr.reviews) {
-        if (r.author === pr.author || isGhBot(r.author)) continue
+        if (r.author === pr.author || isGhBot(r.author))
+          continue
         const name = ghName(r.author)
         reviews.set(name, (reviews.get(name) ?? 0) + 1)
       }

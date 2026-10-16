@@ -1,12 +1,12 @@
 <script setup lang="ts">
+import type { EChartsOption } from 'echarts'
 import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import type { EChartsOption } from 'echarts'
+import { axisLabel, ct, legendText, splitLine, tooltipBase } from '@/chartTheme'
+import ChartPanel from '@/components/ChartPanel.vue'
 import { filters, inRange, isBot, isCustomRange, rangeLabel, stats } from '@/data'
 import { fmtDuration, ghIsBot, github, median } from '@/github'
 import { daysSinceLastRelease, loadReleases, releases, repoRelease } from '@/releases'
-import { axisLabel, ct, legendText, splitLine, tooltipBase } from '@/chartTheme'
-import ChartPanel from '@/components/ChartPanel.vue'
 
 // rota de detalhe do repo (era /repo/:name — alias mantém os links antigos)
 definePage({
@@ -271,8 +271,12 @@ function fmtDate(iso: string): string {
           <thead>
             <tr>
               <th>tag</th>
-              <th class="num">data</th>
-              <th class="num">commits</th>
+              <th class="num">
+                data
+              </th>
+              <th class="num">
+                commits
+              </th>
               <th>notas</th>
             </tr>
           </thead>
@@ -294,11 +298,15 @@ function fmtDate(iso: string): string {
               <td class="num whitespace-nowrap text-muted">
                 {{ fmtDate(t.date) }}
               </td>
-              <td class="num">{{ t.commits }}</td>
+              <td class="num">
+                {{ t.commits }}
+              </td>
               <td class="max-w-[520px]">
                 <span v-if="t.name" class="text-xs">{{ t.name }} </span>
                 <details v-if="t.notes" class="inline">
-                  <summary class="text-xs text-primary cursor-pointer inline">notas</summary>
+                  <summary class="text-xs text-primary cursor-pointer inline">
+                    notas
+                  </summary>
                   <pre class="text-xs text-muted whitespace-pre-wrap mt-2 p-2 bg-accented rounded max-h-64 overflow-y-auto">{{ t.notes }}</pre>
                 </details>
                 <span v-if="!t.name && !t.notes" class="text-dimmed text-xs">—</span>

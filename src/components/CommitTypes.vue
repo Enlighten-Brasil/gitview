@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import type { EChartsOption } from 'echarts'
-import { filteredTypes } from '../data'
+import { computed } from 'vue'
 import { axisLabel, ct, legendText, splitLine, tooltipBase } from '../chartTheme'
+import { filteredTypes } from '../data'
 import ChartPanel from './ChartPanel.vue'
 
 /** categorias exibidas (docs/test/perf/style/build/ci viram "outros") */
@@ -23,7 +23,8 @@ function group(type: string): (typeof CATEGORIES)[number] {
 const monthOption = computed<EChartsOption>(() => {
   const byMonth = new Map<string, Map<string, number>>()
   for (const r of filteredTypes.value) {
-    if (!byMonth.has(r.month)) byMonth.set(r.month, new Map())
+    if (!byMonth.has(r.month))
+      byMonth.set(r.month, new Map())
     const m = byMonth.get(r.month)!
     const t = group(r.type)
     m.set(t, (m.get(t) ?? 0) + r.commits)
@@ -34,7 +35,7 @@ const monthOption = computed<EChartsOption>(() => {
     tooltip: tooltipBase({
       trigger: 'axis',
       formatter: (ps: unknown) => {
-        const items = ps as { seriesName: string; value: number; axisValue: string }[]
+        const items = ps as { seriesName: string, value: number, axisValue: string }[]
         const total = items.reduce((s, i) => s + i.value, 0)
         const lines = items
           .filter(i => i.value > 0)
@@ -62,7 +63,8 @@ const monthOption = computed<EChartsOption>(() => {
 const repoOption = computed<EChartsOption>(() => {
   const byRepo = new Map<string, Map<string, number>>()
   for (const r of filteredTypes.value) {
-    if (!byRepo.has(r.repo)) byRepo.set(r.repo, new Map())
+    if (!byRepo.has(r.repo))
+      byRepo.set(r.repo, new Map())
     const m = byRepo.get(r.repo)!
     const t = group(r.type)
     m.set(t, (m.get(t) ?? 0) + r.commits)

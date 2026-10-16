@@ -1,3 +1,5 @@
+import type { Config } from './config'
+import { Buffer } from 'node:buffer'
 /**
  * Descoberta e manutenção dos repositórios locais usados pelos coletores.
  *
@@ -9,16 +11,18 @@
 import { spawn, spawnSync } from 'node:child_process'
 import { existsSync, readdirSync } from 'node:fs'
 import { join, resolve, sep } from 'node:path'
-import { type Config, resolveReposRoot, rootDir } from './config'
+import process from 'node:process'
+import { resolveReposRoot, rootDir } from './config'
 
-export interface RepoInfo { name: string; path: string }
+export interface RepoInfo { name: string, path: string }
 
 /** pasta onde o `pnpm setup` clona os repos selecionados (bare) */
 export const MANAGED_REPOS_DIR = join(rootDir, 'data', 'repos')
 
 /** dir com `.git` (checkout/worktree) ou bare (HEAD + objects + refs) */
 export function isGitRepo(path: string): boolean {
-  if (existsSync(join(path, '.git'))) return true
+  if (existsSync(join(path, '.git')))
+    return true
   return existsSync(join(path, 'HEAD'))
     && existsSync(join(path, 'objects'))
     && existsSync(join(path, 'refs'))
@@ -31,9 +35,11 @@ export function discoverRepos(reposRoot: string, exclude: string[] = []): RepoIn
     found.push({ name: reposRoot.split(/[\\/]/).pop()!, path: reposRoot })
   }
   for (const entry of readdirSync(reposRoot, { withFileTypes: true })) {
-    if (!entry.isDirectory() || excluded.has(entry.name)) continue
+    if (!entry.isDirectory() || excluded.has(entry.name))
+      continue
     const p = join(reposRoot, entry.name)
-    if (isGitRepo(p)) found.push({ name: entry.name, path: p })
+    if (isGitRepo(p))
+      found.push({ name: entry.name, path: p })
   }
   return found.sort((a, b) => a.name.localeCompare(b.name))
 }
@@ -60,7 +66,7 @@ export function remoteOf(path: string): string | null {
 }
 
 /** git@github.com:Owner/repo.git | https://github.com/Owner/repo(.git) -> Owner/repo */
-export function parseGitHub(remote: string): { owner: string; repo: string } | null {
+export function parseGitHub(remote: string): { owner: string, repo: string } | null {
   const m = remote.match(/github\.com[:/]([^/]+)\/([^/]+?)(?:\.git)?$/i)
   return m ? { owner: m[1], repo: m[2] } : null
 }

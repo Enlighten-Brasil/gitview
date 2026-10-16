@@ -1,14 +1,14 @@
 <script setup lang="ts">
+import CommitTypes from '@/components/CommitTypes.vue'
+import LinesFlow from '@/components/LinesFlow.vue'
+import RepoMonthHeatmap from '@/components/RepoMonthHeatmap.vue'
+import RepoReleasesGrid from '@/components/RepoReleasesGrid.vue'
+import RepoShare from '@/components/RepoShare.vue'
 /**
  * Repositórios — seção dedicada (migrada da tab "repos" do dashboard).
  * Âncoras alimentam o sub-nav contextual. Releases virou seção aqui (#releases).
  */
 import RepoTable from '@/components/RepoTable.vue'
-import LinesFlow from '@/components/LinesFlow.vue'
-import RepoShare from '@/components/RepoShare.vue'
-import RepoMonthHeatmap from '@/components/RepoMonthHeatmap.vue'
-import CommitTypes from '@/components/CommitTypes.vue'
-import RepoReleasesGrid from '@/components/RepoReleasesGrid.vue'
 
 definePage({
   meta: {

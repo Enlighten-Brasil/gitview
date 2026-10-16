@@ -1,3 +1,4 @@
+import type { TeamData } from './types'
 /**
  * Time: loader do team.json (estático) + client dos endpoints dev-only:
  * GET/POST /__team/config (perfis/times em team.local.json) e
@@ -6,16 +7,17 @@
  * endpoint parcial só de team.json.
  */
 import { ref } from 'vue'
-import type { TeamData } from './types'
 
 export const team = ref<TeamData | null>(null)
 export const teamLoadError = ref<string | null>(null)
 
 export async function loadTeam(force = false) {
-  if (team.value && !force) return
+  if (team.value && !force)
+    return
   try {
     const res = await fetch(force ? `/data/team.json?t=${Date.now()}` : '/data/team.json')
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    if (!res.ok)
+      throw new Error(`HTTP ${res.status}`)
     team.value = await res.json()
     teamLoadError.value = null
   }
@@ -97,7 +99,8 @@ export interface GithubTeamData {
 async function req<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init)
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`)
+  if (!res.ok)
+    throw new Error(data.error ?? `HTTP ${res.status}`)
   return data as T
 }
 

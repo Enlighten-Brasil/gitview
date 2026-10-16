@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { filters, isBot, stats } from '../data'
@@ -15,7 +15,9 @@ const sortKey = ref<Key>('commits')
 const sortAsc = ref(false)
 
 function toggleSort(key: Key) {
-  if (sortKey.value === key) sortAsc.value = !sortAsc.value
+  if (sortKey.value === key) {
+    sortAsc.value = !sortAsc.value
+  }
   else {
     sortKey.value = key
     sortAsc.value = false
@@ -38,7 +40,8 @@ function fmt(n: number) {
   return n.toLocaleString('pt-BR')
 }
 function fmtDate(iso: string) {
-  if (!iso) return '—'
+  if (!iso)
+    return '—'
   return new Date(iso).toLocaleDateString('pt-BR')
 }
 
@@ -57,7 +60,7 @@ function exportCsv() {
     a.lastCommit.slice(0, 10),
   ].join(';'))
   const BOM = String.fromCharCode(0xFEFF) // BOM p/ Excel abrir UTF-8 corretamente
-  const csv = BOM + header.join(';') + '\n' + lines.join('\n')
+  const csv = `${BOM + header.join(';')}\n${lines.join('\n')}`
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
@@ -89,14 +92,30 @@ function exportCsv() {
       <thead>
         <tr>
           <th>Dev</th>
-          <th class="num sortable" @click="toggleSort('commits')">commits</th>
-          <th class="num sortable" @click="toggleSort('additions')">+ linhas</th>
-          <th class="num sortable" @click="toggleSort('deletions')">− linhas</th>
-          <th class="num sortable" @click="toggleSort('repos')">repos</th>
-          <th class="num sortable" @click="toggleSort('activeDays')">dias ativos</th>
-          <th class="num">commits/dia ativo</th>
-          <th class="num sortable" @click="toggleSort('streak')">streak 🔥</th>
-          <th class="num sortable" @click="toggleSort('lastCommit')">último commit</th>
+          <th class="num sortable" @click="toggleSort('commits')">
+            commits
+          </th>
+          <th class="num sortable" @click="toggleSort('additions')">
+            + linhas
+          </th>
+          <th class="num sortable" @click="toggleSort('deletions')">
+            − linhas
+          </th>
+          <th class="num sortable" @click="toggleSort('repos')">
+            repos
+          </th>
+          <th class="num sortable" @click="toggleSort('activeDays')">
+            dias ativos
+          </th>
+          <th class="num">
+            commits/dia ativo
+          </th>
+          <th class="num sortable" @click="toggleSort('streak')">
+            streak 🔥
+          </th>
+          <th class="num sortable" @click="toggleSort('lastCommit')">
+            último commit
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -107,12 +126,24 @@ function exportCsv() {
           @click="openDev(a.author)"
         >
           <td>{{ a.author }}</td>
-          <td class="num">{{ fmt(a.commits) }}</td>
-          <td class="num add">{{ fmt(a.additions) }}</td>
-          <td class="num del">{{ fmt(a.deletions) }}</td>
-          <td class="num">{{ a.repos }}</td>
-          <td class="num">{{ a.activeDays }}</td>
-          <td class="num">{{ (a.commits / Math.max(a.activeDays, 1)).toFixed(1) }}</td>
+          <td class="num">
+            {{ fmt(a.commits) }}
+          </td>
+          <td class="num add">
+            {{ fmt(a.additions) }}
+          </td>
+          <td class="num del">
+            {{ fmt(a.deletions) }}
+          </td>
+          <td class="num">
+            {{ a.repos }}
+          </td>
+          <td class="num">
+            {{ a.activeDays }}
+          </td>
+          <td class="num">
+            {{ (a.commits / Math.max(a.activeDays, 1)).toFixed(1) }}
+          </td>
           <td class="num">
             <div class="flex items-center justify-end gap-1.5">
               <UBadge
@@ -125,7 +156,9 @@ function exportCsv() {
               <span class="text-xs text-dimmed">máx {{ a.longestStreak }}</span>
             </div>
           </td>
-          <td class="num">{{ fmtDate(a.lastCommit) }}</td>
+          <td class="num">
+            {{ fmtDate(a.lastCommit) }}
+          </td>
         </tr>
       </tbody>
     </table>

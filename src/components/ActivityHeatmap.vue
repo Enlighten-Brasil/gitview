@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import type { EChartsOption } from 'echarts'
-import { filteredHeatmap } from '../data'
+import { computed } from 'vue'
 import { axisLabel, ct, heatRamp, tooltipBase } from '../chartTheme'
+import { filteredHeatmap } from '../data'
 import ChartPanel from './ChartPanel.vue'
 
 const WEEKDAYS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
@@ -14,7 +14,8 @@ const option = computed<EChartsOption>(() => {
     const k = `${r.weekday}|${r.hour}`
     const v = (map.get(k) ?? 0) + r.commits
     map.set(k, v)
-    if (v > max) max = v
+    if (v > max)
+      max = v
   }
 
   const data: [number, number, number][] = []

@@ -15,7 +15,8 @@ import { rootDir } from './config'
 export function cleanLocalData(includeRepos = false): string[] {
   const removed: string[] = []
   const rm = (p: string) => {
-    if (!existsSync(p)) return
+    if (!existsSync(p))
+      return
     rmSync(p, { recursive: true, force: true })
     removed.push(relative(rootDir, p))
   }
@@ -23,7 +24,8 @@ export function cleanLocalData(includeRepos = false): string[] {
   const dataDir = join(rootDir, 'data')
   if (existsSync(dataDir)) {
     for (const f of readdirSync(dataDir)) {
-      if (f === 'repos' && !includeRepos) continue
+      if (f === 'repos' && !includeRepos)
+        continue
       rm(join(dataDir, f)) // gitview.db (+ -wal/-shm) e, opcionalmente, repos/
     }
   }
@@ -31,7 +33,8 @@ export function cleanLocalData(includeRepos = false): string[] {
   const publicData = join(rootDir, 'public', 'data')
   if (existsSync(publicData)) {
     for (const f of readdirSync(publicData)) {
-      if (f.endsWith('.json')) rm(join(publicData, f))
+      if (f.endsWith('.json'))
+        rm(join(publicData, f))
     }
   }
 

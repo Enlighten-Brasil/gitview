@@ -1,11 +1,11 @@
 <script setup lang="ts">
+import type { DeviceFlowStart, SetupStatus } from '@/setup'
 /**
  * Conexão com o GitHub — os três caminhos: device flow (Client ID no .env),
  * PAT colado (sempre disponível) e ponte do `gh auth login` (auto-detecção).
  * O polling do device flow e a sonda de auth vivem aqui e são limpos no unmount.
  */
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import type { DeviceFlowStart, SetupStatus } from '@/setup'
 import { githubLogout, pollDeviceFlow, startDeviceFlow, submitGithubToken } from '@/setup'
 
 const props = defineProps<{
@@ -55,10 +55,12 @@ function schedulePoll(seconds: number) {
         emit('refresh', 'reload')
         return
       }
-      if (r.status === 'pending')
+      if (r.status === 'pending') {
         schedulePoll(device.value.interval)
-      else if (r.status === 'slow_down')
+      }
+      else if (r.status === 'slow_down') {
         schedulePoll(device.value.interval + 5)
+      }
       else {
         deviceError.value = r.status === 'denied' ? 'autorização negada no GitHub' : 'código expirado — tente de novo'
         device.value = null

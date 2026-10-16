@@ -12,7 +12,8 @@ let cache: Record<string, string> | null = null
 /** Converte `oklch(L C H)` → `#rrggbb` (ECharts/canvas não entende oklch). */
 function oklchToHex(input: string): string {
   const m = input.match(/oklch\(\s*([\d.]+)(%?)\s+([\d.]+)\s+([\d.]+)/)
-  if (!m) return input
+  if (!m)
+    return input
   const L = m[2] === '%' ? Number(m[1]) / 100 : Number(m[1])
   const C = Number(m[3])
   const hRad = (Number(m[4]) * Math.PI) / 180
@@ -37,7 +38,8 @@ function oklchToHex(input: string): string {
 }
 
 function resolve(): Record<string, string> {
-  if (cache) return cache
+  if (cache)
+    return cache
   const css = getComputedStyle(document.documentElement)
   const v = (name: string, fallback: string) => {
     const raw = css.getPropertyValue(name).trim() || fallback
@@ -71,15 +73,27 @@ export const ct = new Proxy({} as ReturnType<typeof resolve>, {
 
 /** Paleta categórica (tons 400 do Tailwind) p/ séries empilhadas e pizzas. */
 export const PALETTE = [
-  '#60a5fa', '#34d399', '#fbbf24', '#a78bfa', '#f87171', '#22d3ee',
-  '#a3e635', '#e879f9', '#fb923c', '#2dd4bf', '#818cf8', '#f472b6',
+  '#60a5fa',
+  '#34d399',
+  '#fbbf24',
+  '#a78bfa',
+  '#f87171',
+  '#22d3ee',
+  '#a3e635',
+  '#e879f9',
+  '#fb923c',
+  '#2dd4bf',
+  '#818cf8',
+  '#f472b6',
 ]
 
 /** Rampa de heatmap: fundo → tom escuro → tom médio → tom claro. */
 export function heatRamp(family: 'primary' | 'success' | 'violet'): string[] {
   const c = resolve()
-  if (family === 'success') return [c.elevated, c.success900, c.success500, c.success300]
-  if (family === 'violet') return [c.elevated, c.violet900, c.violet500, c.violet300]
+  if (family === 'success')
+    return [c.elevated, c.success900, c.success500, c.success300]
+  if (family === 'violet')
+    return [c.elevated, c.violet900, c.violet500, c.violet300]
   return [c.elevated, c.primary900, c.primary, c.primary300]
 }
 

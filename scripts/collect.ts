@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer'
 /**
  * Coletor de estatísticas git multi-repo.
  *
@@ -12,8 +13,9 @@
 import { spawn } from 'node:child_process'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import process from 'node:process'
 import { DatabaseSync } from 'node:sqlite'
+import { fileURLToPath } from 'node:url'
 import { loadConfig, resolveReposRoot } from './lib/config'
 import { getToken, NO_TOKEN_HINT } from './lib/github'
 import { denyPush, discoverRepos, fetchRepo, isManagedRepo, mapPool, parseGitHub, remoteOf, scrubPersistedToken } from './lib/repos'
@@ -91,11 +93,15 @@ const isExcludedPath = (path: string): boolean => EXCLUDE_PATTERNS.some(p => mat
 function gitLog(repoPath: string, extraArgs: string[] = []): Promise<RawCommit[]> {
   return new Promise((resolvePromise, reject) => {
     const child = spawn('git', [
-      '-C', repoPath,
+      '-C',
+      repoPath,
       // --no-merges: commits de merge ficam fora de TODAS as métricas
       // (decisão issue #7 — inflavam commits/dia, ritmo e streaks com +0−0;
       // a "produção" do merge já está no PR). Retroativo: pnpm clean && pnpm collect.
-      'log', '--all', '--no-renames', '--no-merges',
+      'log',
+      '--all',
+      '--no-renames',
+      '--no-merges',
       '--pretty=format:%x1e%H%x1f%an%x1f%ae%x1f%aI%x1f%s',
       '--numstat',
       ...extraArgs,
@@ -118,25 +124,32 @@ function gitLog(repoPath: string, extraArgs: string[] = []): Promise<RawCommit[]
 function parseGitLog(raw: string): RawCommit[] {
   const commits: RawCommit[] = []
   // cada commit começa com \x1e (record separator)
-  for (const block of raw.split('\x1e')) {
-    if (!block.trim()) continue
+  for (const block of raw.split('\x1E')) {
+    if (!block.trim())
+      continue
     const lines = block.split('\n')
-    const header = lines[0].split('\x1f')
-    if (header.length < 5) continue
+    const header = lines[0].split('\x1F')
+    if (header.length < 5)
+      continue
     const [hash, name, email, date, subject] = header
     let additions = 0
     let deletions = 0
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i].trim()
-      if (!line) continue
+      if (!line)
+        continue
       const parts = line.split('\t')
-      if (parts.length < 3) continue
+      if (parts.length < 3)
+        continue
       // linhas de arquivos gerados/lockfiles não somam (o commit entra igual)
-      if (isExcludedPath(parts.slice(2).join('\t'))) continue
+      if (isExcludedPath(parts.slice(2).join('\t')))
+        continue
       const add = Number(parts[0])
       const del = Number(parts[1])
-      if (Number.isFinite(add)) additions += add
-      if (Number.isFinite(del)) deletions += del
+      if (Number.isFinite(add))
+        additions += add
+      if (Number.isFinite(del))
+        deletions += del
     }
     commits.push({ hash, name, email, date, subject: subject ?? '', additions, deletions })
   }
@@ -194,9 +207,11 @@ const SINCE_MARGIN_DAYS = 7
 const maxDateStmt = db.prepare('SELECT MAX(date) AS max FROM commits WHERE repo = ?')
 
 function sinceArgs(repoName: string): string[] {
-  if (FULL) return []
+  if (FULL)
+    return []
   const row = maxDateStmt.get(repoName) as { max: string | null }
-  if (!row.max) return []
+  if (!row.max)
+    return []
   const d = new Date(row.max)
   d.setDate(d.getDate() - SINCE_MARGIN_DAYS)
   return [`--since=${d.toISOString()}`]
@@ -215,7 +230,8 @@ function sinceArgs(repoName: string): string[] {
 const CANON_TZ = (() => {
   const tz = config.timezone ?? 'America/Sao_Paulo'
   try {
-    new Intl.DateTimeFormat('en-CA', { timeZone: tz })
+    // construído e lido (não só new) — valida o nome IANA sem efeito colateral
+    new Intl.DateTimeFormat('en-CA', { timeZone: tz }).resolvedOptions()
     return tz
   }
   catch {
@@ -226,8 +242,11 @@ const CANON_TZ = (() => {
 
 const partsFmt = new Intl.DateTimeFormat('en-CA', {
   timeZone: CANON_TZ,
-  year: 'numeric', month: '2-digit', day: '2-digit',
-  hour: '2-digit', hour12: false,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  hour12: false,
 })
 
 interface Canon { y: number, m: number, d: number, h: number, weekday: number }
@@ -258,10 +277,6 @@ function isoWeekKeyOf(p: Canon): string {
   return `${date.getUTCFullYear()}-W${pad2(week)}`
 }
 
-function isoWeekKey(d: Date): string {
-  return isoWeekKeyOf(canonParts(d))
-}
-
 function monthKeyOf(p: Canon): string {
   return `${p.y}-${pad2(p.m)}`
 }
@@ -274,10 +289,6 @@ function dayKeyOf(p: Canon): string {
   return `${p.y}-${pad2(p.m)}-${pad2(p.d)}`
 }
 
-function dayKey(d: Date): string {
-  return dayKeyOf(canonParts(d))
-}
-
 function nextDayKey(dayKeyStr: string): string {
   // aritmética calendária pura em UTC (nunca Date local — atravessa DST/TZ da
   // máquina e quebraria streaks na mesma data vista de fusos diferentes)
@@ -287,14 +298,15 @@ function nextDayKey(dayKeyStr: string): string {
 }
 
 /** streak atual (dias consecutivos terminando no último dia ativo) e recorde */
-function calcStreaks(days: Set<string>): { streak: number; longestStreak: number } {
+function calcStreaks(days: Set<string>): { streak: number, longestStreak: number } {
   const sorted = [...days].sort()
   let longest = 0
   let run = 0
   let prev = ''
   for (const d of sorted) {
     run = prev && nextDayKey(prev) === d ? run + 1 : 1
-    if (run > longest) longest = run
+    if (run > longest)
+      longest = run
     prev = d
   }
   return { streak: run, longestStreak: longest }
@@ -305,8 +317,9 @@ function calcStreaks(days: Set<string>): { streak: number; longestStreak: number
 // ---------------------------------------------------------------------------
 const KNOWN_TYPES = new Set(['feat', 'fix', 'chore', 'refactor', 'docs', 'test', 'perf', 'style', 'build', 'ci'])
 function commitType(subject: string): string {
-  const m = subject.match(/^([a-zA-Z]+)(\([^)]*\))?!?:/)
-  if (!m) return 'outros'
+  const m = subject.match(/^([a-z]+)(\([^)]*\))?!?:/i)
+  if (!m)
+    return 'outros'
   const t = m[1].toLowerCase()
   return KNOWN_TYPES.has(t) ? t : 'outros'
 }
@@ -333,13 +346,15 @@ async function main() {
   const managed = repos.filter(r => isManagedRepo(r.path))
   if (managed.length && !REAGGREGATE) {
     const token = getToken()?.token
-    if (!token) console.warn(`! ${NO_TOKEN_HINT} — fetch dos clones vai usar só o cache local`)
+    if (!token)
+      console.warn(`! ${NO_TOKEN_HINT} — fetch dos clones vai usar só o cache local`)
     console.log(`\nAtualizando ${managed.length} clones gerenciados (git fetch)...`)
     await mapPool(managed, 4, async (repo) => {
       denyPush(repo.path)
       scrubPersistedToken(repo.path)
       const err = await fetchRepo(repo.path, token)
-      if (err) console.warn(`! ${repo.name}: fetch falhou, usando cache local (${err.split('\n')[0]})`)
+      if (err)
+        console.warn(`! ${repo.name}: fetch falhou, usando cache local (${err.split('\n')[0]})`)
     })
   }
 
@@ -350,10 +365,11 @@ async function main() {
   if (repos.length) {
     const placeholders = repos.map(() => '?').join(',')
     const pruned = db.prepare(`DELETE FROM commits WHERE repo NOT IN (${placeholders})`).run(...repos.map(r => r.name))
-    if (pruned.changes) console.log(`🧹 ${pruned.changes} commits removidos de repos fora da seleção`)
+    if (pruned.changes)
+      console.log(`🧹 ${pruned.changes} commits removidos de repos fora da seleção`)
   }
 
-  if (!REAGGREGATE)
+  if (!REAGGREGATE) {
     await mapPool(repos, 4, async (repo) => {
       const t0 = Date.now()
       let inTransaction = false
@@ -364,8 +380,14 @@ async function main() {
         inTransaction = true
         for (const c of commits) {
           const res = insert.run(
-            repo.name, c.hash, canonicalAuthor(c.name, c.email), c.email.toLowerCase(),
-            toUtcIso(c.date), c.subject.slice(0, 500), c.additions, c.deletions,
+            repo.name,
+            c.hash,
+            canonicalAuthor(c.name, c.email),
+            c.email.toLowerCase(),
+            toUtcIso(c.date),
+            c.subject.slice(0, 500),
+            c.additions,
+            c.deletions,
           )
           inserted += Number(res.changes)
         }
@@ -374,10 +396,12 @@ async function main() {
         console.log(`✓ ${repo.name}: ${commits.length} commits lidos, ${inserted} novos (${((Date.now() - t0) / 1000).toFixed(1)}s)`)
       }
       catch (err) {
-        if (inTransaction) db.exec('ROLLBACK')
+        if (inTransaction)
+          db.exec('ROLLBACK')
         console.error(`✗ ${repo.name}: ${(err as Error).message}`)
       }
     })
+  }
 
   // re-normaliza autores já gravados caso os aliases tenham mudado no config
   const updateAuthor = db.prepare('UPDATE commits SET author = ? WHERE email = ? AND author != ?')
@@ -391,13 +415,13 @@ async function main() {
   console.log('\nAgregando...')
   const rows = db.prepare(`
     SELECT repo, author, email, date, subject, additions, deletions FROM commits ORDER BY date ASC
-  `).all() as { repo: string; author: string; email: string; date: string; subject: string; additions: number; deletions: number }[]
+  `).all() as { repo: string, author: string, email: string, date: string, subject: string, additions: number, deletions: number }[]
 
   const emailsByAuthor = new Map<string, Set<string>>()
-  const weekly = new Map<string, { commits: number; weekend: number; night: number }>() // week|repo|author
-  const monthly = new Map<string, { commits: number; additions: number; deletions: number }>() // month|repo|author
+  const weekly = new Map<string, { commits: number, weekend: number, night: number }>() // week|repo|author
+  const monthly = new Map<string, { commits: number, additions: number, deletions: number }>() // month|repo|author
   const monthlyTypes = new Map<string, number>() // month|repo|author|type
-  const heatmap = new Map<string, number>()     // author|repo|month|weekday|hour
+  const heatmap = new Map<string, number>() // author|repo|month|weekday|hour
   // heatmap ganha dimensão de mês pro filtro de período funcionar no frontend;
   // limita aos últimos 24 meses (cobre o maior range do filtro) pra não inflar o JSON
   const heatmapCutoff = new Date()
@@ -405,26 +429,30 @@ async function main() {
   // fuso no limiar (o monthKey do resultado continua canônico)
   heatmapCutoff.setUTCMonth(heatmapCutoff.getUTCMonth() - 24)
   const heatmapCutoffKey = monthKey(heatmapCutoff)
-  const perAuthor = new Map<string, { commits: number; additions: number; deletions: number; repos: Set<string>; days: Set<string>; last: string }>()
-  const perRepo = new Map<string, { commits: number; additions: number; deletions: number; authors: Set<string>; last: string }>()
+  const perAuthor = new Map<string, { commits: number, additions: number, deletions: number, repos: Set<string>, days: Set<string>, last: string }>()
+  const perRepo = new Map<string, { commits: number, additions: number, deletions: number, authors: Set<string>, last: string }>()
   let totalAdd = 0
   let totalDel = 0
   const allDays = new Set<string>()
 
   for (const r of rows) {
     const d = new Date(r.date)
-    if (Number.isNaN(d.getTime())) continue
+    if (Number.isNaN(d.getTime()))
+      continue
     const cp = canonParts(d) // uma única vez por linha — todos os buckets vêm dela
     const month = monthKeyOf(cp)
 
-    if (!emailsByAuthor.has(r.author)) emailsByAuthor.set(r.author, new Set())
+    if (!emailsByAuthor.has(r.author))
+      emailsByAuthor.set(r.author, new Set())
     emailsByAuthor.get(r.author)!.add(r.email)
 
     const wk = `${isoWeekKeyOf(cp)}|${r.repo}|${r.author}`
     const wkCur = weekly.get(wk) ?? { commits: 0, weekend: 0, night: 0 }
     wkCur.commits++
-    if (cp.weekday === 0 || cp.weekday === 6) wkCur.weekend++
-    if (cp.h >= 22 || cp.h < 6) wkCur.night++
+    if (cp.weekday === 0 || cp.weekday === 6)
+      wkCur.weekend++
+    if (cp.h >= 22 || cp.h < 6)
+      wkCur.night++
     weekly.set(wk, wkCur)
 
     const mk = `${month}|${r.repo}|${r.author}`
@@ -445,22 +473,26 @@ async function main() {
     const dk = dayKeyOf(cp)
     allDays.add(dk)
 
-    if (!perAuthor.has(r.author)) perAuthor.set(r.author, { commits: 0, additions: 0, deletions: 0, repos: new Set(), days: new Set(), last: '' })
+    if (!perAuthor.has(r.author))
+      perAuthor.set(r.author, { commits: 0, additions: 0, deletions: 0, repos: new Set(), days: new Set(), last: '' })
     const pa = perAuthor.get(r.author)!
     pa.commits++
     pa.additions += r.additions
     pa.deletions += r.deletions
     pa.repos.add(r.repo)
     pa.days.add(dk)
-    if (r.date > pa.last) pa.last = r.date
+    if (r.date > pa.last)
+      pa.last = r.date
 
-    if (!perRepo.has(r.repo)) perRepo.set(r.repo, { commits: 0, additions: 0, deletions: 0, authors: new Set(), last: '' })
+    if (!perRepo.has(r.repo))
+      perRepo.set(r.repo, { commits: 0, additions: 0, deletions: 0, authors: new Set(), last: '' })
     const pr = perRepo.get(r.repo)!
     pr.commits++
     pr.additions += r.additions
     pr.deletions += r.deletions
     pr.authors.add(r.author)
-    if (r.date > pr.last) pr.last = r.date
+    if (r.date > pr.last)
+      pr.last = r.date
 
     totalAdd += r.additions
     totalDel += r.deletions
@@ -515,12 +547,13 @@ async function main() {
   // commits recentes por autor (página de perfil do dev) — últimos 100 de cada
   const recent = db.prepare(`
     SELECT repo, hash, author, date, subject, additions, deletions FROM commits ORDER BY date DESC
-  `).all() as { repo: string; hash: string; author: string; date: string; subject: string; additions: number; deletions: number }[]
+  `).all() as { repo: string, hash: string, author: string, date: string, subject: string, additions: number, deletions: number }[]
   const perAuthorCount = new Map<string, number>()
   const recentCommits = []
   for (const c of recent) {
     const n = perAuthorCount.get(c.author) ?? 0
-    if (n >= 100) continue
+    if (n >= 100)
+      continue
     perAuthorCount.set(c.author, n + 1)
     recentCommits.push({
       hash: c.hash.slice(0, 7),

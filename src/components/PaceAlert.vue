@@ -32,10 +32,16 @@ function pct(ratio: number): string {
         <tbody>
           <tr v-for="r in falling" :key="r.author">
             <td>{{ r.author }}</td>
-            <td class="num">{{ r.recent }} commits / 4 sem</td>
-            <td class="num text-muted">média {{ r.prevAvg.toFixed(1) }}/sem</td>
             <td class="num">
-              <UBadge color="error" variant="soft">{{ pct(r.ratio!) }}</UBadge>
+              {{ r.recent }} commits / 4 sem
+            </td>
+            <td class="num text-muted">
+              média {{ r.prevAvg.toFixed(1) }}/sem
+            </td>
+            <td class="num">
+              <UBadge color="error" variant="soft">
+                {{ pct(r.ratio!) }}
+              </UBadge>
             </td>
           </tr>
         </tbody>
@@ -50,10 +56,16 @@ function pct(ratio: number): string {
         <tbody>
           <tr v-for="r in rising" :key="r.author">
             <td>{{ r.author }}</td>
-            <td class="num">{{ r.recent }} commits / 4 sem</td>
-            <td class="num text-muted">média {{ r.prevAvg.toFixed(1) }}/sem</td>
             <td class="num">
-              <UBadge color="success" variant="soft">{{ pct(r.ratio!) }}</UBadge>
+              {{ r.recent }} commits / 4 sem
+            </td>
+            <td class="num text-muted">
+              média {{ r.prevAvg.toFixed(1) }}/sem
+            </td>
+            <td class="num">
+              <UBadge color="success" variant="soft">
+                {{ pct(r.ratio!) }}
+              </UBadge>
             </td>
           </tr>
         </tbody>

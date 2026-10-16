@@ -13,7 +13,8 @@ const KEY = 'gitview:wizard:selection'
 export function readWizardSelection(): WizardSelection | null {
   try {
     const raw = sessionStorage.getItem(KEY)
-    if (!raw) return null
+    if (!raw)
+      return null
     const parsed = JSON.parse(raw) as Partial<WizardSelection>
     if (typeof parsed.org === 'string' && parsed.org && Array.isArray(parsed.repos) && parsed.repos.length)
       return { org: parsed.org, repos: parsed.repos.map(String) }
@@ -25,6 +26,7 @@ export function readWizardSelection(): WizardSelection | null {
 }
 
 export function writeWizardSelection(selection: WizardSelection | null): void {
-  if (selection) sessionStorage.setItem(KEY, JSON.stringify(selection))
+  if (selection)
+    sessionStorage.setItem(KEY, JSON.stringify(selection))
   else sessionStorage.removeItem(KEY)
 }

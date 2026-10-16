@@ -19,7 +19,7 @@ interface RepoRow {
 
 const rows = computed<RepoRow[]>(() => {
   // commits e devs ativos no período filtrado
-  const byRepo = new Map<string, { commits: number; devs: Set<string> }>()
+  const byRepo = new Map<string, { commits: number, devs: Set<string> }>()
   for (const r of filteredMonthly.value) {
     const cur = byRepo.get(r.repo) ?? { commits: 0, devs: new Set<string>() }
     cur.commits += r.commits
@@ -28,11 +28,12 @@ const rows = computed<RepoRow[]>(() => {
   }
 
   // fix% no período filtrado
-  const fixByRepo = new Map<string, { fix: number; total: number }>()
+  const fixByRepo = new Map<string, { fix: number, total: number }>()
   for (const r of filteredTypes.value) {
     const cur = fixByRepo.get(r.repo) ?? { fix: 0, total: 0 }
     cur.total += r.commits
-    if (r.type === 'fix') cur.fix += r.commits
+    if (r.type === 'fix')
+      cur.fix += r.commits
     fixByRepo.set(r.repo, cur)
   }
 
@@ -62,9 +63,12 @@ function fmtDate(iso: string | null): string {
 
 /** destaque para trabalho parado sem release */
 function unreleasedColor(n: number | null): string {
-  if (n == null || n === 0) return 'text-dimmed'
-  if (n >= 50) return 'text-error font-medium'
-  if (n >= 20) return 'text-warning font-medium'
+  if (n == null || n === 0)
+    return 'text-dimmed'
+  if (n >= 50)
+    return 'text-error font-medium'
+  if (n >= 20)
+    return 'text-warning font-medium'
   return ''
 }
 
@@ -90,12 +94,24 @@ function open(repo: string) {
         <thead>
           <tr>
             <th>repo</th>
-            <th class="num">commits</th>
-            <th class="num">devs</th>
-            <th class="num">% fix</th>
-            <th class="num">último commit</th>
-            <th class="num">última release</th>
-            <th class="num">não liberados</th>
+            <th class="num">
+              commits
+            </th>
+            <th class="num">
+              devs
+            </th>
+            <th class="num">
+              % fix
+            </th>
+            <th class="num">
+              último commit
+            </th>
+            <th class="num">
+              última release
+            </th>
+            <th class="num">
+              não liberados
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -103,8 +119,12 @@ function open(repo: string) {
             <td class="font-medium text-primary">
               {{ r.repo }}
             </td>
-            <td class="num">{{ r.commits.toLocaleString('pt-BR') }}</td>
-            <td class="num">{{ r.devs }}</td>
+            <td class="num">
+              {{ r.commits.toLocaleString('pt-BR') }}
+            </td>
+            <td class="num">
+              {{ r.devs }}
+            </td>
             <td class="num">
               <span :class="r.fixPct >= 0.35 ? 'text-error' : r.fixPct >= 0.25 ? 'text-warning' : ''">
                 {{ Math.round(r.fixPct * 100) }}%

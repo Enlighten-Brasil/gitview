@@ -15,6 +15,7 @@
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
+import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { parseEnv } from 'node:util'
 import { migrateLegacyConfig } from './legacy'
@@ -125,13 +126,15 @@ function parseCsv(value: string): string[] {
 }
 
 function readParsedEnv(path: string): Record<string, string | undefined> {
-  if (!existsSync(path)) return {}
+  if (!existsSync(path))
+    return {}
   return parseEnv(readFileSync(path, 'utf-8'))
 }
 
 /** `.env` inexistente é criado a partir do `.env.example` (1ª execução) */
 export function ensureEnvFile(): void {
-  if (existsSync(envPath)) return
+  if (existsSync(envPath))
+    return
   const seed = existsSync(envExamplePath) ? readFileSync(envExamplePath, 'utf-8') : ''
   writeFileSync(envPath, seed)
 }
@@ -139,11 +142,13 @@ export function ensureEnvFile(): void {
 let warnedNewKeys = false
 /** avisa (1x por processo) quando o .env.example ganhou chaves que o .env não tem */
 function warnNewEnvKeys(current: Record<string, string | undefined>): void {
-  if (warnedNewKeys || !existsSync(envExamplePath)) return
+  if (warnedNewKeys || !existsSync(envExamplePath))
+    return
   warnedNewKeys = true
   const missing = Object.keys(readParsedEnv(envExamplePath))
     .filter(k => !(k in current) && !process.env[k]?.trim())
-  if (missing.length) console.warn(`! .env sem chaves novas do .env.example: ${missing.join(', ')}`)
+  if (missing.length)
+    console.warn(`! .env sem chaves novas do .env.example: ${missing.join(', ')}`)
 }
 
 /** shell > .env; vazio/espacos contam como "não definido" */
@@ -153,7 +158,8 @@ function envValue(key: string, file: Record<string, string | undefined>): string
 }
 
 function readTeamFile(): Partial<Config> {
-  if (!existsSync(teamConfigPath)) return {}
+  if (!existsSync(teamConfigPath))
+    return {}
   try {
     return JSON.parse(readFileSync(teamConfigPath, 'utf-8')) as Partial<Config>
   }
@@ -171,35 +177,46 @@ export function loadConfig(): Config {
   const config: Config = {}
 
   const clientId = envValue('GITVIEW_GITHUB_CLIENT_ID', file)
-  if (clientId) config.githubClientId = clientId
+  if (clientId)
+    config.githubClientId = clientId
   const token = envValue('GITVIEW_GITHUB_TOKEN', file)
-  if (token) config.githubToken = token
+  if (token)
+    config.githubToken = token
   const org = envValue('GITVIEW_GITHUB_ORG', file)
-  if (org) config.githubOrg = org
+  if (org)
+    config.githubOrg = org
   const root = envValue('GITVIEW_REPOS_ROOT', file)
-  if (root) config.reposRoot = root
+  if (root)
+    config.reposRoot = root
   const defaults = envValue('GITVIEW_DEFAULT_REPOS', file)
-  if (defaults) config.defaultRepos = parseCsv(defaults)
+  if (defaults)
+    config.defaultRepos = parseCsv(defaults)
   const exclude = envValue('GITVIEW_EXCLUDE', file)
-  if (exclude) config.exclude = parseCsv(exclude)
+  if (exclude)
+    config.exclude = parseCsv(exclude)
   const excludePaths = envValue('GITVIEW_EXCLUDE_PATHS', file)
   config.excludePaths = [...DEFAULT_EXCLUDE_PATHS, ...(excludePaths ? parseCsv(excludePaths) : [])]
   const port = envValue('GITVIEW_PORT', file)
   if (port) {
     const n = Number(port)
-    if (Number.isInteger(n) && n > 0 && n < 65536) config.port = n
+    if (Number.isInteger(n) && n > 0 && n < 65536)
+      config.port = n
   }
   const timezone = envValue('GITVIEW_TIMEZONE', file)
-  if (timezone) config.timezone = timezone
+  if (timezone)
+    config.timezone = timezone
 
   return { ...config, ...readTeamFile() }
 }
 
 /** valor .env entre aspas simples (sem expansão de escapes no parseEnv) */
 function quoteEnvValue(key: string, value: string): string {
-  if (!value) return ''
-  if (/[\r\n]/.test(value)) throw new Error(`.env: valor de ${key} não pode ter quebra de linha`)
-  if (value.includes("'")) throw new Error(`.env: valor de ${key} com aspa simples não é suportado`)
+  if (!value)
+    return ''
+  if (/[\r\n]/.test(value))
+    throw new Error(`.env: valor de ${key} não pode ter quebra de linha`)
+  if (value.includes('\''))
+    throw new Error(`.env: valor de ${key} com aspa simples não é suportado`)
   return `'${value}'`
 }
 
@@ -210,13 +227,16 @@ function quoteEnvValue(key: string, value: string): string {
 export function upsertEnvFile(entries: Record<string, string>): void {
   ensureEnvFile()
   let text = readFileSync(envPath, 'utf-8')
-  if (!text.endsWith('\n')) text += '\n'
+  if (!text.endsWith('\n'))
+    text += '\n'
   const lines = text.split(/\r?\n/)
   for (const [key, raw] of Object.entries(entries)) {
-    if (!ENV_KEYS[key]) throw new Error(`chave .env desconhecida: ${key}`)
+    if (!ENV_KEYS[key])
+      throw new Error(`chave .env desconhecida: ${key}`)
     const value = quoteEnvValue(key, raw)
     const idx = lines.findIndex(l => l.startsWith(`${key}=`))
-    if (idx >= 0) lines[idx] = `${key}=${value}`
+    if (idx >= 0)
+      lines[idx] = `${key}=${value}`
     else lines.push(`${key}=${value}`)
   }
   writeFileSync(envPath, `${lines.join('\n')}`)
@@ -230,7 +250,8 @@ export function saveConfig(patch: Partial<Config>): void {
   const envEntries: Record<string, string> = {}
   const teamPatch: Partial<Config> = {}
   for (const [field, value] of Object.entries(patch) as [keyof Config, unknown][]) {
-    if (value === undefined) continue
+    if (value === undefined)
+      continue
     const envKey = Object.keys(ENV_KEYS).find(k => ENV_KEYS[k] === field)
     if (envKey) {
       envEntries[envKey] = Array.isArray(value)
@@ -241,7 +262,8 @@ export function saveConfig(patch: Partial<Config>): void {
       teamPatch[field] = value as never
     }
   }
-  if (Object.keys(envEntries).length) upsertEnvFile(envEntries)
+  if (Object.keys(envEntries).length)
+    upsertEnvFile(envEntries)
   if (Object.keys(teamPatch).length) {
     const current = existsSync(teamConfigPath) ? readTeamFile() : {}
     writeFileSync(teamConfigPath, `${JSON.stringify({ ...current, ...teamPatch }, null, 2)}\n`)
@@ -253,14 +275,16 @@ export function saveConfig(patch: Partial<Config>): void {
  * Ordem: GITVIEW_REPOS_ROOT (shell/.env) → data/repos (clones do setup).
  */
 export function resolveReposRoot(config: Config): string {
-  const candidates: { label: string; path: string }[] = []
-  if (config.reposRoot) candidates.push({ label: 'GITVIEW_REPOS_ROOT (.env/shell)', path: config.reposRoot })
+  const candidates: { label: string, path: string }[] = []
+  if (config.reposRoot)
+    candidates.push({ label: 'GITVIEW_REPOS_ROOT (.env/shell)', path: config.reposRoot })
   candidates.push({ label: 'padrão do setup', path: join(rootDir, 'data', 'repos') })
 
   for (const c of candidates) {
     // caminhos relativos são resolvidos a partir da raiz do projeto
     const abs = resolve(rootDir, c.path)
-    if (existsSync(abs)) return abs
+    if (existsSync(abs))
+      return abs
   }
 
   const tried = candidates.map(c => `  - ${c.label}: ${c.path}`).join('\n')

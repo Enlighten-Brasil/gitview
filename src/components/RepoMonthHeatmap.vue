@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import type { EChartsOption } from 'echarts'
-import { filteredMonthly } from '../data'
+import { computed } from 'vue'
 import { axisLabel, ct, heatRamp, tooltipBase } from '../chartTheme'
+import { filteredMonthly } from '../data'
 import ChartPanel from './ChartPanel.vue'
 
 const option = computed<EChartsOption>(() => {
@@ -23,7 +23,8 @@ const option = computed<EChartsOption>(() => {
     const y = repos.indexOf(repo)
     if (x >= 0 && y >= 0) {
       data.push([x, y, v])
-      if (v > max) max = v
+      if (v > max)
+        max = v
     }
   }
 

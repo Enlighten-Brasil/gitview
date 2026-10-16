@@ -1,3 +1,5 @@
+import type { Buffer } from 'node:buffer'
+import type { Connect, Plugin } from 'vite'
 /**
  * Plugin Vite (apenas dev): expõe GET /__collect como stream SSE que roda os
  * três coletores em sequência e transmite o progresso linha a linha.
@@ -9,8 +11,8 @@
  */
 import { spawn } from 'node:child_process'
 import { dirname, join } from 'node:path'
+import process from 'node:process'
 import { fileURLToPath } from 'node:url'
-import type { Connect, Plugin } from 'vite'
 import { cleanLocalData } from './lib/clean'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -46,14 +48,19 @@ function runStep(script: string, args: string[], onLine: (line: string) => void)
       buf += c.toString('utf-8')
       const lines = buf.split(/\r?\n/)
       buf = lines.pop() ?? ''
-      for (const line of lines) if (line.trim()) onLine(line)
+      for (const line of lines) {
+        if (line.trim())
+          onLine(line)
+      }
     }
     child.stdout.on('data', onData)
     child.stderr.on('data', onData)
     child.on('error', reject)
     child.on('close', (code) => {
-      if (buf.trim()) onLine(buf)
-      if (code === 0) resolvePromise()
+      if (buf.trim())
+        onLine(buf)
+      if (code === 0)
+        resolvePromise()
       else reject(new Error(`${script} saiu com código ${code}`))
     })
   })
