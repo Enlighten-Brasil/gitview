@@ -2,6 +2,8 @@
 //
 // Gera os 5 JSONs de public/data/ com dados 100% FICTÍCIOS (devs "Ana"/"Beto",
 // repos demo-*, commits fake) para a demo servir sem nenhum dado real do time.
+// As datas se ancoram em "hoje" (UTC) de propósito: a demo sempre cobre o
+// período default de 12M — o custo é o fixture não ser byte-idêntico entre dias.
 // Segurança: recusa-se a sobrescrever dados existentes sem --force.
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -45,7 +47,7 @@ function isoWeekKey(d: Date): string {
   const firstThu = new Date(Date.UTC(year, 0, 4))
   const fday = (firstThu.getUTCDay() + 6) % 7
   firstThu.setUTCDate(firstThu.getUTCDate() - fday + 3)
-  const week = 1 + Math.round((t.getTime() - firstThu.getTime()) / (7 * 876e5))
+  const week = 1 + Math.round((t.getTime() - firstThu.getTime()) / (7 * 864e5))
   return `${year}-W${pad(week)}`
 }
 
@@ -111,7 +113,7 @@ for (let back = 89; back >= 0; back--) {
     })
   }
 }
-commits.sort((a, b) => (a.date < b.date ? 1 : -1)) // desc
+commits.sort((a, b) => (a.date === b.date ? (a.hash < b.hash ? 1 : -1) : (a.date < b.date ? 1 : -1))) // desc, hash como desempate
 
 // agregados derivados da MESMA lista — invariantes valem por construção
 const totals = {
@@ -135,15 +137,13 @@ function streaksFor(author: string) {
     prev = t
   }
   const last = days[days.length - 1]
-  const lastT = Date.parse(`${last}T00:00:00Z`)
   let streak = 0
-  let cursor = lastT
+  let cursor = Date.parse(`${last}T00:00:00Z`)
   const set = new Set(days.map(k => Date.parse(`${k}T00:00:00Z`)))
   while (set.has(cursor)) {
     streak++
     cursor -= 864e5
   }
-  void lastT
   return { streak, longestStreak: longest }
 }
 
