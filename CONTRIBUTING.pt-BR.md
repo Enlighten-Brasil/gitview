@@ -9,7 +9,7 @@ pnpm install
 pnpm dev        # http://localhost:5173 — na primeira execução cai no assistente /setup
 ```
 
-Requisitos: **Node 22.13+** (os coletores usam `node:sqlite`, sem flag desde a 22.13; o CI roda Node 22) e **pnpm 11.28** (pinado no campo `packageManager` — o corepack ativa sozinho). O `.env` é criado sozinho a partir do `.env.example` na primeira execução; o cadastro do time vive no `team.local.json` (gitignored). Para usar sem a org real, dá para apontar `GITVIEW_REPOS_ROOT` para clones seus (seção "Apontar para clones existentes" do README) — token com acesso a uma org pública pequena basta.
+Requisitos: **Node 22.13+** (os coletores usam `node:sqlite`, sem flag desde a 22.13; o CI roda Node 22) e **pnpm 11.28** (pinado no campo `packageManager` — rode `corepack enable` uma vez para o corepack assumir, ou instale o pnpm 11.28 direto). O `.env` é criado sozinho a partir do `.env.example` na primeira execução; o cadastro do time vive no `team.local.json` (gitignored). Para usar sem a org real, dá para apontar `GITVIEW_REPOS_ROOT` para clones seus (seção "Apontar para clones existentes" do README) — token com acesso a uma org pública pequena basta.
 
 ## Gates antes de abrir PR
 

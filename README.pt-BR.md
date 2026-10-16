@@ -11,7 +11,7 @@ Dashboard interno de métricas do time: commits, PRs e releases dos repositório
 Requisitos:
 
 - **Node 22.13+** (os coletores usam `node:sqlite`, sem flag desde a 22.13; o CI roda Node 22)
-- **pnpm 11.28** (pinado no campo `packageManager` — o corepack ativa sozinho)
+- **pnpm 11.28** (pinado no campo `packageManager` — `corepack enable` uma vez, ou instale o pnpm 11.28 direto)
 - Uma conta GitHub — autenticada pela própria UI (**device flow** ou colando um **PAT**), ou via **GitHub CLI** (`gh auth login`), que serve de ponte quando não há token no `.env`
 
 ```bash
