@@ -1,5 +1,11 @@
 # gitview
 
+## 0.39.0
+
+### Minor Changes
+
+- 25fb848: feat(teams): página /teams/[name] — dashboard do time com devs travados nos membros (KPIs, timeline, PRs, off-hours), URL compartilhável (escopo de filtros 'team': período+repos), redirect de times renomeados via renamedFrom e link "abrir dashboard" nos cards de /teams
+
 ## 0.38.2
 
 ### Patch Changes
