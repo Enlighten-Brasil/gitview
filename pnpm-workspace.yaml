@@ -13,6 +13,11 @@ packages:
 
 overrides:
   esbuild: ^0.28.2
+  # katex é transitiva de micromark-extension-math (@eslint/markdown do eslint
+  # config), que pinna ^0.16.0 — advisory exige >= 0.18.2 e o Dependabot falhava
+  # com security_update_not_possible (issue #20). katex só é chamada pelo renderer
+  # HTML opcional (lib/html.js), que o lint de markdown não usa.
+  katex: ^0.18.2
 
 allowBuilds:
   esbuild: true
