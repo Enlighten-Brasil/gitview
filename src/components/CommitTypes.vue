@@ -3,6 +3,7 @@ import type { EChartsOption } from 'echarts'
 import { computed } from 'vue'
 import { axisLabel, ct, legendText, splitLine, tooltipBase } from '../chartTheme'
 import { filteredTypes } from '../data'
+import { fmtInt } from '../format'
 import ChartPanel from './ChartPanel.vue'
 
 /** categorias exibidas (docs/test/perf/style/build/ci viram "outros") */
@@ -87,7 +88,7 @@ const repoOption = computed<EChartsOption>(() => {
           .filter(x => x.v > 0)
           .sort((a, b) => b.v - a.v)
           .map(x => `${x.t}: <b>${x.v}%</b>`)
-        return `${r.repo} (${r.total.toLocaleString('pt-BR')} commits)<br>${lines.join('<br>')}`
+        return `${r.repo} (${fmtInt(r.total)} commits)<br>${lines.join('<br>')}`
       },
     }),
     legend: { top: 0, right: 0, textStyle: legendText() },

@@ -5,7 +5,8 @@ import { useRoute } from 'vue-router'
 import { axisLabel, ct, legendText, splitLine, tooltipBase } from '@/chartTheme'
 import ChartPanel from '@/components/ChartPanel.vue'
 import { filters, inRange, isBot, isCustomRange, rangeLabel, stats } from '@/data'
-import { fmtDuration, ghIsBot, github, median } from '@/github'
+import { fmtCompact, fmtDate, fmtDuration, median } from '@/format'
+import { ghIsBot, github } from '@/github'
 import { daysSinceLastRelease, loadReleases, releases, repoRelease } from '@/releases'
 import { UNRELEASED_AMBER, UNRELEASED_RED } from '@/thresholds'
 
@@ -79,29 +80,20 @@ const topDev = computed(() => {
   return top && total > 0 ? { author: top.author, share: top.commits / total } : null
 })
 
-// formato compacto pt-BR: vírgula como separador decimal (igual LinesFlow/WeeklyChampions)
-function fmt(n: number): string {
-  if (n >= 1_000_000)
-    return `${(n / 1_000_000).toFixed(1).replace('.', ',')}M`
-  if (n >= 10_000)
-    return `${(n / 1_000).toFixed(0)}k`
-  return n.toLocaleString('pt-BR')
-}
-
 const cards = computed(() => {
   const r = repoStats.value
   if (!r)
     return []
   const days = daysSinceLastRelease(repo.value)
   const base = [
-    { value: fmt(periodCommits.value), label: 'commits', icon: 'i-lucide-git-commit-horizontal' },
-    { value: fmt(periodAdds.value), label: 'linhas +', icon: 'i-lucide-plus', color: 'text-success' },
-    { value: fmt(periodDels.value), label: 'linhas −', icon: 'i-lucide-minus', color: 'text-error' },
+    { value: fmtCompact(periodCommits.value), label: 'commits', icon: 'i-lucide-git-commit-horizontal' },
+    { value: fmtCompact(periodAdds.value), label: 'linhas +', icon: 'i-lucide-plus', color: 'text-success' },
+    { value: fmtCompact(periodDels.value), label: 'linhas −', icon: 'i-lucide-minus', color: 'text-error' },
     { value: String(periodAuthors.value), label: 'devs', icon: 'i-lucide-users' },
   ]
   // com período ativo, mostra também o total histórico pra referência
   if (periodFiltered.value) {
-    base.push({ value: fmt(r.commits), label: `commits${histSuffix.value}`, icon: 'i-lucide-infinity' })
+    base.push({ value: fmtCompact(r.commits), label: `commits${histSuffix.value}`, icon: 'i-lucide-infinity' })
   }
   if (rel.value) {
     base.push(
@@ -190,10 +182,6 @@ const devsOption = computed<EChartsOption>(() => {
 // ---------------------------------------------------------------------------
 const tags = computed(() => rel.value?.tags ?? [])
 const shownTags = computed(() => tags.value.slice(0, 30))
-
-function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('pt-BR')
-}
 </script>
 
 <template>

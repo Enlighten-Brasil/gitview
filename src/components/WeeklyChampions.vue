@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { filteredWeekly, isoWeekKeyBefore } from '../data'
+import { fmtRatio } from '../format'
 
 /**
  * Campeão da semana por EVOLUÇÃO (issue #10), não por volume: o volume puro
@@ -60,10 +61,6 @@ const data = computed(() => {
 
   return { recent: wins.slice().reverse().slice(0, 12), titleRank, weeksWithWins: wins.length }
 })
-
-function fmtRatio(x: number): string {
-  return `${x.toFixed(1).replace('.', ',')}×`
-}
 </script>
 
 <template>
@@ -93,7 +90,7 @@ function fmtRatio(x: number): string {
             </td>
             <td>{{ w.author }}</td>
             <td class="num font-semibold text-success">
-              {{ fmtRatio(w.ratio) }}
+              {{ fmtRatio(w.ratio) }}×
             </td>
             <td class="num text-muted">
               {{ w.commits }}

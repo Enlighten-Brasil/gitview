@@ -1,6 +1,11 @@
 import type { GitHubData, PullRequest } from './types'
 import { computed, ref } from 'vue'
 import { filters } from './data'
+import { daysSince, fmtDuration, median } from './format'
+
+// compat: median/fmtDuration mudaram para ./format (issue #32) — reexportados
+// aqui até os imports antigos terminarem de migrar
+export { fmtDuration, median }
 
 export const github = ref<GitHubData | null>(null)
 export const githubError = ref<string | null>(null)
@@ -73,21 +78,13 @@ export const mergedPrs = computed(() =>
 /** abertos com idade em dias, mais antigos primeiro */
 export const openAging = computed(() =>
   openPrs.value
-    .map(pr => ({ ...pr, ageDays: Math.floor((Date.now() - new Date(pr.createdAt).getTime()) / 86_400_000) }))
+    .map(pr => ({ ...pr, ageDays: daysSince(pr.createdAt) }))
     .sort((a, b) => b.ageDays - a.ageDays),
 )
 
 /** cycle time em horas (criação -> merge) */
 function cycleHours(pr: PullRequest): number {
   return (new Date(pr.mergedAt!).getTime() - new Date(pr.createdAt).getTime()) / 3_600_000
-}
-
-export function median(values: number[]): number {
-  if (!values.length)
-    return 0
-  const s = [...values].sort((a, b) => a - b)
-  const mid = Math.floor(s.length / 2)
-  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2
 }
 
 export const medianCycleHours = computed(() => median(mergedPrs.value.map(cycleHours)))
@@ -168,18 +165,6 @@ export const mergedWithoutReview = computed(() => {
   const pct = mergedPrs.value.length ? Math.round((noReview.length / mergedPrs.value.length) * 100) : 0
   return { count: noReview.length, pct }
 })
-
-/** horas -> "18h" / "2,3d" / "1,5sem" */
-export function fmtDuration(hours: number): string {
-  if (hours < 1)
-    return '<1h'
-  if (hours < 48)
-    return `${Math.round(hours)}h`
-  const days = hours / 24
-  if (days < 14)
-    return `${days.toFixed(1).replace('.', ',')}d`
-  return `${(days / 7).toFixed(1).replace('.', ',')}sem`
-}
 
 // ---------------------------------------------------------------------------
 // tendência de cycle time por repo — janela fixa de 6 meses (ignora o filtro de

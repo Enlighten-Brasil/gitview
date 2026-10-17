@@ -1,11 +1,13 @@
 <script setup lang="ts">
+import { fmtInt } from '../format'
 import { ghName, openAging } from '../github'
+import { PR_AGE_AMBER, PR_AGE_RED } from '../thresholds'
 
-/** cor da idade: >7d vermelho, >3d amarelo, senão neutro */
+/** cor da idade: >PR_AGE_RED vermelho, >PR_AGE_AMBER amarelo, senão neutro */
 function ageColor(days: number): string {
-  if (days > 7)
+  if (days > PR_AGE_RED)
     return 'text-error font-semibold'
-  if (days > 3)
+  if (days > PR_AGE_AMBER)
     return 'text-warning font-semibold'
   return 'text-muted'
 }
@@ -70,8 +72,8 @@ function ageColor(days: number): string {
               {{ pr.changedFiles }}
             </td>
             <td class="num whitespace-nowrap">
-              <span class="add">+{{ pr.additions.toLocaleString('pt-BR') }}</span>
-              <span class="del ml-1">−{{ pr.deletions.toLocaleString('pt-BR') }}</span>
+              <span class="add">+{{ fmtInt(pr.additions) }}</span>
+              <span class="del ml-1">−{{ fmtInt(pr.deletions) }}</span>
             </td>
           </tr>
         </tbody>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { cycleTrend, fmtDuration, github } from '../github'
+import { fmtDuration } from '../format'
+import { cycleTrend, github } from '../github'
 
 const rows = computed(() => cycleTrend.value)
 

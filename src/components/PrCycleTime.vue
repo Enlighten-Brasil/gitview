@@ -2,7 +2,8 @@
 import type { EChartsOption } from 'echarts'
 import { computed } from 'vue'
 import { axisLabel, ct, splitLine, tooltipBase } from '../chartTheme'
-import { cycleByRepo, fmtDuration, medianCycleHours } from '../github'
+import { fmtDuration } from '../format'
+import { cycleByRepo, medianCycleHours } from '../github'
 import ChartPanel from './ChartPanel.vue'
 
 const option = computed<EChartsOption>(() => {

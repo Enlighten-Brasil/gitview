@@ -5,6 +5,7 @@
  */
 import { computed } from 'vue'
 import { commitsByAuthor, filteredCommitCount } from '../data'
+import { fmtInt } from '../format'
 
 const top = computed(() => {
   const t = commitsByAuthor.value[0]
@@ -15,10 +16,6 @@ const top = computed(() => {
     : 0
   return { ...t, share }
 })
-
-function fmt(n: number): string {
-  return n.toLocaleString('pt-BR')
-}
 </script>
 
 <template>
@@ -33,7 +30,7 @@ function fmt(n: number): string {
       </div>
     </div>
     <div class="ml-auto flex items-center gap-2.5 shrink-0">
-      <span class="text-lg font-bold text-highlighted">{{ fmt(top.commits) }}</span>
+      <span class="text-lg font-bold text-highlighted">{{ fmtInt(top.commits) }}</span>
       <UBadge color="primary" variant="soft" size="sm">
         {{ top.share }}% do período
       </UBadge>
