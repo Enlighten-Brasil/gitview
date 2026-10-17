@@ -20,3 +20,7 @@ team.local.json
 # segurança: se algum config futuro usar o dts default do vue-router na raiz
 typed-router.d.ts
 
+# build e cache do site de docs (VitePress) — regeneráveis via docs:build
+docs/.vitepress/dist
+docs/.vitepress/cache
+
