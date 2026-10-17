@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { ghName, stalePrs } from '../github'
+import { PR_AGE_ERROR_DAYS, PR_STALE_DAYS, PR_STALE_ERROR_COUNT } from '../thresholds'
 
-const STALE_DAYS = 14
-
-const stale = computed(() => stalePrs(STALE_DAYS))
+const stale = computed(() => stalePrs(PR_STALE_DAYS))
 const oldest = computed(() => stale.value[0] ?? null)
 const shown = computed(() => stale.value.slice(0, 5))
 </script>
@@ -14,15 +13,15 @@ const shown = computed(() => stale.value.slice(0, 5))
     <template #header>
       <div class="flex items-center gap-2">
         <UIcon name="i-lucide-hourglass" class="size-4 text-warning" />
-        <span class="text-sm font-semibold text-highlighted">PRs parados — abertos há {{ STALE_DAYS }}+ dias</span>
-        <UBadge v-if="stale.length" :color="stale.length >= 5 ? 'error' : 'warning'" variant="soft" size="sm" class="ml-auto">
+        <span class="text-sm font-semibold text-highlighted">PRs parados — abertos há {{ PR_STALE_DAYS }}+ dias</span>
+        <UBadge v-if="stale.length" :color="stale.length >= PR_STALE_ERROR_COUNT ? 'error' : 'warning'" variant="soft" size="sm" class="ml-auto">
           {{ stale.length }}
         </UBadge>
       </div>
     </template>
 
     <p v-if="stale.length === 0" class="text-muted text-sm">
-      Nenhum PR parado além de {{ STALE_DAYS }} dias. 👍
+      Nenhum PR parado além de {{ PR_STALE_DAYS }} dias. 👍
     </p>
 
     <template v-else>
@@ -41,7 +40,7 @@ const shown = computed(() => stale.value.slice(0, 5))
               {{ ghName(pr.author) }}
             </td>
             <td class="num whitespace-nowrap">
-              <span :class="pr.ageDays >= 30 ? 'text-error font-medium' : 'text-warning'">{{ pr.ageDays }}d</span>
+              <span :class="pr.ageDays >= PR_AGE_ERROR_DAYS ? 'text-error font-medium' : 'text-warning'">{{ pr.ageDays }}d</span>
             </td>
           </tr>
         </tbody>

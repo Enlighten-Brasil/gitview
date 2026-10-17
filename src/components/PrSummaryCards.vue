@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { fmtDuration, medianCycleHours, mergedPrs, mergedWithoutReview, openAging, openPrs } from '../github'
+import { MERGE_NO_REVIEW_AMBER, MERGE_NO_REVIEW_RED, PR_STALE_DAYS } from '../thresholds'
 
 const cards = computed(() => {
-  const stale = openAging.value.filter(pr => pr.ageDays > 7).length
+  // mesma janela de PR parado do alerta e do resumo (PR_STALE_DAYS)
+  const stale = openAging.value.filter(pr => pr.ageDays >= PR_STALE_DAYS).length
   const drafts = openPrs.value.filter(pr => pr.draft).length
   return [
     {
@@ -14,7 +16,7 @@ const cards = computed(() => {
     },
     {
       value: String(stale),
-      label: 'parados há +7 dias',
+      label: `parados há +${PR_STALE_DAYS} dias`,
       icon: 'i-lucide-hourglass',
       color: stale > 0 ? 'text-warning' : undefined,
       sub: null,
@@ -35,7 +37,12 @@ const cards = computed(() => {
       value: `${mergedWithoutReview.value.pct}%`,
       label: 'mergeados sem review',
       icon: 'i-lucide-eye-off',
-      color: mergedWithoutReview.value.pct > 50 ? 'text-error' : undefined,
+      // mesmos limiares do ReviewCoverage: red ≥20%, amber ≥10%
+      color: mergedWithoutReview.value.pct >= MERGE_NO_REVIEW_RED * 100
+        ? 'text-error'
+        : mergedWithoutReview.value.pct >= MERGE_NO_REVIEW_AMBER * 100
+          ? 'text-warning'
+          : undefined,
       sub: `${mergedWithoutReview.value.count} PRs`,
     },
   ]

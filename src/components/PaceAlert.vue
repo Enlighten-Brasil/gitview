@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { pace } from '../data'
+import { PACE_FALLING, PACE_RISING } from '../thresholds'
 
-/** queda: ritmo atual <= 50% da média anterior; acelerando: >= 150% */
-const falling = computed(() => pace.value.filter(r => r.ratio !== null && r.ratio <= 0.5))
-const rising = computed(() => pace.value.filter(r => r.ratio !== null && r.ratio >= 1.5))
+/** queda: ritmo atual <= PACE_FALLING da média anterior; acelerando: >= PACE_RISING */
+const falling = computed(() => pace.value.filter(r => r.ratio !== null && r.ratio <= PACE_FALLING))
+const rising = computed(() => pace.value.filter(r => r.ratio !== null && r.ratio >= PACE_RISING))
 
 function pct(ratio: number): string {
   return `${Math.round(ratio * 100)}%`

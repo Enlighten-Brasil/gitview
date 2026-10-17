@@ -7,6 +7,7 @@ import ChartPanel from '@/components/ChartPanel.vue'
 import { filters, inRange, isBot, isCustomRange, rangeLabel, stats } from '@/data'
 import { fmtDuration, ghIsBot, github, median } from '@/github'
 import { daysSinceLastRelease, loadReleases, releases, repoRelease } from '@/releases'
+import { UNRELEASED_AMBER, UNRELEASED_RED } from '@/thresholds'
 
 // rota de detalhe do repo (era /repo/:name — alias mantém os links antigos)
 definePage({
@@ -112,7 +113,7 @@ const cards = computed(() => {
         value: String(rel.value.unreleased),
         label: 'commits não liberados',
         icon: 'i-lucide-package-open',
-        color: rel.value.unreleased >= 50 ? 'text-error' : rel.value.unreleased >= 20 ? 'text-warning' : undefined,
+        color: rel.value.unreleased >= UNRELEASED_RED ? 'text-error' : rel.value.unreleased >= UNRELEASED_AMBER ? 'text-warning' : undefined,
       },
     )
   }

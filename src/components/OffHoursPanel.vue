@@ -7,6 +7,13 @@
  */
 import { computed, ref } from 'vue'
 import { burnout, offHoursPeriod, rangeLabel } from '../data'
+import {
+  OFF_HOURS_COUNT_ATTENTION,
+  OFF_HOURS_MIN_COMMITS,
+  OFF_HOURS_PCT,
+  OFF_HOURS_PCT_ATTENTION,
+  OFF_HOURS_WEEKENDS,
+} from '../thresholds'
 
 const mode = ref<'8sem' | 'periodo'>('8sem')
 
@@ -23,12 +30,12 @@ const rows = computed<Row[]>(() => (mode.value === '8sem' ? burnout.value : offH
 
 /** padrão: ≥25% fora do horário (ou 3+ fds seguidos na janela de 8 semanas) */
 function status(b: Row): { color: 'error' | 'warning' | 'success', label: string, hex: string } {
-  if (b.offHoursPct >= 0.25 || (b.weekendsActive ?? 0) >= 3)
+  if (b.offHoursPct >= OFF_HOURS_PCT || (b.weekendsActive ?? 0) >= OFF_HOURS_WEEKENDS)
     return { color: 'error', label: 'padrão', hex: 'var(--ui-error)' }
   // a contagem absoluta (fds+madrugada ≥5) só tem sentido na janela fixa de 8
   // semanas; no modo "período" (1–24 meses) ela acumularia trivialmente — lá o
   // status é só por pct (como no antigo OffHoursPeriod)
-  if (b.offHoursPct >= 0.15 || (mode.value === '8sem' && b.weekend + b.night >= 5))
+  if (b.offHoursPct >= OFF_HOURS_PCT_ATTENTION || (mode.value === '8sem' && b.weekend + b.night >= OFF_HOURS_COUNT_ATTENTION))
     return { color: 'warning', label: 'atenção', hex: 'var(--ui-warning)' }
   return { color: 'success', label: 'pontual', hex: 'var(--ui-success)' }
 }
@@ -122,10 +129,10 @@ function status(b: Row): { color: 'error' | 'warning' | 'success', label: string
         </tbody>
       </table>
       <p class="text-dimmed text-xs mt-2.5">
-        fds = sáb/dom · madrugada = 22h–6h · padrão = ≥25% fora do horário<template v-if="mode === '8sem'">
-          ou 3+ fds seguidos (janela fixa de 8 semanas, ignora o filtro de período)
+        fds = sáb/dom · madrugada = 22h–6h · padrão = ≥{{ Math.round(OFF_HOURS_PCT * 100) }}% fora do horário<template v-if="mode === '8sem'">
+          ou {{ OFF_HOURS_WEEKENDS }}+ fds seguidos (janela fixa de 8 semanas, ignora o filtro de período)
         </template><template v-else>
-          no período · devs com &lt;20 commits no período são ignorados
+          no período · devs com &lt;{{ OFF_HOURS_MIN_COMMITS }} commits no período são ignorados
         </template>
       </p>
     </template>
