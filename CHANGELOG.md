@@ -1,5 +1,28 @@
 # gitview
 
+## 0.49.3
+
+### Patch Changes
+
+- 85d33b6: chore(collect-team): dedup de renamedFrom por chave NFC
+  
+  O `team.json` agora deduplica `renamedFrom` por chave `n.normalize('NFC').toLowerCase()`
+  em vez de por string bruta: o mesmo nome antigo digitado em macOS (NFD) e em outro
+  sistema (NFC) sobrevivia como DUAS entradas no JSON. Passa a sobrar só a primeira
+  forma bruta de cada chave (a forma crua é preservada; o que se normaliza é a
+  comparação), mantendo o descarte quando a chave equivale ao nome atual do time.
+- 3215d28: fix(WeeklyChampions): baseline das 8 semanas anteriores filtra pelo período
+  
+  A janela de baseline do campeão da semana agora só considera as semanas
+  ISO anteriores que caem DENTRO do período filtrado (`inPeriodMonth`).
+  Antes, semanas anteriores ao início do período contavam como 0, a média
+  defluía e a razão inflava: no preset 1M a primeira semana do período
+  aparecia com 116× (baseline 0 → razão = commits puros, volume puro — o
+  que a issue #10 queria evitar). Semana sem nenhuma semana anterior no
+  período fica de fora do ranking (sem campeão naquela semana). Com
+  "Tudo" (sem filtro) `inPeriodMonth` é sempre true — comportamento idêntico
+  ao atual. Comentário do bloco e rodapé atualizados para refletir a regra.
+
 ## 0.49.2
 
 ### Patch Changes
