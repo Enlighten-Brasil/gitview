@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import type { RiskStatus, RiskTier } from '../risk'
 import { computed } from 'vue'
 import { filteredTypes } from '../data'
+import { statusOf } from '../risk'
 import { FIX_HOTSPOT_AMBER, FIX_HOTSPOT_MIN_COMMITS, FIX_HOTSPOT_RED } from '../thresholds'
+import RiskBar from './RiskBar.vue'
 
 interface RepoFix {
   repo: string
@@ -26,12 +29,14 @@ const rows = computed<RepoFix[]>(() => {
     .sort((a, b) => b.fixPct - a.fixPct)
 })
 
-function risk(r: RepoFix): { color: 'error' | 'warning' | 'success', label: string, hex: string } {
-  if (r.fixPct >= FIX_HOTSPOT_RED)
-    return { color: 'error', label: 'quente', hex: 'var(--ui-error)' }
-  if (r.fixPct >= FIX_HOTSPOT_AMBER)
-    return { color: 'warning', label: 'atenção', hex: 'var(--ui-warning)' }
-  return { color: 'success', label: 'ok', hex: 'var(--ui-success)' }
+const RISK_TIERS: RiskTier[] = [
+  { at: FIX_HOTSPOT_RED, color: 'error', label: 'quente' },
+  { at: FIX_HOTSPOT_AMBER, color: 'warning', label: 'atenção' },
+  { at: 0, color: 'success', label: 'ok' },
+]
+
+function riskStatus(r: RepoFix): RiskStatus {
+  return statusOf(r.fixPct, RISK_TIERS)
 }
 </script>
 
@@ -73,12 +78,7 @@ function risk(r: RepoFix): { color: 'error' | 'warning' | 'success', label: stri
               {{ r.repo }}
             </td>
             <td>
-              <div class="flex items-center gap-2">
-                <div class="h-2 flex-1 rounded bg-accented overflow-hidden">
-                  <div class="h-full rounded" :style="{ width: `${Math.round(r.fixPct * 100)}%`, background: risk(r).hex }" />
-                </div>
-                <span class="num text-xs w-9">{{ Math.round(r.fixPct * 100) }}%</span>
-              </div>
+              <RiskBar :pct="r.fixPct" :status="riskStatus(r)" />
             </td>
             <td class="num">
               {{ r.fix }}
@@ -87,8 +87,8 @@ function risk(r: RepoFix): { color: 'error' | 'warning' | 'success', label: stri
               {{ r.total }}
             </td>
             <td class="num">
-              <UBadge :color="risk(r).color" variant="soft">
-                {{ risk(r).label }}
+              <UBadge :color="riskStatus(r).color" variant="soft">
+                {{ riskStatus(r).label }}
               </UBadge>
             </td>
           </tr>

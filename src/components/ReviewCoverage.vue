@@ -1,20 +1,30 @@
 <script setup lang="ts">
+import type { RiskLevel, RiskStatus, RiskTier } from '../risk'
 import { computed } from 'vue'
 import { mergedPrs, mergedWithoutReview } from '../github'
+import { statusOf } from '../risk'
 import { MERGE_NO_REVIEW_AMBER, MERGE_NO_REVIEW_RED } from '../thresholds'
+import RiskBar from './RiskBar.vue'
 
 /** % de PRs mergeados sem review de outra pessoa — threshold: ≥20% vermelho, ≥10% amarelo */
 const pct = computed(() => mergedWithoutReview.value.pct)
 const count = computed(() => mergedWithoutReview.value.count)
 const total = computed(() => mergedPrs.value.length)
 
-const status = computed<{ color: 'error' | 'warning' | 'success', label: string }>(() => {
-  if (pct.value >= MERGE_NO_REVIEW_RED * 100)
-    return { color: 'error', label: 'alto' }
-  if (pct.value >= MERGE_NO_REVIEW_AMBER * 100)
-    return { color: 'warning', label: 'atenção' }
-  return { color: 'success', label: 'ok' }
-})
+const RISK_TIERS: RiskTier[] = [
+  { at: MERGE_NO_REVIEW_RED, color: 'error', label: 'alto' },
+  { at: MERGE_NO_REVIEW_AMBER, color: 'warning', label: 'atenção' },
+  { at: 0, color: 'success', label: 'ok' },
+]
+
+const status = computed<RiskStatus>(() => statusOf(pct.value / 100, RISK_TIERS))
+
+/** cor do número grande — literal p/ o Tailwind gerar a classe */
+const TEXT_CLASS: Record<RiskLevel, string> = {
+  error: 'text-error',
+  warning: 'text-warning',
+  success: 'text-success',
+}
 </script>
 
 <template>
@@ -35,17 +45,12 @@ const status = computed<{ color: 'error' | 'warning' | 'success', label: string 
 
     <template v-else>
       <div class="flex items-baseline gap-2">
-        <span class="text-3xl font-bold tracking-tight" :class="pct >= MERGE_NO_REVIEW_RED * 100 ? 'text-error' : pct >= MERGE_NO_REVIEW_AMBER * 100 ? 'text-warning' : 'text-success'">
+        <span class="text-3xl font-bold tracking-tight" :class="TEXT_CLASS[status.color]">
           {{ pct }}%
         </span>
         <span class="text-sm text-muted">{{ count }} de {{ total }} PRs mergeados sem review de outra pessoa</span>
       </div>
-      <div class="h-2 rounded bg-accented overflow-hidden mt-3">
-        <div
-          class="h-full rounded"
-          :style="{ width: `${pct}%`, background: pct >= MERGE_NO_REVIEW_RED * 100 ? 'var(--ui-error)' : pct >= MERGE_NO_REVIEW_AMBER * 100 ? 'var(--ui-warning)' : 'var(--ui-success)' }"
-        />
-      </div>
+      <RiskBar :pct="pct / 100" :status="status" :show-value="false" class="mt-3" />
       <p class="text-dimmed text-xs mt-2.5">
         alto = ≥{{ MERGE_NO_REVIEW_RED * 100 }}% · atenção = ≥{{ MERGE_NO_REVIEW_AMBER * 100 }}% · detalhamento por dev na aba Pull requests
       </p>

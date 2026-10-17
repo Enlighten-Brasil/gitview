@@ -1,24 +1,11 @@
 <script setup lang="ts">
 import type { EChartsOption } from 'echarts'
 import { computed } from 'vue'
-import { axisLabel, ct, legendText, splitLine, tooltipBase } from '../chartTheme'
+import { axisLabel, legendText, splitLine, tooltipBase } from '../chartTheme'
+import { COMMIT_TYPES, commitTypeColor, commitTypeGroup } from '../commitTypes'
 import { filteredTypes } from '../data'
 import { fmtInt } from '../format'
 import ChartPanel from './ChartPanel.vue'
-
-/** categorias exibidas (docs/test/perf/style/build/ci viram "outros") */
-const CATEGORIES = ['feat', 'fix', 'refactor', 'chore', 'outros'] as const
-const COLORS: Record<string, string> = {
-  feat: ct.primary,
-  fix: ct.error500,
-  refactor: ct.violet500,
-  chore: ct.warning500,
-  outros: ct.textDim,
-}
-
-function group(type: string): (typeof CATEGORIES)[number] {
-  return (CATEGORIES as readonly string[]).includes(type) ? type as (typeof CATEGORIES)[number] : 'outros'
-}
 
 /** mix por mês (%) — stacked bar */
 const monthOption = computed<EChartsOption>(() => {
@@ -27,7 +14,7 @@ const monthOption = computed<EChartsOption>(() => {
     if (!byMonth.has(r.month))
       byMonth.set(r.month, new Map())
     const m = byMonth.get(r.month)!
-    const t = group(r.type)
+    const t = commitTypeGroup(r.type)
     m.set(t, (m.get(t) ?? 0) + r.commits)
   }
   const months = [...byMonth.keys()].sort()
@@ -49,12 +36,12 @@ const monthOption = computed<EChartsOption>(() => {
     grid: { left: 40, right: 20, top: 30, bottom: 24 },
     xAxis: { type: 'category', data: months, axisLabel: axisLabel() },
     yAxis: { type: 'value', axisLabel: axisLabel(), splitLine: splitLine() },
-    series: CATEGORIES.map(t => ({
+    series: COMMIT_TYPES.map(t => ({
       name: t,
       type: 'bar' as const,
       stack: 'types',
       data: months.map(m => byMonth.get(m)?.get(t) ?? 0),
-      itemStyle: { color: COLORS[t] },
+      itemStyle: { color: commitTypeColor(t) },
       barMaxWidth: 26,
     })),
   }
@@ -67,14 +54,14 @@ const repoOption = computed<EChartsOption>(() => {
     if (!byRepo.has(r.repo))
       byRepo.set(r.repo, new Map())
     const m = byRepo.get(r.repo)!
-    const t = group(r.type)
+    const t = commitTypeGroup(r.type)
     m.set(t, (m.get(t) ?? 0) + r.commits)
   }
   const rows = [...byRepo.entries()]
     .map(([repo, m]) => {
       const total = [...m.values()].reduce((s, v) => s + v, 0)
       const pct = (t: string) => total > 0 ? Math.round(((m.get(t) ?? 0) / total) * 1000) / 10 : 0
-      return { repo, total, fixPct: pct('fix'), pcts: CATEGORIES.map(t => pct(t)) }
+      return { repo, total, fixPct: pct('fix'), pcts: COMMIT_TYPES.map(t => pct(t)) }
     })
     .sort((a, b) => b.fixPct - a.fixPct)
 
@@ -83,7 +70,7 @@ const repoOption = computed<EChartsOption>(() => {
       formatter: (p: unknown) => {
         const d = (p as { dataIndex: number }).dataIndex
         const r = rows[d]
-        const lines = CATEGORIES
+        const lines = COMMIT_TYPES
           .map((t, i) => ({ t, v: r.pcts[i] }))
           .filter(x => x.v > 0)
           .sort((a, b) => b.v - a.v)
@@ -96,12 +83,12 @@ const repoOption = computed<EChartsOption>(() => {
     grid: { left: 8, right: 30, top: 30, bottom: 10, outerBoundsMode: 'same', outerBoundsContain: 'axisLabel' },
     xAxis: { type: 'value', max: 100, axisLabel: axisLabel({ formatter: '{value}%' }), splitLine: splitLine() },
     yAxis: { type: 'category', data: rows.map(r => r.repo), inverse: true, axisLabel: axisLabel() },
-    series: CATEGORIES.map((t, i) => ({
+    series: COMMIT_TYPES.map((t, i) => ({
       name: t,
       type: 'bar' as const,
       stack: 'types',
       data: rows.map(r => r.pcts[i]),
-      itemStyle: { color: COLORS[t] },
+      itemStyle: { color: commitTypeColor(t) },
       barMaxWidth: 18,
     })),
   }

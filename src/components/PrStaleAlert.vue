@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { ghName, stalePrs } from '../github'
 import { PR_AGE_ERROR_DAYS, PR_STALE_DAYS, PR_STALE_ERROR_COUNT } from '../thresholds'
+import PrLinkCell from './PrLinkCell.vue'
 
 const stale = computed(() => stalePrs(PR_STALE_DAYS))
 const oldest = computed(() => stale.value[0] ?? null)
@@ -28,10 +29,8 @@ const shown = computed(() => stale.value.slice(0, 5))
       <table class="data-table">
         <tbody>
           <tr v-for="pr in shown" :key="`${pr.repo}#${pr.number}`">
-            <td class="max-w-[380px]">
-              <a :href="pr.url" target="_blank" rel="noopener" class="text-primary hover:underline truncate block">
-                #{{ pr.number }} {{ pr.title }}
-              </a>
+            <td>
+              <PrLinkCell :pr="pr" class="max-w-[380px]" />
             </td>
             <td class="whitespace-nowrap text-muted">
               {{ pr.repo }}

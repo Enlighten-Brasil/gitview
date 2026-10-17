@@ -2,6 +2,7 @@
 import { fmtInt } from '../format'
 import { ghName, openAging } from '../github'
 import { PR_AGE_AMBER, PR_AGE_RED } from '../thresholds'
+import PrLinkCell from './PrLinkCell.vue'
 import TablePanel from './TablePanel.vue'
 
 /** cor da idade: >PR_AGE_RED vermelho, >PR_AGE_AMBER amarelo, senão neutro */
@@ -36,20 +37,8 @@ function ageColor(days: number): string {
         </thead>
         <tbody>
           <tr v-for="pr in openAging" :key="`${pr.repo}#${pr.number}`">
-            <td class="max-w-[420px]">
-              <UTooltip :text="pr.title">
-                <a
-                  :href="pr.url"
-                  target="_blank"
-                  rel="noopener"
-                  class="text-primary hover:underline truncate block"
-                >
-                  #{{ pr.number }} {{ pr.title }}
-                </a>
-              </UTooltip>
-              <UBadge v-if="pr.draft" color="neutral" variant="soft" size="sm" class="mt-0.5">
-                rascunho
-              </UBadge>
+            <td>
+              <PrLinkCell :pr="pr" class="max-w-[420px]" />
             </td>
             <td class="whitespace-nowrap text-muted">
               {{ pr.repo }}
