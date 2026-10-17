@@ -6,6 +6,7 @@
  */
 import { computed } from 'vue'
 import { daysSinceLastRelease, releases, releasesError, releasesPerMonth } from '../releases'
+import { RELEASE_STALE_DAYS, UNRELEASED_AMBER, UNRELEASED_RED } from '../thresholds'
 
 const rows = computed(() =>
   (releases.value?.repos ?? [])
@@ -56,11 +57,11 @@ const rows = computed(() =>
           <span class="font-mono">{{ r.tags[0]?.name ?? r.tags[0]?.tag ?? '— sem tags —' }}</span>
           <template v-if="r.days != null">
             <span>·</span>
-            <span :class="r.days >= 30 ? 'text-warning' : ''">há {{ r.days }}d</span>
+            <span :class="r.days >= RELEASE_STALE_DAYS ? 'text-warning' : ''">há {{ r.days }}d</span>
             <span>·</span>
             <span>{{ r.cadence.toFixed(1).replace('.', ',') }}/mês</span>
           </template>
-          <UBadge v-if="r.unreleased >= 20" :color="r.unreleased >= 50 ? 'error' : 'warning'" variant="soft" size="xs">
+          <UBadge v-if="r.unreleased >= UNRELEASED_AMBER" :color="r.unreleased >= UNRELEASED_RED ? 'error' : 'warning'" variant="soft" size="xs">
             {{ r.unreleased }} não liberados
           </UBadge>
         </div>

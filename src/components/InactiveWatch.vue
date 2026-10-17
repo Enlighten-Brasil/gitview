@@ -1,15 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { isBot, stats } from '../data'
-
-const REPO_STALE_DAYS = 30
-const DEV_STALE_DAYS = 21
+import { DEV_STALE_DAYS, DEV_STALE_ERROR_DAYS, REPO_STALE_DAYS, REPO_STALE_ERROR_DAYS } from '../thresholds'
 
 function daysSince(iso: string): number {
   return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000)
 }
 
-/** repos sem commits há 30+ dias */
+/** repos sem commits há REPO_STALE_DAYS+ dias */
 const staleRepos = computed(() =>
   (stats.value?.perRepo ?? [])
     .map(r => ({ repo: r.repo, days: daysSince(r.lastCommit), last: r.lastCommit }))
@@ -17,7 +15,7 @@ const staleRepos = computed(() =>
     .sort((a, b) => b.days - a.days),
 )
 
-/** devs sem commits há 21+ dias (ignora bots) — alguém travado ou de férias? */
+/** devs sem commits há DEV_STALE_DAYS+ dias (ignora bots) — alguém travado ou de férias? */
 const staleDevs = computed(() =>
   (stats.value?.perAuthor ?? [])
     .filter(a => !isBot(a.author))
@@ -58,7 +56,7 @@ function fmtDate(iso: string): string {
                 {{ fmtDate(r.last) }}
               </td>
               <td class="num whitespace-nowrap">
-                <span :class="r.days >= 90 ? 'text-error font-medium' : 'text-warning'">{{ r.days }}d</span>
+                <span :class="r.days >= REPO_STALE_ERROR_DAYS ? 'text-error font-medium' : 'text-warning'">{{ r.days }}d</span>
               </td>
             </tr>
           </tbody>
@@ -80,7 +78,7 @@ function fmtDate(iso: string): string {
                 {{ fmtDate(d.last) }}
               </td>
               <td class="num whitespace-nowrap">
-                <span :class="d.days >= 60 ? 'text-error font-medium' : 'text-warning'">{{ d.days }}d</span>
+                <span :class="d.days >= DEV_STALE_ERROR_DAYS ? 'text-error font-medium' : 'text-warning'">{{ d.days }}d</span>
               </td>
             </tr>
           </tbody>

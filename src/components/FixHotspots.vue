@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { filteredTypes } from '../data'
+import { FIX_HOTSPOT_AMBER, FIX_HOTSPOT_MIN_COMMITS, FIX_HOTSPOT_RED } from '../thresholds'
 
 interface RepoFix {
   repo: string
@@ -21,14 +22,14 @@ const rows = computed<RepoFix[]>(() => {
   }
   return [...byRepo.entries()]
     .map(([repo, v]) => ({ repo, ...v, fixPct: v.total > 0 ? v.fix / v.total : 0 }))
-    .filter(r => r.total >= 20) // ignora repos com amostra pequena
+    .filter(r => r.total >= FIX_HOTSPOT_MIN_COMMITS) // ignora repos com amostra pequena
     .sort((a, b) => b.fixPct - a.fixPct)
 })
 
 function risk(r: RepoFix): { color: 'error' | 'warning' | 'success', label: string, hex: string } {
-  if (r.fixPct >= 0.35)
+  if (r.fixPct >= FIX_HOTSPOT_RED)
     return { color: 'error', label: 'quente', hex: 'var(--ui-error)' }
-  if (r.fixPct >= 0.25)
+  if (r.fixPct >= FIX_HOTSPOT_AMBER)
     return { color: 'warning', label: 'atenção', hex: 'var(--ui-warning)' }
   return { color: 'success', label: 'ok', hex: 'var(--ui-success)' }
 }
@@ -94,7 +95,7 @@ function risk(r: RepoFix): { color: 'error' | 'warning' | 'success', label: stri
         </tbody>
       </table>
       <p class="text-dimmed text-xs mt-2.5">
-        quente = ≥35% dos commits são fix · atenção = ≥25% · repos com &lt;20 commits no período são ignorados
+        quente = ≥{{ Math.round(FIX_HOTSPOT_RED * 100) }}% dos commits são fix · atenção = ≥{{ Math.round(FIX_HOTSPOT_AMBER * 100) }}% · repos com &lt;{{ FIX_HOTSPOT_MIN_COMMITS }} commits no período são ignorados
       </p>
     </template>
   </UCard>

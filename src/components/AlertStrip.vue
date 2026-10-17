@@ -5,9 +5,20 @@
  * da métrica. Só mostra o que está fora do saudável (zero = some).
  */
 import { computed } from 'vue'
-import { burnout, pace, stats } from '../data'
+import { burnout, isBot, pace, stats } from '../data'
 import { mergedWithoutReview, stalePrs } from '../github'
 import { releases } from '../releases'
+import {
+  DEV_STALE_DAYS,
+  MERGE_NO_REVIEW_AMBER,
+  MERGE_NO_REVIEW_RED,
+  OFF_HOURS_PCT,
+  OFF_HOURS_WEEKENDS,
+  PACE_FALLING,
+  PR_STALE_DAYS,
+  PR_STALE_ERROR_COUNT,
+  UNRELEASED_RED,
+} from '../thresholds'
 
 interface Alert {
   icon: string
@@ -22,36 +33,36 @@ const DAY = 86_400_000
 const alerts = computed<Alert[]>(() => {
   const out: Alert[] = []
 
-  // PRs parados há 14+ dias (mesmo threshold do painel em /prs)
-  const stale = stalePrs(14).length
+  // PRs parados há PR_STALE_DAYS+ dias (mesmo threshold do painel em /prs)
+  const stale = stalePrs(PR_STALE_DAYS).length
   if (stale > 0)
-    out.push({ icon: 'i-lucide-hourglass', value: stale, label: stale === 1 ? 'PR parado há 14+ dias' : 'PRs parados há 14+ dias', to: '/prs#abertos', severity: stale >= 5 ? 'error' : 'warning' })
+    out.push({ icon: 'i-lucide-hourglass', value: stale, label: stale === 1 ? `PR parado há ${PR_STALE_DAYS}+ dias` : `PRs parados há ${PR_STALE_DAYS}+ dias`, to: '/prs#abertos', severity: stale >= PR_STALE_ERROR_COUNT ? 'error' : 'warning' })
 
   // merge sem review no período (alto = ≥20%, atenção = ≥10% — mesmo de /health)
   const noReview = mergedWithoutReview.value
-  if (noReview.pct >= 10)
-    out.push({ icon: 'i-lucide-git-pull-request-closed', value: `${noReview.pct}%`, label: 'dos merges sem review', to: '/prs#reviews', severity: noReview.pct >= 20 ? 'error' : 'warning' })
+  if (noReview.pct >= MERGE_NO_REVIEW_AMBER * 100)
+    out.push({ icon: 'i-lucide-git-pull-request-closed', value: `${noReview.pct}%`, label: 'dos merges sem review', to: '/prs#reviews', severity: noReview.pct >= MERGE_NO_REVIEW_RED * 100 ? 'error' : 'warning' })
 
-  // ritmo caindo: <60% do próprio ritmo das 8 semanas anteriores (mesmo do PaceAlert)
-  const falling = pace.value.filter(r => r.ratio != null && r.ratio < 0.6).length
+  // ritmo caindo: <=50% do próprio ritmo das 8 semanas anteriores (mesmo do PaceAlert)
+  const falling = pace.value.filter(r => r.ratio != null && r.ratio <= PACE_FALLING).length
   if (falling > 0)
     out.push({ icon: 'i-lucide-trending-down', value: falling, label: falling === 1 ? 'dev abaixo do ritmo' : 'devs abaixo do ritmo', to: '/devs', severity: 'warning' })
 
   // fora do horário em padrão preocupante (3+ fds seguidos ou ≥25% — idem BurnoutWatch)
-  const offHours = burnout.value.filter(b => b.weekendsActive >= 3 || b.offHoursPct >= 0.25).length
+  const offHours = burnout.value.filter(b => b.weekendsActive >= OFF_HOURS_WEEKENDS || b.offHoursPct >= OFF_HOURS_PCT).length
   if (offHours > 0)
     out.push({ icon: 'i-lucide-moon', value: offHours, label: offHours === 1 ? 'dev em padrão fora do horário' : 'devs em padrão fora do horário', to: '/health', severity: 'error' })
 
   // repos com 50+ commits não liberados (badge vermelho do RepoTable)
-  const unreleased = (releases.value?.repos ?? []).filter(r => r.unreleased >= 50).length
+  const unreleased = (releases.value?.repos ?? []).filter(r => r.unreleased >= UNRELEASED_RED).length
   if (unreleased > 0)
-    out.push({ icon: 'i-lucide-tag', value: unreleased, label: unreleased === 1 ? 'repo com 50+ commits não liberados' : 'repos com 50+ commits não liberados', to: '/repos#tabela', severity: 'warning' })
+    out.push({ icon: 'i-lucide-tag', value: unreleased, label: unreleased === 1 ? `repo com ${UNRELEASED_RED}+ commits não liberados` : `repos com ${UNRELEASED_RED}+ commits não liberados`, to: '/repos#tabela', severity: 'warning' })
 
-  // devs sem commit há 21+ dias (idem InactiveWatch)
+  // devs sem commit há DEV_STALE_DAYS+ dias (idem InactiveWatch — ignora bots)
   const now = Date.now()
-  const inactive = (stats.value?.perAuthor ?? []).filter(a => (now - new Date(a.lastCommit).getTime()) / DAY >= 21).length
+  const inactive = (stats.value?.perAuthor ?? []).filter(a => !isBot(a.author) && (now - new Date(a.lastCommit).getTime()) / DAY >= DEV_STALE_DAYS).length
   if (inactive > 0)
-    out.push({ icon: 'i-lucide-pause-circle', value: inactive, label: inactive === 1 ? 'dev sem commit há 21+ dias' : 'devs sem commit há 21+ dias', to: '/health', severity: 'warning' })
+    out.push({ icon: 'i-lucide-pause-circle', value: inactive, label: inactive === 1 ? `dev sem commit há ${DEV_STALE_DAYS}+ dias` : `devs sem commit há ${DEV_STALE_DAYS}+ dias`, to: '/health', severity: 'warning' })
 
   return out
 })

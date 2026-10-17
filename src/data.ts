@@ -1,5 +1,6 @@
 import type { CommitRow, Stats } from './types'
 import { computed, reactive, ref } from 'vue'
+import { OFF_HOURS_MIN_COMMITS } from './thresholds'
 
 export const stats = ref<Stats | null>(null)
 export const loadError = ref<string | null>(null)
@@ -340,6 +341,6 @@ export const offHoursPeriod = computed<OffHoursRow[]>(() => {
   }
   return [...byAuthor.entries()]
     .map(([author, b]) => ({ author, ...b, offHoursPct: b.total > 0 ? (b.weekend + b.night) / b.total : 0 }))
-    .filter(b => b.total >= 20 && (b.weekend > 0 || b.night > 0))
+    .filter(b => b.total >= OFF_HOURS_MIN_COMMITS && (b.weekend > 0 || b.night > 0))
     .sort((a, b) => b.offHoursPct - a.offHoursPct)
 })

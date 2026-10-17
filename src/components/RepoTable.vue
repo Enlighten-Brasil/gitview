@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { filteredMonthly, filteredTypes, stats } from '../data'
 import { daysSinceLastRelease, releaseByRepo } from '../releases'
+import { FIX_HOTSPOT_AMBER, FIX_HOTSPOT_RED, UNRELEASED_AMBER, UNRELEASED_RED } from '../thresholds'
 
 const router = useRouter()
 
@@ -65,9 +66,9 @@ function fmtDate(iso: string | null): string {
 function unreleasedColor(n: number | null): string {
   if (n == null || n === 0)
     return 'text-dimmed'
-  if (n >= 50)
+  if (n >= UNRELEASED_RED)
     return 'text-error font-medium'
-  if (n >= 20)
+  if (n >= UNRELEASED_AMBER)
     return 'text-warning font-medium'
   return ''
 }
@@ -126,7 +127,7 @@ function open(repo: string) {
               {{ r.devs }}
             </td>
             <td class="num">
-              <span :class="r.fixPct >= 0.35 ? 'text-error' : r.fixPct >= 0.25 ? 'text-warning' : ''">
+              <span :class="r.fixPct >= FIX_HOTSPOT_RED ? 'text-error' : r.fixPct >= FIX_HOTSPOT_AMBER ? 'text-warning' : ''">
                 {{ Math.round(r.fixPct * 100) }}%
               </span>
             </td>
@@ -148,7 +149,7 @@ function open(repo: string) {
       </table>
     </div>
     <p class="text-dimmed text-xs px-4 pb-3 pt-2">
-      commits/devs/% fix seguem o filtro do período · não liberados = commits desde a última tag (≥20 em amarelo, ≥50 em vermelho) · clique no repo pra ver o detalhe
+      commits/devs/% fix seguem o filtro do período · não liberados = commits desde a última tag (≥{{ UNRELEASED_AMBER }} em amarelo, ≥{{ UNRELEASED_RED }} em vermelho) · clique no repo pra ver o detalhe
     </p>
   </UCard>
 </template>

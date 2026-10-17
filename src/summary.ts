@@ -6,6 +6,13 @@
 import { isBot, isoWeekKey, stats } from './data'
 import { fmtDuration, ghName, github, median } from './github'
 import { releases } from './releases'
+import {
+  DEV_STALE_DAYS,
+  OFF_HOURS_PCT,
+  OFF_HOURS_WEEK_MIN_COMMITS,
+  PR_STALE_DAYS,
+  REPO_STALE_DAYS,
+} from './thresholds'
 
 export interface WeeklySummary {
   /** segunda da semana coberta */
@@ -110,7 +117,7 @@ export function buildWeeklySummary(): WeeklySummary | null {
     const open = prs.filter(pr => pr.state === 'OPEN' && !isGhBot(pr.author))
     const stale = open
       .map(pr => ({ pr, age: Math.floor((Date.now() - new Date(pr.createdAt).getTime()) / 86_400_000) }))
-      .filter(x => x.age >= 14)
+      .filter(x => x.age >= PR_STALE_DAYS)
       .sort((a, b) => b.age - a.age)
 
     const reviews = new Map<string, number>()
@@ -126,7 +133,7 @@ export function buildWeeklySummary(): WeeklySummary | null {
 
     out.push('## Pull requests')
     out.push(`- **${merged.length} mergeados**${delta(merged.length, prevMerged.length)}, cycle time mediano ${fmtDuration(cycle)}`)
-    out.push(`- ${open.length} abertos agora, **${stale.length} parados há 14+ dias**${stale.length ? `: ${stale.slice(0, 3).map(x => `${x.pr.repo}#${x.pr.number} (${x.age}d)`).join(', ')}${stale.length > 3 ? '…' : ''}` : ''}`)
+    out.push(`- ${open.length} abertos agora, **${stale.length} parados há ${PR_STALE_DAYS}+ dias**${stale.length ? `: ${stale.slice(0, 3).map(x => `${x.pr.repo}#${x.pr.number} (${x.age}d)`).join(', ')}${stale.length > 3 ? '…' : ''}` : ''}`)
     out.push(`- ${noReviewPct}% mergeados sem review${noReview.length ? ` (${noReview.length} PRs)` : ''}`)
     if (topReviewers.length) {
       out.push(`- top reviewers: ${topReviewers.slice(0, 5).map(([name, n]) => `${name} (${n})`).join(', ')}`)
@@ -163,15 +170,15 @@ export function buildWeeklySummary(): WeeklySummary | null {
   // atenção (off-hours na semana, inatividade)
   // -------------------------------------------------------------------------
   const offHours = topDevs
-    .map(([author, a]) => ({ author, ...a, pct: a.commits >= 5 ? (a.weekend + a.night) / a.commits : 0 }))
-    .filter(a => a.pct >= 0.25)
+    .map(([author, a]) => ({ author, ...a, pct: a.commits >= OFF_HOURS_WEEK_MIN_COMMITS ? (a.weekend + a.night) / a.commits : 0 }))
+    .filter(a => a.pct >= OFF_HOURS_PCT)
     .sort((a, b) => b.pct - a.pct)
   const now = Date.now()
   const inactiveDevs = s.perAuthor.filter(a =>
-    !isBot(a.author) && (now - new Date(a.lastCommit).getTime()) / 86_400_000 >= 21,
+    !isBot(a.author) && (now - new Date(a.lastCommit).getTime()) / 86_400_000 >= DEV_STALE_DAYS,
   )
   const inactiveRepos = s.perRepo.filter(r =>
-    (now - new Date(r.lastCommit).getTime()) / 86_400_000 >= 30,
+    (now - new Date(r.lastCommit).getTime()) / 86_400_000 >= REPO_STALE_DAYS,
   )
 
   if (offHours.length || inactiveDevs.length || inactiveRepos.length) {
@@ -180,10 +187,10 @@ export function buildWeeklySummary(): WeeklySummary | null {
       out.push(`- ${a.author}: ${Math.round(a.pct * 100)}% dos commits fora do horário na semana (fds/madrugada)`)
     }
     if (inactiveDevs.length) {
-      out.push(`- devs sem commit há 21+ dias: ${inactiveDevs.map(a => a.author).join(', ')}`)
+      out.push(`- devs sem commit há ${DEV_STALE_DAYS}+ dias: ${inactiveDevs.map(a => a.author).join(', ')}`)
     }
     if (inactiveRepos.length) {
-      out.push(`- repos sem commit há 30+ dias: ${inactiveRepos.map(r => r.repo).join(', ')}`)
+      out.push(`- repos sem commit há ${REPO_STALE_DAYS}+ dias: ${inactiveRepos.map(r => r.repo).join(', ')}`)
     }
     out.push('')
   }
