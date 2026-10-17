@@ -1,7 +1,20 @@
 import type { CommitRow, Stats } from './types'
-import { computed, reactive } from 'vue'
+import { computed } from 'vue'
+import { authorSelected, cutoff, filters, inPeriodMonth, isCustomRange, repoSelected } from './filters-core'
 import { defineLoader } from './loader'
 import { OFF_HOURS_MIN_COMMITS } from './thresholds'
+
+// núcleo dos filtros (estado + predicados) reexportado daqui: os consumidores
+// continuam importando de ./data, a implementação vive em ./filters-core (issue #39)
+export {
+  authorSelected,
+  cutoff,
+  filters,
+  inPeriodDay,
+  inPeriodMonth,
+  isCustomRange,
+  repoSelected,
+} from './filters-core'
 
 // loader do stats.json — a mensagem do HTTP não-OK carrega a instrução de coleta
 const statsLoader = defineLoader<Stats>('stats.json', {
@@ -20,19 +33,85 @@ const commitsLoader = defineLoader<CommitRow[]>('commits.json', {
 export const recentCommits = commitsLoader.data
 export const loadCommits = commitsLoader.load
 
-export const filters = reactive({
-  repos: [] as string[], // vazio = todos
-  authors: [] as string[], // vazio = todos
-  rangeMonths: 12 as number | null, // null = todo o histórico
-  /** range customizado (YYYY-MM-DD) — quando preenchido, prevalece sobre rangeMonths */
-  dateFrom: null as string | null,
-  dateTo: null as string | null,
-  showBots: false,
-})
+// ---------------------------------------------------------------------------
+// ações nomeadas dos filtros — única porta de escrita do estado (o urlState
+// também escreve ao sincronizar a URL); componentes/páginas nunca mutam o
+// `filters` diretamente (issue #39)
+// ---------------------------------------------------------------------------
+/** (des)marca num preset de lista — utilitário das ações de seleção */
+function toggleList(list: string[], value: string): string[] {
+  return list.includes(value) ? list.filter(v => v !== value) : [...list, value]
+}
 
-/** range customizado ativo? */
-export function isCustomRange(): boolean {
-  return !!(filters.dateFrom || filters.dateTo)
+/** preset de período (meses; null = tudo) — limpa o range customizado */
+export function setRange(months: number | null): void {
+  filters.dateFrom = null
+  filters.dateTo = null
+  filters.rangeMonths = months
+}
+
+/** datas do range customizado (YYYY-MM-DD) — quando preenchidas, valem sobre o preset */
+export function setCustomRange(from: string | null, to: string | null): void {
+  filters.dateFrom = from || null
+  filters.dateTo = to || null
+}
+
+/** alterna o modo custom: ativa pré-preenchido com a janela atual, desativa limpando */
+export function toggleCustomRange(): void {
+  if (isCustomRange()) {
+    setCustomRange(null, null)
+    return
+  }
+  const from = new Date()
+  if (filters.rangeMonths != null)
+    from.setMonth(from.getMonth() - filters.rangeMonths)
+  else
+    from.setFullYear(from.getFullYear() - 10)
+  setCustomRange(from.toISOString().slice(0, 10), new Date().toISOString().slice(0, 10))
+}
+
+/** inclui/esconder bots nas métricas */
+export function setShowBots(show: boolean): void {
+  filters.showBots = show
+}
+
+/** (des)marca um repo na seleção */
+export function toggleRepo(repo: string): void {
+  filters.repos = toggleList(filters.repos, repo)
+}
+
+/** substitui a seleção de repos */
+export function setRepos(repos: string[]): void {
+  filters.repos = [...repos]
+}
+
+/** (des)marca um autor na seleção */
+export function toggleAuthor(author: string): void {
+  filters.authors = toggleList(filters.authors, author)
+}
+
+/** substitui a seleção de autores */
+export function setAuthors(authors: string[]): void {
+  filters.authors = [...authors]
+}
+
+/** chip de time: (des)marca todos os membros de uma vez */
+export function toggleTeam(members: string[]): void {
+  const all = members.every(m => filters.authors.includes(m))
+  filters.authors = all
+    ? filters.authors.filter(a => !members.includes(a))
+    : [...new Set([...filters.authors, ...members])]
+}
+
+/** trava os autores exatamente nos membros (escopo 'team': /teams/:name) */
+export function lockAuthors(members: string[]): void {
+  filters.authors = [...members]
+}
+
+/** limpa a seleção de repos + autores */
+export function resetSelection(): void {
+  filters.repos = []
+  filters.authors = []
 }
 
 const botNames = computed(() => new Set((stats.value?.authors ?? []).filter(a => a.bot).map(a => a.name)))
@@ -40,53 +119,16 @@ export function isBot(author: string) {
   return botNames.value.has(author)
 }
 
-function cutoffDate(): Date | null {
-  if (filters.dateFrom)
-    return new Date(`${filters.dateFrom}T00:00:00`)
-  if (filters.rangeMonths == null)
-    return null
-  const d = new Date()
-  d.setMonth(d.getMonth() - filters.rangeMonths)
-  return d
-}
-
-/** período (YYYY-MM ou YYYY-Www) dentro do range filtrado? — usado também por /dev e /repo */
-export function inRange(periodKey: string): boolean {
-  const key = periodKey.slice(0, 7)
-  // range customizado: compara mês a mês com from/to
-  if (isCustomRange()) {
-    if (filters.dateFrom && key < filters.dateFrom.slice(0, 7))
-      return false
-    if (filters.dateTo && key > filters.dateTo.slice(0, 7))
-      return false
-    return true
-  }
-  const cutoff = cutoffDate()
-  if (!cutoff)
-    return true
-  // periodKey é "YYYY-Www" ou "YYYY-MM" — compara pelo começo do período
-  return key >= `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, '0')}`
-}
-
-function selectedRepo(repo: string) {
-  return filters.repos.length === 0 || filters.repos.includes(repo)
-}
-function selectedAuthor(author: string) {
-  if (!filters.showBots && isBot(author))
-    return false
-  return filters.authors.length === 0 || filters.authors.includes(author)
-}
-
 export const filteredWeekly = computed(() =>
-  (stats.value?.weekly ?? []).filter(r => selectedRepo(r.repo) && selectedAuthor(r.author) && inRange(r.week)),
+  (stats.value?.weekly ?? []).filter(r => repoSelected(r.repo) && authorSelected(r.author, isBot(r.author)) && inPeriodMonth(r.week)),
 )
 
 export const filteredMonthly = computed(() =>
-  (stats.value?.monthly ?? []).filter(r => selectedRepo(r.repo) && selectedAuthor(r.author) && inRange(r.month)),
+  (stats.value?.monthly ?? []).filter(r => repoSelected(r.repo) && authorSelected(r.author, isBot(r.author)) && inPeriodMonth(r.month)),
 )
 
 export const filteredHeatmap = computed(() =>
-  (stats.value?.heatmap ?? []).filter(r => selectedRepo(r.repo) && selectedAuthor(r.author) && inRange(r.month)),
+  (stats.value?.heatmap ?? []).filter(r => repoSelected(r.repo) && authorSelected(r.author, isBot(r.author)) && inPeriodMonth(r.month)),
 )
 
 /** commits no período filtrado (para cards) */
@@ -145,11 +187,11 @@ export const previousTotals = computed(() => {
   // sem janela comparável quando o filtro é "tudo" ou range customizado
   if (filters.rangeMonths == null || isCustomRange() || !stats.value)
     return null
-  const cutoff = cutoffDate()!
-  const prevStart = new Date(cutoff)
+  const cut = cutoff()!
+  const prevStart = new Date(cut)
   prevStart.setMonth(prevStart.getMonth() - filters.rangeMonths)
   const prevKey = `${prevStart.getFullYear()}-${String(prevStart.getMonth() + 1).padStart(2, '0')}`
-  const cutKey = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, '0')}`
+  const cutKey = `${cut.getFullYear()}-${String(cut.getMonth() + 1).padStart(2, '0')}`
 
   let commits = 0
   let additions = 0
@@ -159,7 +201,7 @@ export const previousTotals = computed(() => {
   for (const r of stats.value.monthly) {
     if (r.month < prevKey || r.month >= cutKey)
       continue
-    if (!selectedRepo(r.repo) || !selectedAuthor(r.author))
+    if (!repoSelected(r.repo) || !authorSelected(r.author, isBot(r.author)))
       continue
     commits += r.commits
     additions += r.additions
@@ -173,7 +215,7 @@ export const previousTotals = computed(() => {
 /** tipos de commit (feat/fix/...) no filtro atual — aba Repositórios */
 export const filteredTypes = computed(() =>
   (stats.value?.monthlyTypes ?? []).filter(r =>
-    selectedRepo(r.repo) && selectedAuthor(r.author) && inRange(r.month),
+    repoSelected(r.repo) && authorSelected(r.author, isBot(r.author)) && inPeriodMonth(r.month),
   ),
 )
 
@@ -236,7 +278,7 @@ export interface PaceRow {
 }
 
 export const pace = computed<PaceRow[]>(() => {
-  const rows = (stats.value?.weekly ?? []).filter(r => selectedRepo(r.repo) && selectedAuthor(r.author))
+  const rows = (stats.value?.weekly ?? []).filter(r => repoSelected(r.repo) && authorSelected(r.author, isBot(r.author)))
   const byAuthor = new Map<string, Map<string, number>>()
   for (const r of rows) {
     if (!byAuthor.has(r.author))
@@ -273,7 +315,7 @@ export interface BurnoutRow {
 }
 
 export const burnout = computed<BurnoutRow[]>(() => {
-  const rows = (stats.value?.weekly ?? []).filter(r => selectedRepo(r.repo) && selectedAuthor(r.author))
+  const rows = (stats.value?.weekly ?? []).filter(r => repoSelected(r.repo) && authorSelected(r.author, isBot(r.author)))
   const weeks = lastNWeekKeys(8)
   const last4 = new Set(weeks.slice(-4))
   const byAuthor = new Map<string, { weekend: number, night: number, total: number, weekendsActive: number }>()
@@ -314,7 +356,7 @@ export interface OffHoursRow {
 
 export const offHoursPeriod = computed<OffHoursRow[]>(() => {
   const rows = (stats.value?.weekly ?? []).filter(r =>
-    selectedRepo(r.repo) && selectedAuthor(r.author) && inRange(r.week),
+    repoSelected(r.repo) && authorSelected(r.author, isBot(r.author)) && inPeriodMonth(r.week),
   )
   const byAuthor = new Map<string, { total: number, weekend: number, night: number }>()
   for (const r of rows) {

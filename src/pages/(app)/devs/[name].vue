@@ -4,7 +4,7 @@ import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { axisLabel, ct, heatRamp, legendText, PALETTE, splitLine, tooltipBase } from '@/chartTheme'
 import ChartPanel from '@/components/ChartPanel.vue'
-import { filters, inRange, isCustomRange, loadCommits, rangeLabel, recentCommits, stats } from '@/data'
+import { filters, inPeriodMonth, isCustomRange, loadCommits, rangeLabel, recentCommits, stats } from '@/data'
 import { daysSince, fmtCompact, fmtDateTime, fmtDuration, fmtInt, fmtRatio, median } from '@/format'
 import { ghName, github } from '@/github'
 
@@ -56,9 +56,9 @@ const periodFiltered = computed(() => filters.rangeMonths !== null || isCustomRa
 const histSuffix = computed(() => (periodFiltered.value ? ' (total)' : ''))
 
 // linhas mensais do dev dentro do período — base dos cards de commits/linhas
-// (com "Tudo", inRange aceita todos os meses e a soma equivale ao total histórico)
+// (com "Tudo", inPeriodMonth aceita todos os meses e a soma equivale ao total histórico)
 const myMonthly = computed(() =>
-  (stats.value?.monthly ?? []).filter(r => r.author === dev.value && inRange(r.month)),
+  (stats.value?.monthly ?? []).filter(r => r.author === dev.value && inPeriodMonth(r.month)),
 )
 const periodCommits = computed(() => myMonthly.value.reduce((s, r) => s + r.commits, 0))
 const periodAdds = computed(() => myMonthly.value.reduce((s, r) => s + r.additions, 0))
@@ -70,7 +70,7 @@ const periodDels = computed(() => myMonthly.value.reduce((s, r) => s + r.deletio
 const myPrs = computed(() => (github.value?.prs ?? []).filter(pr => ghName(pr.author) === dev.value))
 const myOpen = computed(() => myPrs.value.filter(p => p.state === 'OPEN'))
 // mergeados filtrados pelo período (mês do merge)
-const myMerged = computed(() => myPrs.value.filter(p => p.state === 'MERGED' && p.mergedAt && inRange(p.mergedAt.slice(0, 7))))
+const myMerged = computed(() => myPrs.value.filter(p => p.state === 'MERGED' && p.mergedAt && inPeriodMonth(p.mergedAt.slice(0, 7))))
 const myCycleHours = computed(() =>
   median(myMerged.value.map(p => (new Date(p.mergedAt!).getTime() - new Date(p.createdAt).getTime()) / 3_600_000)),
 )
@@ -82,7 +82,7 @@ const myReviews = computed(() => {
     for (const r of pr.reviews) {
       if (ghName(r.author) !== dev.value || r.author === pr.author)
         continue
-      if (!inRange(r.submittedAt.slice(0, 7)))
+      if (!inPeriodMonth(r.submittedAt.slice(0, 7)))
         continue
       total++
       if (r.state === 'APPROVED')
@@ -119,7 +119,7 @@ const cards = computed(() => {
 // gráficos
 // ---------------------------------------------------------------------------
 const timelineOption = computed<EChartsOption>(() => {
-  const rows = (stats.value?.weekly ?? []).filter(r => r.author === dev.value && inRange(r.week))
+  const rows = (stats.value?.weekly ?? []).filter(r => r.author === dev.value && inPeriodMonth(r.week))
   const byWeek = new Map<string, number>()
   for (const r of rows)
     byWeek.set(r.week, (byWeek.get(r.week) ?? 0) + r.commits)
@@ -138,7 +138,7 @@ const timelineOption = computed<EChartsOption>(() => {
 const repoOption = computed<EChartsOption>(() => {
   const map = new Map<string, number>()
   for (const r of stats.value?.monthly ?? []) {
-    if (r.author !== dev.value || !inRange(r.month))
+    if (r.author !== dev.value || !inPeriodMonth(r.month))
       continue
     map.set(r.repo, (map.get(r.repo) ?? 0) + r.commits)
   }
@@ -163,7 +163,7 @@ const heatOption = computed<EChartsOption>(() => {
   const map = new Map<string, number>()
   let max = 0
   for (const r of stats.value?.heatmap ?? []) {
-    if (r.author !== dev.value || !inRange(r.month))
+    if (r.author !== dev.value || !inPeriodMonth(r.month))
       continue
     const k = `${r.weekday}|${r.hour}`
     const v = (map.get(k) ?? 0) + r.commits
@@ -206,7 +206,7 @@ const heatTitle = computed(() =>
 // últimos commits — filtrados pelo período
 // ---------------------------------------------------------------------------
 const commits = computed(() =>
-  (recentCommits.value ?? []).filter(c => c.author === dev.value && inRange(c.date.slice(0, 7))).slice(0, 50),
+  (recentCommits.value ?? []).filter(c => c.author === dev.value && inPeriodMonth(c.date.slice(0, 7))).slice(0, 50),
 )
 
 /** link pro commit no GitHub (quando o repo tem remote mapeado) */
