@@ -8,6 +8,7 @@
  * lockAuthors/resetSelection...) e pelo urlState (sincronização com a URL).
  */
 import { reactive } from 'vue'
+import { isoWeekMonday } from './date'
 
 export interface FiltersState {
   repos: string[] // vazio = todos
@@ -61,11 +62,25 @@ export function authorSelected(name: string, bot = false): boolean {
 }
 
 /**
+ * month key (YYYY-MM) de uma chave de período: para "YYYY-Www", o mês da
+ * segunda-feira da semana (o dia que ancora a semana); para "YYYY-MM", a
+ * própria chave.
+ */
+function toMonthKey(periodKey: string): string {
+  const monday = isoWeekMonday(periodKey)
+  if (!monday)
+    return periodKey.slice(0, 7)
+  return `${monday.getUTCFullYear()}-${String(monday.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
+/**
  * chave de período (YYYY-MM | YYYY-Www) dentro da janela filtrada —
- * corte por MÊS (agregações mensais/semanais).
+ * corte por MÊS (agregações mensais/semanais). Semana pertence ao mês da
+ * sua segunda-feira (via toMonthKey), para o corte mensal valer também
+ * para as vistas semanais.
  */
 export function inPeriodMonth(periodKey: string): boolean {
-  const key = periodKey.slice(0, 7)
+  const key = toMonthKey(periodKey)
   // range customizado: compara mês a mês com from/to
   if (isCustomRange()) {
     if (filters.dateFrom && key < filters.dateFrom.slice(0, 7))
@@ -77,7 +92,7 @@ export function inPeriodMonth(periodKey: string): boolean {
   const cut = cutoff()
   if (!cut)
     return true
-  // periodKey é "YYYY-Www" ou "YYYY-MM" — compara pelo começo do período
+  // key é o mês do período (semana → mês da segunda) — compara pelo começo do período
   return key >= `${cut.getFullYear()}-${String(cut.getMonth() + 1).padStart(2, '0')}`
 }
 
