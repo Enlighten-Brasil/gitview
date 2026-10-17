@@ -1,5 +1,11 @@
 # gitview
 
+## 0.48.0
+
+### Minor Changes
+
+- 3078d18: refactor(data): split do data.ts em filters/date/aggregations com reexports, agregações comuns (`groupBySum`/`nestBySum`, `commitsByRepoPeriod`, `commitsByAuthorWeek`, `fixByRepo`) que eliminam as varreduras repetidas de filteredMonthly/filteredWeekly nos componentes, e decomposição de devs/[name] (CommitsTimeline com prop `author`, `useDevCharts`, DevStatCards/DevPrOpen/DevCommitsTable) com blocos compartilhados (StatCards/DetailHeader) extraídos junto com repos/[name]. Comportamento e números inalterados.
+
 ## 0.47.0
 
 ### Minor Changes
