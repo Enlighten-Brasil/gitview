@@ -12,10 +12,12 @@ import { readFileSync } from 'node:fs'
 import process from 'node:process'
 
 const TERMS: [string, RegExp][] = [
-  ['enspace', new RegExp('en' + 'space', 'i')],
-  ['en-space', new RegExp('en-' + 'space', 'i')],
-  ['be-enlighten', new RegExp('be-en' + 'lighten', 'i')],
-  ['C:\\Users', new RegExp('C:' + '\\\\' + 'Users', 'i')],
+  // rótulo E regex montados por fragmento: nem a linha do rótulo nem a da
+  // regex podem conter o termo contíguo, senão o gate se auto-flagaria
+  ['en' + 'space', new RegExp('en' + 'space', 'i')],
+  ['en-' + 'space', new RegExp('en-' + 'space', 'i')],
+  ['be-en' + 'lighten', new RegExp('be-en' + 'lighten', 'i')],
+  ['C:' + '\\' + 'Users', new RegExp('C:' + '\\\\' + 'Users', 'i')],
 ]
 
 const ALLOWLIST = /github\.com\/Enlighten-Brasil\/gitview|enlighten-brasil\.github\.io\/gitview/i
