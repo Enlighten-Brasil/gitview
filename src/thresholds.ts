@@ -70,3 +70,13 @@ export const OFF_HOURS_WEEK_MIN_COMMITS = 5
 // --- Releases (RepoReleasesGrid) ---
 /** dias desde a última tag que pintam a release de atrasada */
 export const RELEASE_STALE_DAYS = 30
+
+// --- Idade de PR aberto (PrOpenTable) ---
+/** idade em dias que pinta a idade do PR de atenção */
+export const PR_AGE_AMBER = 3
+/** idade em dias que pinta a idade do PR de erro */
+export const PR_AGE_RED = 7
+
+// --- Delta dos cards de resumo (SummaryCards) ---
+/** variação % absoluta até esse valor é exibida como "flat" */
+export const DELTA_FLAT_PCT = 2

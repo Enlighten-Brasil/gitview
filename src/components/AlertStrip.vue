@@ -6,6 +6,7 @@
  */
 import { computed } from 'vue'
 import { burnout, isBot, pace, stats } from '../data'
+import { daysSince } from '../format'
 import { mergedWithoutReview, stalePrs } from '../github'
 import { releases } from '../releases'
 import {
@@ -27,8 +28,6 @@ interface Alert {
   to: string
   severity: 'error' | 'warning'
 }
-
-const DAY = 86_400_000
 
 const alerts = computed<Alert[]>(() => {
   const out: Alert[] = []
@@ -59,8 +58,7 @@ const alerts = computed<Alert[]>(() => {
     out.push({ icon: 'i-lucide-tag', value: unreleased, label: unreleased === 1 ? `repo com ${UNRELEASED_RED}+ commits não liberados` : `repos com ${UNRELEASED_RED}+ commits não liberados`, to: '/repos#tabela', severity: 'warning' })
 
   // devs sem commit há DEV_STALE_DAYS+ dias (idem InactiveWatch — ignora bots)
-  const now = Date.now()
-  const inactive = (stats.value?.perAuthor ?? []).filter(a => !isBot(a.author) && (now - new Date(a.lastCommit).getTime()) / DAY >= DEV_STALE_DAYS).length
+  const inactive = (stats.value?.perAuthor ?? []).filter(a => !isBot(a.author) && daysSince(a.lastCommit) >= DEV_STALE_DAYS).length
   if (inactive > 0)
     out.push({ icon: 'i-lucide-pause-circle', value: inactive, label: inactive === 1 ? `dev sem commit há ${DEV_STALE_DAYS}+ dias` : `devs sem commit há ${DEV_STALE_DAYS}+ dias`, to: '/health', severity: 'warning' })
 

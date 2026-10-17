@@ -3,22 +3,11 @@ import type { EChartsOption } from 'echarts'
 import { computed, ref } from 'vue'
 import { axisLabel, ct, legendText, splitLine, tooltipBase } from '../chartTheme'
 import { filteredMonthly } from '../data'
+import { fmtCompact, fmtInt } from '../format'
 import ChartPanel from './ChartPanel.vue'
 
 // fluxo de linhas (+ adicionadas / − removidas) por mês ou acumulado — "andamento" do código
 const mode = ref<'month' | 'cumulative'>('month')
-
-/** 2.2M / 350k / 42 (pt-BR) */
-function compact(v: number): string {
-  const abs = Math.abs(v)
-  if (abs >= 1e6)
-    return `${(v / 1e6).toFixed(1).replace('.', ',')}M`
-  if (abs >= 1e3)
-    return `${Math.round(v / 1e3)}k`
-  return String(v)
-}
-
-const fmtFull = (v: unknown) => Number(v).toLocaleString('pt-BR')
 
 const option = computed<EChartsOption>(() => {
   const byMonth = new Map<string, { additions: number, deletions: number }>()
@@ -34,13 +23,13 @@ const option = computed<EChartsOption>(() => {
 
   const axis = {
     xAxis: { type: 'category', data: months, axisLabel: axisLabel() },
-    yAxis: { type: 'value', axisLabel: axisLabel({ formatter: compact }), splitLine: splitLine() },
+    yAxis: { type: 'value', axisLabel: axisLabel({ formatter: fmtCompact }), splitLine: splitLine() },
     dataZoom: [{ type: 'inside' }, { type: 'slider', height: 18, bottom: 8 }],
   }
 
   if (mode.value === 'month') {
     return {
-      tooltip: tooltipBase({ trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: fmtFull }),
+      tooltip: tooltipBase({ trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (v: unknown) => fmtInt(Number(v)) }),
       legend: { data: ['adicionadas', 'removidas', 'saldo'], textStyle: legendText() },
       grid: { left: 60, right: 20, top: 40, bottom: 60 },
       ...axis,
@@ -87,7 +76,7 @@ const option = computed<EChartsOption>(() => {
   }
 
   return {
-    tooltip: tooltipBase({ trigger: 'axis', valueFormatter: fmtFull }),
+    tooltip: tooltipBase({ trigger: 'axis', valueFormatter: (v: unknown) => fmtInt(Number(v)) }),
     legend: { data: ['saldo acumulado', 'adicionadas acumuladas', 'removidas acumuladas'], textStyle: legendText() },
     grid: { left: 60, right: 20, top: 40, bottom: 60 },
     ...axis,

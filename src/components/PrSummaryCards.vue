@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { fmtDuration, medianCycleHours, mergedPrs, mergedWithoutReview, openAging, openPrs } from '../github'
+import { fmtDuration } from '../format'
+import { medianCycleHours, mergedPrs, mergedWithoutReview, openAging, openPrs } from '../github'
 import { MERGE_NO_REVIEW_AMBER, MERGE_NO_REVIEW_RED, PR_STALE_DAYS } from '../thresholds'
 
 const cards = computed(() => {

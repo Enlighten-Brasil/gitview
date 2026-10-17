@@ -5,7 +5,8 @@ import { useRoute } from 'vue-router'
 import { axisLabel, ct, heatRamp, legendText, PALETTE, splitLine, tooltipBase } from '@/chartTheme'
 import ChartPanel from '@/components/ChartPanel.vue'
 import { filters, inRange, isCustomRange, loadCommits, rangeLabel, recentCommits, stats } from '@/data'
-import { fmtDuration, ghName, github, median } from '@/github'
+import { daysSince, fmtCompact, fmtDateTime, fmtDuration, fmtInt, fmtRatio, median } from '@/format'
+import { ghName, github } from '@/github'
 
 // rota de detalhe do dev (era /dev/:name — alias mantém os links antigos)
 definePage({
@@ -63,20 +64,6 @@ const periodCommits = computed(() => myMonthly.value.reduce((s, r) => s + r.comm
 const periodAdds = computed(() => myMonthly.value.reduce((s, r) => s + r.additions, 0))
 const periodDels = computed(() => myMonthly.value.reduce((s, r) => s + r.deletions, 0))
 
-// formato compacto pt-BR: vírgula como separador decimal (igual LinesFlow/WeeklyChampions)
-function fmt(n: number): string {
-  if (n >= 1_000_000)
-    return `${(n / 1_000_000).toFixed(1).replace('.', ',')}M`
-  if (n >= 10_000)
-    return `${(n / 1_000).toFixed(0)}k`
-  return n.toLocaleString('pt-BR')
-}
-
-/** dias desde a abertura do PR — calculado no script (nada de relógio no template) */
-function daysOpen(createdAt: string): number {
-  return Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000)
-}
-
 // ---------------------------------------------------------------------------
 // PRs do dev (dados do GitHub, se coletados)
 // ---------------------------------------------------------------------------
@@ -110,11 +97,11 @@ const cards = computed(() => {
   if (!a)
     return []
   const base = [
-    { value: fmt(periodCommits.value), label: 'commits', icon: 'i-lucide-git-commit-horizontal' },
-    { value: fmt(periodAdds.value), label: 'linhas +', icon: 'i-lucide-plus', color: 'text-success' },
-    { value: fmt(periodDels.value), label: 'linhas −', icon: 'i-lucide-minus', color: 'text-error' },
+    { value: fmtCompact(periodCommits.value), label: 'commits', icon: 'i-lucide-git-commit-horizontal' },
+    { value: fmtCompact(periodAdds.value), label: 'linhas +', icon: 'i-lucide-plus', color: 'text-success' },
+    { value: fmtCompact(periodDels.value), label: 'linhas −', icon: 'i-lucide-minus', color: 'text-error' },
     { value: String(a.activeDays), label: `dias ativos${histSuffix.value}`, icon: 'i-lucide-calendar-check' },
-    { value: (a.commits / Math.max(a.activeDays, 1)).toFixed(1), label: `commits/dia ativo${histSuffix.value}`, icon: 'i-lucide-zap' },
+    { value: fmtRatio(a.commits / Math.max(a.activeDays, 1)), label: `commits/dia ativo${histSuffix.value}`, icon: 'i-lucide-zap' },
     { value: `${a.streak} (máx ${a.longestStreak})`, label: `streak 🔥${histSuffix.value}`, icon: 'i-lucide-flame' },
     { value: String(a.repos), label: `repositórios${histSuffix.value}`, icon: 'i-lucide-git-branch' },
   ]
@@ -222,11 +209,6 @@ const commits = computed(() =>
   (recentCommits.value ?? []).filter(c => c.author === dev.value && inRange(c.date.slice(0, 7))).slice(0, 50),
 )
 
-function fmtCommitDate(iso: string): string {
-  const d = new Date(iso)
-  return `${d.toLocaleDateString('pt-BR')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-}
-
 /** link pro commit no GitHub (quando o repo tem remote mapeado) */
 function commitUrl(repo: string, hash: string): string | null {
   const base = stats.value?.repoUrls?.[repo]
@@ -324,7 +306,7 @@ function commitUrl(repo: string, hash: string): string | null {
                 {{ pr.repo }}
               </td>
               <td class="num whitespace-nowrap text-muted">
-                {{ daysOpen(pr.createdAt) }}d aberto
+                {{ daysSince(pr.createdAt) }}d aberto
               </td>
             </tr>
           </tbody>
@@ -358,7 +340,7 @@ function commitUrl(repo: string, hash: string): string | null {
             <tbody>
               <tr v-for="c in commits" :key="`${c.repo}@${c.hash}`">
                 <td class="whitespace-nowrap text-muted">
-                  {{ fmtCommitDate(c.date) }}
+                  {{ fmtDateTime(c.date) }}
                 </td>
                 <td class="whitespace-nowrap text-muted">
                   {{ c.repo }}
@@ -377,8 +359,8 @@ function commitUrl(repo: string, hash: string): string | null {
                   {{ c.message }}
                 </td>
                 <td class="num whitespace-nowrap">
-                  <span class="add">+{{ c.additions.toLocaleString('pt-BR') }}</span>
-                  <span class="del ml-1">−{{ c.deletions.toLocaleString('pt-BR') }}</span>
+                  <span class="add">+{{ fmtInt(c.additions) }}</span>
+                  <span class="del ml-1">−{{ fmtInt(c.deletions) }}</span>
                 </td>
               </tr>
             </tbody>

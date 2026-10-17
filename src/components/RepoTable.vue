@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { filteredMonthly, filteredTypes, stats } from '../data'
+import { fmtDate, fmtInt } from '../format'
 import { daysSinceLastRelease, releaseByRepo } from '../releases'
 import { FIX_HOTSPOT_AMBER, FIX_HOTSPOT_RED, UNRELEASED_AMBER, UNRELEASED_RED } from '../thresholds'
 
@@ -57,10 +58,6 @@ const rows = computed<RepoRow[]>(() => {
     })
     .sort((a, b) => b.commits - a.commits)
 })
-
-function fmtDate(iso: string | null): string {
-  return iso ? new Date(iso).toLocaleDateString('pt-BR') : '—'
-}
 
 /** destaque para trabalho parado sem release */
 function unreleasedColor(n: number | null): string {
@@ -121,7 +118,7 @@ function open(repo: string) {
               {{ r.repo }}
             </td>
             <td class="num">
-              {{ r.commits.toLocaleString('pt-BR') }}
+              {{ fmtInt(r.commits) }}
             </td>
             <td class="num">
               {{ r.devs }}

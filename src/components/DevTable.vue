@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { filters, isBot, stats } from '../data'
+import { fmtDate, fmtInt, fmtRatio } from '../format'
 
 const router = useRouter()
 
@@ -36,18 +37,10 @@ const visibleAuthors = computed(() => {
   })
 })
 
-function fmt(n: number) {
-  return n.toLocaleString('pt-BR')
-}
-function fmtDate(iso: string) {
-  if (!iso)
-    return '—'
-  return new Date(iso).toLocaleDateString('pt-BR')
-}
-
-/** commits/dia ativo — fonte única da precisão (1 casa decimal), usada na tabela E no CSV */
-function commitsPerDay(a: { commits: number, activeDays: number }) {
-  return (a.commits / Math.max(a.activeDays, 1)).toFixed(1)
+/** commits/dia ativo — fonte única da precisão; a tabela formata pt-BR (fmtRatio)
+ * e o CSV mantém o ponto decimal pra continuar parseável */
+function commitsPerDay(a: { commits: number, activeDays: number }): number {
+  return a.commits / Math.max(a.activeDays, 1)
 }
 
 /** dev selecionado no filtro global — destaca a linha (classe .selected) */
@@ -78,7 +71,7 @@ function exportCsv() {
     a.deletions,
     a.repos,
     a.activeDays,
-    commitsPerDay(a),
+    commitsPerDay(a).toFixed(1), // ponto decimal: CSV parseável (a tabela usa fmtRatio)
     a.streak,
     a.longestStreak,
     fmtDate(a.lastCommit), // mesmo formato (fuso local) exibido na tabela
@@ -152,13 +145,13 @@ function exportCsv() {
         >
           <td>{{ a.author }}</td>
           <td class="num">
-            {{ fmt(a.commits) }}
+            {{ fmtInt(a.commits) }}
           </td>
           <td class="num add">
-            {{ fmt(a.additions) }}
+            {{ fmtInt(a.additions) }}
           </td>
           <td class="num del">
-            {{ fmt(a.deletions) }}
+            {{ fmtInt(a.deletions) }}
           </td>
           <td class="num">
             {{ a.repos }}
@@ -167,7 +160,7 @@ function exportCsv() {
             {{ a.activeDays }}
           </td>
           <td class="num">
-            {{ commitsPerDay(a) }}
+            {{ fmtRatio(commitsPerDay(a)) }}
           </td>
           <td class="num">
             <div class="flex items-center justify-end gap-1.5">

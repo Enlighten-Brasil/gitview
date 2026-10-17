@@ -4,7 +4,8 @@
  * sidebar e sempre exclui bots. Pensado pra colar em reunião/1:1.
  */
 import { isBot, isoWeekKey, stats } from './data'
-import { fmtDuration, ghName, github, median } from './github'
+import { daysSince, fmtDate, fmtDateTime, fmtDay, fmtDuration, median } from './format'
+import { ghName, github } from './github'
 import { releases } from './releases'
 import {
   DEV_STALE_DAYS,
@@ -27,10 +28,6 @@ function mondayOf(d: Date): Date {
   const m = new Date(d.getFullYear(), d.getMonth(), d.getDate())
   m.setDate(m.getDate() - ((m.getDay() + 6) % 7))
   return m
-}
-
-function fmtDay(d: Date): string {
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
 }
 
 function inRange(iso: string | null, a: Date, b: Date): boolean {
@@ -89,8 +86,8 @@ export function buildWeeklySummary(): WeeklySummary | null {
   const topDevs = [...byAuthor.entries()].sort((a, b) => b[1].commits - a[1].commits)
   const topRepos = [...byRepo.entries()].sort((a, b) => b[1] - a[1])
 
-  out.push(`# Resumo da semana — ${fmtDay(from)} a ${to.toLocaleDateString('pt-BR')} (${wk})`)
-  out.push(`_dados do gitview gerados em ${new Date(s.generatedAt).toLocaleString('pt-BR')}_`)
+  out.push(`# Resumo da semana — ${fmtDay(from)} a ${fmtDate(to)} (${wk})`)
+  out.push(`_dados do gitview gerados em ${fmtDateTime(s.generatedAt)}_`)
   out.push('')
   out.push('## Commits')
   out.push(`- **${totalCommits} commits**${delta(totalCommits, prevCommits)}, ${byAuthor.size} devs ativos, ${byRepo.size} repos ativos`)
@@ -116,7 +113,7 @@ export function buildWeeklySummary(): WeeklySummary | null {
     const noReviewPct = merged.length ? Math.round((noReview.length / merged.length) * 100) : 0
     const open = prs.filter(pr => pr.state === 'OPEN' && !isGhBot(pr.author))
     const stale = open
-      .map(pr => ({ pr, age: Math.floor((Date.now() - new Date(pr.createdAt).getTime()) / 86_400_000) }))
+      .map(pr => ({ pr, age: daysSince(pr.createdAt) }))
       .filter(x => x.age >= PR_STALE_DAYS)
       .sort((a, b) => b.age - a.age)
 
@@ -173,12 +170,11 @@ export function buildWeeklySummary(): WeeklySummary | null {
     .map(([author, a]) => ({ author, ...a, pct: a.commits >= OFF_HOURS_WEEK_MIN_COMMITS ? (a.weekend + a.night) / a.commits : 0 }))
     .filter(a => a.pct >= OFF_HOURS_PCT)
     .sort((a, b) => b.pct - a.pct)
-  const now = Date.now()
   const inactiveDevs = s.perAuthor.filter(a =>
-    !isBot(a.author) && (now - new Date(a.lastCommit).getTime()) / 86_400_000 >= DEV_STALE_DAYS,
+    !isBot(a.author) && daysSince(a.lastCommit) >= DEV_STALE_DAYS,
   )
   const inactiveRepos = s.perRepo.filter(r =>
-    (now - new Date(r.lastCommit).getTime()) / 86_400_000 >= REPO_STALE_DAYS,
+    daysSince(r.lastCommit) >= REPO_STALE_DAYS,
   )
 
   if (offHours.length || inactiveDevs.length || inactiveRepos.length) {

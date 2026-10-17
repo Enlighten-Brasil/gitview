@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { pace } from '../data'
+import { fmtRatio } from '../format'
 import { PACE_FALLING, PACE_RISING } from '../thresholds'
 
 /** queda: ritmo atual <= PACE_FALLING da média anterior; acelerando: >= PACE_RISING */
@@ -37,7 +38,7 @@ function pct(ratio: number): string {
               {{ r.recent }} commits / 4 sem
             </td>
             <td class="num text-muted">
-              média {{ r.prevAvg.toFixed(1) }}/sem
+              média {{ fmtRatio(r.prevAvg) }}/sem
             </td>
             <td class="num">
               <UBadge color="error" variant="soft">
@@ -61,7 +62,7 @@ function pct(ratio: number): string {
               {{ r.recent }} commits / 4 sem
             </td>
             <td class="num text-muted">
-              média {{ r.prevAvg.toFixed(1) }}/sem
+              média {{ fmtRatio(r.prevAvg) }}/sem
             </td>
             <td class="num">
               <UBadge color="success" variant="soft">

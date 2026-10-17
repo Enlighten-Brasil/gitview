@@ -7,6 +7,7 @@ import type { TeamDraft, TeamMetrics } from '@/team'
  * `disabled` (build estático) esconde toda a UI de edição.
  */
 import { computed, ref } from 'vue'
+import { fmtDaysAgo } from '@/format'
 import { avatarBgClass, initialsOf, TEAM_PALETTE } from '@/team'
 
 const props = defineProps<{
@@ -60,16 +61,6 @@ function removeMember(m: string) {
 }
 
 const numFmt = new Intl.NumberFormat('pt-BR', { notation: 'compact' })
-
-/** "há Nd / hoje" a partir do último commit do time */
-function daysAgo(iso: string): string {
-  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000)
-  if (days <= 0)
-    return 'hoje'
-  if (days === 1)
-    return 'ontem'
-  return `há ${days}d`
-}
 </script>
 
 <template>
@@ -211,7 +202,7 @@ function daysAgo(iso: string): string {
         </span>
         <span v-if="metrics.lastCommit" class="ml-auto inline-flex items-center gap-1" :title="`último commit: ${metrics.lastCommit}`">
           <UIcon name="i-lucide-clock" class="size-3.5" />
-          {{ daysAgo(metrics.lastCommit) }}
+          {{ fmtDaysAgo(metrics.lastCommit) }}
         </span>
         <!-- dashboard do time (rota funciona também no build estático) -->
         <UButton

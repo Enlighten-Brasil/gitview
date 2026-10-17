@@ -1,5 +1,6 @@
 import type { ReleasesData, RepoReleases } from './types'
 import { computed, ref } from 'vue'
+import { daysSince } from './format'
 
 export const releases = ref<ReleasesData | null>(null)
 export const releasesError = ref<string | null>(null)
@@ -32,7 +33,7 @@ export function daysSinceLastRelease(repo: string): number | null {
   const last = r?.tags[0]
   if (!last)
     return null
-  return Math.floor((Date.now() - new Date(last.date).getTime()) / 86_400_000)
+  return daysSince(last.date)
 }
 
 /** releases por mês nos últimos 12 meses (cadência) */

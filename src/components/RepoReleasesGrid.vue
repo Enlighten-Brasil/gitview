@@ -5,6 +5,7 @@
  * Adiciona cadência (releases/mês em 12M) e dias desde a última tag.
  */
 import { computed } from 'vue'
+import { fmtRatio } from '../format'
 import { daysSinceLastRelease, releases, releasesError, releasesPerMonth } from '../releases'
 import { RELEASE_STALE_DAYS, UNRELEASED_AMBER, UNRELEASED_RED } from '../thresholds'
 
@@ -59,7 +60,7 @@ const rows = computed(() =>
             <span>·</span>
             <span :class="r.days >= RELEASE_STALE_DAYS ? 'text-warning' : ''">há {{ r.days }}d</span>
             <span>·</span>
-            <span>{{ r.cadence.toFixed(1).replace('.', ',') }}/mês</span>
+            <span>{{ fmtRatio(r.cadence) }}/mês</span>
           </template>
           <UBadge v-if="r.unreleased >= UNRELEASED_AMBER" :color="r.unreleased >= UNRELEASED_RED ? 'error' : 'warning'" variant="soft" size="xs">
             {{ r.unreleased }} não liberados

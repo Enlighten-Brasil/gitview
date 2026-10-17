@@ -1,31 +1,24 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { filteredTotals, filters, previousTotals, rangeLabel, stats } from '../data'
-
-// formato compacto pt-BR: vírgula como separador decimal (igual LinesFlow/WeeklyChampions)
-function fmt(n: number): string {
-  if (n >= 1_000_000)
-    return `${(n / 1_000_000).toFixed(1).replace('.', ',')}M`
-  if (n >= 10_000)
-    return `${(n / 1_000).toFixed(0)}k`
-  return n.toLocaleString('pt-BR')
-}
+import { fmtCompact } from '../format'
+import { DELTA_FLAT_PCT } from '../thresholds'
 
 /** delta % vs janela anterior equivalente; null sem base de comparação */
 function delta(cur: number, prev: number | undefined) {
   if (prev == null || prev === 0)
     return null
   const pct = Math.round(((cur - prev) / prev) * 100)
-  return { pct: Math.abs(pct), dir: pct > 2 ? 'up' : pct < -2 ? 'down' : 'flat' } as const
+  return { pct: Math.abs(pct), dir: pct > DELTA_FLAT_PCT ? 'up' : pct < -DELTA_FLAT_PCT ? 'down' : 'flat' } as const
 }
 
 const periodCards = computed(() => {
   const t = filteredTotals.value
   const p = previousTotals.value
   return [
-    { value: fmt(t.commits), label: 'commits', icon: 'i-lucide-git-commit-horizontal', delta: delta(t.commits, p?.commits), judge: true },
-    { value: fmt(t.additions), label: 'linhas +', icon: 'i-lucide-plus', color: 'text-success', delta: delta(t.additions, p?.additions), judge: false },
-    { value: fmt(t.deletions), label: 'linhas −', icon: 'i-lucide-minus', color: 'text-error', delta: delta(t.deletions, p?.deletions), judge: false },
+    { value: fmtCompact(t.commits), label: 'commits', icon: 'i-lucide-git-commit-horizontal', delta: delta(t.commits, p?.commits), judge: true },
+    { value: fmtCompact(t.additions), label: 'linhas +', icon: 'i-lucide-plus', color: 'text-success', delta: delta(t.additions, p?.additions), judge: false },
+    { value: fmtCompact(t.deletions), label: 'linhas −', icon: 'i-lucide-minus', color: 'text-error', delta: delta(t.deletions, p?.deletions), judge: false },
     { value: String(t.authors), label: 'devs ativos', icon: 'i-lucide-users', delta: delta(t.authors, p?.authors), judge: true },
     { value: String(t.repos), label: 'repos ativos', icon: 'i-lucide-git-branch', delta: delta(t.repos, p?.repos), judge: true },
   ]
@@ -55,7 +48,7 @@ const historyLine = computed(() => {
   const t = stats.value?.totals
   if (!t)
     return ''
-  return `histórico total: ${fmt(t.commits)} commits · ${fmt(t.additions)} linhas + · ${fmt(t.deletions)} linhas − · ${t.authors} devs · ${t.repos} repos`
+  return `histórico total: ${fmtCompact(t.commits)} commits · ${fmtCompact(t.additions)} linhas + · ${fmtCompact(t.deletions)} linhas − · ${t.authors} devs · ${t.repos} repos`
 })
 </script>
 

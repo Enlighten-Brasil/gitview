@@ -11,6 +11,7 @@ import AppNav from '@/components/AppNav.vue'
 import CandidatesBanner from '@/components/CandidatesBanner.vue'
 import WeeklySummary from '@/components/WeeklySummary.vue'
 import { rangeLabel, stats } from '@/data'
+import { fmtDateTime } from '@/format'
 import { loadGithub } from '@/github'
 import { loadReleases } from '@/releases'
 import { initUrlState } from '@/urlState'
@@ -70,10 +71,6 @@ const dataAge = computed(() => {
       : `há ${Math.floor(hours / 24)}d`
   return { label, stale: hours >= 24, generatedAt: stats.value.generatedAt }
 })
-
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleString('pt-BR')
-}
 </script>
 
 <template>
@@ -86,7 +83,7 @@ function fmtDate(iso: string) {
       <template #header>
         <UDashboardNavbar :title="navTitle">
           <template #right>
-            <UTooltip v-if="dataAge" :text="`dados gerados em ${fmtDate(dataAge.generatedAt)}`">
+            <UTooltip v-if="dataAge" :text="`dados gerados em ${fmtDateTime(dataAge.generatedAt)}`">
               <span
                 class="hidden sm:inline-flex items-center gap-1 text-xs"
                 :class="dataAge.stale ? 'text-warning' : 'text-dimmed'"

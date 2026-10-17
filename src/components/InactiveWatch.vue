@@ -1,11 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { isBot, stats } from '../data'
+import { daysSince, fmtDate } from '../format'
 import { DEV_STALE_DAYS, DEV_STALE_ERROR_DAYS, REPO_STALE_DAYS, REPO_STALE_ERROR_DAYS } from '../thresholds'
-
-function daysSince(iso: string): number {
-  return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000)
-}
 
 /** repos sem commits há REPO_STALE_DAYS+ dias */
 const staleRepos = computed(() =>
@@ -23,10 +20,6 @@ const staleDevs = computed(() =>
     .filter(a => a.days >= DEV_STALE_DAYS)
     .sort((a, b) => b.days - a.days),
 )
-
-function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('pt-BR')
-}
 </script>
 
 <template>
