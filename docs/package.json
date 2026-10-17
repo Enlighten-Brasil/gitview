@@ -1,0 +1,13 @@
+{
+  "name": "gitview-docs",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "DOCS_BASE=/ vitepress dev",
+    "build": "vitepress build",
+    "preview": "DOCS_BASE=/ vitepress preview"
+  },
+  "devDependencies": {
+    "vitepress": "2.0.0-alpha.20"
+  }
+}

@@ -16,6 +16,8 @@ export default antfu(
       // dados gerados pelos coletores (locais, regeneráveis)
       'public/data/**',
       'data/**',
+      // cache do build do VitePress (site de docs, regenerável)
+      '**/.vitepress/cache/**',
       // arquivos de tipos gerados pelo tooling (o route-map é gerado e commitado)
       'src/route-map.d.ts',
       'auto-imports.d.ts',

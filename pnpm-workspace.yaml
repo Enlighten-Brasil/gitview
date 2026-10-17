@@ -10,6 +10,7 @@ shellEmulator: true
 
 packages:
   - .
+  - docs
 
 overrides:
   esbuild: ^0.28.2
