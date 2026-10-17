@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { getOrCreate } from '../collections'
-import { filteredWeekly, isoWeekKeyBefore, nestBySum } from '../data'
+import { filteredWeekly, inPeriodMonth, isoWeekKeyBefore, nestBySum } from '../data'
 import { fmtRatio } from '../format'
 
 /**
@@ -14,6 +14,10 @@ import { fmtRatio } from '../format'
  * A janela de baseline é calendário (follow-up #12): as 8 semanas ISO
  * anteriores, com semana vazia contando 0 — antes usava as 8 semanas COM
  * dados, que esticavam além de 8 calendárias em períodos esparsos.
+ * Issue #25: a janela só considera semanas DENTRO do período filtrado —
+ * semanas anteriores ao início do período não entram na média; semana sem
+ * nenhuma semana anterior no período fica de fora do ranking (baseline 0
+ * viraria volume puro: 116× na primeira semana de um preset 1M, no probe).
  */
 const MIN_WEEK_COMMITS = 3
 const BASELINE_WEEKS = 8
@@ -25,14 +29,18 @@ const data = computed(() => {
   const weeks = [...byWeek.keys()].sort()
   const wins: { week: string, author: string, commits: number, ratio: number }[] = []
   for (let i = 0; i < weeks.length; i++) {
-    // janela = as BASELINE_WEEKS semanas calendário anteriores (vazia = 0);
-    // chave fora do formato "YYYY-Www" só encurta a janela (não deve ocorrer)
+    // janela = as BASELINE_WEEKS semanas calendário anteriores que caem
+    // DENTRO do período filtrado (issue #25); chave fora do formato
+    // "YYYY-Www" só encurta a janela (não deve ocorrer). Sem nenhuma semana
+    // anterior no período, a baseline seria 0 — a semana sai do ranking.
     const window: string[] = []
     for (let k = BASELINE_WEEKS; k >= 1; k--) {
       const wk = isoWeekKeyBefore(weeks[i], k)
-      if (wk)
+      if (wk && inPeriodMonth(wk))
         window.push(wk)
     }
+    if (!window.length)
+      continue
     let best: { author: string, commits: number, ratio: number } | null = null
     // semana sempre existe no mapa (weeks vem de byWeek.keys()) — getOrCreate dispensa `!`
     for (const [author, commits] of getOrCreate(byWeek, weeks[i], () => new Map<string, number>())) {
@@ -120,7 +128,7 @@ const data = computed(() => {
     </div>
 
     <p class="text-xs text-dimmed mt-3">
-      Vitória = maior salto sobre a própria média das {{ BASELINE_WEEKS }} semanas anteriores (commits ÷ (média + 1), mínimo {{ MIN_WEEK_COMMITS }} na semana) — premia ritmo, não volume puro. A média usa as {{ BASELINE_WEEKS }} semanas calendário anteriores dentro do período filtrado (semana vazia conta 0); semanas sem candidato são puladas.
+      Vitória = maior salto sobre a própria média das {{ BASELINE_WEEKS }} semanas anteriores (commits ÷ (média + 1), mínimo {{ MIN_WEEK_COMMITS }} na semana) — premia ritmo, não volume puro. A média usa as {{ BASELINE_WEEKS }} semanas calendário anteriores dentro do período filtrado (semana vazia conta 0; semanas anteriores ao início do período não contam); semanas sem nenhuma semana anterior no período ficam fora do ranking, e semanas sem candidato são puladas.
     </p>
   </UCard>
 </template>
