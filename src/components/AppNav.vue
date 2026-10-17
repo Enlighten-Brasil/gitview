@@ -52,7 +52,7 @@ const showPanel = computed(() => {
 </script>
 
 <template>
-  <div class="flex h-full">
+  <div class="relative flex h-full">
     <!-- rail primária -->
     <nav class="rail" aria-label="seções">
       <RouterLink to="/" class="rail-logo" aria-label="gitview — início">
