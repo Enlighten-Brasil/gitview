@@ -65,6 +65,7 @@ const showPanel = computed(() => {
           :to="s.to"
           class="rail-item"
           :class="{ active: sectionKey === s.key }"
+          :aria-label="s.label"
           :aria-current="sectionKey === s.key ? 'page' : undefined"
         >
           <UIcon :name="s.icon" class="size-[18px]" />
@@ -76,6 +77,7 @@ const showPanel = computed(() => {
           :to="NAV_BOTTOM.to"
           class="rail-item"
           :class="{ active: sectionKey === NAV_BOTTOM.key }"
+          :aria-label="NAV_BOTTOM.label"
           :aria-current="sectionKey === NAV_BOTTOM.key ? 'page' : undefined"
         >
           <UIcon :name="NAV_BOTTOM.icon" class="size-[18px]" />

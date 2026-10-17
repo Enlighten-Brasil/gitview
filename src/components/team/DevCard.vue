@@ -82,16 +82,16 @@ const emit = defineEmits<{ edit: [] }>()
 
         <div v-if="emails.length || githubLogins.length" class="mt-1.5 flex items-center gap-3 text-xs text-dimmed">
           <UTooltip v-if="githubLogins.length" :text="githubLogins.join(', ')">
-            <span class="inline-flex items-center gap-1 cursor-default">
+            <button type="button" class="inline-flex items-center gap-1 cursor-default" :aria-label="`logins do GitHub (${githubLogins.length}): ${githubLogins.join(', ')}`">
               <UIcon name="i-lucide-github" class="size-3.5" />
               {{ githubLogins.length }} login{{ githubLogins.length > 1 ? 's' : '' }}
-            </span>
+            </button>
           </UTooltip>
           <UTooltip v-if="emails.length" :text="emails.join(', ')">
-            <span class="inline-flex items-center gap-1 cursor-default">
+            <button type="button" class="inline-flex items-center gap-1 cursor-default" :aria-label="`e-mails de commit (${emails.length}): ${emails.join(', ')}`">
               <UIcon name="i-lucide-mail" class="size-3.5" />
               {{ emails.length }} e-mail{{ emails.length > 1 ? 's' : '' }}
-            </span>
+            </button>
           </UTooltip>
         </div>
       </div>

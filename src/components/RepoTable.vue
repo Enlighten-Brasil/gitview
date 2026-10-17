@@ -73,6 +73,13 @@ function unreleasedColor(n: number | null): string {
 function open(repo: string) {
   router.push({ name: '/repos/[name]', params: { name: repo } })
 }
+
+/** o clique no link da 1ª célula já navega — não deixa o atalho da linha duplicar o push */
+function onRowClick(e: MouseEvent, repo: string) {
+  if ((e.target as HTMLElement).closest('a'))
+    return
+  open(repo)
+}
 </script>
 
 <template>
@@ -113,9 +120,11 @@ function open(repo: string) {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="r in rows" :key="r.repo" class="cursor-pointer hover:bg-accented/50" @click="open(r.repo)">
-            <td class="font-medium text-primary">
-              {{ r.repo }}
+          <tr v-for="r in rows" :key="r.repo" class="cursor-pointer hover:bg-accented/50" @click="onRowClick($event, r.repo)">
+            <td class="font-medium">
+              <RouterLink :to="{ name: '/repos/[name]', params: { name: r.repo } }" class="text-primary hover:underline">
+                {{ r.repo }}
+              </RouterLink>
             </td>
             <td class="num">
               {{ fmtInt(r.commits) }}
