@@ -68,13 +68,24 @@ const teams = (config.teams ?? []).map((t) => {
   // Array.isArray: team.local.json editado à mão pode trazer renamedFrom como
   // string — [...new Set('abc')] viraria 1 entrada POR CARACTERE no team.json.
   // Itens não-string dentro da lista também são descartados (o write-side
-  // strList já filtra; aqui é a porta do read — follow-up #12). A comparação
-  // com o nome atual normaliza NFC: um renamedFrom NFD (macOS) igual ao nome
-  // atual não deve sobreviver no JSON.
+  // strList já filtra; aqui é a porta do read — follow-up #12). O dedup é por
+  // CHAVE NFC (`n.normalize('NFC').toLowerCase()`), não por string crua: o mesmo
+  // nome antigo digitado em macOS (NFD) e em outro SO (NFC) eram DUAS entradas
+  // no Set bruto — agora sobra só a PRIMEIRA forma crua de cada chave, que é o
+  // que vai pro team.json (a forma crua fica intacta; o que se normaliza é a
+  // comparação). Essa mesma chave normalizada é comparada com o nome atual:
+  // um renamedFrom NFD (macOS) igual ao nome atual não deve sobreviver no JSON.
   const currentNorm = t.name.normalize('NFC').toLowerCase()
-  const renamedFrom = [...new Set(
-    (Array.isArray(t.renamedFrom) ? t.renamedFrom : []).filter((n): n is string => typeof n === 'string'),
-  )].filter(n => n.normalize('NFC').toLowerCase() !== currentNorm)
+  const byNormKey = new Map<string, string>()
+  for (const n of (Array.isArray(t.renamedFrom) ? t.renamedFrom : [])) {
+    if (typeof n !== 'string')
+      continue
+    const key = n.normalize('NFC').toLowerCase()
+    if (key === currentNorm || byNormKey.has(key))
+      continue
+    byNormKey.set(key, n)
+  }
+  const renamedFrom = [...byNormKey.values()]
   return {
     name: t.name,
     description: t.description ?? null,
