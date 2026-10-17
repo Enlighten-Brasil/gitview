@@ -1,5 +1,18 @@
 # gitview
 
+## 0.42.9
+
+### Patch Changes
+
+- 9cd6f10: fix(setup): polling do device flow não sobrevive mais ao unmount (limpeza completa + AbortController), `disconnectGithub` trata erro com feedback na UI e link do device flow ganha `rel="noopener noreferrer"`.
+- cbadf80: fix(setup): RepoPicker — descarta resposta atrasada de org anterior ao trocar de organização (race de listagem), preserva a seleção manual quando o status chega/atualiza, permite aplicar com zero repositórios marcados no modo manage (remoção total) e pede confirmação em modal listando os clones que serão apagados do disco antes de aplicar
+- 1532114: fix(teams): :key duplicado nos badges, dirty sensível à ordem de chaves e cor hex inválida aceita
+  
+  - badges de e-mails/logins no editor de perfil renderizam a lista deduplicada (Set sobre o split) e o `confirmEdit` normaliza as listas, impedindo duplicatas de persistir no `team.local.json`
+  - `dirty` passa a comparar os snapshots com serialização estável (chaves de objeto ordenadas), eliminando o aviso de "alterações não salvas" fantasma sem mudança real
+  - cor hex custom do TeamCard restrita a 3/6/8 dígitos (`#rgb`, `#rrggbb`, `#rrggbbaa`) com mensagem de erro visível no campo (`use #rgb, #rrggbb ou #rrggbbaa`) em vez de descartar hex inválido em silêncio
+- bcd5378: fix(tables): CSV do DevTable agora escapa campos no padrão RFC 4180 (aspas duplas com `;` como separador — nomes de dev com `;`, aspas ou quebra de linha reimportam íntegros), unifica `commits/dia ativo` numa fonte única `commitsPerDay` usada pela tabela e pelo CSV (1 casa decimal, antes `toFixed(2)` no CSV vs `toFixed(1)` na tela) e passa a exportar `ultimo_commit` com o mesmo `fmtDate` (fuso local) do template — antes o `slice(0, 10)` do ISO era UTC e podia divergir em 1 dia do valor exibido (mesmo critério aplicado ao nome do arquivo). A regra CSS morta `.dev-row.selected` ganha a classe `:class="{ selected: ... }"` faltante, destacando as linhas cujo dev está no filtro global (`filters.authors`). No mesmo saneamento, remove o CSS morto `.app-title` de `src/main.css` (o `<h1 class="app-title">` sumiu na refatoração two-pane e a regra ficou órfã — sem elemento para reaplicar, o correto é remover).
+
 ## 0.42.8
 
 ### Patch Changes
