@@ -4,9 +4,13 @@
 
 **Português (pt-BR):** [README.pt-BR.md](README.pt-BR.md)
 
-An engineering-manager dashboard for team metrics: commits, PRs and releases across your GitHub org's repositories — everything runs locally and is strictly read-only over the repos it analyzes.
+An engineering-manager dashboard for team metrics: commits, PRs and releases across your GitHub org's repositories — everything runs locally and is strictly read-only over the repos it analyzes. MIT-licensed.
 
 **Live demo** (synthetic data only — no real team data): https://enlighten-brasil.github.io/gitview/
+
+## Project status
+
+The full pipeline works end to end: collectors stream `git log` into SQLite and export JSON to `public/data/`, PRs, reviews and releases come from the GitHub API, and the frontend is a 100% static build that deploys to any static host — the live demo above is exactly that build. CI runs the gates on every PR (`pnpm check:scrub`, `pnpm lint`, `pnpm typecheck`, `pnpm build`), and every release ships with a changeset and a single `chore(release)` commit (history in [CHANGELOG.md](CHANGELOG.md)). What comes next lives in the GitHub issues and milestones — see [ROADMAP.md](ROADMAP.md); how to help is in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Setup
 
