@@ -1,5 +1,14 @@
 # gitview
 
+## 0.42.8
+
+### Patch Changes
+
+- b12d5a0: Endurece o gate `pnpm check:scrub` nas duas arestas de fail-open apontadas na revisão independente do batch: `git ls-files -z` (nomes crus, sem quoting — path com espaço nas pontas ou não-ASCII não vira "outro arquivo" e não escapa do scan pelo catch) e `console.warn` em leitura que falhar, em vez de `continue` silencioso. `maxBuffer` explicitado (32 MiB) para o limite padrão de 1 MB do `execSync` não estourar silenciosamente em repo grande. Validado nos dois sentidos: 121 arquivos limpos / termo injetado em arquivo tracked → exit 1 com arquivo:linha e termo.
+- c747db0: Corrige o gate `pnpm check:scrub` se auto-flagando: os rótulos literais das tuplas de `TERMS` em `scripts/check-scrub.ts` contiam os próprios termos de identidade (só a regex era montada por fragmento), então o gate saía com exit 1 em qualquer árvore limpa — quebraria o CI em todo push. Rótulo agora também é montado por fragmento; validado nos dois sentidos (árvore limpa → 119 arquivos ok; linha injetada em arquivo tracked → exit 1 com arquivo:linha e termo).
+- 6c397fe: Inclui `pnpm check:scrub` na seção de comandos do par `README.md`/`README.pt-BR.md` — o gate entrou no CI neste batch e faltava na lista de comandos dos dois idiomas (par mantido seção a seção, alinhamento de coluna idêntico ao resto do bloco).
+- 31bb61b: Corrige o botão "salvar" de `/teams`: `@click="save"` repassava o `MouseEvent` nativo para dentro do novo parâmetro `save(skipRefresh)` (o UButton chama `onClick(event)`), então o salvar simples enviava `skipRefresh: true` — o POST pulava a regeneração do `team.json` (chips da sidebar e `/teams/:name` ficavam defasados até uma recoleta manual) e o toast mostrava o texto da recoleta leve. Vira `@click="save()"`.
+
 ## 0.42.7
 
 ### Patch Changes
