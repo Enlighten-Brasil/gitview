@@ -1,5 +1,11 @@
 # gitview
 
+## 0.49.4
+
+### Patch Changes
+
+- c835bfc: fix(filters): convert weekly period keys to their Monday's month key before the month-cutoff comparison in inPeriodMonth
+
 ## 0.49.3
 
 ### Patch Changes
