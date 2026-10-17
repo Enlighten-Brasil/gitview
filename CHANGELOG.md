@@ -1,5 +1,11 @@
 # gitview
 
+## 0.49.6
+
+### Patch Changes
+
+- 0d43790: docs(readme): add a rot-resistant "Project status" section (no versions, no issue numbers) and mention the MIT license in both READMEs
+
 ## 0.49.5
 
 ### Patch Changes
