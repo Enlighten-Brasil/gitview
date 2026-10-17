@@ -48,6 +48,14 @@ body {
   border-color: var(--ui-border-accented);
 }
 
+/* grid dos stat-cards — único desde que os 4 <style scoped> duplicados foram
+   fundidos aqui (minmax 150px + tipografia do StatCard) */
+.cards-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
 /* ---------- tabelas nativas com cara do design system ---------- */
 .data-table {
   width: 100%;

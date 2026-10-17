@@ -20,6 +20,16 @@ export function repoRelease(repo: string): RepoReleases | null {
   return releaseByRepo.value.get(repo) ?? null
 }
 
+/**
+ * rótulo da última tag do repo — campo canônico `tag` (o `name` da release pode
+ * ser null e nem toda tag tem release no GitHub); fonte única pra tabela de repos
+ * e grade de releases mostrarem a MESMA string (null quando não há tags)
+ */
+export function lastTagLabel(repo: string): string | null {
+  const r = releaseByRepo.value.get(repo)
+  return r?.tags[0]?.tag ?? null
+}
+
 /** dias desde a última tag (null quando o repo não tem tags) */
 export function daysSinceLastRelease(repo: string): number | null {
   const r = releaseByRepo.value.get(repo)

@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { isBot, stats } from '../data'
 import { daysSince, fmtDate } from '../format'
 import { DEV_STALE_DAYS, DEV_STALE_ERROR_DAYS, REPO_STALE_DAYS, REPO_STALE_ERROR_DAYS } from '../thresholds'
+import TablePanel from './TablePanel.vue'
 
 /** repos sem commits há REPO_STALE_DAYS+ dias */
 const staleRepos = computed(() =>
@@ -23,15 +24,8 @@ const staleDevs = computed(() =>
 </script>
 
 <template>
-  <UCard>
-    <template #header>
-      <div class="flex items-center gap-2">
-        <UIcon name="i-lucide-pause-circle" class="size-4 text-warning" />
-        <span class="text-sm font-semibold text-highlighted">Inatividade — repos e devs parados</span>
-      </div>
-    </template>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <TablePanel title="Inatividade — repos e devs parados" icon="i-lucide-pause-circle" icon-class="text-warning">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 px-4 pt-4">
       <div>
         <h3 class="text-xs font-semibold text-muted uppercase tracking-wide mb-2">
           repos sem commit há {{ REPO_STALE_DAYS }}+ dias
@@ -79,8 +73,8 @@ const staleDevs = computed(() =>
       </div>
     </div>
 
-    <p class="text-dimmed text-xs mt-2.5">
+    <p class="text-dimmed text-xs px-4 pb-3 pt-2.5">
       ignora os filtros da sidebar (inatividade é medida até hoje, sobre todos os repos/devs) · dev inativo pode estar de férias ou travado — vale um 1:1
     </p>
-  </UCard>
+  </TablePanel>
 </template>
