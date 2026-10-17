@@ -1,5 +1,11 @@
 # gitview
 
+## 0.49.1
+
+### Patch Changes
+
+- docs(conventions): regra de copy de feedback (toasts com título em inicial maiúscula + useConfirm para ações destrutivas) no AGENTS.md.
+
 ## 0.49.0
 
 ### Minor Changes
