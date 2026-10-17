@@ -1,5 +1,12 @@
 # gitview
 
+## 0.46.0
+
+### Minor Changes
+
+- e96e7e4: feat(ui): UFormField nos inputs, emojis → UIcon lucide, useConfirm (UModal) unificado nas confirmações destrutivas, toasts em toda ação e title nativo → UTooltip
+- f85b7d8: refactor(charts): `useHeatmapMatrix` (composable em `src/charts/`) unifica a agregação em Map de chave composta → dados `[x, y, v]` → tooltip formatter → visualMap com `Math.max(max, 1)` → série heatmap dos 4 heatmaps (ActivityHeatmap, AuthorMonthHeatmap, RepoMonthHeatmap e o bloco de horários do perfil do dev), com `rows`/`xKey`/`yKey`/`ramp`/`order`/`formatTip`; `WEEKDAYS` vira constante canônica e `useWeekdayHourHeatmap` cobre os dois heatmaps dia-da-semana × hora. Visual dos 4 heatmaps preservado, incluindo o visualMap escondido do perfil do dev (agora parâmetro explícito e documentado)
+
 ## 0.45.0
 
 ### Minor Changes
