@@ -1,25 +1,24 @@
 import type { CommitRow, Stats } from './types'
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive } from 'vue'
+import { defineLoader } from './loader'
 import { OFF_HOURS_MIN_COMMITS } from './thresholds'
 
-export const stats = ref<Stats | null>(null)
-export const loadError = ref<string | null>(null)
+// loader do stats.json — a mensagem do HTTP não-OK carrega a instrução de coleta
+const statsLoader = defineLoader<Stats>('stats.json', {
+  httpError: status => `HTTP ${status} — rode "pnpm collect" primeiro`,
+})
+export const stats = statsLoader.data
+export const loadError = statsLoader.error
+export const loadStats = statsLoader.load
 
 /** commits recentes (últimos 100/autor) — carregado sob demanda pela página do dev */
-export const recentCommits = ref<CommitRow[] | null>(null)
-export async function loadCommits(force = false) {
-  if (recentCommits.value && !force)
-    return
-  try {
-    const res = await fetch(force ? `${import.meta.env.BASE_URL}data/commits.json?t=${Date.now()}` : `${import.meta.env.BASE_URL}data/commits.json`)
-    if (!res.ok)
-      throw new Error(`HTTP ${res.status}`)
-    recentCommits.value = (await res.json()).commits
-  }
-  catch {
-    recentCommits.value = []
-  }
-}
+const commitsLoader = defineLoader<CommitRow[]>('commits.json', {
+  pick: json => (json as { commits: CommitRow[] }).commits,
+  // falha engolida (sem mensagem): a página do dev mostra a lista vazia
+  onErrorValue: [],
+})
+export const recentCommits = commitsLoader.data
+export const loadCommits = commitsLoader.load
 
 export const filters = reactive({
   repos: [] as string[], // vazio = todos
@@ -39,19 +38,6 @@ export function isCustomRange(): boolean {
 const botNames = computed(() => new Set((stats.value?.authors ?? []).filter(a => a.bot).map(a => a.name)))
 export function isBot(author: string) {
   return botNames.value.has(author)
-}
-
-export async function loadStats(force = false) {
-  try {
-    const res = await fetch(force ? `${import.meta.env.BASE_URL}data/stats.json?t=${Date.now()}` : `${import.meta.env.BASE_URL}data/stats.json`)
-    if (!res.ok)
-      throw new Error(`HTTP ${res.status} — rode "pnpm collect" primeiro`)
-    stats.value = await res.json()
-    loadError.value = null
-  }
-  catch (err) {
-    loadError.value = (err as Error).message
-  }
 }
 
 function cutoffDate(): Date | null {

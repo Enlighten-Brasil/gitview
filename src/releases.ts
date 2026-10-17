@@ -1,22 +1,15 @@
 import type { ReleasesData, RepoReleases } from './types'
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { daysSince } from './format'
+import { defineLoader } from './loader'
 
-export const releases = ref<ReleasesData | null>(null)
-export const releasesError = ref<string | null>(null)
-
-export async function loadReleases(force = false) {
-  try {
-    const res = await fetch(force ? `${import.meta.env.BASE_URL}data/releases.json?t=${Date.now()}` : `${import.meta.env.BASE_URL}data/releases.json`)
-    if (!res.ok)
-      throw new Error(`HTTP ${res.status}`)
-    releases.value = await res.json()
-    releasesError.value = null
-  }
-  catch {
-    releasesError.value = 'sem dados de releases — rode "pnpm collect:releases"'
-  }
-}
+// loader do releases.json — mensagem fixa preservada (a UI concatena com o alerta)
+const releasesLoader = defineLoader<ReleasesData>('releases.json', {
+  errorMessage: 'sem dados de releases — rode "pnpm collect:releases"',
+})
+export const releases = releasesLoader.data
+export const releasesError = releasesLoader.error
+export const loadReleases = releasesLoader.load
 
 /** repo -> dados de release (lookup rápido) */
 export const releaseByRepo = computed(() =>

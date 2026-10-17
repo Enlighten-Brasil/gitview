@@ -6,26 +6,14 @@ import type { TeamData } from './types'
  * Recoleta após salvar usa o /__collect existente (4 passos) — não há
  * endpoint parcial só de team.json.
  */
-import { ref } from 'vue'
+import { getJson, postJson } from './api'
+import { defineLoader } from './loader'
 
-export const team = ref<TeamData | null>(null)
-export const teamLoadError = ref<string | null>(null)
-
-export async function loadTeam(force = false) {
-  if (team.value && !force)
-    return
-  try {
-    const res = await fetch(force ? `${import.meta.env.BASE_URL}data/team.json?t=${Date.now()}` : `${import.meta.env.BASE_URL}data/team.json`)
-    if (!res.ok)
-      throw new Error(`HTTP ${res.status}`)
-    team.value = await res.json()
-    teamLoadError.value = null
-  }
-  catch (err) {
-    team.value = null
-    teamLoadError.value = String((err as Error).message ?? err)
-  }
-}
+// loader do team.json — em falha o time some (a UI volta pro skeleton)
+const teamLoader = defineLoader<TeamData>('team.json', { onErrorValue: null })
+export const team = teamLoader.data
+export const teamLoadError = teamLoader.error
+export const loadTeam = teamLoader.load
 
 // ---------------------------------------------------------------------------
 // helpers de exibição (avatares de iniciais — sem foto, tudo offline)
@@ -112,14 +100,6 @@ export interface GithubTeamData {
   warnings?: string[]
 }
 
-async function req<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init)
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok)
-    throw new Error(data.error ?? `HTTP ${res.status}`)
-  return data as T
-}
-
 export interface SaveTeamResult {
   ok: true
   teamRefreshed?: boolean
@@ -127,19 +107,15 @@ export interface SaveTeamResult {
 }
 
 export function fetchTeamConfig(): Promise<TeamConfigState> {
-  return req<TeamConfigState>('/__team/config')
+  return getJson<TeamConfigState>('/__team/config')
 }
 
 export function saveTeamConfig(payload: TeamConfigPayload, opts?: { skipRefresh?: boolean }): Promise<SaveTeamResult> {
-  return req<SaveTeamResult>('/__team/config', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    // skipRefresh: o chamador vai recoletar em seguida — o POST pula a
-    // regeneração do team.json (collect-team + check-data rodariam 2×)
-    body: JSON.stringify(opts?.skipRefresh ? { ...payload, skipRefresh: true } : payload),
-  })
+  // skipRefresh: o chamador vai recoletar em seguida — o POST pula a
+  // regeneração do team.json (collect-team + check-data rodariam 2×)
+  return postJson<SaveTeamResult>('/__team/config', opts?.skipRefresh ? { ...payload, skipRefresh: true } : payload)
 }
 
 export function fetchGithubTeam(): Promise<GithubTeamData> {
-  return req<GithubTeamData>('/__team/github')
+  return getJson<GithubTeamData>('/__team/github')
 }

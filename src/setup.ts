@@ -3,7 +3,8 @@
  * não existe no build estático). Cobre auth (device flow/PAT/gh) e o setup
  * de repositórios (listar orgs/repos, clonar com progresso SSE).
  */
-import { ref } from 'vue'
+import { getJson, postJson } from './api'
+import { useSseProgress } from './sse'
 
 export interface SetupStatus {
   auth: { login: string, via: string } | null
@@ -17,14 +18,6 @@ export interface SetupStatus {
 
 export interface OrgEntry { login: string, personal?: boolean }
 export interface RepoEntry { name: string, archived: boolean, pushed_at: string | null, private: boolean }
-
-async function getJson<T>(url: string): Promise<T> {
-  const res = await fetch(url)
-  const body = await res.json().catch(() => ({}))
-  if (!res.ok)
-    throw new Error(body.error ?? `HTTP ${res.status}`)
-  return body as T
-}
 
 export function fetchSetupStatus(): Promise<SetupStatus> {
   return getJson('/__setup/status')
@@ -63,34 +56,13 @@ export function githubLogout(): Promise<{ ok: true }> {
   return postJson<{ ok: true }>('/__auth/logout', {})
 }
 
-async function postJson<T>(url: string, body: unknown): Promise<T> {
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok)
-    throw new Error((data as { error?: string }).error ?? `HTTP ${res.status}`)
-  return data as T
-}
-
 export function startDeviceFlow(): Promise<DeviceFlowStart> {
   return getJson('/__auth/device')
 }
 
-export async function pollDeviceFlow(deviceCode: string, signal?: AbortSignal): Promise<DeviceFlowPoll> {
-  const res = await fetch('/__auth/device/poll', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ deviceCode }),
-    // permite abortar o poll em voo quando o fluxo é cancelado/desmontado
-    signal,
-  })
-  const body = await res.json().catch(() => ({}))
-  if (!res.ok)
-    throw new Error(body.error ?? `HTTP ${res.status}`)
-  return body as DeviceFlowPoll
+export function pollDeviceFlow(deviceCode: string, signal?: AbortSignal): Promise<DeviceFlowPoll> {
+  // permite abortar o poll em voo quando o fluxo é cancelado/desmontado
+  return postJson<DeviceFlowPoll>('/__auth/device/poll', { deviceCode }, { signal })
 }
 
 // ---------------------------------------------------------------------------
@@ -104,53 +76,21 @@ export async function cleanLocalData(repos: boolean): Promise<string[]> {
 // ---------------------------------------------------------------------------
 // apply (clone) com progresso via SSE
 // ---------------------------------------------------------------------------
-export const setupApplying = ref(false)
-export const setupLog = ref<string[]>([])
-export const setupError = ref<string | null>(null)
-export const setupDone = ref(false)
+const applyProgress = useSseProgress('/__setup/apply', {
+  busyMessage: 'já existe um setup em andamento',
+  disconnectMessage: 'conexão com o dev server caiu durante o setup',
+})
 
-const MAX_LOG_LINES = 300
+export const setupApplying = applyProgress.running
+export const setupLog = applyProgress.log
+export const setupError = applyProgress.error
+export const setupDone = applyProgress.done
 
 export function startSetupApply(org: string, repos: string[], opts: { dry?: boolean, remove?: string[] } = {}) {
-  if (setupApplying.value)
-    return
-  setupApplying.value = true
-  setupLog.value = []
-  setupError.value = null
-  setupDone.value = false
-
-  const params = new URLSearchParams({ org, repos: repos.join(',') })
+  const params: Record<string, string> = { org, repos: repos.join(',') }
   if (opts.dry)
-    params.set('dry', '1')
+    params.dry = '1'
   if (opts.remove?.length)
-    params.set('remove', opts.remove.join(','))
-  const es = new EventSource(`/__setup/apply?${params}`)
-
-  es.addEventListener('log', (e) => {
-    setupLog.value.push(JSON.parse((e as MessageEvent).data).line)
-    if (setupLog.value.length > MAX_LOG_LINES) {
-      setupLog.value.splice(0, setupLog.value.length - MAX_LOG_LINES)
-    }
-  })
-  es.addEventListener('busy', () => {
-    setupError.value = 'já existe um setup em andamento'
-    es.close()
-    setupApplying.value = false
-  })
-  es.addEventListener('done', () => {
-    es.close()
-    setupApplying.value = false
-    setupDone.value = true
-  })
-  es.addEventListener('error', (e) => {
-    const data = (e as MessageEvent).data
-    if (data) {
-      setupError.value = JSON.parse(data).message
-    }
-    else if (!setupDone.value && setupApplying.value) {
-      setupError.value = 'conexão com o dev server caiu durante o setup'
-    }
-    es.close()
-    setupApplying.value = false
-  })
+    params.remove = opts.remove.join(',')
+  applyProgress.start(params)
 }

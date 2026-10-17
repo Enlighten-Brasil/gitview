@@ -1,27 +1,20 @@
 import type { GitHubData, PullRequest } from './types'
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { filters } from './data'
 import { daysSince, fmtDuration, median } from './format'
+import { defineLoader } from './loader'
 
 // compat: median/fmtDuration mudaram para ./format (issue #32) — reexportados
 // aqui até os imports antigos terminarem de migrar
 export { fmtDuration, median }
 
-export const github = ref<GitHubData | null>(null)
-export const githubError = ref<string | null>(null)
-
-export async function loadGithub(force = false) {
-  try {
-    const res = await fetch(force ? `${import.meta.env.BASE_URL}data/github.json?t=${Date.now()}` : `${import.meta.env.BASE_URL}data/github.json`)
-    if (!res.ok)
-      throw new Error(`HTTP ${res.status}`)
-    github.value = await res.json()
-    githubError.value = null
-  }
-  catch {
-    githubError.value = 'sem dados do GitHub — rode "pnpm collect:github"'
-  }
-}
+// loader do github.json — mensagem fixa preservada (a UI concatena com o alerta)
+const githubLoader = defineLoader<GitHubData>('github.json', {
+  errorMessage: 'sem dados do GitHub — rode "pnpm collect:github"',
+})
+export const github = githubLoader.data
+export const githubError = githubLoader.error
+export const loadGithub = githubLoader.load
 
 // ---------------------------------------------------------------------------
 // logins -> nomes do time (mapeamento vem do coletor via config.githubUsers)
