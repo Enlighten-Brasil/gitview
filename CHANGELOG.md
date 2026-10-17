@@ -1,5 +1,15 @@
 # gitview
 
+## 0.44.0
+
+### Minor Changes
+
+- a38a955: refactor(stores): shallowRef + markRaw nos payloads dos loaders (stats/github/releases/team), predicados de filtro únicos em `src/filters-core.ts` (`cutoff`/`repoSelected`/`authorSelected` + janelas `inPeriodMonth`/`inPeriodDay`) e ações nomeadas em `data.ts` (`setRange`/`toggleRepo`/`lockAuthors`/`resetSelection`...) no lugar das mutações diretas de `filters` pelos componentes
+
+### Patch Changes
+
+- 1e9abfe: fix(a11y): navegação por teclado nas tabelas, aria-labels/pressed/sort e aria-live — DevTable/RepoTable com link real na 1ª célula e ordenação por botão (aria-sort + chevron), aria-label nos botões só-ícone do FilterBar e nos itens da rail, aria-pressed nos chips de seleção, tooltip de aliases focável no DevCard, RunLog/splash com role=status e chips de membros como links
+
 ## 0.43.0
 
 ### Minor Changes
