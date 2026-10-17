@@ -1,5 +1,25 @@
 # gitview
 
+## 0.49.2
+
+### Patch Changes
+
+- 1eb8887: fix(WeeklySummary): fallback de cópia do markdown fora de contexto seguro
+  
+  O botão "copiar markdown" agora tenta primeiro a Clipboard API e, se ela
+  não existir (http na LAN) ou rejeitar, copia via textarea temporária com
+  `document.execCommand('copy')`. Sucesso pelo fallback mostra o mesmo
+  feedback do caminho normal ("copiado!" + toast de sucesso); só quando
+  ambos os caminhos falham aparece o toast de erro. O botão fica
+  desabilitado apenas quando nenhum caminho de cópia existe.
+- 7a6943d: fix(AppNav): estabilizar o posicionamento do botão de reabrir o painel
+  
+  A div raiz do AppNav agora tem `relative`, tornando-a o containing block
+  do botão flutuante 'mostrar painel' (que usa `absolute`). Antes, o
+  posicionamento dependia de um ancestor externo (o shell sem `relative` em
+  _parent.vue) e o botão pulava de lugar se algum wrapper ganhasse
+  `position`. Comportamento visual inalterado.
+
 ## 0.49.1
 
 ### Patch Changes
