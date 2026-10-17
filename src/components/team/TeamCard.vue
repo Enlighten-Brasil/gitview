@@ -1,23 +1,36 @@
 <script setup lang="ts">
-import type { TeamDraft, TeamMetrics } from '@/team'
+import type { MemberAddItem, TeamMetrics } from '@/team'
 /**
  * Card de time editável: identidade (avatar/nome/descrição), paleta de cor em
  * popover, membros como chips removíveis + combobox de adição (marca quem já
  * está em outro time), métricas agregadas e remoção com confirmação inline.
- * `disabled` (build estático) esconde toda a UI de edição.
+ * Fluxo unidirecional (issue #40): campos entram por defineModel e mudanças de
+ * membros/remoção saem por emits carregando o `cid` — o card nunca muta estado
+ * do pai. `disabled` (build estático) esconde toda a UI de edição.
  */
 import { computed, ref } from 'vue'
 import { fmtDaysAgo } from '@/format'
 import { avatarBgClass, initialsOf, TEAM_PALETTE } from '@/team'
 
 const props = defineProps<{
-  team: TeamDraft
+  /** id estável do time — toda ação sai carregando ele (identidade por cid) */
+  cid: string
+  /** membros atuais (só leitura — mudanças saem por add-member/remove-member) */
+  members: string[]
   /** opções do add-member já filtradas (sem quem está neste time) */
-  items: { label: string, value: string, hint?: string }[]
+  items: MemberAddItem[]
   metrics: TeamMetrics
   disabled?: boolean
 }>()
-const emit = defineEmits<{ remove: [] }>()
+
+const emit = defineEmits<{
+  'add-member': [cid: string, value: string]
+  'remove-member': [cid: string, value: string]
+  'remove': [cid: string]
+}>()
+const name = defineModel<string>('name', { default: '' })
+const description = defineModel<string>('description', { default: '' })
+const color = defineModel<string>('color', { default: '' })
 
 const colorOpen = ref(false)
 const customColor = ref('')
@@ -25,7 +38,7 @@ const confirmRemove = ref(false)
 const pick = ref<string | null>(null)
 
 function setColor(c: string) {
-  props.team.color = c
+  color.value = c
   colorOpen.value = false
 }
 
@@ -51,13 +64,13 @@ function commitCustom() {
 }
 
 function addMember(value: string | null) {
-  if (value && !props.team.members.includes(value))
-    props.team.members.push(value)
+  if (value && !props.members.includes(value))
+    emit('add-member', props.cid, value)
   pick.value = null
 }
 
 function removeMember(m: string) {
-  props.team.members = props.team.members.filter(x => x !== m)
+  emit('remove-member', props.cid, m)
 }
 
 const numFmt = new Intl.NumberFormat('pt-BR', { notation: 'compact' })
@@ -69,33 +82,33 @@ const numFmt = new Intl.NumberFormat('pt-BR', { notation: 'compact' })
       <div class="flex items-center gap-3 px-4 pt-4">
         <span
           class="flex size-9 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white"
-          :style="team.color ? { backgroundColor: team.color } : undefined"
-          :class="!team.color && avatarBgClass(team.name || '?')"
+          :style="color ? { backgroundColor: color } : undefined"
+          :class="!color && avatarBgClass(name || '?')"
         >
-          {{ initialsOf(team.name || '?') }}
+          {{ initialsOf(name || '?') }}
         </span>
         <div class="min-w-0 flex-1">
           <UInput
             v-if="!disabled"
-            v-model="team.name"
+            v-model="name"
             variant="none"
             size="lg"
             placeholder="Nome do time"
             class="w-full font-semibold ps-0! text-lg"
           />
           <div v-else class="font-semibold text-lg truncate">
-            {{ team.name }}
+            {{ name }}
           </div>
           <UInput
             v-if="!disabled"
-            v-model="team.description"
+            v-model="description"
             variant="ghost"
             size="xs"
             placeholder="descrição (opcional)"
             class="w-full text-xs ps-0!"
           />
-          <p v-else-if="team.description" class="text-xs text-dimmed truncate">
-            {{ team.description }}
+          <p v-else-if="description" class="text-xs text-dimmed truncate">
+            {{ description }}
           </p>
         </div>
         <div v-if="!disabled" class="flex items-center gap-1 shrink-0">
@@ -105,9 +118,9 @@ const numFmt = new Intl.NumberFormat('pt-BR', { notation: 'compact' })
               color="neutral"
               variant="ghost"
               square
-              :aria-label="`cor do time ${team.name}`"
+              :aria-label="`cor do time ${name}`"
             >
-              <span class="size-4 rounded-full border border-default" :style="{ backgroundColor: team.color || 'transparent' }" />
+              <span class="size-4 rounded-full border border-default" :style="{ backgroundColor: color || 'transparent' }" />
             </UButton>
             <template #content>
               <div class="p-3 flex flex-col gap-2 w-48">
@@ -116,7 +129,7 @@ const numFmt = new Intl.NumberFormat('pt-BR', { notation: 'compact' })
                     v-for="c in TEAM_PALETTE"
                     :key="c"
                     class="size-7 rounded-md border transition-transform hover:scale-110"
-                    :class="team.color === c ? 'border-strong ring-2 ring-primary/40' : 'border-default'"
+                    :class="color === c ? 'border-strong ring-2 ring-primary/40' : 'border-default'"
                     :style="{ backgroundColor: c }"
                     :aria-label="c"
                     @click="setColor(c)"
@@ -141,7 +154,7 @@ const numFmt = new Intl.NumberFormat('pt-BR', { notation: 'compact' })
             />
           </template>
           <template v-else>
-            <UButton label="remover?" size="xs" color="error" @click="emit('remove')" />
+            <UButton label="remover?" size="xs" color="error" @click="emit('remove', cid)" />
             <UButton size="xs" color="neutral" variant="ghost" aria-label="cancelar remoção" icon="i-lucide-x" @click="confirmRemove = false" />
           </template>
         </div>
@@ -152,7 +165,7 @@ const numFmt = new Intl.NumberFormat('pt-BR', { notation: 'compact' })
       <!-- membros: chips removíveis -->
       <div class="flex flex-wrap gap-1.5">
         <span
-          v-for="m in team.members"
+          v-for="m in members"
           :key="m"
           class="inline-flex items-center gap-1.5 rounded-full border border-default bg-elevated/50 py-0.5 ps-0.5 pe-1 text-xs"
         >
@@ -169,7 +182,7 @@ const numFmt = new Intl.NumberFormat('pt-BR', { notation: 'compact' })
             <UIcon name="i-lucide-x" class="size-3" />
           </button>
         </span>
-        <p v-if="!team.members.length" class="text-xs text-dimmed italic">
+        <p v-if="!members.length" class="text-xs text-dimmed italic">
           sem membros ainda
         </p>
       </div>
@@ -206,13 +219,13 @@ const numFmt = new Intl.NumberFormat('pt-BR', { notation: 'compact' })
         </span>
         <!-- dashboard do time (rota funciona também no build estático) -->
         <UButton
-          v-if="team.name.trim()"
-          :to="`/teams/${encodeURIComponent(team.name.trim())}`"
+          v-if="name.trim()"
+          :to="`/teams/${encodeURIComponent(name.trim())}`"
           icon="i-lucide-layout-dashboard"
           color="neutral"
           variant="ghost"
           size="xs"
-          :aria-label="`abrir dashboard do time ${team.name.trim()}`"
+          :aria-label="`abrir dashboard do time ${name.trim()}`"
           :class="!metrics.lastCommit && 'ml-auto'"
         />
       </div>

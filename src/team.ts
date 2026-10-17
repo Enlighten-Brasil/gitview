@@ -88,6 +88,105 @@ export interface TeamMetrics {
   lastCommit: string | null
 }
 
+/** métricas vazias — fallback do metricsByCid quando o cid ainda não foi computado */
+export const EMPTY_TEAM_METRICS: TeamMetrics = { devs: 0, commits: 0, prs: 0, lastCommit: null }
+
+/** opção do combobox de adicionar membro (hint marca quem já está em outro time) */
+export interface MemberAddItem {
+  label: string
+  value: string
+  hint?: string
+}
+
+/** rascunho de perfil de dev no editor (listas como string separada por vírgula) */
+export interface ProfileDraft {
+  title: string
+  description: string
+  emails: string
+  githubLogins: string
+}
+
+/** entrada de devProfiles do payload (ou equivalente) */
+export interface ProfileDraftSource {
+  title?: string | null
+  description?: string | null
+  emails?: string[]
+  githubLogins?: string[]
+}
+
+/** fonte do mapeamento de time: entrada do payload OU TeamInfo do team.json */
+export interface TeamDraftSource {
+  name: string
+  description?: string | null
+  color?: string | null
+  members: string[]
+  renamedFrom?: string[]
+}
+
+export function toProfileDraft(p?: ProfileDraftSource): ProfileDraft {
+  return {
+    title: p?.title ?? '',
+    description: p?.description ?? '',
+    emails: (p?.emails ?? []).join(', '),
+    githubLogins: (p?.githubLogins ?? []).join(', '),
+  }
+}
+
+/**
+ * Mapeamento ÚNICO TeamConfig/team.json → TeamDraft (issue #40): o mapping
+ * triplicado no editor era ponto de divergência quando um campo novo entrava.
+ * O `savedName` nasce como o nome atual — renomes só acumulam no toTeamEntry.
+ */
+export function toTeamDraft(t: TeamDraftSource): TeamDraft {
+  return {
+    cid: crypto.randomUUID(),
+    name: t.name,
+    description: t.description ?? '',
+    color: t.color ?? '',
+    members: [...t.members],
+    renamedFrom: [...(t.renamedFrom ?? [])],
+    savedName: t.name,
+  }
+}
+
+/** entrada de payload DE um draft específico (alinhado por construção, não por nome) */
+export function toTeamEntry(t: TeamDraft): TeamConfigPayload['teams'][number] {
+  const name = t.name.trim()
+  // rename desde o último save → o nome antigo entra no histórico
+  // (comparado por cid, não por índice: remoções não desalinhiam os times)
+  const history = [...new Set(
+    t.savedName && t.savedName !== name ? [...t.renamedFrom, t.savedName] : t.renamedFrom,
+  )].filter(n => n !== name)
+  return {
+    name,
+    ...(t.description.trim() ? { description: t.description.trim() } : {}),
+    ...(t.color.trim() ? { color: t.color.trim() } : {}),
+    members: t.members,
+    ...(history.length ? { renamedFrom: history } : {}),
+  }
+}
+
+/** lista separada por vírgula → array (trim + sem vazios) */
+export function splitList(s: string): string[] {
+  return s.split(',').map(x => x.trim()).filter(Boolean)
+}
+
+/**
+ * splitList sem duplicatas (comparação por caixa-baixa, mantendo a 1ª grafia) —
+ *  digitar o mesmo e-mail/login duas vezes gerava :key duplicado no v-for dos
+ *  badges e duplicata persistida no team.local.json (issue #30)
+ */
+export function dedupeList(s: string): string[] {
+  const seen = new Set<string>()
+  return splitList(s).filter((x) => {
+    const k = x.toLowerCase()
+    if (seen.has(k))
+      return false
+    seen.add(k)
+    return true
+  })
+}
+
 export interface TeamConfigState extends TeamConfigPayload {
   githubOrg: string | null
 }
