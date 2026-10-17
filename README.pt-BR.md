@@ -99,6 +99,7 @@ pnpm collect            # os 4 coletores em sequência + validação (incrementa
 pnpm collect:github     # só PRs/reviews
 pnpm collect:releases   # só releases
 pnpm check:data         # validação de shape dos JSONs gerados
+pnpm check:scrub        # gate anti-regressão: arquivo tracked não traz de volta termos de identidade (também no CI)
 pnpm clean              # apaga banco + JSONs (regeneráveis; --repos inclui os clones)
 pnpm build              # build estático (dist/ — somente leitura, sem endpoints de setup)
 pnpm changeset          # registrar mudança

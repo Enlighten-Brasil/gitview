@@ -99,6 +99,7 @@ pnpm collect            # the 4 collectors in sequence + validation (incremental
 pnpm collect:github     # PRs/reviews only
 pnpm collect:releases   # releases only
 pnpm check:data         # shape validation of the generated JSONs
+pnpm check:scrub        # tracked files must stay free of scrubbed identity terms (also a CI gate)
 pnpm clean              # deletes database + JSONs (regenerable; --repos includes the clones)
 pnpm build              # static build (dist/ — read-only, no setup endpoints)
 pnpm changeset          # record a change
