@@ -96,6 +96,33 @@ function splitList(s: string): string[] {
   return s.split(',').map(x => x.trim()).filter(Boolean)
 }
 
+/** splitList sem duplicatas (comparação por caixa-baixa, mantendo a 1ª grafia) —
+ *  digitar o mesmo e-mail/login duas vezes gerava :key duplicado no v-for dos
+ *  badges e duplicata persistida no team.local.json (issue #30) */
+function dedupeList(s: string): string[] {
+  const seen = new Set<string>()
+  return splitList(s).filter((x) => {
+    const k = x.toLowerCase()
+    if (seen.has(k))
+      return false
+    seen.add(k)
+    return true
+  })
+}
+
+/** serialização estável: chaves de objeto em ordem alfabética — o JSON.stringify
+ *  puro é sensível à ordem de inserção das chaves e acusava "não salvo" fantasma
+ *  sem mudança real (issue #30) */
+function stableStringify(v: unknown): string {
+  if (Array.isArray(v))
+    return `[${v.map(stableStringify).join(',')}]`
+  if (v && typeof v === 'object') {
+    const o = v as Record<string, unknown>
+    return `{${Object.keys(o).sort().map(k => `${JSON.stringify(k)}:${stableStringify(o[k])}`).join(',')}}`
+  }
+  return JSON.stringify(v)
+}
+
 /** entrada de payload DE um draft específico — usada por payload() e pelo pós-save (alinhamento por construção, não por nome: dois rascunhos homônimos não cruzam — follow-up #12) */
 function teamEntry(t: TeamDraft): TeamConfigPayload['teams'][number] {
   const name = t.name.trim()
@@ -121,8 +148,8 @@ function payload(): TeamConfigPayload {
       entry.title = p.title.trim()
     if (p.description.trim())
       entry.description = p.description.trim()
-    const emails = splitList(p.emails)
-    const logins = splitList(p.githubLogins)
+    const emails = dedupeList(p.emails)
+    const logins = dedupeList(p.githubLogins)
     if (emails.length)
       entry.emails = emails
     if (logins.length)
@@ -143,13 +170,13 @@ function payload(): TeamConfigPayload {
 // como mudança — senão o usuário perde o rascunho ao sair sem perceber.
 const dirty = computed(() => {
   const saved = savedSnapshot.value
-  // perfis: compara payload efetivo
-  if (JSON.stringify(payload().devProfiles) !== JSON.stringify(saved.devProfiles))
+  // perfis: compara payload efetivo (serialização estável — insensitive à ordem das chaves)
+  if (stableStringify(payload().devProfiles) !== stableStringify(saved.devProfiles))
     return true
   // times: compara estado bruto (sem filtrar nome vazio)
   const cur = teams.value.map(t => ({ n: t.name.trim(), d: t.description.trim(), c: t.color.trim(), m: [...t.members] }))
   const old = saved.teams.map(t => ({ n: t.name, d: t.description ?? '', c: t.color ?? '', m: t.members }))
-  return JSON.stringify(cur) !== JSON.stringify(old)
+  return stableStringify(cur) !== stableStringify(old)
 })
 
 async function save(skipRefresh = false): Promise<boolean> {
@@ -217,8 +244,15 @@ function openEdit(name: string) {
 }
 
 function confirmEdit() {
-  if (editing.value)
-    profiles[editing.value] = { ...draft.value }
+  if (editing.value) {
+    // normaliza as listas antes de aplicar: dedupe (caixa-baixa) impede
+    // duplicatas de e-mail/login persistirem no team.local.json (issue #30)
+    profiles[editing.value] = {
+      ...draft.value,
+      emails: dedupeList(draft.value.emails).join(', '),
+      githubLogins: dedupeList(draft.value.githubLogins).join(', '),
+    }
+  }
   editing.value = null
 }
 
@@ -582,8 +616,8 @@ watch(suggestions, (s) => {
             :name="d.name"
             :title="profiles[d.name]?.title || d.title"
             :description="profiles[d.name]?.description || d.description"
-            :emails="profiles[d.name] ? splitList(profiles[d.name].emails) : d.emails"
-            :github-logins="profiles[d.name] ? splitList(profiles[d.name].githubLogins) : d.githubLogins"
+            :emails="profiles[d.name] ? dedupeList(profiles[d.name].emails) : d.emails"
+            :github-logins="profiles[d.name] ? dedupeList(profiles[d.name].githubLogins) : d.githubLogins"
             :team-badges="teamBadgesFor(d.teams)"
             :bot="d.bot"
             :has-profile="authorsWithCommits.has(d.name)"
@@ -706,16 +740,16 @@ watch(suggestions, (s) => {
           </UFormField>
           <UFormField label="e-mails de commit" description="separados por vírgula — unifica nomes diferentes do mesmo dev no git">
             <UTextarea v-model="draft.emails" placeholder="a@b.com, c@d.com" :rows="2" class="w-full font-mono text-xs" />
-            <div v-if="splitList(draft.emails).length" class="flex flex-wrap gap-1 mt-1.5">
-              <UBadge v-for="e in splitList(draft.emails)" :key="e" color="neutral" variant="soft" size="xs" class="font-mono">
+            <div v-if="dedupeList(draft.emails).length" class="flex flex-wrap gap-1 mt-1.5">
+              <UBadge v-for="e in dedupeList(draft.emails)" :key="e" color="neutral" variant="soft" size="xs" class="font-mono">
                 {{ e }}
               </UBadge>
             </div>
           </UFormField>
           <UFormField label="logins do GitHub" description="separados por vírgula — unifica logins do mesmo dev em PRs">
             <UTextarea v-model="draft.githubLogins" placeholder="login1, login2" :rows="2" class="w-full font-mono text-xs" />
-            <div v-if="splitList(draft.githubLogins).length" class="flex flex-wrap gap-1 mt-1.5">
-              <UBadge v-for="l in splitList(draft.githubLogins)" :key="l" color="neutral" variant="soft" size="xs" class="font-mono">
+            <div v-if="dedupeList(draft.githubLogins).length" class="flex flex-wrap gap-1 mt-1.5">
+              <UBadge v-for="l in dedupeList(draft.githubLogins)" :key="l" color="neutral" variant="soft" size="xs" class="font-mono">
                 {{ l }}
               </UBadge>
             </div>
