@@ -4,9 +4,10 @@ import type { OrgEntry, RepoEntry, SetupStatus } from '@/setup'
  * Escolha de repositórios da org — usado pelo passo 2 do wizard e pelo
  * "gerenciar repositórios" nas configurações. `manage` pré-seleciona os repos
  * atuais e detecta desmarcações como remoção explícita do disco. Remoções são
- * destrutivas: só seguem para o submit depois do modal de confirmação.
+ * destrutivas: só seguem para o submit depois da confirmação (useConfirm/UModal).
  */
 import { computed, onMounted, ref, watch } from 'vue'
+import { useConfirm } from '@/composables/useConfirm'
 import { fetchOrgs, fetchRepos } from '@/setup'
 
 const props = defineProps<{
@@ -43,8 +44,8 @@ const initialChecked = ref<string[]>([])
 const removed = computed(() => initialChecked.value.filter(n => !checked.value.includes(n)))
 /** o usuário já mexeu na seleção/org — o refresh de status não pode descartar isso */
 const touched = ref(false)
-/** modal de confirmação de remoção do disco aberto */
-const showConfirm = ref(false)
+/** confirmação destrutiva unificada (useConfirm/UModal — issue #38) */
+const confirm = useConfirm()
 /** token de ordem das listagens de repos — uma resposta atrasada de uma org
  * anterior não pode sobrescrever a lista/seleção da org atual */
 let reqId = 0
@@ -174,18 +175,18 @@ function submit() {
   emit('submit', { org, repos: [...checked.value], remove: [...removed.value] })
 }
 
-/** apagar clones do disco é destrutivo — com repos em `removed`, o clique abre o
- * modal de confirmação listando os nomes; sem remoções, aplica direto */
-function requestSubmit() {
+/** apagar clones do disco é destrutivo — com repos em `removed`, o clique passa
+ * pelo useConfirm listando os nomes; sem remoções, aplica direto */
+async function requestSubmit() {
   if (removed.value.length) {
-    showConfirm.value = true
-    return
+    const ok = await confirm({
+      title: 'Apagar repositórios do disco?',
+      description: `Os clones de ${removed.value.join(', ')} serão apagados do disco e os dados deles saem do dashboard na próxima coleta. Para manter algum, cancele e deixe-o marcado.`,
+      confirmLabel: 'apagar e aplicar',
+    })
+    if (!ok)
+      return
   }
-  submit()
-}
-
-function confirmSubmit() {
-  showConfirm.value = false
   submit()
 }
 </script>
@@ -198,16 +199,20 @@ function confirmSubmit() {
         {{ mode === 'manage' ? 'Gerenciar repositórios' : 'Quais repositórios entram no dashboard?' }}
       </div>
 
-      <USelectMenu
-        :model-value="selectedOrg"
-        :items="orgItems"
-        value-key="value"
-        placeholder="organização"
-        class="w-full"
-        @update:model-value="selectOrg"
-      />
+      <UFormField label="organização">
+        <USelectMenu
+          :model-value="selectedOrg"
+          :items="orgItems"
+          value-key="value"
+          placeholder="organização"
+          class="w-full"
+          @update:model-value="selectOrg"
+        />
+      </UFormField>
 
-      <UInput v-model="search" icon="i-lucide-search" placeholder="filtrar repositórios…" />
+      <UFormField label="buscar repositórios" :ui="{ label: 'sr-only' }">
+        <UInput v-model="search" icon="i-lucide-search" placeholder="filtrar repositórios…" />
+      </UFormField>
 
       <UAlert v-if="reposError" color="error" variant="subtle" icon="i-lucide-circle-x" :title="reposError" />
       <div v-if="loadingRepos" class="flex items-center gap-2 text-sm text-dimmed">
@@ -225,6 +230,7 @@ function confirmSubmit() {
           <UCheckbox
             :model-value="checked.includes(r.name)"
             :disabled="r.archived"
+            :aria-label="r.name"
             @update:model-value="toggle(r.name, $event === true)"
           />
           <span class="flex-1">{{ r.name }}</span>
@@ -275,29 +281,5 @@ function confirmSubmit() {
         />
       </div>
     </div>
-
-    <!-- modal de confirmação de remoção: lista o que sai do disco antes do submit -->
-    <UModal v-model:open="showConfirm" title="apagar repositórios do disco?">
-      <template #body>
-        <div class="flex flex-col gap-3 text-sm">
-          <p>Os clones abaixo serão <span class="font-medium">apagados do disco</span>:</p>
-          <ul class="flex flex-col gap-1 rounded-lg border border-default px-3 py-2">
-            <li v-for="n in removed" :key="n" class="flex items-center gap-2">
-              <UIcon name="i-lucide-trash-2" class="size-4 text-error" />
-              <span class="font-mono">{{ n }}</span>
-            </li>
-          </ul>
-          <p class="text-dimmed">
-            Os dados deles saem do dashboard na próxima coleta. Para manter algum, cancele e deixe-o marcado.
-          </p>
-        </div>
-      </template>
-      <template #footer>
-        <div class="flex justify-end gap-2">
-          <UButton label="cancelar" color="neutral" variant="ghost" size="sm" @click="showConfirm = false" />
-          <UButton label="apagar e aplicar" color="error" size="sm" @click="confirmSubmit" />
-        </div>
-      </template>
-    </UModal>
   </UCard>
 </template>

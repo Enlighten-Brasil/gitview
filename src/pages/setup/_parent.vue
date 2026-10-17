@@ -7,6 +7,7 @@
  */
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { useCollectToasts } from '@/composables/useCollectToasts'
 import { serverMode } from '@/router/guards'
 
 definePage({
@@ -14,6 +15,9 @@ definePage({
     onboarding: true,
   },
 })
+
+// feedback de conclusão/erro da coleta do passo 3 (o RunLog mostra o progresso)
+useCollectToasts()
 
 const route = useRoute()
 const STEPS: Record<string, { n: number, label: string, optional?: boolean }> = {

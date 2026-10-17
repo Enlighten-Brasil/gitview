@@ -32,14 +32,14 @@ const emit = defineEmits<{ edit: [] }>()
       </span>
       <div class="min-w-0 flex-1">
         <div class="flex items-center gap-1.5">
-          <RouterLink
-            v-if="hasProfile"
-            :to="{ name: '/devs/[name]', params: { name } }"
-            class="font-medium truncate hover:text-primary min-w-0 flex-1"
-            title="ver perfil de commits"
-          >
-            {{ name }}
-          </RouterLink>
+          <UTooltip v-if="hasProfile" text="ver perfil de commits" class="min-w-0 flex-1">
+            <RouterLink
+              :to="{ name: '/devs/[name]', params: { name } }"
+              class="font-medium truncate hover:text-primary min-w-0 flex-1"
+            >
+              {{ name }}
+            </RouterLink>
+          </UTooltip>
           <span v-else class="font-medium truncate min-w-0 flex-1">
             {{ name }}
           </span>

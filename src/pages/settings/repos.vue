@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { SetupStatus } from '@/setup'
+import { useToast } from '@nuxt/ui/composables'
 /**
  * Gerenciar repositórios (modo manage do RepoPicker) + aplicar mudanças:
  * remove clones desmarcados, clona os novos e recoleta — SSE ao vivo, com o
@@ -14,6 +15,7 @@ import { getCachedStatus } from '@/router/guards'
 import { setupApplying, setupDone, setupError, startSetupApply } from '@/setup'
 
 const router = useRouter()
+const toast = useToast()
 const status = ref<SetupStatus | null>(null)
 const applying = ref(false)
 
@@ -27,8 +29,14 @@ function apply(payload: { org: string, repos: string[], remove: string[] }) {
 }
 
 watch(setupDone, (done) => {
-  if (done && !collecting.value && !collectSucceeded.value && !setupError.value)
+  if (done && !collecting.value && !collectSucceeded.value && !setupError.value) {
+    toast.add({ title: 'Mudanças aplicadas', description: 'repositórios atualizados — recoletando tudo.', color: 'success' })
     startCollect(true)
+  }
+})
+watch(setupError, (err) => {
+  if (err)
+    toast.add({ title: 'Falha ao aplicar as mudanças', description: err, color: 'error' })
 })
 watch(collectSucceeded, (ok) => {
   if (ok) {

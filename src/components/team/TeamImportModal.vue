@@ -114,7 +114,16 @@ function importTeam(t: GithubTeamData['teams'][number]) {
             >
               <UAvatar :src="m.avatar_url" :alt="m.login" size="xs" />
               <span class="font-mono text-sm flex-1 truncate">{{ m.login }}</span>
-              <USelectMenu v-model="assignTarget[m.login]" :items="devNames" placeholder="associar a…" size="xs" class="w-44" />
+              <!-- UInputMenu com busca: a lista de devs cresce e o select puro não escala -->
+              <UFormField label="associar a um dev" :ui="{ label: 'sr-only' }">
+                <UInputMenu
+                  v-model="assignTarget[m.login]"
+                  :items="devNames"
+                  placeholder="associar a… (busca por nome)"
+                  size="xs"
+                  class="w-44"
+                />
+              </UFormField>
               <UButton
                 size="xs"
                 color="neutral"

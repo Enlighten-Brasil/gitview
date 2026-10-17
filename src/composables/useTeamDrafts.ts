@@ -2,6 +2,7 @@ import type { GithubTeamData, MemberAddItem, ProfileDraft, TeamConfigPayload, Te
 import { useToast } from '@nuxt/ui/composables'
 import { computed, reactive, ref } from 'vue'
 import { startCollect } from '@/collect'
+import { useConfirm } from '@/composables/useConfirm'
 import { stats } from '@/data'
 import { github } from '@/github'
 import {
@@ -24,6 +25,7 @@ import {
  */
 export function useTeamDrafts() {
   const toast = useToast()
+  const confirm = useConfirm()
 
   // ---------------------------------------------------------------------------
   // estado dos drafts
@@ -130,15 +132,15 @@ export function useTeamDrafts() {
       if (res.teamRefreshed)
         await loadTeam(true)
       if (res.warnings?.length)
-        toast.add({ title: 'salvo com avisos', description: res.warnings.join(' · '), color: 'warning' })
+        toast.add({ title: 'Salvo com avisos', description: res.warnings.join(' · '), color: 'warning' })
       else if (skipRefresh)
-        toast.add({ title: 'perfis salvos', description: 'a recoleta leve aplica as mudanças nos JSONs', color: 'success' })
+        toast.add({ title: 'Perfis salvos', description: 'a recoleta leve aplica as mudanças nos JSONs', color: 'success' })
       else
-        toast.add({ title: 'perfis salvos', description: 'times aplicados na hora; aliases de identidade pedem a recoleta', color: 'success' })
+        toast.add({ title: 'Perfis salvos', description: 'times aplicados na hora; aliases de identidade pedem a recoleta', color: 'success' })
       return true
     }
     catch (err) {
-      toast.add({ title: 'erro ao salvar', description: String((err as Error).message ?? err), color: 'error' })
+      toast.add({ title: 'Erro ao salvar', description: String((err as Error).message ?? err), color: 'error' })
       return false
     }
     finally {
@@ -157,15 +159,23 @@ export function useTeamDrafts() {
       startCollect(false, false, true)
   }
 
-  /** volta os rascunhos ao último estado salvo (descarta edições) */
-  function revert() {
+  /** volta os rascunhos ao último estado salvo (descarta edições) — destrutivo, pede confirmação */
+  async function revert() {
+    const ok = await confirm({
+      title: 'Descartar alterações?',
+      description: 'Os perfis e times voltam ao último estado salvo em team.local.json.',
+      confirmLabel: 'descartar',
+      cancelLabel: 'continuar editando',
+    })
+    if (!ok)
+      return
     const saved = savedSnapshot.value
     for (const k of Object.keys(profiles))
       delete profiles[k]
     for (const [name, p] of Object.entries(saved.devProfiles))
       profiles[name] = toProfileDraft(p)
     teams.value = saved.teams.map(toTeamDraft)
-    toast.add({ title: 'mudanças descartadas', color: 'neutral' })
+    toast.add({ title: 'Mudanças descartadas', color: 'neutral' })
   }
 
   /** carrega a config persistida (team.local.json) pros drafts */
@@ -232,15 +242,17 @@ export function useTeamDrafts() {
       Object.assign(prev, draftTeam)
     else
       teams.value.push(draftTeam)
-    toast.add({ title: `time "${t.name}" importado`, description: `${members.length}/${t.members.length} membros mapeados — revise e salve`, color: 'info' })
+    toast.add({ title: `Time "${t.name}" importado`, description: `${members.length}/${t.members.length} membros mapeados — revise e salve`, color: 'info' })
   }
 
   /** associa login candidato a um dev existente (adiciona no perfil dele) */
   function assignLogin(dev: string, login: string) {
     const p = profileOf(dev)
     const logins = splitList(p.githubLogins)
-    if (!logins.some(l => l.toLowerCase() === login.toLowerCase()))
+    if (!logins.some(l => l.toLowerCase() === login.toLowerCase())) {
       p.githubLogins = [...logins, login].join(', ')
+      toast.add({ title: 'Login associado', description: `${login} → ${dev} — salve pra aplicar`, color: 'success' })
+    }
   }
 
   /** associa e-mails candidatos a um dev existente (adiciona no perfil dele) */
@@ -253,6 +265,7 @@ export function useTeamDrafts() {
         merged.push(e)
     }
     p.emails = merged.join(', ')
+    toast.add({ title: 'E-mails associados', description: `${emails.join(', ')} → ${dev} — salve pra aplicar`, color: 'success' })
   }
 
   // ---------------------------------------------------------------------------

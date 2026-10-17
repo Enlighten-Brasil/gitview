@@ -102,7 +102,7 @@ const data = computed(() => {
         <thead>
           <tr>
             <th>vitórias (período)</th><th class="num">
-              🏆
+              <UIcon name="i-lucide-trophy" class="size-3.5 align-[-2px]" />
             </th>
           </tr>
         </thead>

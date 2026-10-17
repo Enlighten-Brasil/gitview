@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { SetupStatus } from '@/setup'
+import { useToast } from '@nuxt/ui/composables'
 /**
  * Geral: repos no dashboard + manutenção dos dados locais + resumo da conta.
  * Gerenciar repositórios e conta agora têm rotas próprias (/settings/*).
@@ -7,11 +8,14 @@ import type { SetupStatus } from '@/setup'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { collectError, collecting, collectLog, collectSucceeded, startCollect } from '@/collect'
+import { useConfirm } from '@/composables/useConfirm'
 import { stats } from '@/data'
 import { getCachedStatus, resetBoot } from '@/router/guards'
 import { cleanLocalData } from '@/setup'
 
 const router = useRouter()
+const toast = useToast()
+const confirm = useConfirm()
 const status = ref<SetupStatus | null>(null)
 
 onMounted(async () => {
@@ -20,38 +24,48 @@ onMounted(async () => {
 
 // ---------------------------------------------------------------------------
 // manutenção: recoletar tudo / limpar+recoletar / apagar dados (regeneráveis)
+// ações destrutivas passam pelo useConfirm (UModal) — nada de swap inline
 // ---------------------------------------------------------------------------
-const confirmWipe = ref(false)
 const maintenanceRan = ref(false)
 const maintenanceLog = computed(() => collectLog.value.slice(-8))
 
 function recollectAll() {
-  confirmWipe.value = false
   maintenanceRan.value = true
   startCollect(true)
 }
 
-function wipeAndRecollect() {
-  if (!confirmWipe.value) {
-    confirmWipe.value = true
+async function wipeAndRecollect() {
+  const ok = await confirm({
+    title: 'Limpar e recoletar?',
+    description: 'O banco e os JSONs são apagados e recriados na sequência (coleta completa). Os clones não são tocados.',
+    confirmLabel: 'limpar e recoletar',
+  })
+  if (!ok)
     return
-  }
-  confirmWipe.value = false
   maintenanceRan.value = true
   startCollect(false, true)
 }
 
 // apagar sem recoletar: volta ao estado de primeira execução (wizard)
-const confirmDelete = ref(false)
 const deleteRepos = ref(false)
 const deleting = ref(false)
 const deleteError = ref<string | null>(null)
 
 async function deleteAllData() {
+  const ok = await confirm({
+    title: 'Apagar os dados locais?',
+    description: deleteRepos.value
+      ? 'Banco, JSONs e os clones em data/repos serão apagados — volta ao assistente de configuração, sem recoletar.'
+      : 'Banco e JSONs são apagados (os clones em data/repos ficam) — volta ao assistente de configuração, sem recoletar.',
+    confirmLabel: 'apagar dados',
+  })
+  if (!ok)
+    return
   deleting.value = true
   deleteError.value = null
   try {
     await cleanLocalData(deleteRepos.value)
+    toast.add({ title: 'Dados apagados', description: 'de volta ao assistente de configuração.', color: 'neutral' })
     // derruba o estado de "tem dados" na memória e cai no wizard — sem reload
     stats.value = null
     resetBoot()
@@ -59,6 +73,7 @@ async function deleteAllData() {
   }
   catch (err) {
     deleteError.value = (err as Error).message
+    toast.add({ title: 'Falha ao apagar os dados', description: deleteError.value, color: 'error' })
     deleting.value = false
   }
 }
@@ -149,7 +164,7 @@ async function deleteAllData() {
           :title="deleteError"
         />
 
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between flex-wrap gap-2">
           <UButton
             label="recoletar tudo"
             icon="i-lucide-refresh-cw"
@@ -158,51 +173,26 @@ async function deleteAllData() {
             :disabled="collecting || deleting"
             @click="recollectAll"
           />
-          <div class="flex items-center gap-2">
-            <template v-if="confirmWipe">
-              <span class="text-xs text-dimmed">apaga banco + JSONs e gera tudo de novo na sequência</span>
-              <UButton label="cancelar" size="sm" color="neutral" variant="ghost" @click="confirmWipe = false" />
-              <UButton
-                label="confirmar"
-                size="sm"
-                color="error"
-                icon="i-lucide-trash-2"
-                :loading="collecting"
-                @click="wipeAndRecollect"
-              />
-            </template>
-            <template v-else-if="confirmDelete">
-              <UCheckbox v-model="deleteRepos" size="xs" label="incluindo os clones (data/repos)" />
-              <span class="text-xs text-dimmed">volta ao assistente; nada é recoletado</span>
-              <UButton label="cancelar" size="sm" color="neutral" variant="ghost" @click="confirmDelete = false" />
-              <UButton
-                label="confirmar"
-                size="sm"
-                color="error"
-                icon="i-lucide-trash-2"
-                :loading="deleting"
-                @click="deleteAllData"
-              />
-            </template>
-            <template v-else>
-              <UButton
-                label="apagar dados"
-                color="neutral"
-                variant="ghost"
-                size="sm"
-                icon="i-lucide-eraser"
-                :disabled="collecting"
-                @click="confirmDelete = true"
-              />
-              <UButton
-                label="limpar e recoletar"
-                color="error"
-                variant="soft"
-                icon="i-lucide-trash-2"
-                :disabled="collecting"
-                @click="wipeAndRecollect"
-              />
-            </template>
+          <div class="flex items-center gap-3">
+            <USwitch v-model="deleteRepos" size="sm" label="apagar também os clones (data/repos)" />
+            <UButton
+              label="apagar dados"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              icon="i-lucide-eraser"
+              :disabled="collecting || deleting"
+              :loading="deleting"
+              @click="deleteAllData"
+            />
+            <UButton
+              label="limpar e recoletar"
+              color="error"
+              variant="soft"
+              icon="i-lucide-trash-2"
+              :disabled="collecting || deleting"
+              @click="wipeAndRecollect"
+            />
           </div>
         </div>
       </div>

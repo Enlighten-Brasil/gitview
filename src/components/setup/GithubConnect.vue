@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import type { DeviceFlowStart, SetupStatus } from '@/setup'
+import { useToast } from '@nuxt/ui/composables'
 /**
  * Conexão com o GitHub — os três caminhos: device flow (Client ID no .env),
  * PAT colado (sempre disponível) e ponte do `gh auth login` (auto-detecção).
  * O polling do device flow e a sonda de auth vivem aqui e são limpos no unmount.
  */
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useConfirm } from '@/composables/useConfirm'
 import { githubLogout, pollDeviceFlow, startDeviceFlow, submitGithubToken } from '@/setup'
 
 const props = defineProps<{
@@ -25,6 +27,8 @@ const emit = defineEmits<{
 const mode = computed(() => props.mode ?? 'wizard')
 const auth = computed(() => props.status?.auth ?? null)
 const oauthConfigured = computed(() => props.status?.oauthConfigured ?? false)
+const toast = useToast()
+const confirm = useConfirm()
 
 // ---------------------------------------------------------------------------
 // device flow
@@ -120,10 +124,12 @@ async function connectPat() {
   try {
     await submitGithubToken(pat.value.trim())
     pat.value = ''
+    toast.add({ title: 'Token conectado', description: 'GitHub autenticado com o PAT — gravado só no .env da máquina.', color: 'success' })
     emit('refresh', 'reload')
   }
   catch (err) {
     patError.value = (err as Error).message
+    toast.add({ title: 'Falha ao conectar o token', description: patError.value, color: 'error' })
   }
   finally {
     patSaving.value = false
@@ -133,16 +139,26 @@ async function connectPat() {
 const loggingOut = ref(false)
 const logoutError = ref<string | null>(null)
 
+/** desconectar remove o token do .env — destrutivo, passa pelo useConfirm */
 async function disconnectGithub() {
+  const ok = await confirm({
+    title: 'Desconectar a conta do GitHub?',
+    description: 'O token sai do .env e a coleta fica sem autenticação até conectar de novo (a ponte do gh auth login, se existir, reassume).',
+    confirmLabel: 'desconectar',
+  })
+  if (!ok)
+    return
   loggingOut.value = true
   logoutError.value = null
   try {
     await githubLogout()
+    toast.add({ title: 'Desconectado do GitHub', description: 'token removido do .env.', color: 'neutral' })
     emit('refresh', 'reload')
   }
   catch (err) {
     // falha no logout nunca vira unhandled rejection — sempre mostra na UI
     logoutError.value = (err as Error).message
+    toast.add({ title: 'Falha ao desconectar', description: logoutError.value, color: 'error' })
   }
   finally {
     loggingOut.value = false
@@ -291,13 +307,10 @@ onBeforeUnmount(() => {
 
         <!-- alternativa universal: colar um PAT (funciona sem OAuth App e sem gh) -->
         <USeparator label="ou" class="my-1" />
-        <div class="flex flex-col gap-2">
-          <span class="text-sm font-medium">
-            Usar um token pessoal (PAT)
-          </span>
-          <p class="text-xs text-dimmed">
+        <UFormField label="Usar um token pessoal (PAT)" :error="patError || undefined">
+          <template #description>
             GitHub → Settings → Developer settings → Personal access tokens (clássico), escopo <code>repo</code> (+ <code>read:org</code> p/ importar times). Fica só no <code>.env</code> da máquina.
-          </p>
+          </template>
           <div class="flex gap-2">
             <UInput
               v-model="pat"
@@ -313,8 +326,7 @@ onBeforeUnmount(() => {
               @click="connectPat"
             />
           </div>
-          <UAlert v-if="patError" color="error" variant="subtle" icon="i-lucide-circle-x" :title="patError" />
-        </div>
+        </UFormField>
       </template>
     </div>
   </UCard>

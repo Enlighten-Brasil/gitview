@@ -32,10 +32,12 @@ defineProps<{
     <div class="text-xs text-muted mt-1">
       {{ label }}<span v-if="sub" class="text-dimmed"> · {{ sub }}</span>
       <UTooltip v-if="delta" :text="delta.tooltip">
-        <span class="ml-1 font-semibold" :class="delta.class">
-          <template v-if="delta.dir === 'up'">↑ {{ delta.pct }}%</template>
-          <template v-else-if="delta.dir === 'down'">↓ {{ delta.pct }}%</template>
-          <template v-else>→ {{ delta.pct }}%</template>
+        <span class="ml-1 inline-flex items-center gap-0.5 font-semibold" :class="delta.class">
+          <UIcon
+            :name="delta.dir === 'up' ? 'i-lucide-arrow-up' : delta.dir === 'down' ? 'i-lucide-arrow-down' : 'i-lucide-arrow-right'"
+            class="size-3"
+          />
+          {{ delta.pct }}%
         </span>
       </UTooltip>
     </div>

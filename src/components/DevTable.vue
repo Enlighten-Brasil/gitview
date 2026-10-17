@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useToast } from '@nuxt/ui/composables'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { filters, isBot, stats } from '../data'
@@ -6,6 +7,7 @@ import { fmtDate, fmtInt, fmtRatio } from '../format'
 import TablePanel from './TablePanel.vue'
 
 const router = useRouter()
+const toast = useToast()
 
 /** clique na linha abre a página dedicada do dev (atalho — o link na 1ª célula é o caminho acessível) */
 function openDev(author: string) {
@@ -100,6 +102,7 @@ function exportCsv() {
   link.download = `ranking-time-${localDateKey(new Date())}.csv`
   link.click()
   URL.revokeObjectURL(url)
+  toast.add({ title: 'CSV exportado', description: link.download, color: 'success' })
 }
 </script>
 
@@ -154,7 +157,8 @@ function exportCsv() {
           </th>
           <th class="num sortable" :aria-sort="ariaSort('streak')">
             <button type="button" class="th-sort" @click="toggleSort('streak')">
-              streak 🔥
+              streak
+              <UIcon name="i-lucide-flame" class="size-3 shrink-0" />
               <UIcon v-if="sortKey === 'streak'" :name="sortAsc ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'" class="size-3 shrink-0" />
             </button>
           </th>

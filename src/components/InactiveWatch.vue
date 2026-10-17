@@ -31,7 +31,7 @@ const staleDevs = computed(() =>
           repos sem commit há {{ REPO_STALE_DAYS }}+ dias
         </h3>
         <p v-if="staleRepos.length === 0" class="text-muted text-sm">
-          Todos os repos ativos. 👍
+          Todos os repos ativos. <UIcon name="i-lucide-thumbs-up" class="size-4 align-[-2px]" />
         </p>
         <table v-else class="data-table">
           <tbody>
@@ -55,7 +55,7 @@ const staleDevs = computed(() =>
           devs sem commit há {{ DEV_STALE_DAYS }}+ dias
         </h3>
         <p v-if="staleDevs.length === 0" class="text-muted text-sm">
-          Todo mundo commitou recentemente. 👍
+          Todo mundo commitou recentemente. <UIcon name="i-lucide-thumbs-up" class="size-4 align-[-2px]" />
         </p>
         <table v-else class="data-table">
           <tbody>

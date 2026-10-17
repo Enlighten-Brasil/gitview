@@ -109,13 +109,16 @@ function assign(c: TeamCandidate) {
           >
             sugestão
           </UBadge>
-          <USelectMenu
-            v-model="assignTarget[c.id]"
-            :items="devNames"
-            placeholder="associar a…"
-            size="xs"
-            class="w-48"
-          />
+          <!-- UInputMenu com busca: a lista de devs cresce e o select puro não escala -->
+          <UFormField label="associar a um dev" :ui="{ label: 'sr-only' }">
+            <UInputMenu
+              v-model="assignTarget[c.id]"
+              :items="devNames"
+              placeholder="associar a… (busca por nome)"
+              size="xs"
+              class="w-48"
+            />
+          </UFormField>
           <UButton
             size="xs"
             color="neutral"

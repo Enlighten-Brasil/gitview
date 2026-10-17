@@ -52,10 +52,10 @@ const option = computed<EChartsOption>(() => {
     tall
   >
     <template #actions>
-      <UButton size="xs" :color="granularity === 'week' ? 'primary' : 'neutral'" :variant="granularity === 'week' ? 'solid' : 'ghost'" @click="granularity = 'week'">
+      <UButton size="xs" :color="granularity === 'week' ? 'primary' : 'neutral'" :variant="granularity === 'week' ? 'soft' : 'ghost'" :aria-pressed="granularity === 'week'" @click="granularity = 'week'">
         semana
       </UButton>
-      <UButton size="xs" :color="granularity === 'month' ? 'primary' : 'neutral'" :variant="granularity === 'month' ? 'solid' : 'ghost'" @click="granularity = 'month'">
+      <UButton size="xs" :color="granularity === 'month' ? 'primary' : 'neutral'" :variant="granularity === 'month' ? 'soft' : 'ghost'" :aria-pressed="granularity === 'month'" @click="granularity = 'month'">
         mês
       </UButton>
     </template>

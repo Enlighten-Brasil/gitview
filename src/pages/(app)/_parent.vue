@@ -10,6 +10,7 @@ import { collectError, collecting, collectLog, collectStep, collectSucceeded, st
 import AppNav from '@/components/AppNav.vue'
 import CandidatesBanner from '@/components/CandidatesBanner.vue'
 import WeeklySummary from '@/components/WeeklySummary.vue'
+import { useCollectToasts } from '@/composables/useCollectToasts'
 import { rangeLabel, stats } from '@/data'
 import { fmtDateTime } from '@/format'
 import { loadGithub } from '@/github'
@@ -23,6 +24,10 @@ definePage({
 })
 
 const route = useRoute()
+
+// feedback de conclusão/erro de qualquer coleta disparada pela UI (navbar,
+// manutenção, salvar + recoletar) — o popover/log mostra o progresso
+useCollectToasts()
 
 // github/releases são "nice to have" (algumas páginas não usam) — disparam no
 // boot mas não bloqueiam navegação; cada seção trata o estado vazio próprio.

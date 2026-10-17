@@ -37,15 +37,16 @@ function ageColor(days: number): string {
         <tbody>
           <tr v-for="pr in openAging" :key="`${pr.repo}#${pr.number}`">
             <td class="max-w-[420px]">
-              <a
-                :href="pr.url"
-                target="_blank"
-                rel="noopener"
-                class="text-primary hover:underline truncate block"
-                :title="pr.title"
-              >
-                #{{ pr.number }} {{ pr.title }}
-              </a>
+              <UTooltip :text="pr.title">
+                <a
+                  :href="pr.url"
+                  target="_blank"
+                  rel="noopener"
+                  class="text-primary hover:underline truncate block"
+                >
+                  #{{ pr.number }} {{ pr.title }}
+                </a>
+              </UTooltip>
               <UBadge v-if="pr.draft" color="neutral" variant="soft" size="sm" class="mt-0.5">
                 rascunho
               </UBadge>
@@ -72,7 +73,7 @@ function ageColor(days: number): string {
     </div>
 
     <div v-else class="py-10 text-center text-sm text-muted">
-      Nenhum PR aberto nos filtros atuais 🎉
+      Nenhum PR aberto nos filtros atuais <UIcon name="i-lucide-party-popper" class="size-4 align-[-2px]" />
     </div>
   </TablePanel>
 </template>
