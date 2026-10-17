@@ -1,0 +1,3 @@
+# gerado pelo unplugin-vue-router com LF; sem isto, core.autocrlf=true materializa
+# CRLF no checkout e o build devolve LF → M fantasma no status (issue #68)
+src/route-map.d.ts text eol=lf
