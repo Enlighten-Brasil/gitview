@@ -22,9 +22,10 @@ const TERMS: [string, RegExp][] = [
 
 const ALLOWLIST = /github\.com\/Enlighten-Brasil\/gitview|enlighten-brasil\.github\.io\/gitview/i
 
-const files = execSync('git ls-files', { encoding: 'utf8' })
-  .split('\n')
-  .map(f => f.trim())
+// -z: nomes crus, sem aspas/quotings do git — path com espaço nas pontas ou
+// não-ASCII não pode virar "lido como outro arquivo" e cair no catch
+const files = execSync('git ls-files -z', { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 })
+  .split('\0')
   .filter(Boolean)
 
 const hits: string[] = []
@@ -34,8 +35,11 @@ for (const file of files) {
   try {
     text = readFileSync(file, 'utf8')
   }
-  catch {
-    continue // arquivo some entre ls-files e leitura (corrida) — não é hit
+  catch (e) {
+    // leitura falhou ( corrida com git clean, permissão, path com aspas ):
+    // avisa no log em vez de deixar o gate passar em silêncio (fail-open)
+    console.warn(`⚠ check-scrub: não li "${file}" — ${e instanceof Error ? e.message : e}`)
+    continue
   }
   if (text.includes('\0')) // binário
     continue
