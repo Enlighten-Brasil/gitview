@@ -1,0 +1,53 @@
+/**
+ * Tokens visuais do app gitview espelhados no tema do VitePress.
+ * Referências do app (src/main.css / vite.config.ts):
+ * - fonte: 'Segoe UI', system-ui, -apple-system, sans-serif
+ * - radius: 0.625rem (10px)
+ * - primary: blue (Nuxt UI), acentos ciano #22d3ee nos gráficos
+ *
+ * Semântica do tema (verificada em vars.css do VitePress 2.0.0-alpha.20):
+ * brand-1 = links/ativo (no dark precisa ser o mais claro, p/ contraste),
+ * brand-2 = hover, brand-3 = fundo do botão brand (o mais escuro no dark).
+ */
+
+:root {
+  --vp-c-brand-1: #1d4ed8;
+  --vp-c-brand-2: #2563eb;
+  --vp-c-brand-3: #3b82f6;
+  --vp-c-brand-soft: rgb(37 99 235 / 0.14);
+
+  --vp-font-family-base: 'Segoe UI', system-ui, -apple-system, sans-serif;
+
+  /* nome do hero em gradiente azul → ciano, ecoando a logo */
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(120deg, #3b82f6, #22d3ee);
+  --vp-home-hero-image-background-image: linear-gradient(-45deg, #3b82f6 50%, #22d3ee 50%);
+  --vp-home-hero-image-filter: blur(44px);
+}
+
+.dark {
+  --vp-c-brand-1: #60a5fa;
+  --vp-c-brand-2: #3b82f6;
+  --vp-c-brand-3: #2563eb;
+  --vp-c-brand-soft: rgb(59 130 246 / 0.16);
+}
+
+/* radius de 10px do app nos componentes-chave (o tema não expõe var global
+   de radius — os componentes definem o deles via seletores) */
+.VPButton,
+.VPFeature,
+.vp-doc .custom-block,
+.vp-doc div[class*='language-'] {
+  border-radius: 10px;
+}
+
+/* hover-lift sutil nos cards de features, ecoando .stat-card de src/main.css
+   (translateY(-2px) + borda destacada, transição 0.12s ease) */
+.VPFeature {
+  transition: transform 0.12s ease, border-color 0.12s ease;
+}
+
+.VPFeature:hover {
+  transform: translateY(-2px);
+  border-color: var(--vp-c-brand-1);
+}
