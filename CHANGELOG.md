@@ -1,5 +1,11 @@
 # gitview
 
+## 0.49.5
+
+### Patch Changes
+
+- 3792826: fix(tooling): pin LF for src/route-map.d.ts via .gitattributes to stop the phantom modified state after build on Windows
+
 ## 0.49.4
 
 ### Patch Changes
