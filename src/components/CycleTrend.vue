@@ -3,22 +3,19 @@ import { computed } from 'vue'
 import { fmtDuration } from '../format'
 import { cycleTrend, github } from '../github'
 
-const rows = computed(() => cycleTrend.value)
-
-/** últimos 4 meses com dados em qualquer repo (header alinhado) */
-const monthsHeader = computed(() => {
-  const all = new Set<string>()
-  for (const r of rows.value) {
-    for (const m of r.months) all.add(m.month)
-  }
-  return [...all].sort().slice(-4)
-})
-
-function medianOf(r: { months: { month: string, medianHours: number, count: number }[] }, month: string) {
-  return r.months.find(x => x.month === month)
+interface TrendCell {
+  medianHours: number
+  count: number
 }
 
-function trend(r: { months: { medianHours: number }[], rising: boolean }): { color: 'error' | 'warning' | 'success', label: string } {
+/** linha do grid — célula null = mês sem PR mergeado no repo */
+interface TrendRow {
+  repo: string
+  trend: { color: 'error' | 'warning' | 'success', label: string }
+  cells: (TrendCell | null)[]
+}
+
+function trend(r: { months: { medianHours: number }[], rising: boolean }): TrendRow['trend'] {
   if (r.rising)
     return { color: 'error', label: 'subindo' }
   const last3 = r.months.slice(-3)
@@ -27,6 +24,24 @@ function trend(r: { months: { medianHours: number }[], rising: boolean }): { col
   }
   return { color: 'warning', label: 'estável' }
 }
+
+/**
+ * Grid pré-composto (issue #42): meses do header (últimos 4 com dados em
+ * qualquer repo) × células alinhadas por repo — o template consome
+ * `TrendCell | null` direto, sem non-null assertion (fora do typecheck).
+ */
+const grid = computed(() => {
+  const all = new Set<string>()
+  for (const r of cycleTrend.value) {
+    for (const m of r.months) all.add(m.month)
+  }
+  const months = [...all].sort().slice(-4)
+  const rows = cycleTrend.value.map((r): TrendRow => {
+    const byMonth = new Map(r.months.map(m => [m.month, m]))
+    return { repo: r.repo, trend: trend(r), cells: months.map(m => byMonth.get(m) ?? null) }
+  })
+  return { months, rows }
+})
 </script>
 
 <template>
@@ -41,7 +56,7 @@ function trend(r: { months: { medianHours: number }[], rising: boolean }): { col
     <p v-if="!github" class="text-muted text-sm">
       Sem dados do GitHub — rode <code>pnpm collect:github</code>.
     </p>
-    <p v-else-if="rows.length === 0" class="text-muted text-sm">
+    <p v-else-if="grid.rows.length === 0" class="text-muted text-sm">
       Poucos PRs mergeados nos últimos 6 meses para medir tendência.
     </p>
 
@@ -50,7 +65,7 @@ function trend(r: { months: { medianHours: number }[], rising: boolean }): { col
         <thead>
           <tr>
             <th>repo</th>
-            <th v-for="m in monthsHeader" :key="m" class="num">
+            <th v-for="m in grid.months" :key="m" class="num">
               {{ m }}
             </th>
             <th class="num">
@@ -59,20 +74,20 @@ function trend(r: { months: { medianHours: number }[], rising: boolean }): { col
           </tr>
         </thead>
         <tbody>
-          <tr v-for="r in rows" :key="r.repo">
+          <tr v-for="r in grid.rows" :key="r.repo">
             <td class="font-medium">
               {{ r.repo }}
             </td>
-            <td v-for="m in monthsHeader" :key="m" class="num whitespace-nowrap">
-              <template v-if="medianOf(r, m)">
-                {{ fmtDuration(medianOf(r, m)!.medianHours) }}
-                <span class="text-dimmed text-xs">({{ medianOf(r, m)!.count }})</span>
+            <td v-for="(cell, i) in r.cells" :key="grid.months[i]" class="num whitespace-nowrap">
+              <template v-if="cell">
+                {{ fmtDuration(cell.medianHours) }}
+                <span class="text-dimmed text-xs">({{ cell.count }})</span>
               </template>
               <span v-else class="text-dimmed">—</span>
             </td>
             <td class="num">
-              <UBadge :color="trend(r).color" variant="soft">
-                {{ trend(r).label }}
+              <UBadge :color="r.trend.color" variant="soft">
+                {{ r.trend.label }}
               </UBadge>
             </td>
           </tr>

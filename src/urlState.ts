@@ -1,4 +1,5 @@
 import type { RouteLocationNormalized } from 'vue-router'
+import type { FilterScope } from './router/meta'
 import { watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { filters, stats } from './data'
@@ -22,12 +23,11 @@ import { filters, stats } from './data'
  * pelo guard (router/guards.ts), não aqui.
  */
 
-type FilterScope = 'full' | 'team' | 'period' | 'period-bots' | 'none'
 const RANGES = [1, 3, 6, 12, 24]
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
 function scopeOf(route: RouteLocationNormalized | null): FilterScope {
-  return (route?.meta?.filters as FilterScope | undefined) ?? 'none'
+  return route?.meta?.filters ?? 'none'
 }
 
 /** período (range/from/to) + bots — vale em todo escopo de dados */

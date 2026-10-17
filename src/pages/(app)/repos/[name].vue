@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { EChartsOption } from 'echarts'
+import type { MergedPr } from '@/types'
 import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { axisLabel, ct, donutBase, splitLine, tooltipBase } from '@/chartTheme'
@@ -13,6 +14,7 @@ import { fmtCompact, fmtDate, fmtDuration, median } from '@/format'
 import { ghIsBot, github } from '@/github'
 import { daysSinceLastRelease, lastTagLabel, loadReleases, releases, repoRelease } from '@/releases'
 import { UNRELEASED_AMBER, UNRELEASED_RED } from '@/thresholds'
+import { isMergedPr } from '@/types'
 
 // rota de detalhe do repo (era /repo/:name — alias mantém os links antigos)
 definePage({
@@ -62,12 +64,12 @@ const repoPrs = computed(() =>
   (github.value?.prs ?? []).filter(p => p.repo === repo.value && (filters.showBots || !ghIsBot(p.author))),
 )
 const openPrs = computed(() => repoPrs.value.filter(p => p.state === 'OPEN'))
-// mergeados filtrados pelo período (mês do merge)
+// mergeados filtrados pelo período (mês do merge) — narrowing: mergedAt garantido
 const mergedPrs = computed(() =>
-  repoPrs.value.filter(p => p.state === 'MERGED' && p.mergedAt && inPeriodMonth(p.mergedAt.slice(0, 7))),
+  repoPrs.value.filter((p): p is MergedPr => isMergedPr(p) && inPeriodMonth(p.mergedAt.slice(0, 7))),
 )
 const cycleHours = computed(() =>
-  median(mergedPrs.value.map(p => (new Date(p.mergedAt!).getTime() - new Date(p.createdAt).getTime()) / 3_600_000)),
+  median(mergedPrs.value.map(p => (new Date(p.mergedAt).getTime() - new Date(p.createdAt).getTime()) / 3_600_000)),
 )
 
 /** commits por dev no período (ranking + bus factor) — agregação compartilhada (issue #41) */

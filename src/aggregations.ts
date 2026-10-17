@@ -7,6 +7,7 @@
  */
 import type { MonthlyRow, MonthlyTypeRow, WeeklyRow } from './types'
 import { computed } from 'vue'
+import { getOrCreate } from './collections'
 import { lastNWeekKeys } from './date'
 import { filteredCommitCount, filteredMonthly, filteredWeekly, isBot, stats } from './filters'
 import { authorSelected, cutoff, filters, isCustomRange, repoSelected } from './filters-core'
@@ -110,7 +111,9 @@ export const previousTotals = computed(() => {
   // sem janela comparável quando o filtro é "tudo" ou range customizado
   if (filters.rangeMonths == null || isCustomRange() || !stats.value)
     return null
-  const cut = cutoff()!
+  const cut = cutoff()
+  if (!cut)
+    return null
   const prevStart = new Date(cut)
   prevStart.setMonth(prevStart.getMonth() - filters.rangeMonths)
   const prevKey = `${prevStart.getFullYear()}-${String(prevStart.getMonth() + 1).padStart(2, '0')}`
@@ -185,9 +188,7 @@ export const burnout = computed<BurnoutRow[]>(() => {
   for (const r of rows) {
     if (!weeks.includes(r.week))
       continue
-    if (!byAuthor.has(r.author))
-      byAuthor.set(r.author, { weekend: 0, night: 0, total: 0, weekendsActive: 0 })
-    const b = byAuthor.get(r.author)!
+    const b = getOrCreate(byAuthor, r.author, () => ({ weekend: 0, night: 0, total: 0, weekendsActive: 0 }))
     b.weekend += r.weekend
     b.night += r.night
     b.total += r.commits
@@ -221,9 +222,7 @@ export const offHoursPeriod = computed<OffHoursRow[]>(() => {
   const rows = filteredWeekly.value
   const byAuthor = new Map<string, { total: number, weekend: number, night: number }>()
   for (const r of rows) {
-    if (!byAuthor.has(r.author))
-      byAuthor.set(r.author, { total: 0, weekend: 0, night: 0 })
-    const b = byAuthor.get(r.author)!
+    const b = getOrCreate(byAuthor, r.author, () => ({ total: 0, weekend: 0, night: 0 }))
     b.total += r.commits
     b.weekend += r.weekend
     b.night += r.night

@@ -4,11 +4,13 @@
  * totais históricos (sufixo "(total)") + PRs/reviews quando o GitHub foi
  * coletado. O grid é o `StatCards` compartilhado com repos/[name].
  */
+import type { MergedPr } from '@/types'
 import { computed } from 'vue'
 import StatCards from '@/components/StatCards.vue'
 import { filters, inPeriodMonth, isCustomRange, stats } from '@/data'
 import { fmtCompact, fmtDuration, fmtRatio, median } from '@/format'
 import { ghName, github } from '@/github'
+import { isMergedPr } from '@/types'
 
 const props = defineProps<{ dev: string }>()
 
@@ -28,10 +30,10 @@ const myMonthly = computed(() =>
 // PRs do dev (dados do GitHub, se coletados)
 const myPrs = computed(() => (github.value?.prs ?? []).filter(pr => ghName(pr.author) === props.dev))
 const myOpen = computed(() => myPrs.value.filter(p => p.state === 'OPEN'))
-// mergeados filtrados pelo período (mês do merge)
-const myMerged = computed(() => myPrs.value.filter(p => p.state === 'MERGED' && p.mergedAt && inPeriodMonth(p.mergedAt.slice(0, 7))))
+// mergeados filtrados pelo período (mês do merge) — narrowing: mergedAt garantido
+const myMerged = computed(() => myPrs.value.filter((p): p is MergedPr => isMergedPr(p) && inPeriodMonth(p.mergedAt.slice(0, 7))))
 const myCycleHours = computed(() =>
-  median(myMerged.value.map(p => (new Date(p.mergedAt!).getTime() - new Date(p.createdAt).getTime()) / 3_600_000)),
+  median(myMerged.value.map(p => (new Date(p.mergedAt).getTime() - new Date(p.createdAt).getTime()) / 3_600_000)),
 )
 /** reviews que o dev FEZ em PRs de outras pessoas — filtradas pelo período */
 const myReviews = computed(() => {

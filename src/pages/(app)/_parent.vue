@@ -15,6 +15,7 @@ import { rangeLabel, stats } from '@/data'
 import { fmtDateTime } from '@/format'
 import { loadGithub } from '@/github'
 import { loadReleases } from '@/releases'
+import { DETAIL_ROUTES } from '@/router/meta'
 import { initUrlState } from '@/urlState'
 
 definePage({
@@ -38,10 +39,9 @@ onMounted(loadReleases)
 initUrlState()
 
 // navbar: título por rota — param nas páginas de detalhe, meta.title nas demais,
-// e no dashboard em geral o período atual
-const DETAIL_ROUTES = new Set(['/devs/[name]', '/repos/[name]', '/teams/[name]'])
+// e no dashboard em geral o período atual (DETAIL_ROUTES tipado em router/meta)
 const navTitle = computed(() => {
-  if (DETAIL_ROUTES.has(String(route.name)))
+  if (route.name != null && DETAIL_ROUTES.has(route.name))
     return String(route.params.name ?? '')
   if (route.meta.title)
     return route.meta.title

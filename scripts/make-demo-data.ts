@@ -8,6 +8,7 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
+import { getOrCreate } from '../src/collections'
 
 const OUT = join(process.cwd(), 'public', 'data')
 const FORCE = process.argv.includes('--force')
@@ -155,7 +156,8 @@ const perRepo = REPOS.map(({ repo }) => {
     additions: rows.reduce((a, c) => a + c.additions, 0),
     deletions: rows.reduce((a, c) => a + c.deletions, 0),
     authors: new Set(rows.map(c => c.author)).size,
-    lastCommit: rows.map(c => c.date).sort().at(-1)!,
+    // rows sempre tem commits (cada repo do demo gera os seus) — `?? ''` só pro tipo
+    lastCommit: rows.map(c => c.date).sort().at(-1) ?? '',
   }
 })
 
@@ -169,7 +171,7 @@ const perAuthor = DEVS.map(({ name }) => {
     deletions: rows.reduce((a, c) => a + c.deletions, 0),
     repos: new Set(rows.map(c => c.repo)).size,
     activeDays: new Set(rows.map(c => dayKey(new Date(c.date)))).size,
-    lastCommit: rows.map(c => c.date).sort().at(-1)!,
+    lastCommit: rows.map(c => c.date).sort().at(-1) ?? '',
     streak,
     longestStreak,
   }
@@ -178,10 +180,7 @@ const perAuthor = DEVS.map(({ name }) => {
 function groupBy<T>(rows: Commit[], keyFn: (c: Commit) => string, mapFn: (c: Commit, rows: Commit[]) => T): T[] {
   const map = new Map<string, Commit[]>()
   for (const c of rows) {
-    const k = keyFn(c)
-    if (!map.has(k))
-      map.set(k, [])
-    map.get(k)!.push(c)
+    getOrCreate(map, keyFn(c), () => []).push(c)
   }
   return [...map.entries()].map(([, rs]) => mapFn(rs[0], rs))
 }

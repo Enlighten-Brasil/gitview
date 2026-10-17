@@ -32,7 +32,8 @@ export function discoverRepos(reposRoot: string, exclude: string[] = []): RepoIn
   const excluded = new Set(exclude)
   const found: RepoInfo[] = []
   if (isGitRepo(reposRoot)) {
-    found.push({ name: reposRoot.split(/[\\/]/).pop()!, path: reposRoot })
+    // split nunca termina vazio — `?? ''` só pro tipo
+    found.push({ name: reposRoot.split(/[\\/]/).pop() ?? '', path: reposRoot })
   }
   for (const entry of readdirSync(reposRoot, { withFileTypes: true })) {
     if (!entry.isDirectory() || excluded.has(entry.name))

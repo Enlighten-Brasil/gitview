@@ -10,15 +10,22 @@ import { fmtDateTime, fmtInt } from '@/format'
 
 const props = defineProps<{ dev: string }>()
 
-const commits = computed(() =>
-  (recentCommits.value ?? []).filter(c => c.author === props.dev && inPeriodMonth(c.date.slice(0, 7))).slice(0, 50),
-)
-
 /** link pro commit no GitHub (quando o repo tem remote mapeado) */
 function commitUrl(repo: string, hash: string): string | null {
   const base = stats.value?.repoUrls?.[repo]
   return base ? `${base}/commit/${hash}` : null
 }
+
+/**
+ * linhas da tabela com o link pré-composto (issue #42) — o template consome
+ * `url: string | null` direto, sem non-null assertion (fora do typecheck)
+ */
+const commits = computed(() =>
+  (recentCommits.value ?? [])
+    .filter(c => c.author === props.dev && inPeriodMonth(c.date.slice(0, 7)))
+    .slice(0, 50)
+    .map(c => ({ ...c, url: commitUrl(c.repo, c.hash) })),
+)
 </script>
 
 <template>
@@ -46,8 +53,8 @@ function commitUrl(repo: string, hash: string): string | null {
             </td>
             <td>
               <a
-                v-if="commitUrl(c.repo, c.hash)"
-                :href="commitUrl(c.repo, c.hash)!"
+                v-if="c.url"
+                :href="c.url"
                 target="_blank"
                 rel="noopener"
                 class="text-primary hover:underline"

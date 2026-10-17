@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { FilterScope } from '@/router/meta'
 import { computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
@@ -23,8 +24,7 @@ const route = useRoute()
 // escopo por rota (route.meta.filters): período vale em todas as rotas de
 // dados; repos no escopo 'full' e no 'team'; devs/bots só no 'full' — no 'team'
 // a página trava os devs nos membros do time (a sidebar não pode editar)
-type FilterScope = 'full' | 'team' | 'period' | 'period-bots' | 'none'
-const scope = computed<FilterScope>(() => (route.meta.filters as FilterScope | undefined) ?? 'none')
+const scope = computed<FilterScope>(() => route.meta.filters ?? 'none')
 const showRepos = computed(() => scope.value === 'full' || scope.value === 'team')
 const showDevs = computed(() => scope.value === 'full')
 const showBots = computed(() => scope.value === 'full' || scope.value === 'period-bots')

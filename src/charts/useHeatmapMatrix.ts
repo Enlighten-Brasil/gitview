@@ -49,7 +49,7 @@ function orderedValues(order: HeatOrder | undefined, observed: Map<HeatValue, nu
   const values = [...observed.keys()]
   // 'volume': soma decrescente — quem mais commita fica no topo (sort é estável)
   if (order === 'volume')
-    return values.sort((a, b) => observed.get(b)! - observed.get(a)!)
+    return values.sort((a, b) => (observed.get(b) ?? 0) - (observed.get(a) ?? 0))
   if (order === 'numeric')
     return values.sort((a, b) => Number(a) - Number(b))
   return values.sort()

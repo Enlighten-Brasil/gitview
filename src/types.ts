@@ -35,7 +35,20 @@ export interface CommitRow {
   deletions: number
 }
 
-export interface PrReview { author: string, state: string, submittedAt: string }
+/**
+ * estados possíveis de uma review (enum PullRequestReviewState da API GraphQL
+ * do GitHub) — union fechada: typo de valor não compila (issue #42)
+ */
+export const PR_REVIEW_STATES = ['APPROVED', 'CHANGES_REQUESTED', 'COMMENTED', 'DISMISSED', 'PENDING'] as const
+
+export type PrReviewState = typeof PR_REVIEW_STATES[number]
+
+/** valida o `state` de uma review vindo do github.json (usado no check-data) */
+export function isPrReviewState(value: unknown): value is PrReviewState {
+  return typeof value === 'string' && (PR_REVIEW_STATES as readonly string[]).includes(value)
+}
+
+export interface PrReview { author: string, state: PrReviewState, submittedAt: string }
 
 export interface PullRequest {
   repo: string
@@ -51,6 +64,14 @@ export interface PullRequest {
   deletions: number
   changedFiles: number
   reviews: PrReview[]
+}
+
+/** PR com `mergedAt` garantido — resultado do narrowing de `isMergedPr` (issue #42) */
+export type MergedPr = PullRequest & { mergedAt: string }
+
+/** narrowing de PR mergeado (state MERGED ⇒ mergedAt preenchido; invariante validada no check-data) */
+export function isMergedPr(pr: PullRequest): pr is MergedPr {
+  return pr.state === 'MERGED' && pr.mergedAt !== null
 }
 
 export interface GitHubData {
