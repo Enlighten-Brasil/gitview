@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onUnmounted, ref } from 'vue'
 import { buildWeeklySummary } from '../summary'
 
 // slideover com o resumo da última semana fechada — gerado na abertura
@@ -7,13 +7,19 @@ const open = ref(false)
 const copied = ref(false)
 const summary = computed(() => (open.value ? buildWeeklySummary() : null))
 
+// timer do "copiado!" — guardado pra limpar no unmount (nada de timer órfão)
+let copiedTimer: ReturnType<typeof setTimeout> | undefined
+
 async function copy() {
   if (!summary.value)
     return
   await navigator.clipboard.writeText(summary.value.markdown)
   copied.value = true
-  setTimeout(() => (copied.value = false), 2000)
+  clearTimeout(copiedTimer)
+  copiedTimer = setTimeout(() => (copied.value = false), 2000)
 }
+
+onUnmounted(() => clearTimeout(copiedTimer))
 
 function download() {
   if (!summary.value)

@@ -23,7 +23,9 @@ function exportPng() {
   const url = instance.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: ct.bg })
   const a = document.createElement('a')
   a.href = url
-  a.download = `gitview-${props.title.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}.png`
+  // normaliza acentos (NFD) antes de sanitizar — senão "Frequência" viraria "frequ-ncia"
+  const slug = props.title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-')
+  a.download = `gitview-${slug}.png`
   a.click()
 }
 </script>

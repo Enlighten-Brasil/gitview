@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { filteredTotals, previousTotals, rangeLabel, stats } from '../data'
+import { filteredTotals, filters, previousTotals, rangeLabel, stats } from '../data'
 
+// formato compacto pt-BR: vírgula como separador decimal (igual LinesFlow/WeeklyChampions)
 function fmt(n: number): string {
   if (n >= 1_000_000)
-    return `${(n / 1_000_000).toFixed(1)}M`
+    return `${(n / 1_000_000).toFixed(1).replace('.', ',')}M`
   if (n >= 10_000)
     return `${(n / 1_000).toFixed(0)}k`
   return n.toLocaleString('pt-BR')
@@ -41,6 +42,14 @@ function deltaClass(dir: 'up' | 'down' | 'flat', judge: boolean): string {
   return 'text-dimmed'
 }
 
+/** tooltip do delta — concordância por cardinalidade da janela (1M = singular) */
+const deltaTooltip = computed(() => {
+  const n = filters.rangeMonths
+  if (n == null)
+    return 'vs a janela anterior equivalente'
+  return n === 1 ? 'vs o mês anterior' : `vs os ${n} meses anteriores`
+})
+
 /** totais históricos em linha discreta (contexto, sem duplicar o grid) */
 const historyLine = computed(() => {
   const t = stats.value?.totals
@@ -64,16 +73,16 @@ const historyLine = computed(() => {
           </div>
           <div class="text-xs text-muted mt-1">
             {{ c.label }}
-            <span
-              v-if="c.delta"
-              class="ml-1 font-semibold"
-              :class="deltaClass(c.delta.dir, c.judge)"
-              :title="`vs ${rangeLabel.replace('últimos', 'os').replace('último', 'o')} anteriores`"
-            >
-              <template v-if="c.delta.dir === 'up'">↑ {{ c.delta.pct }}%</template>
-              <template v-else-if="c.delta.dir === 'down'">↓ {{ c.delta.pct }}%</template>
-              <template v-else>→ 0%</template>
-            </span>
+            <UTooltip v-if="c.delta" :text="deltaTooltip">
+              <span
+                class="ml-1 font-semibold"
+                :class="deltaClass(c.delta.dir, c.judge)"
+              >
+                <template v-if="c.delta.dir === 'up'">↑ {{ c.delta.pct }}%</template>
+                <template v-else-if="c.delta.dir === 'down'">↓ {{ c.delta.pct }}%</template>
+                <template v-else>→ {{ c.delta.pct }}%</template>
+              </span>
+            </UTooltip>
           </div>
         </div>
       </div>
