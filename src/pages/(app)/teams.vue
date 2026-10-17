@@ -678,7 +678,7 @@ watch(suggestions, (s) => {
           :loading="saving"
           :disabled="!dirty"
           label="salvar"
-          @click="save"
+          @click="save()"
         />
         <UTooltip text="salva e roda a recoleta leve (re-agrega os dados com os novos aliases, sem re-escanear o git)">
           <UButton
