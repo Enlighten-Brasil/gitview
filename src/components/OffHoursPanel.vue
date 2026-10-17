@@ -5,8 +5,10 @@
  * (segue o filtro da sidebar, ignora devs com <20 commits no período).
  * Funde os antigos BurnoutWatch (8sem) e OffHoursPeriod (período).
  */
+import type { RiskStatus, RiskTier } from '../risk'
 import { computed, ref } from 'vue'
 import { burnout, offHoursPeriod, rangeLabel } from '../data'
+import { statusOf } from '../risk'
 import {
   OFF_HOURS_COUNT_ATTENTION,
   OFF_HOURS_MIN_COMMITS,
@@ -14,6 +16,7 @@ import {
   OFF_HOURS_PCT_ATTENTION,
   OFF_HOURS_WEEKENDS,
 } from '../thresholds'
+import RiskBar from './RiskBar.vue'
 
 const mode = ref<'8sem' | 'periodo'>('8sem')
 
@@ -28,16 +31,29 @@ interface Row {
 
 const rows = computed<Row[]>(() => (mode.value === '8sem' ? burnout.value : offHoursPeriod.value))
 
-/** padrão: ≥25% fora do horário (ou 3+ fds seguidos na janela de 8 semanas) */
-function status(b: Row): { color: 'error' | 'warning' | 'success', label: string, hex: string } {
-  if (b.offHoursPct >= OFF_HOURS_PCT || (b.weekendsActive ?? 0) >= OFF_HOURS_WEEKENDS)
-    return { color: 'error', label: 'padrão', hex: 'var(--ui-error)' }
-  // a contagem absoluta (fds+madrugada ≥5) só tem sentido na janela fixa de 8
-  // semanas; no modo "período" (1–24 meses) ela acumularia trivialmente — lá o
-  // status é só por pct (como no antigo OffHoursPeriod)
-  if (b.offHoursPct >= OFF_HOURS_PCT_ATTENTION || (mode.value === '8sem' && b.weekend + b.night >= OFF_HOURS_COUNT_ATTENTION))
-    return { color: 'warning', label: 'atenção', hex: 'var(--ui-warning)' }
-  return { color: 'success', label: 'pontual', hex: 'var(--ui-success)' }
+const RISK_TIERS: RiskTier[] = [
+  { at: OFF_HOURS_PCT, color: 'error', label: 'padrão' },
+  { at: OFF_HOURS_PCT_ATTENTION, color: 'warning', label: 'atenção' },
+  { at: 0, color: 'success', label: 'pontual' },
+]
+
+/**
+ * risco no eixo dos tiers: ≥25% fora do horário (ou 3+ fds seguidos na janela
+ * de 8 semanas) vira "padrão". A contagem absoluta (fds+madrugada ≥5) só tem
+ * sentido na janela fixa de 8 semanas; no modo "período" (1–24 meses) ela
+ * acumularia trivialmente — lá o status é só por pct (como no antigo
+ * OffHoursPeriod). As condições fora do pct entram como piso no eixo.
+ */
+function riskScore(b: Row): number {
+  if ((b.weekendsActive ?? 0) >= OFF_HOURS_WEEKENDS)
+    return Math.max(b.offHoursPct, OFF_HOURS_PCT)
+  if (mode.value === '8sem' && b.weekend + b.night >= OFF_HOURS_COUNT_ATTENTION)
+    return Math.max(b.offHoursPct, OFF_HOURS_PCT_ATTENTION)
+  return b.offHoursPct
+}
+
+function riskStatus(b: Row): RiskStatus {
+  return statusOf(riskScore(b), RISK_TIERS)
 }
 </script>
 
@@ -103,12 +119,7 @@ function status(b: Row): { color: 'error' | 'warning' | 'success', label: string
           <tr v-for="b in rows" :key="b.author">
             <td>{{ b.author }}</td>
             <td>
-              <div class="flex items-center gap-2">
-                <div class="h-2 flex-1 rounded bg-accented overflow-hidden">
-                  <div class="h-full rounded" :style="{ width: `${Math.round(b.offHoursPct * 100)}%`, background: status(b).hex }" />
-                </div>
-                <span class="num text-xs w-9">{{ Math.round(b.offHoursPct * 100) }}%</span>
-              </div>
+              <RiskBar :pct="b.offHoursPct" :status="riskStatus(b)" />
             </td>
             <td class="num">
               {{ b.weekend }}
@@ -123,8 +134,8 @@ function status(b: Row): { color: 'error' | 'warning' | 'success', label: string
               {{ b.weekendsActive }}/4
             </td>
             <td class="num">
-              <UBadge :color="status(b).color" variant="soft">
-                {{ status(b).label }}
+              <UBadge :color="riskStatus(b).color" variant="soft">
+                {{ riskStatus(b).label }}
               </UBadge>
             </td>
           </tr>

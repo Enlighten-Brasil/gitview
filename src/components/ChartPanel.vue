@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { EChartsOption } from 'echarts'
+import type { Exposed as VChartExposed } from 'vue-echarts'
 import { useToast } from '@nuxt/ui/composables'
-import * as echarts from 'echarts/core'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import VChart from 'vue-echarts'
 import { ct } from '../chartTheme'
 import '../echarts' // registro dos charts/renderers (side-effect) — chunk só das rotas com gráfico
@@ -12,14 +12,33 @@ const props = defineProps<{
   option: EChartsOption
   tall?: boolean
   icon?: string
+  /** força o empty state (a detecção de série vazia já cobre a maioria dos casos) */
+  empty?: boolean
+  /** texto do empty state */
+  emptyText?: string
 }>()
 
 const toast = useToast()
-const wrap = ref<HTMLElement>()
+// ref do VChart: a instância sai da API exposta do vue-echarts — nada de
+// introspecção de DOM (`[_echarts_instance_]` + echarts.getInstanceByDom)
+const vchart = ref<VChartExposed | null>(null)
+
+/** série vazia = sem series ou todas sem dados — antes o gráfico "carregava" pra sempre */
+const isEmpty = computed(() => {
+  if (props.empty)
+    return true
+  const series = props.option.series
+  const list = Array.isArray(series) ? series : series ? [series] : []
+  if (list.length === 0)
+    return true
+  return list.every((s) => {
+    const data = (s as { data?: unknown[] }).data
+    return !Array.isArray(data) || data.length === 0
+  })
+})
 
 function exportPng() {
-  const dom = wrap.value?.querySelector('[_echarts_instance_]') as HTMLElement | null
-  const instance = dom ? echarts.getInstanceByDom(dom) : undefined
+  const instance = vchart.value?.chart
   if (!instance) {
     toast.add({ title: 'Falha ao exportar a imagem', description: 'o gráfico ainda não está pronto', color: 'error' })
     return
@@ -48,7 +67,7 @@ function exportPng() {
         <span class="text-sm font-semibold text-highlighted">{{ title }}</span>
         <span class="ml-auto flex items-center gap-1.5">
           <slot name="actions" />
-          <UTooltip text="exportar como imagem">
+          <UTooltip v-if="!isEmpty" text="exportar como imagem">
             <UButton size="xs" color="neutral" variant="ghost" icon="i-lucide-download" @click="exportPng">
               PNG
             </UButton>
@@ -56,8 +75,10 @@ function exportPng() {
         </span>
       </div>
     </template>
-    <div ref="wrap">
-      <VChart :option="option" :class="tall ? 'chart-tall' : 'chart'" autoresize />
+    <VChart v-if="!isEmpty" ref="vchart" :option="option" :class="tall ? 'chart-tall' : 'chart'" autoresize />
+    <!-- empty state: sem dados o gráfico vazio parecia "carregando" pra sempre -->
+    <div v-else :class="tall ? 'chart-tall' : 'chart'" class="flex items-center justify-center text-muted text-sm">
+      {{ emptyText ?? 'Sem dados no período filtrado.' }}
     </div>
   </UCard>
 </template>

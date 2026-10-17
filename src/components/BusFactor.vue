@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import type { RiskStatus, RiskTier } from '../risk'
 import { computed } from 'vue'
 import { filteredMonthly } from '../data'
 import { reviewShareByRepo } from '../github'
+import { statusOf } from '../risk'
+import RiskBar from './RiskBar.vue'
 import TablePanel from './TablePanel.vue'
 
 interface RepoRisk {
@@ -52,12 +55,24 @@ const rows = computed<RepoRisk[]>(() => {
     .sort((a, b) => (Number(b.blindSpot) - Number(a.blindSpot)) || (b.topShare - a.topShare))
 })
 
-function risk(r: RepoRisk): { color: 'error' | 'warning' | 'success', label: string, hex: string } {
-  if ((r.topShare >= 0.7 && r.devs <= 2) || (r.blindSpot && r.topShare >= 0.5))
-    return { color: 'error', label: 'alto', hex: 'var(--ui-error)' }
-  if (r.topShare >= 0.5)
-    return { color: 'warning', label: 'médio', hex: 'var(--ui-warning)' }
-  return { color: 'success', label: 'ok', hex: 'var(--ui-success)' }
+const RISK_TIERS: RiskTier[] = [
+  { at: 0.7, color: 'error', label: 'alto' },
+  { at: 0.5, color: 'warning', label: 'médio' },
+  { at: 0, color: 'success', label: 'ok' },
+]
+
+/**
+ * risco no eixo dos tiers (alto ≥0,7 · médio ≥0,5): concentração alta só vira
+ * "alto" com ≤2 devs ativos ou ponto cego de review — fora disso o teto é
+ * "médio", preservando a regra original do painel
+ */
+function riskScore(r: RepoRisk): number {
+  const high = (r.topShare >= 0.7 && r.devs <= 2) || (r.blindSpot && r.topShare >= 0.5)
+  return high ? 0.7 : Math.min(r.topShare, 0.5)
+}
+
+function riskStatus(r: RepoRisk): RiskStatus {
+  return statusOf(riskScore(r), RISK_TIERS)
 }
 </script>
 
@@ -97,9 +112,7 @@ function risk(r: RepoRisk): { color: 'error' | 'warning' | 'success', label: str
               {{ r.repo }}
             </td>
             <td>
-              <div class="h-2 rounded bg-accented overflow-hidden">
-                <div class="h-full rounded" :style="{ width: `${Math.round(r.topShare * 100)}%`, background: risk(r).hex }" />
-              </div>
+              <RiskBar :pct="r.topShare" :status="riskStatus(r)" :show-value="false" />
             </td>
             <td>{{ r.topAuthor }}</td>
             <td class="num">
@@ -121,8 +134,8 @@ function risk(r: RepoRisk): { color: 'error' | 'warning' | 'success', label: str
               <span v-else class="text-dimmed">—</span>
             </td>
             <td class="num">
-              <UBadge :color="risk(r).color" variant="soft">
-                {{ risk(r).label }}
+              <UBadge :color="riskStatus(r).color" variant="soft">
+                {{ riskStatus(r).label }}
               </UBadge>
             </td>
           </tr>

@@ -3,8 +3,9 @@ import type { EChartsOption } from 'echarts'
 import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useWeekdayHourHeatmap } from '@/charts/useHeatmapMatrix'
-import { axisLabel, ct, legendText, PALETTE, splitLine, tooltipBase } from '@/chartTheme'
+import { axisLabel, ct, donutBase, splitLine, tooltipBase } from '@/chartTheme'
 import ChartPanel from '@/components/ChartPanel.vue'
+import PrLinkCell from '@/components/PrLinkCell.vue'
 import StatCard from '@/components/StatCard.vue'
 import TablePanel from '@/components/TablePanel.vue'
 import { filters, inPeriodMonth, isCustomRange, loadCommits, rangeLabel, recentCommits, stats } from '@/data'
@@ -145,19 +146,7 @@ const repoOption = computed<EChartsOption>(() => {
   }
   const data = [...map.entries()].map(([repo, commits]) => ({ name: repo, value: commits })).sort((a, b) => b.value - a.value)
 
-  return {
-    color: PALETTE,
-    tooltip: tooltipBase({ trigger: 'item', formatter: '{b}: {c} commits ({d}%)' }),
-    legend: { type: 'scroll', orient: 'vertical', right: 0, top: 'middle', textStyle: legendText() },
-    series: [{
-      type: 'pie',
-      radius: ['45%', '75%'],
-      center: ['38%', '50%'],
-      itemStyle: { borderColor: ct.bg, borderWidth: 2 },
-      label: { show: false },
-      data,
-    }],
-  }
+  return donutBase(data)
 })
 
 // heatmap de horários do dev — matriz compartilhada (issue #35); visualMap
@@ -251,10 +240,8 @@ function commitUrl(repo: string, hash: string): string | null {
         <table class="data-table">
           <tbody>
             <tr v-for="pr in myOpen" :key="`${pr.repo}#${pr.number}`">
-              <td class="max-w-[480px]">
-                <a :href="pr.url" target="_blank" rel="noopener" class="text-primary hover:underline truncate block">
-                  #{{ pr.number }} {{ pr.title }}
-                </a>
+              <td>
+                <PrLinkCell :pr="pr" class="max-w-[480px]" />
               </td>
               <td class="whitespace-nowrap text-muted">
                 {{ pr.repo }}

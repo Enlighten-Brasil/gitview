@@ -2,7 +2,8 @@
 import type { EChartsOption } from 'echarts'
 import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { axisLabel, ct, legendText, splitLine, tooltipBase } from '@/chartTheme'
+import { axisLabel, ct, donutBase, splitLine, tooltipBase } from '@/chartTheme'
+import { commitTypeColor, commitTypeGroup } from '@/commitTypes'
 import ChartPanel from '@/components/ChartPanel.vue'
 import StatCard from '@/components/StatCard.vue'
 import TablePanel from '@/components/TablePanel.vue'
@@ -132,15 +133,6 @@ const cards = computed(() => {
 // ---------------------------------------------------------------------------
 // gráficos: tipos de commit + commits por dev
 // ---------------------------------------------------------------------------
-const TYPES = ['feat', 'fix', 'refactor', 'chore', 'outros'] as const
-const TYPE_COLORS: Record<string, string> = {
-  feat: ct.primary,
-  fix: ct.error500,
-  refactor: ct.violet500,
-  chore: ct.warning500,
-  outros: ct.textDim,
-}
-
 const typesOption = computed<EChartsOption>(() => {
   const map = new Map<string, number>()
   for (const r of stats.value?.monthlyTypes ?? []) {
@@ -148,23 +140,12 @@ const typesOption = computed<EChartsOption>(() => {
       continue
     if (!filters.showBots && isBot(r.author))
       continue
-    const t = (TYPES as readonly string[]).includes(r.type) ? r.type : 'outros'
+    const t = commitTypeGroup(r.type)
     map.set(t, (map.get(t) ?? 0) + r.commits)
   }
   const data = [...map.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value)
 
-  return {
-    tooltip: tooltipBase({ trigger: 'item', formatter: '{b}: {c} commits ({d}%)' }),
-    legend: { type: 'scroll', orient: 'vertical', right: 0, top: 'middle', textStyle: legendText() },
-    series: [{
-      type: 'pie',
-      radius: ['45%', '75%'],
-      center: ['38%', '50%'],
-      itemStyle: { borderColor: ct.bg, borderWidth: 2 },
-      label: { show: false },
-      data: data.map(d => ({ ...d, itemStyle: { color: TYPE_COLORS[d.name] } })),
-    }],
-  }
+  return donutBase(data.map(d => ({ ...d, color: commitTypeColor(d.name) })))
 })
 
 const devsOption = computed<EChartsOption>(() => {
