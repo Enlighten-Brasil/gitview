@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { RiskStatus, RiskTier } from '../risk'
 import { computed } from 'vue'
-import { filteredMonthly } from '../data'
+import { filteredMonthly, nestBySum } from '../data'
 import { reviewShareByRepo } from '../github'
 import { statusOf } from '../risk'
 import RiskBar from './RiskBar.vue'
@@ -22,13 +22,8 @@ interface RepoRisk {
 
 /** concentração por repo no período filtrado, cruzada com quem revisa os PRs do repo */
 const rows = computed<RepoRisk[]>(() => {
-  const byRepo = new Map<string, Map<string, number>>()
-  for (const r of filteredMonthly.value) {
-    if (!byRepo.has(r.repo))
-      byRepo.set(r.repo, new Map())
-    const m = byRepo.get(r.repo)!
-    m.set(r.author, (m.get(r.author) ?? 0) + r.commits)
-  }
+  // repo → autor → commits (agregação compartilhada — issue #41)
+  const byRepo = nestBySum(filteredMonthly.value, r => r.repo, r => r.author)
 
   const reviews = new Map(reviewShareByRepo.value.map(r => [r.repo, r]))
 
