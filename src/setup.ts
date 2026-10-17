@@ -79,11 +79,13 @@ export function startDeviceFlow(): Promise<DeviceFlowStart> {
   return getJson('/__auth/device')
 }
 
-export async function pollDeviceFlow(deviceCode: string): Promise<DeviceFlowPoll> {
+export async function pollDeviceFlow(deviceCode: string, signal?: AbortSignal): Promise<DeviceFlowPoll> {
   const res = await fetch('/__auth/device/poll', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ deviceCode }),
+    // permite abortar o poll em voo quando o fluxo é cancelado/desmontado
+    signal,
   })
   const body = await res.json().catch(() => ({}))
   if (!res.ok)

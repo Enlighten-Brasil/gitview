@@ -32,34 +32,48 @@ const oauthConfigured = computed(() => props.status?.oauthConfigured ?? false)
 const device = ref<DeviceFlowStart | null>(null)
 const deviceError = ref<string | null>(null)
 let pollTimer: number | null = null
+// AbortController do poll em voo — abortado no cancel/desmontagem
+let pollAbort: AbortController | null = null
+// flag de vida: impede reagendamento depois do unmount (await em voo)
+let disposed = false
 
 async function beginDeviceFlow() {
   deviceError.value = null
   try {
-    device.value = await startDeviceFlow()
-    schedulePoll(device.value.interval)
+    const start = await startDeviceFlow()
+    // componente desmontado durante o await: não iniciar polling fantasma
+    if (disposed)
+      return
+    device.value = start
+    schedulePoll(start.interval)
   }
   catch (err) {
-    deviceError.value = (err as Error).message
+    if (!disposed)
+      deviceError.value = (err as Error).message
   }
 }
 
 function schedulePoll(seconds: number) {
   pollTimer = window.setTimeout(async () => {
-    if (!device.value)
+    const current = device.value
+    if (!current || disposed)
       return
+    pollAbort = new AbortController()
     try {
-      const r = await pollDeviceFlow(device.value.deviceCode)
+      const r = await pollDeviceFlow(current.deviceCode, pollAbort.signal)
+      // fluxo cancelado/desmontado durante o await: nunca reagendar
+      if (disposed || device.value !== current)
+        return
       if (r.status === 'ok') {
         device.value = null
         emit('refresh', 'reload')
         return
       }
       if (r.status === 'pending') {
-        schedulePoll(device.value.interval)
+        schedulePoll(current.interval)
       }
       else if (r.status === 'slow_down') {
-        schedulePoll(device.value.interval + 5)
+        schedulePoll(current.interval + 5)
       }
       else {
         deviceError.value = r.status === 'denied' ? 'autorização negada no GitHub' : 'código expirado — tente de novo'
@@ -67,8 +81,14 @@ function schedulePoll(seconds: number) {
       }
     }
     catch (err) {
+      // abort (cancel/desmontagem) não é erro de fluxo — só silenciar
+      if (disposed || (err as Error).name === 'AbortError')
+        return
       deviceError.value = (err as Error).message
       device.value = null
+    }
+    finally {
+      pollAbort = null
     }
   }, seconds * 1000)
 }
@@ -76,8 +96,13 @@ function schedulePoll(seconds: number) {
 function cancelDeviceFlow() {
   device.value = null
   deviceError.value = null
-  if (pollTimer)
+  if (pollTimer) {
     clearTimeout(pollTimer)
+    pollTimer = null
+  }
+  // aborta o poll em voo para o ciclo parar imediatamente
+  pollAbort?.abort()
+  pollAbort = null
 }
 
 // ---------------------------------------------------------------------------
@@ -106,12 +131,18 @@ async function connectPat() {
 }
 
 const loggingOut = ref(false)
+const logoutError = ref<string | null>(null)
 
 async function disconnectGithub() {
   loggingOut.value = true
+  logoutError.value = null
   try {
     await githubLogout()
     emit('refresh', 'reload')
+  }
+  catch (err) {
+    // falha no logout nunca vira unhandled rejection — sempre mostra na UI
+    logoutError.value = (err as Error).message
   }
   finally {
     loggingOut.value = false
@@ -132,8 +163,9 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-  if (pollTimer)
-    clearTimeout(pollTimer)
+  disposed = true
+  // limpeza completa: zera device + timer + aborta o poll em voo
+  cancelDeviceFlow()
   if (sonda)
     clearInterval(sonda)
 })
@@ -166,6 +198,7 @@ onBeforeUnmount(() => {
         <p v-if="!oauthConfigured && auth.via === 'gh cli'" class="text-xs text-dimmed">
           Para trocar de conta, rode `gh auth login` no terminal — a troca é detectada aqui automaticamente.
         </p>
+        <UAlert v-if="logoutError" color="error" variant="subtle" icon="i-lucide-circle-x" :title="`Falha ao desconectar: ${logoutError}`" />
         <div class="flex justify-between gap-2">
           <div class="flex items-center gap-2">
             <UButton
@@ -203,7 +236,7 @@ onBeforeUnmount(() => {
           <div v-if="device" class="flex flex-col items-center gap-3 rounded-lg bg-accented p-4">
             <p class="text-sm">
               1. Abra
-              <a :href="device.verificationUri" target="_blank" class="font-medium text-primary underline">{{ device.verificationUri }}</a>
+              <a :href="device.verificationUri" target="_blank" rel="noopener noreferrer" class="font-medium text-primary underline">{{ device.verificationUri }}</a>
             </p>
             <p class="text-sm">
               2. Digite o código:
