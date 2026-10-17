@@ -12,19 +12,68 @@ const summary = computed(() => (open.value ? buildWeeklySummary() : null))
 // timer do "copiado!" — guardado pra limpar no unmount (nada de timer órfão)
 let copiedTimer: ReturnType<typeof setTimeout> | undefined
 
+// Clipboard API só existe em contexto seguro (https/localhost); fora dele resta o execCommand.
+// queryCommandSupported ausente = suporte assumido (execCommand ainda funciona na maioria dos browsers)
+const hasCopyPath = computed(() =>
+  Boolean(navigator.clipboard?.writeText)
+  || document.queryCommandSupported?.('copy') !== false,
+)
+
+function markCopied() {
+  copied.value = true
+  clearTimeout(copiedTimer)
+  copiedTimer = setTimeout(() => (copied.value = false), 2000)
+  toast.add({ title: 'Resumo copiado', description: 'markdown na área de transferência.', color: 'success' })
+}
+
+// fallback pra contexto não-seguro (http na LAN): textarea temporária + execCommand('copy')
+function fallbackCopy(markdown: string): boolean {
+  const textarea = document.createElement('textarea')
+  textarea.value = markdown
+  textarea.setAttribute('readonly', '')
+  textarea.style.position = 'fixed'
+  textarea.style.opacity = '0'
+  document.body.appendChild(textarea)
+  textarea.select()
+  try {
+    return document.execCommand('copy')
+  }
+  finally {
+    textarea.remove()
+  }
+}
+
 async function copy() {
   if (!summary.value)
     return
+  const markdown = summary.value.markdown
+  let lastError: unknown
+
+  // caminho moderno: Clipboard API (se existir)
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(markdown)
+      markCopied()
+      return
+    }
+    catch (err) {
+      lastError = err
+    }
+  }
+
+  // fallback: textarea temporária (clipboard ausente ou writeText rejeitado)
   try {
-    await navigator.clipboard.writeText(summary.value.markdown)
-    copied.value = true
-    clearTimeout(copiedTimer)
-    copiedTimer = setTimeout(() => (copied.value = false), 2000)
-    toast.add({ title: 'Resumo copiado', description: 'markdown na área de transferência.', color: 'success' })
+    if (fallbackCopy(markdown)) {
+      markCopied()
+      return
+    }
+    lastError ??= new Error('cópia não suportada neste navegador')
   }
   catch (err) {
-    toast.add({ title: 'Falha ao copiar o resumo', description: String((err as Error).message ?? err), color: 'error' })
+    lastError = err
   }
+
+  toast.add({ title: 'Falha ao copiar o resumo', description: String((lastError as Error)?.message ?? lastError), color: 'error' })
 }
 
 onUnmounted(() => clearTimeout(copiedTimer))
@@ -71,7 +120,7 @@ function download() {
           :icon="copied ? 'i-lucide-check' : 'i-lucide-clipboard'"
           :label="copied ? 'copiado!' : 'copiar markdown'"
           :color="copied ? 'success' : 'primary'"
-          :disabled="!summary"
+          :disabled="!summary || !hasCopyPath"
           @click="copy"
         />
         <UButton
