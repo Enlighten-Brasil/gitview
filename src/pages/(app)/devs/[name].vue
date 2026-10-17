@@ -63,12 +63,18 @@ const periodCommits = computed(() => myMonthly.value.reduce((s, r) => s + r.comm
 const periodAdds = computed(() => myMonthly.value.reduce((s, r) => s + r.additions, 0))
 const periodDels = computed(() => myMonthly.value.reduce((s, r) => s + r.deletions, 0))
 
+// formato compacto pt-BR: vírgula como separador decimal (igual LinesFlow/WeeklyChampions)
 function fmt(n: number): string {
   if (n >= 1_000_000)
-    return `${(n / 1_000_000).toFixed(1)}M`
+    return `${(n / 1_000_000).toFixed(1).replace('.', ',')}M`
   if (n >= 10_000)
     return `${(n / 1_000).toFixed(0)}k`
   return n.toLocaleString('pt-BR')
+}
+
+/** dias desde a abertura do PR — calculado no script (nada de relógio no template) */
+function daysOpen(createdAt: string): number {
+  return Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000)
 }
 
 // ---------------------------------------------------------------------------
@@ -318,7 +324,7 @@ function commitUrl(repo: string, hash: string): string | null {
                 {{ pr.repo }}
               </td>
               <td class="num whitespace-nowrap text-muted">
-                {{ Math.floor((Date.now() - new Date(pr.createdAt).getTime()) / 86_400_000) }}d aberto
+                {{ daysOpen(pr.createdAt) }}d aberto
               </td>
             </tr>
           </tbody>
