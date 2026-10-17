@@ -45,6 +45,30 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('pt-BR')
 }
 
+/** commits/dia ativo — fonte única da precisão (1 casa decimal), usada na tabela E no CSV */
+function commitsPerDay(a: { commits: number, activeDays: number }) {
+  return (a.commits / Math.max(a.activeDays, 1)).toFixed(1)
+}
+
+/** dev selecionado no filtro global — destaca a linha (classe .selected) */
+function isSelected(author: string) {
+  return filters.authors.includes(author)
+}
+
+/** escapa um campo no padrão RFC 4180 (aspas duplas quando há separador/aspas/quebra de linha) */
+function csvField(value: string | number) {
+  const s = String(value)
+  const LF = String.fromCharCode(10) // quebra de linha (LF)
+  const CR = String.fromCharCode(13) // retorno de carro (CR)
+  const needsQuotes = s.includes(';') || s.includes('"') || s.includes(CR) || s.includes(LF)
+  return needsQuotes ? `"${s.replace(/"/g, '""')}"` : s
+}
+
+/** chave de data local (YYYY-MM-DD) — evita o slice do ISO, que é UTC e pode cair no dia anterior */
+function localDateKey(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 function exportCsv() {
   const header = ['dev', 'commits', 'linhas_adicionadas', 'linhas_removidas', 'repos', 'dias_ativos', 'commits_por_dia_ativo', 'streak_atual', 'streak_max', 'ultimo_commit']
   const lines = visibleAuthors.value.map(a => [
@@ -54,18 +78,18 @@ function exportCsv() {
     a.deletions,
     a.repos,
     a.activeDays,
-    (a.commits / Math.max(a.activeDays, 1)).toFixed(2),
+    commitsPerDay(a),
     a.streak,
     a.longestStreak,
-    a.lastCommit.slice(0, 10),
-  ].join(';'))
+    fmtDate(a.lastCommit), // mesmo formato (fuso local) exibido na tabela
+  ].map(csvField).join(';'))
   const BOM = String.fromCharCode(0xFEFF) // BOM p/ Excel abrir UTF-8 corretamente
-  const csv = `${BOM + header.join(';')}\n${lines.join('\n')}`
+  const csv = `${BOM + header.map(csvField).join(';')}\n${lines.join('\n')}`
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = `ranking-time-${new Date().toISOString().slice(0, 10)}.csv`
+  link.download = `ranking-time-${localDateKey(new Date())}.csv`
   link.click()
   URL.revokeObjectURL(url)
 }
@@ -123,6 +147,7 @@ function exportCsv() {
           v-for="a in visibleAuthors"
           :key="a.author"
           class="dev-row"
+          :class="{ selected: isSelected(a.author) }"
           @click="openDev(a.author)"
         >
           <td>{{ a.author }}</td>
@@ -142,7 +167,7 @@ function exportCsv() {
             {{ a.activeDays }}
           </td>
           <td class="num">
-            {{ (a.commits / Math.max(a.activeDays, 1)).toFixed(1) }}
+            {{ commitsPerDay(a) }}
           </td>
           <td class="num">
             <div class="flex items-center justify-end gap-1.5">

@@ -94,14 +94,3 @@ body {
 .data-table .del {
   color: var(--ui-error);
 }
-
-/* ---------- header do app ---------- */
-.app-title {
-  font-size: 26px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  background: linear-gradient(90deg, var(--ui-text-highlighted), var(--ui-color-primary-300));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
