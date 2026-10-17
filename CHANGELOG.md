@@ -1,5 +1,12 @@
 # gitview
 
+## 0.45.0
+
+### Minor Changes
+
+- 0b67f37: refactor(ui): `TablePanel` (wrapper de tabela com `ui` fixo) e `StatCard` + `.cards-grid` global unificam os wrappers/stat-cards copiados (RepoTable, PrOpenTable, DevTable, BusFactor, InactiveWatch, devs/[name], repos/[name], SummaryCards, PrSummaryCards) com grid/typo unificados, e `lastTagLabel(repo)` em `releases.ts` passa a ser o campo canônico (`tag`) da última release — tabela de repos e grade de releases mostram a mesma string
+- 4995030: refactor(teams): quebra do teams.vue em useTeamDrafts, modais, seção de candidatos e barra de gravação — identidade de time por cid em tudo (sem resolução por índice), toTeamDraft() único em src/team.ts, TeamCard com defineModel/emits tipados (sem mutação de props), métricas/opções por cid em computeds cacheados, payload do GitHub em shallowRef e um só onMounted na página
+
 ## 0.44.0
 
 ### Minor Changes
