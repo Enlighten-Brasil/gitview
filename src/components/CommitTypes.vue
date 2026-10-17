@@ -3,20 +3,14 @@ import type { EChartsOption } from 'echarts'
 import { computed } from 'vue'
 import { axisLabel, legendText, splitLine, tooltipBase } from '../chartTheme'
 import { COMMIT_TYPES, commitTypeColor, commitTypeGroup } from '../commitTypes'
-import { filteredTypes } from '../data'
+import { filteredTypes, nestBySum } from '../data'
 import { fmtInt } from '../format'
 import ChartPanel from './ChartPanel.vue'
 
 /** mix por mês (%) — stacked bar */
 const monthOption = computed<EChartsOption>(() => {
-  const byMonth = new Map<string, Map<string, number>>()
-  for (const r of filteredTypes.value) {
-    if (!byMonth.has(r.month))
-      byMonth.set(r.month, new Map())
-    const m = byMonth.get(r.month)!
-    const t = commitTypeGroup(r.type)
-    m.set(t, (m.get(t) ?? 0) + r.commits)
-  }
+  // mês → tipo agrupado → commits (agregação compartilhada — issue #41)
+  const byMonth = nestBySum(filteredTypes.value, r => r.month, r => commitTypeGroup(r.type))
   const months = [...byMonth.keys()].sort()
 
   return {
@@ -49,14 +43,8 @@ const monthOption = computed<EChartsOption>(() => {
 
 /** mix por repo (%) — barras horizontais, ordenado por % de fix (quem apaga incêndio) */
 const repoOption = computed<EChartsOption>(() => {
-  const byRepo = new Map<string, Map<string, number>>()
-  for (const r of filteredTypes.value) {
-    if (!byRepo.has(r.repo))
-      byRepo.set(r.repo, new Map())
-    const m = byRepo.get(r.repo)!
-    const t = commitTypeGroup(r.type)
-    m.set(t, (m.get(t) ?? 0) + r.commits)
-  }
+  // repo → tipo agrupado → commits (agregação compartilhada — issue #41)
+  const byRepo = nestBySum(filteredTypes.value, r => r.repo, r => commitTypeGroup(r.type))
   const rows = [...byRepo.entries()]
     .map(([repo, m]) => {
       const total = [...m.values()].reduce((s, v) => s + v, 0)

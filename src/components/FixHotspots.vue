@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { RiskStatus, RiskTier } from '../risk'
 import { computed } from 'vue'
-import { filteredTypes } from '../data'
+import { filteredTypes, fixByRepo } from '../data'
 import { statusOf } from '../risk'
 import { FIX_HOTSPOT_AMBER, FIX_HOTSPOT_MIN_COMMITS, FIX_HOTSPOT_RED } from '../thresholds'
 import RiskBar from './RiskBar.vue'
@@ -15,14 +15,8 @@ interface RepoFix {
 
 /** % de commits fix por repo no período filtrado — fix alto sustentado sugere instabilidade/dívida */
 const rows = computed<RepoFix[]>(() => {
-  const byRepo = new Map<string, { fix: number, total: number }>()
-  for (const r of filteredTypes.value) {
-    const cur = byRepo.get(r.repo) ?? { fix: 0, total: 0 }
-    cur.total += r.commits
-    if (r.type === 'fix')
-      cur.fix += r.commits
-    byRepo.set(r.repo, cur)
-  }
+  // fix/total por repo (agregação compartilhada com o RepoTable — issue #41)
+  const byRepo = fixByRepo(filteredTypes.value)
   return [...byRepo.entries()]
     .map(([repo, v]) => ({ repo, ...v, fixPct: v.total > 0 ? v.fix / v.total : 0 }))
     .filter(r => r.total >= FIX_HOTSPOT_MIN_COMMITS) // ignora repos com amostra pequena

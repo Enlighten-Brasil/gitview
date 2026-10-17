@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { filteredWeekly, isoWeekKeyBefore } from '../data'
+import { filteredWeekly, isoWeekKeyBefore, nestBySum } from '../data'
 import { fmtRatio } from '../format'
 
 /**
@@ -18,13 +18,8 @@ const MIN_WEEK_COMMITS = 3
 const BASELINE_WEEKS = 8
 
 const data = computed(() => {
-  const byWeek = new Map<string, Map<string, number>>()
-  for (const r of filteredWeekly.value) {
-    if (!byWeek.has(r.week))
-      byWeek.set(r.week, new Map())
-    const m = byWeek.get(r.week)!
-    m.set(r.author, (m.get(r.author) ?? 0) + r.commits)
-  }
+  // semana → autor → commits (agregação compartilhada — issue #41)
+  const byWeek = nestBySum(filteredWeekly.value, r => r.week, r => r.author)
 
   const weeks = [...byWeek.keys()].sort()
   const wins: { week: string, author: string, commits: number, ratio: number }[] = []

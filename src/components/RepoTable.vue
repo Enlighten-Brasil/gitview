@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { filteredMonthly, filteredTypes, stats } from '../data'
+import { filteredMonthly, filteredTypes, fixByRepo, nestBySum, stats } from '../data'
 import { fmtDate, fmtInt } from '../format'
 import { daysSinceLastRelease, lastTagLabel, releaseByRepo } from '../releases'
 import { FIX_HOTSPOT_AMBER, FIX_HOTSPOT_RED, UNRELEASED_AMBER, UNRELEASED_RED } from '../thresholds'
@@ -21,35 +21,22 @@ interface RepoRow {
 }
 
 const rows = computed<RepoRow[]>(() => {
-  // commits e devs ativos no período filtrado
-  const byRepo = new Map<string, { commits: number, devs: Set<string> }>()
-  for (const r of filteredMonthly.value) {
-    const cur = byRepo.get(r.repo) ?? { commits: 0, devs: new Set<string>() }
-    cur.commits += r.commits
-    cur.devs.add(r.author)
-    byRepo.set(r.repo, cur)
-  }
+  // commits e devs ativos no período filtrado (repo → autor → commits — issue #41)
+  const byRepo = nestBySum(filteredMonthly.value, r => r.repo, r => r.author)
 
-  // fix% no período filtrado
-  const fixByRepo = new Map<string, { fix: number, total: number }>()
-  for (const r of filteredTypes.value) {
-    const cur = fixByRepo.get(r.repo) ?? { fix: 0, total: 0 }
-    cur.total += r.commits
-    if (r.type === 'fix')
-      cur.fix += r.commits
-    fixByRepo.set(r.repo, cur)
-  }
+  // fix% no período filtrado (agregação compartilhada com o FixHotspots)
+  const fixByRepoMap = fixByRepo(filteredTypes.value)
 
   const lastCommitByRepo = new Map((stats.value?.perRepo ?? []).map(r => [r.repo, r.lastCommit]))
 
   return [...byRepo.entries()]
-    .map(([repo, v]) => {
+    .map(([repo, m]) => {
       const rel = releaseByRepo.value.get(repo)
-      const fix = fixByRepo.get(repo)
+      const fix = fixByRepoMap.get(repo)
       return {
         repo,
-        commits: v.commits,
-        devs: v.devs.size,
+        commits: [...m.values()].reduce((s, v) => s + v, 0),
+        devs: m.size,
         lastCommit: lastCommitByRepo.get(repo) ?? null,
         lastTag: lastTagLabel(repo),
         daysSinceRelease: daysSinceLastRelease(repo),

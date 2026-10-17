@@ -5,9 +5,10 @@ import { useRoute } from 'vue-router'
 import { axisLabel, ct, donutBase, splitLine, tooltipBase } from '@/chartTheme'
 import { commitTypeColor, commitTypeGroup } from '@/commitTypes'
 import ChartPanel from '@/components/ChartPanel.vue'
-import StatCard from '@/components/StatCard.vue'
+import DetailHeader from '@/components/DetailHeader.vue'
+import StatCards from '@/components/StatCards.vue'
 import TablePanel from '@/components/TablePanel.vue'
-import { filters, inPeriodMonth, isBot, isCustomRange, rangeLabel, stats } from '@/data'
+import { commitsByAuthorPeriod, filters, groupBySum, inPeriodMonth, isBot, isCustomRange, stats } from '@/data'
 import { fmtCompact, fmtDate, fmtDuration, median } from '@/format'
 import { ghIsBot, github } from '@/github'
 import { daysSinceLastRelease, lastTagLabel, loadReleases, releases, repoRelease } from '@/releases'
@@ -69,13 +70,8 @@ const cycleHours = computed(() =>
   median(mergedPrs.value.map(p => (new Date(p.mergedAt!).getTime() - new Date(p.createdAt).getTime()) / 3_600_000)),
 )
 
-/** commits por dev no período (ranking + bus factor) */
-const devsByCommits = computed(() => {
-  const map = new Map<string, number>()
-  for (const r of periodMonthly.value)
-    map.set(r.author, (map.get(r.author) ?? 0) + r.commits)
-  return [...map.entries()].map(([author, commits]) => ({ author, commits })).sort((a, b) => b.commits - a.commits)
-})
+/** commits por dev no período (ranking + bus factor) — agregação compartilhada (issue #41) */
+const devsByCommits = computed(() => commitsByAuthorPeriod(periodMonthly.value))
 
 const topDev = computed(() => {
   const total = devsByCommits.value.reduce((s, d) => s + d.commits, 0)
@@ -83,7 +79,7 @@ const topDev = computed(() => {
   return top && total > 0 ? { author: top.author, share: top.commits / total } : null
 })
 
-const cards = computed(() => {
+const cards = computed<{ value: string, label: string, icon?: string, color?: string }[]>(() => {
   const r = repoStats.value
   if (!r)
     return []
@@ -134,15 +130,13 @@ const cards = computed(() => {
 // gráficos: tipos de commit + commits por dev
 // ---------------------------------------------------------------------------
 const typesOption = computed<EChartsOption>(() => {
-  const map = new Map<string, number>()
-  for (const r of stats.value?.monthlyTypes ?? []) {
-    if (r.repo !== repo.value || !inPeriodMonth(r.month))
-      continue
-    if (!filters.showBots && isBot(r.author))
-      continue
-    const t = commitTypeGroup(r.type)
-    map.set(t, (map.get(t) ?? 0) + r.commits)
-  }
+  // tipo agrupado → commits no período (agregação compartilhada — issue #41)
+  const map = groupBySum(
+    (stats.value?.monthlyTypes ?? []).filter(r =>
+      r.repo === repo.value && inPeriodMonth(r.month) && (filters.showBots || !isBot(r.author)),
+    ),
+    r => commitTypeGroup(r.type),
+  )
   const data = [...map.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value)
 
   return donutBase(data.map(d => ({ ...d, color: commitTypeColor(d.name) })))
@@ -170,19 +164,7 @@ const shownTags = computed(() => tags.value.slice(0, 30))
 <template>
   <div class="max-w-[1320px] w-full mx-auto px-5 py-6 flex flex-col gap-4">
     <!-- cabeçalho -->
-    <div class="flex items-center gap-3 flex-wrap">
-      <UButton
-        to="/repos"
-        icon="i-lucide-arrow-left"
-        color="neutral"
-        variant="ghost"
-        size="sm"
-        label="repos"
-      />
-      <UIcon name="i-lucide-git-branch" class="size-6 text-primary" />
-      <h1 class="text-xl font-bold text-highlighted">
-        {{ repo }}
-      </h1>
+    <DetailHeader to="/repos" back-label="repos" icon="i-lucide-git-branch" :title="repo">
       <a
         v-if="rel?.url"
         :href="rel.url"
@@ -190,8 +172,7 @@ const shownTags = computed(() => tags.value.slice(0, 30))
         rel="noopener"
         class="inline-flex items-center gap-0.5 text-xs text-primary hover:underline"
       >GitHub <UIcon name="i-lucide-arrow-up-right" class="size-3 align-[-2px]" /></a>
-      <span class="text-xs text-dimmed">— {{ rangeLabel }}</span>
-    </div>
+    </DetailHeader>
 
     <UAlert
       v-if="stats && !repoStats"
@@ -204,9 +185,7 @@ const shownTags = computed(() => tags.value.slice(0, 30))
 
     <template v-else-if="repoStats">
       <!-- cards -->
-      <div class="cards-grid">
-        <StatCard v-for="c in cards" :key="c.label" :value="c.value" :label="c.label" :icon="c.icon" :color="c.color" />
-      </div>
+      <StatCards :cards="cards" />
 
       <!-- gráficos -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">

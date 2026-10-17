@@ -2,7 +2,7 @@
 import type { EChartsOption } from 'echarts'
 import { computed, ref } from 'vue'
 import { axisLabel, ct, legendText, splitLine, tooltipBase } from '../chartTheme'
-import { filteredMonthly } from '../data'
+import { filteredMonthly, groupBySum } from '../data'
 import { fmtCompact, fmtInt } from '../format'
 import ChartPanel from './ChartPanel.vue'
 
@@ -10,16 +10,12 @@ import ChartPanel from './ChartPanel.vue'
 const mode = ref<'month' | 'cumulative'>('month')
 
 const option = computed<EChartsOption>(() => {
-  const byMonth = new Map<string, { additions: number, deletions: number }>()
-  for (const r of filteredMonthly.value) {
-    const cur = byMonth.get(r.month) ?? { additions: 0, deletions: 0 }
-    cur.additions += r.additions
-    cur.deletions += r.deletions
-    byMonth.set(r.month, cur)
-  }
-  const months = [...byMonth.keys()].sort()
-  const adds = months.map(m => byMonth.get(m)!.additions)
-  const dels = months.map(m => byMonth.get(m)!.deletions)
+  // mês → linhas +/− (agregação compartilhada — issue #41)
+  const addByMonth = groupBySum(filteredMonthly.value, r => r.month, r => r.additions)
+  const delByMonth = groupBySum(filteredMonthly.value, r => r.month, r => r.deletions)
+  const months = [...addByMonth.keys()].sort()
+  const adds = months.map(m => addByMonth.get(m) ?? 0)
+  const dels = months.map(m => delByMonth.get(m) ?? 0)
 
   const axis = {
     xAxis: { type: 'category', data: months, axisLabel: axisLabel() },
