@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { fmtDuration } from '../format'
 import { medianCycleHours, mergedPrs, mergedWithoutReview, openAging, openPrs } from '../github'
 import { MERGE_NO_REVIEW_AMBER, MERGE_NO_REVIEW_RED, PR_STALE_DAYS } from '../thresholds'
+import StatCard from './StatCard.vue'
 
 const cards = computed(() => {
   // mesma janela de PR parado do alerta e do resumo (PR_STALE_DAYS)
@@ -51,23 +52,15 @@ const cards = computed(() => {
 </script>
 
 <template>
-  <div class="pr-cards-grid">
-    <div v-for="c in cards" :key="c.label" class="stat-card">
-      <div class="flex items-center gap-2">
-        <UIcon :name="c.icon" class="size-4" :class="c.color ?? 'text-muted'" />
-        <span class="text-2xl font-bold tracking-tight truncate">{{ c.value }}</span>
-      </div>
-      <div class="text-xs text-muted mt-1">
-        {{ c.label }}<span v-if="c.sub" class="text-dimmed"> · {{ c.sub }}</span>
-      </div>
-    </div>
+  <div class="cards-grid">
+    <StatCard
+      v-for="c in cards"
+      :key="c.label"
+      :value="c.value"
+      :label="c.label"
+      :icon="c.icon"
+      :color="c.color"
+      :sub="c.sub ?? undefined"
+    />
   </div>
 </template>
-
-<style scoped>
-.pr-cards-grid {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-}
-</style>

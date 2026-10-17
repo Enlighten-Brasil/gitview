@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { filteredTotals, filters, previousTotals, rangeLabel, stats } from '../data'
 import { fmtCompact } from '../format'
 import { DELTA_FLAT_PCT } from '../thresholds'
+import StatCard from './StatCard.vue'
 
 /** delta % vs janela anterior equivalente; null sem base de comparação */
 function delta(cur: number, prev: number | undefined) {
@@ -16,11 +17,11 @@ const periodCards = computed(() => {
   const t = filteredTotals.value
   const p = previousTotals.value
   return [
-    { value: fmtCompact(t.commits), label: 'commits', icon: 'i-lucide-git-commit-horizontal', delta: delta(t.commits, p?.commits), judge: true },
-    { value: fmtCompact(t.additions), label: 'linhas +', icon: 'i-lucide-plus', color: 'text-success', delta: delta(t.additions, p?.additions), judge: false },
-    { value: fmtCompact(t.deletions), label: 'linhas −', icon: 'i-lucide-minus', color: 'text-error', delta: delta(t.deletions, p?.deletions), judge: false },
-    { value: String(t.authors), label: 'devs ativos', icon: 'i-lucide-users', delta: delta(t.authors, p?.authors), judge: true },
-    { value: String(t.repos), label: 'repos ativos', icon: 'i-lucide-git-branch', delta: delta(t.repos, p?.repos), judge: true },
+    { value: fmtCompact(t.commits), label: 'commits', icon: 'i-lucide-git-commit-horizontal', color: undefined, delta: cardDelta(t.commits, p?.commits, true) },
+    { value: fmtCompact(t.additions), label: 'linhas +', icon: 'i-lucide-plus', color: 'text-success', delta: cardDelta(t.additions, p?.additions, false) },
+    { value: fmtCompact(t.deletions), label: 'linhas −', icon: 'i-lucide-minus', color: 'text-error', delta: cardDelta(t.deletions, p?.deletions, false) },
+    { value: String(t.authors), label: 'devs ativos', icon: 'i-lucide-users', color: undefined, delta: cardDelta(t.authors, p?.authors, true) },
+    { value: String(t.repos), label: 'repos ativos', icon: 'i-lucide-git-branch', color: undefined, delta: cardDelta(t.repos, p?.repos, true) },
   ]
 })
 
@@ -43,6 +44,14 @@ const deltaTooltip = computed(() => {
   return n === 1 ? 'vs o mês anterior' : `vs os ${n} meses anteriores`
 })
 
+/** delta pronto pro StatCard — cor pela regra `judge` + tooltip da janela */
+function cardDelta(cur: number, prev: number | undefined, judge: boolean) {
+  const d = delta(cur, prev)
+  if (!d)
+    return undefined
+  return { ...d, class: deltaClass(d.dir, judge), tooltip: deltaTooltip.value }
+}
+
 /** totais históricos em linha discreta (contexto, sem duplicar o grid) */
 const historyLine = computed(() => {
   const t = stats.value?.totals
@@ -59,25 +68,15 @@ const historyLine = computed(() => {
         no período · {{ rangeLabel }}
       </div>
       <div class="cards-grid">
-        <div v-for="c in periodCards" :key="c.label" class="stat-card">
-          <div class="flex items-center gap-2">
-            <UIcon :name="c.icon" class="size-4" :class="c.color ?? 'text-muted'" />
-            <span class="text-2xl font-bold tracking-tight truncate">{{ c.value }}</span>
-          </div>
-          <div class="text-xs text-muted mt-1">
-            {{ c.label }}
-            <UTooltip v-if="c.delta" :text="deltaTooltip">
-              <span
-                class="ml-1 font-semibold"
-                :class="deltaClass(c.delta.dir, c.judge)"
-              >
-                <template v-if="c.delta.dir === 'up'">↑ {{ c.delta.pct }}%</template>
-                <template v-else-if="c.delta.dir === 'down'">↓ {{ c.delta.pct }}%</template>
-                <template v-else>→ {{ c.delta.pct }}%</template>
-              </span>
-            </UTooltip>
-          </div>
-        </div>
+        <StatCard
+          v-for="c in periodCards"
+          :key="c.label"
+          :value="c.value"
+          :label="c.label"
+          :icon="c.icon"
+          :color="c.color"
+          :delta="c.delta"
+        />
       </div>
       <div class="text-xs text-dimmed mt-2">
         {{ historyLine }}
@@ -94,11 +93,5 @@ const historyLine = computed(() => {
   letter-spacing: 0.08em;
   color: var(--ui-text-dimmed);
   margin-bottom: 6px;
-}
-
-.cards-grid {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 }
 </style>

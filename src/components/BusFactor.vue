@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { filteredMonthly } from '../data'
 import { reviewShareByRepo } from '../github'
+import TablePanel from './TablePanel.vue'
 
 interface RepoRisk {
   repo: string
@@ -61,15 +62,8 @@ function risk(r: RepoRisk): { color: 'error' | 'warning' | 'success', label: str
 </script>
 
 <template>
-  <UCard>
-    <template #header>
-      <div class="flex items-center gap-2">
-        <UIcon name="i-lucide-bus" class="size-4 text-error" />
-        <span class="text-sm font-semibold text-highlighted">Bus factor — concentração por repositório</span>
-      </div>
-    </template>
-
-    <p v-if="rows.length === 0" class="text-muted text-sm">
+  <TablePanel title="Bus factor — concentração por repositório" icon="i-lucide-bus" icon-class="text-error">
+    <p v-if="rows.length === 0" class="text-muted text-sm px-4 py-4">
       Sem dados suficientes no período filtrado.
     </p>
 
@@ -132,9 +126,9 @@ function risk(r: RepoRisk): { color: 'error' | 'warning' | 'success', label: str
           </tr>
         </tbody>
       </table>
-      <p class="text-dimmed text-xs mt-2.5">
+      <p class="text-dimmed text-xs px-4 pb-3 pt-2.5">
         alto = 1 dev com ≥70% e ≤2 devs ativos, ou dev principal (≥50%) que também faz ≥70% das reviews · médio = 1 dev com ≥50% · repos com &lt;10 commits no período são ignorados
       </p>
     </template>
-  </UCard>
+  </TablePanel>
 </template>

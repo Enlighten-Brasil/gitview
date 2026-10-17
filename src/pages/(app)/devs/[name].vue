@@ -4,6 +4,8 @@ import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { axisLabel, ct, heatRamp, legendText, PALETTE, splitLine, tooltipBase } from '@/chartTheme'
 import ChartPanel from '@/components/ChartPanel.vue'
+import StatCard from '@/components/StatCard.vue'
+import TablePanel from '@/components/TablePanel.vue'
 import { filters, inPeriodMonth, isCustomRange, loadCommits, rangeLabel, recentCommits, stats } from '@/data'
 import { daysSince, fmtCompact, fmtDateTime, fmtDuration, fmtInt, fmtRatio, median } from '@/format'
 import { ghName, github } from '@/github'
@@ -264,16 +266,8 @@ function commitUrl(repo: string, hash: string): string | null {
 
     <template v-else-if="authorStats">
       <!-- cards -->
-      <div class="dev-cards-grid">
-        <div v-for="c in cards" :key="c.label" class="stat-card">
-          <div class="flex items-center gap-2">
-            <UIcon :name="c.icon" class="size-4" :class="c.color ?? 'text-muted'" />
-            <span class="text-xl font-bold tracking-tight truncate">{{ c.value }}</span>
-          </div>
-          <div class="text-xs text-muted mt-1">
-            {{ c.label }}
-          </div>
-        </div>
+      <div class="cards-grid">
+        <StatCard v-for="c in cards" :key="c.label" :value="c.value" :label="c.label" :icon="c.icon" :color="c.color" />
       </div>
 
       <!-- gráficos -->
@@ -284,16 +278,7 @@ function commitUrl(repo: string, hash: string): string | null {
       </div>
 
       <!-- PRs abertos do dev -->
-      <UCard v-if="myOpen.length" :ui="{ body: 'p-0 sm:p-0', header: 'py-3 px-4 sm:px-4' }">
-        <template #header>
-          <div class="flex items-center gap-2">
-            <UIcon name="i-lucide-git-pull-request-arrow" class="size-4 text-primary" />
-            <span class="text-sm font-semibold text-highlighted">PRs abertos de {{ dev.split(' ')[0] }}</span>
-            <UBadge color="neutral" variant="subtle" size="sm" class="ml-auto">
-              {{ myOpen.length }}
-            </UBadge>
-          </div>
-        </template>
+      <TablePanel v-if="myOpen.length" :title="`PRs abertos de ${dev.split(' ')[0]}`" icon="i-lucide-git-pull-request-arrow" :count="myOpen.length">
         <table class="data-table">
           <tbody>
             <tr v-for="pr in myOpen" :key="`${pr.repo}#${pr.number}`">
@@ -311,19 +296,10 @@ function commitUrl(repo: string, hash: string): string | null {
             </tr>
           </tbody>
         </table>
-      </UCard>
+      </TablePanel>
 
       <!-- últimos commits -->
-      <UCard :ui="{ body: 'p-0 sm:p-0', header: 'py-3 px-4 sm:px-4' }">
-        <template #header>
-          <div class="flex items-center gap-2">
-            <UIcon name="i-lucide-history" class="size-4 text-primary" />
-            <span class="text-sm font-semibold text-highlighted">Últimos commits</span>
-            <UBadge color="neutral" variant="subtle" size="sm" class="ml-auto">
-              {{ commits.length }}
-            </UBadge>
-          </div>
-        </template>
+      <TablePanel title="Últimos commits" icon="i-lucide-history" :count="commits.length">
         <div v-if="commits.length" class="overflow-x-auto">
           <table class="data-table">
             <thead>
@@ -369,15 +345,7 @@ function commitUrl(repo: string, hash: string): string | null {
         <div v-else class="py-10 text-center text-sm text-muted">
           Sem commits no período — ajuste o filtro ou rode <code>pnpm collect</code> para gerar o commits.json.
         </div>
-      </UCard>
+      </TablePanel>
     </template>
   </div>
 </template>
-
-<style scoped>
-.dev-cards-grid {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-}
-</style>

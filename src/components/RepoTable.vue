@@ -3,8 +3,9 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { filteredMonthly, filteredTypes, stats } from '../data'
 import { fmtDate, fmtInt } from '../format'
-import { daysSinceLastRelease, releaseByRepo } from '../releases'
+import { daysSinceLastRelease, lastTagLabel, releaseByRepo } from '../releases'
 import { FIX_HOTSPOT_AMBER, FIX_HOTSPOT_RED, UNRELEASED_AMBER, UNRELEASED_RED } from '../thresholds'
+import TablePanel from './TablePanel.vue'
 
 const router = useRouter()
 
@@ -50,7 +51,7 @@ const rows = computed<RepoRow[]>(() => {
         commits: v.commits,
         devs: v.devs.size,
         lastCommit: lastCommitByRepo.get(repo) ?? null,
-        lastTag: rel?.tags[0]?.tag ?? null,
+        lastTag: lastTagLabel(repo),
         daysSinceRelease: daysSinceLastRelease(repo),
         unreleased: rel ? rel.unreleased : null,
         fixPct: fix && fix.total > 0 ? fix.fix / fix.total : 0,
@@ -83,17 +84,7 @@ function onRowClick(e: MouseEvent, repo: string) {
 </script>
 
 <template>
-  <UCard :ui="{ body: 'p-0 sm:p-0', header: 'py-3 px-4 sm:px-4' }">
-    <template #header>
-      <div class="flex items-center gap-2">
-        <UIcon name="i-lucide-git-branch" class="size-4 text-primary" />
-        <span class="text-sm font-semibold text-highlighted">Repositórios</span>
-        <UBadge color="neutral" variant="subtle" size="sm" class="ml-auto">
-          {{ rows.length }}
-        </UBadge>
-      </div>
-    </template>
-
+  <TablePanel title="Repositórios" icon="i-lucide-git-branch" :count="rows.length">
     <div class="overflow-x-auto">
       <table class="data-table">
         <thead>
@@ -157,5 +148,5 @@ function onRowClick(e: MouseEvent, repo: string) {
     <p class="text-dimmed text-xs px-4 pb-3 pt-2">
       commits/devs/% fix seguem o filtro do período · não liberados = commits desde a última tag (≥{{ UNRELEASED_AMBER }} em amarelo, ≥{{ UNRELEASED_RED }} em vermelho) · clique no repo pra ver o detalhe
     </p>
-  </UCard>
+  </TablePanel>
 </template>

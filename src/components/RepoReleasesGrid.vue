@@ -6,7 +6,7 @@
  */
 import { computed } from 'vue'
 import { fmtRatio } from '../format'
-import { daysSinceLastRelease, releases, releasesError, releasesPerMonth } from '../releases'
+import { daysSinceLastRelease, lastTagLabel, releases, releasesError, releasesPerMonth } from '../releases'
 import { RELEASE_STALE_DAYS, UNRELEASED_AMBER, UNRELEASED_RED } from '../thresholds'
 
 const rows = computed(() =>
@@ -55,7 +55,8 @@ const rows = computed(() =>
           </UBadge>
         </div>
         <div class="mt-1.5 text-xs text-dimmed flex items-center gap-1.5 flex-wrap">
-          <span class="font-mono">{{ r.tags[0]?.name ?? r.tags[0]?.tag ?? '— sem tags —' }}</span>
+          <!-- mesmo rótulo da tabela de repos (lastTagLabel — campo canônico `tag`) -->
+          <span class="font-mono">{{ lastTagLabel(r.repo) ?? '— sem tags —' }}</span>
           <template v-if="r.days != null">
             <span>·</span>
             <span :class="r.days >= RELEASE_STALE_DAYS ? 'text-warning' : ''">há {{ r.days }}d</span>

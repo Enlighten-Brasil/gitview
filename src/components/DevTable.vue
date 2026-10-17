@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { filters, isBot, stats } from '../data'
 import { fmtDate, fmtInt, fmtRatio } from '../format'
+import TablePanel from './TablePanel.vue'
 
 const router = useRouter()
 
@@ -103,21 +104,16 @@ function exportCsv() {
 </script>
 
 <template>
-  <UCard>
-    <template #header>
-      <div class="flex items-center justify-between gap-2">
-        <h2 class="font-semibold text-highlighted">
-          Ranking do time (histórico completo)
-        </h2>
-        <UButton
-          icon="i-lucide-download"
-          label="CSV"
-          color="neutral"
-          variant="soft"
-          size="xs"
-          @click="exportCsv"
-        />
-      </div>
+  <TablePanel title="Ranking do time (histórico completo)">
+    <template #actions>
+      <UButton
+        icon="i-lucide-download"
+        label="CSV"
+        color="neutral"
+        variant="soft"
+        size="xs"
+        @click="exportCsv"
+      />
     </template>
     <table class="data-table">
       <thead>
@@ -219,7 +215,7 @@ function exportCsv() {
         </tr>
       </tbody>
     </table>
-  </UCard>
+  </TablePanel>
 </template>
 
 <style scoped>

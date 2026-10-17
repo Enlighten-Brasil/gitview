@@ -4,10 +4,12 @@ import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { axisLabel, ct, legendText, splitLine, tooltipBase } from '@/chartTheme'
 import ChartPanel from '@/components/ChartPanel.vue'
+import StatCard from '@/components/StatCard.vue'
+import TablePanel from '@/components/TablePanel.vue'
 import { filters, inPeriodMonth, isBot, isCustomRange, rangeLabel, stats } from '@/data'
 import { fmtCompact, fmtDate, fmtDuration, median } from '@/format'
 import { ghIsBot, github } from '@/github'
-import { daysSinceLastRelease, loadReleases, releases, repoRelease } from '@/releases'
+import { daysSinceLastRelease, lastTagLabel, loadReleases, releases, repoRelease } from '@/releases'
 import { UNRELEASED_AMBER, UNRELEASED_RED } from '@/thresholds'
 
 // rota de detalhe do repo (era /repo/:name — alias mantém os links antigos)
@@ -98,7 +100,7 @@ const cards = computed(() => {
   if (rel.value) {
     base.push(
       {
-        value: rel.value.tags[0]?.tag ?? '—',
+        value: lastTagLabel(repo.value) ?? '—',
         label: days != null ? `última release (há ${days}d)` : 'última release',
         icon: 'i-lucide-tag',
       },
@@ -221,16 +223,8 @@ const shownTags = computed(() => tags.value.slice(0, 30))
 
     <template v-else-if="repoStats">
       <!-- cards -->
-      <div class="repo-cards-grid">
-        <div v-for="c in cards" :key="c.label" class="stat-card">
-          <div class="flex items-center gap-2">
-            <UIcon :name="c.icon" class="size-4" :class="c.color ?? 'text-muted'" />
-            <span class="text-xl font-bold tracking-tight truncate">{{ c.value }}</span>
-          </div>
-          <div class="text-xs text-muted mt-1">
-            {{ c.label }}
-          </div>
-        </div>
+      <div class="cards-grid">
+        <StatCard v-for="c in cards" :key="c.label" :value="c.value" :label="c.label" :icon="c.icon" :color="c.color" />
       </div>
 
       <!-- gráficos -->
@@ -240,17 +234,7 @@ const shownTags = computed(() => tags.value.slice(0, 30))
       </div>
 
       <!-- releases -->
-      <UCard :ui="{ body: 'p-0 sm:p-0', header: 'py-3 px-4 sm:px-4' }">
-        <template #header>
-          <div class="flex items-center gap-2">
-            <UIcon name="i-lucide-tag" class="size-4 text-primary" />
-            <span class="text-sm font-semibold text-highlighted">Releases</span>
-            <UBadge color="neutral" variant="subtle" size="sm" class="ml-auto">
-              {{ tags.length }}
-            </UBadge>
-          </div>
-        </template>
-
+      <TablePanel title="Releases" icon="i-lucide-tag" :count="tags.length">
         <div v-if="!releases && !rel" class="py-10 text-center text-sm text-muted">
           Sem dados de release — rode <code>pnpm collect:releases</code>.
         </div>
@@ -308,15 +292,7 @@ const shownTags = computed(() => tags.value.slice(0, 30))
         <p v-if="tags.length > shownTags.length" class="text-dimmed text-xs px-4 pb-3 pt-2">
           mostrando as {{ shownTags.length }} mais recentes de {{ tags.length }} tags
         </p>
-      </UCard>
+      </TablePanel>
     </template>
   </div>
 </template>
-
-<style scoped>
-.repo-cards-grid {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-}
-</style>

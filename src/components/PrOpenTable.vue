@@ -2,6 +2,7 @@
 import { fmtInt } from '../format'
 import { ghName, openAging } from '../github'
 import { PR_AGE_AMBER, PR_AGE_RED } from '../thresholds'
+import TablePanel from './TablePanel.vue'
 
 /** cor da idade: >PR_AGE_RED vermelho, >PR_AGE_AMBER amarelo, senão neutro */
 function ageColor(days: number): string {
@@ -14,17 +15,7 @@ function ageColor(days: number): string {
 </script>
 
 <template>
-  <UCard :ui="{ body: 'p-0 sm:p-0', header: 'py-3 px-4 sm:px-4' }">
-    <template #header>
-      <div class="flex items-center gap-2">
-        <UIcon name="i-lucide-git-pull-request-arrow" class="size-4 text-primary" />
-        <span class="text-sm font-semibold text-highlighted">PRs abertos — mais antigos primeiro</span>
-        <UBadge color="neutral" variant="subtle" size="sm" class="ml-auto">
-          {{ openAging.length }}
-        </UBadge>
-      </div>
-    </template>
-
+  <TablePanel title="PRs abertos — mais antigos primeiro" icon="i-lucide-git-pull-request-arrow" :count="openAging.length">
     <div v-if="openAging.length" class="overflow-x-auto">
       <table class="data-table">
         <thead>
@@ -83,5 +74,5 @@ function ageColor(days: number): string {
     <div v-else class="py-10 text-center text-sm text-muted">
       Nenhum PR aberto nos filtros atuais 🎉
     </div>
-  </UCard>
+  </TablePanel>
 </template>
