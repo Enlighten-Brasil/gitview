@@ -2,7 +2,8 @@
 import type { EChartsOption } from 'echarts'
 import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { axisLabel, ct, heatRamp, legendText, PALETTE, splitLine, tooltipBase } from '@/chartTheme'
+import { useWeekdayHourHeatmap } from '@/charts/useHeatmapMatrix'
+import { axisLabel, ct, legendText, PALETTE, splitLine, tooltipBase } from '@/chartTheme'
 import ChartPanel from '@/components/ChartPanel.vue'
 import StatCard from '@/components/StatCard.vue'
 import TablePanel from '@/components/TablePanel.vue'
@@ -18,8 +19,6 @@ definePage({
     filters: 'period',
   },
 })
-
-const WEEKDAYS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
 
 const route = useRoute()
 const dev = computed(() => String(route.params.name ?? ''))
@@ -161,42 +160,12 @@ const repoOption = computed<EChartsOption>(() => {
   }
 })
 
-const heatOption = computed<EChartsOption>(() => {
-  const map = new Map<string, number>()
-  let max = 0
-  for (const r of stats.value?.heatmap ?? []) {
-    if (r.author !== dev.value || !inPeriodMonth(r.month))
-      continue
-    const k = `${r.weekday}|${r.hour}`
-    const v = (map.get(k) ?? 0) + r.commits
-    map.set(k, v)
-    if (v > max)
-      max = v
-  }
-  const data: [number, number, number][] = []
-  for (const [k, v] of map) {
-    const [weekday, hour] = k.split('|').map(Number)
-    data.push([hour, weekday, v])
-  }
-
-  return {
-    tooltip: tooltipBase({
-      formatter: (p: unknown) => {
-        const d = (p as { data: [number, number, number] }).data
-        return `${WEEKDAYS[d[1]]} ${String(d[0]).padStart(2, '0')}h: <b>${d[2]}</b> commits`
-      },
-    }),
-    grid: { left: 50, right: 20, top: 10, bottom: 30 },
-    xAxis: { type: 'category', data: Array.from({ length: 24 }, (_, h) => `${h}h`), axisLabel: axisLabel() },
-    yAxis: { type: 'category', data: WEEKDAYS, axisLabel: axisLabel() },
-    visualMap: {
-      min: 0,
-      max: Math.max(max, 1),
-      show: false,
-      inRange: { color: heatRamp('success') },
-    },
-    series: [{ type: 'heatmap', data }],
-  }
+// heatmap de horários do dev — matriz compartilhada (issue #35); visualMap
+// escondido: a célula de meia largura (ao lado do pie) não comporta a legenda
+const heatOption = useWeekdayHourHeatmap({
+  rows: () => (stats.value?.heatmap ?? []).filter(r => r.author === dev.value && inPeriodMonth(r.month)),
+  grid: { left: 50, right: 20, top: 10, bottom: 30 },
+  visualMap: false,
 })
 
 // título do heatmap: em "Tudo" o coletor capa em 24M; com período, mostra o range
