@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { getOrCreate } from '../collections'
 import { filteredWeekly, isoWeekKeyBefore, nestBySum } from '../data'
 import { fmtRatio } from '../format'
 
@@ -33,7 +34,8 @@ const data = computed(() => {
         window.push(wk)
     }
     let best: { author: string, commits: number, ratio: number } | null = null
-    for (const [author, commits] of byWeek.get(weeks[i])!) {
+    // semana sempre existe no mapa (weeks vem de byWeek.keys()) — getOrCreate dispensa `!`
+    for (const [author, commits] of getOrCreate(byWeek, weeks[i], () => new Map<string, number>())) {
       if (commits < MIN_WEEK_COMMITS)
         continue
       const prev = window.reduce((s, w) => s + (byWeek.get(w)?.get(author) ?? 0), 0)

@@ -16,6 +16,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { getOrCreate } from '../src/collections'
 import { loadConfig } from './lib/config'
 import { BOT_LOGIN_RE, botAuthorNames, botLoginSet, resolveAliases } from './lib/team'
 
@@ -87,9 +88,7 @@ const canonicalByLower = new Map([...canonicalNames].map(n => [n.toLowerCase(), 
 for (const t of teams) {
   for (const member of t.members) {
     const canonical = canonicalByLower.get(member.toLowerCase()) ?? member
-    if (!teamsByDev.has(canonical))
-      teamsByDev.set(canonical, [])
-    teamsByDev.get(canonical)!.push(t.name)
+    getOrCreate(teamsByDev, canonical, () => []).push(t.name)
     canonicalNames.add(canonical)
   }
 }
@@ -97,9 +96,7 @@ for (const t of teams) {
 // e-mails: config (authors + perfis) + detectados no git
 const emailsByDev = new Map<string, Set<string>>()
 function addEmail(dev: string, email: string) {
-  if (!emailsByDev.has(dev))
-    emailsByDev.set(dev, new Set())
-  emailsByDev.get(dev)!.add(email)
+  getOrCreate(emailsByDev, dev, () => new Set<string>()).add(email)
 }
 for (const [email, canonical] of emailToCanonical) addEmail(canonical, email)
 for (const a of stats?.authors ?? []) {
@@ -112,9 +109,7 @@ for (const a of stats?.authors ?? []) {
 // logins: config (githubUsers + perfis) + detectados no github.json
 const loginsByDev = new Map<string, Set<string>>()
 function addLogin(dev: string, login: string) {
-  if (!loginsByDev.has(dev))
-    loginsByDev.set(dev, new Set())
-  const set = loginsByDev.get(dev)!
+  const set = getOrCreate(loginsByDev, dev, () => new Set<string>())
   // dedupe por case: a chave do mapa de aliases é lowercase e a API traz o case
   // real — sem isso 'jsmithdev' + 'jsmithDev' viravam 2 logins do dev
   for (const existing of set) {

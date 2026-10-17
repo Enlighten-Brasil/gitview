@@ -3,6 +3,7 @@
  * comparada com a anterior. Relatório do time inteiro: ignora os filtros da
  * sidebar e sempre exclui bots. Pensado pra colar em reunião/1:1.
  */
+import type { MergedPr } from './types'
 import { isBot, isoWeekKey, stats } from './data'
 import { daysSince, fmtDate, fmtDateTime, fmtDay, fmtDuration, median } from './format'
 import { ghName, github } from './github'
@@ -14,6 +15,7 @@ import {
   PR_STALE_DAYS,
   REPO_STALE_DAYS,
 } from './thresholds'
+import { isMergedPr } from './types'
 
 export interface WeeklySummary {
   /** segunda da semana coberta */
@@ -104,11 +106,12 @@ export function buildWeeklySummary(): WeeklySummary | null {
   // -------------------------------------------------------------------------
   const prs = github.value?.prs ?? []
   const isGhBot = (login: string) => github.value?.users[login]?.bot ?? /bot/i.test(login)
-  const merged = prs.filter(pr => pr.state === 'MERGED' && inRange(pr.mergedAt, from, to) && !isGhBot(pr.author))
-  const prevMerged = prs.filter(pr => pr.state === 'MERGED' && inRange(pr.mergedAt, prevFrom, prevTo) && !isGhBot(pr.author))
+  // narrowing de PR mergeado (issue #42): mergedAt garantido no ciclo
+  const merged = prs.filter((pr): pr is MergedPr => isMergedPr(pr) && inRange(pr.mergedAt, from, to) && !isGhBot(pr.author))
+  const prevMerged = prs.filter(pr => isMergedPr(pr) && inRange(pr.mergedAt, prevFrom, prevTo) && !isGhBot(pr.author))
 
   if (prs.length) {
-    const cycle = median(merged.map(pr => (new Date(pr.mergedAt!).getTime() - new Date(pr.createdAt).getTime()) / 3_600_000))
+    const cycle = median(merged.map(pr => (new Date(pr.mergedAt).getTime() - new Date(pr.createdAt).getTime()) / 3_600_000))
     const noReview = merged.filter(pr => !pr.reviews.some(r => r.author !== pr.author && !isGhBot(r.author)))
     const noReviewPct = merged.length ? Math.round((noReview.length / merged.length) * 100) : 0
     const open = prs.filter(pr => pr.state === 'OPEN' && !isGhBot(pr.author))

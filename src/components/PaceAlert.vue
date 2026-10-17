@@ -1,12 +1,16 @@
 <script setup lang="ts">
+import type { PaceRow } from '../data'
 import { computed } from 'vue'
 import { pace } from '../data'
 import { fmtRatio } from '../format'
 import { PACE_FALLING, PACE_RISING } from '../thresholds'
 
+/** ritmo com o ratio já resolvido — as listas de alerta nunca mostram null */
+type PaceAlertRow = Omit<PaceRow, 'ratio'> & { ratio: number }
+
 /** queda: ritmo atual <= PACE_FALLING da média anterior; acelerando: >= PACE_RISING */
-const falling = computed(() => pace.value.filter(r => r.ratio !== null && r.ratio <= PACE_FALLING))
-const rising = computed(() => pace.value.filter(r => r.ratio !== null && r.ratio >= PACE_RISING))
+const falling = computed(() => pace.value.filter((r): r is PaceAlertRow => r.ratio !== null && r.ratio <= PACE_FALLING))
+const rising = computed(() => pace.value.filter((r): r is PaceAlertRow => r.ratio !== null && r.ratio >= PACE_RISING))
 
 function pct(ratio: number): string {
   return `${Math.round(ratio * 100)}%`
@@ -42,7 +46,7 @@ function pct(ratio: number): string {
             </td>
             <td class="num">
               <UBadge color="error" variant="soft">
-                {{ pct(r.ratio!) }}
+                {{ pct(r.ratio) }}
               </UBadge>
             </td>
           </tr>
@@ -66,7 +70,7 @@ function pct(ratio: number): string {
             </td>
             <td class="num">
               <UBadge color="success" variant="soft">
-                {{ pct(r.ratio!) }}
+                {{ pct(r.ratio) }}
               </UBadge>
             </td>
           </tr>

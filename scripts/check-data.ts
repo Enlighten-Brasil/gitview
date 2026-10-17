@@ -10,6 +10,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import { isPrReviewState } from '../src/types'
 
 const DATA_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'data')
 
@@ -226,6 +227,14 @@ if (github) {
       staleMerged++
       if (!oldestStale || p.mergedAt < oldestStale)
         oldestStale = p.mergedAt
+    }
+    // reviews: state precisa casar com a union fechada de PrReview.state (issue #42)
+    // — o coletor repassa o valor da API sem validar
+    for (const r of (isArr(p.reviews) ? p.reviews : []) as Record<string, unknown>[]) {
+      if (!isPrReviewState(r.state)) {
+        errors.push(`github.prs ${p.repo}#${p.number}: review state inesperado \"${String(r.state)}\"`)
+        break
+      }
     }
     const key = `${p.repo}#${p.number}`
     if (seenPr.has(key)) {

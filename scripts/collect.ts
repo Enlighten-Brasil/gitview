@@ -16,6 +16,7 @@ import { dirname, join, resolve } from 'node:path'
 import process from 'node:process'
 import { DatabaseSync } from 'node:sqlite'
 import { fileURLToPath } from 'node:url'
+import { getOrCreate } from '../src/collections'
 import { loadConfig, resolveReposRoot } from './lib/config'
 import { getToken, NO_TOKEN_HINT } from './lib/github'
 import { denyPush, discoverRepos, fetchRepo, isManagedRepo, mapPool, parseGitHub, remoteOf, scrubPersistedToken } from './lib/repos'
@@ -470,9 +471,7 @@ async function main() {
     const cp = canonParts(d) // uma única vez por linha — todos os buckets vêm dela
     const month = monthKeyOf(cp)
 
-    if (!emailsByAuthor.has(r.author))
-      emailsByAuthor.set(r.author, new Set())
-    emailsByAuthor.get(r.author)!.add(r.email)
+    getOrCreate(emailsByAuthor, r.author, () => new Set<string>()).add(r.email)
 
     const wk = `${isoWeekKeyOf(cp)}${KEY_SEP}${r.repo}${KEY_SEP}${r.author}`
     const wkCur = weekly.get(wk) ?? { commits: 0, weekend: 0, night: 0 }
@@ -501,9 +500,7 @@ async function main() {
     const dk = dayKeyOf(cp)
     allDays.add(dk)
 
-    if (!perAuthor.has(r.author))
-      perAuthor.set(r.author, { commits: 0, additions: 0, deletions: 0, repos: new Set(), days: new Set(), last: '' })
-    const pa = perAuthor.get(r.author)!
+    const pa = getOrCreate(perAuthor, r.author, () => ({ commits: 0, additions: 0, deletions: 0, repos: new Set<string>(), days: new Set<string>(), last: '' }))
     pa.commits++
     pa.additions += r.additions
     pa.deletions += r.deletions
@@ -512,9 +509,7 @@ async function main() {
     if (r.date > pa.last)
       pa.last = r.date
 
-    if (!perRepo.has(r.repo))
-      perRepo.set(r.repo, { commits: 0, additions: 0, deletions: 0, authors: new Set(), last: '' })
-    const pr = perRepo.get(r.repo)!
+    const pr = getOrCreate(perRepo, r.repo, () => ({ commits: 0, additions: 0, deletions: 0, authors: new Set<string>(), last: '' }))
     pr.commits++
     pr.additions += r.additions
     pr.deletions += r.deletions

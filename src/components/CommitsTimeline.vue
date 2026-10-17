@@ -42,7 +42,8 @@ const option = computed<EChartsOption>(() => {
     type: 'bar' as const,
     stack: 'commits',
     emphasis: { focus: 'series' as const },
-    data: periods.map(p => byAuthor.get(author)!.get(p) ?? 0),
+    // autor sempre existe no mapa (authors vem de byAuthor.keys()); `?.` cobre a folha
+    data: periods.map(p => byAuthor.get(author)?.get(p) ?? 0),
   }))
 
   return {

@@ -1,8 +1,10 @@
-import type { GitHubData, PullRequest } from './types'
+import type { GitHubData, MergedPr } from './types'
 import { computed } from 'vue'
+import { getOrCreate } from './collections'
 import { authorSelected, inPeriodDay, repoSelected } from './filters-core'
 import { daysSince, fmtDuration, median } from './format'
 import { defineLoader } from './loader'
+import { isMergedPr } from './types'
 
 // compat: median/fmtDuration mudaram para ./format (issue #32) — reexportados
 // aqui até os imports antigos terminarem de migrar
@@ -39,9 +41,9 @@ export const openPrs = computed(() =>
   (github.value?.prs ?? []).filter(pr => pr.state === 'OPEN' && repoSelected(pr.repo) && authorSelected(ghName(pr.author), ghIsBot(pr.author))),
 )
 
-/** PRs mergeados dentro do período filtrado */
+/** PRs mergeados dentro do período filtrado (narrowing: mergedAt garantido) */
 export const mergedPrs = computed(() =>
-  (github.value?.prs ?? []).filter(pr => pr.state === 'MERGED' && repoSelected(pr.repo) && authorSelected(ghName(pr.author), ghIsBot(pr.author)) && inPeriodDay(pr.mergedAt)),
+  (github.value?.prs ?? []).filter((pr): pr is MergedPr => isMergedPr(pr) && repoSelected(pr.repo) && authorSelected(ghName(pr.author), ghIsBot(pr.author)) && inPeriodDay(pr.mergedAt)),
 )
 
 /** abertos com idade em dias, mais antigos primeiro */
@@ -52,8 +54,8 @@ export const openAging = computed(() =>
 )
 
 /** cycle time em horas (criação -> merge) */
-function cycleHours(pr: PullRequest): number {
-  return (new Date(pr.mergedAt!).getTime() - new Date(pr.createdAt).getTime()) / 3_600_000
+function cycleHours(pr: MergedPr): number {
+  return (new Date(pr.mergedAt).getTime() - new Date(pr.createdAt).getTime()) / 3_600_000
 }
 
 export const medianCycleHours = computed(() => median(mergedPrs.value.map(cycleHours)))
@@ -109,9 +111,7 @@ export const reviewShareByRepo = computed<RepoReviewShare[]>(() => {
     for (const r of pr.reviews) {
       if (r.author === pr.author || ghIsBot(r.author))
         continue
-      if (!byRepo.has(pr.repo))
-        byRepo.set(pr.repo, new Map())
-      const m = byRepo.get(pr.repo)!
+      const m = getOrCreate(byRepo, pr.repo, () => new Map<string, number>())
       const name = ghName(r.author)
       m.set(name, (m.get(name) ?? 0) + 1)
     }
@@ -152,20 +152,16 @@ export const cycleTrend = computed<CycleTrendRow[]>(() => {
   // repo/autor continuam os mesmos da sidebar
   const trendStart = new Date()
   trendStart.setMonth(trendStart.getMonth() - 6)
-  const prs = (github.value?.prs ?? []).filter(pr =>
-    pr.state === 'MERGED' && pr.mergedAt && repoSelected(pr.repo) && authorSelected(ghName(pr.author), ghIsBot(pr.author))
+  const prs = (github.value?.prs ?? []).filter((pr): pr is MergedPr =>
+    isMergedPr(pr) && repoSelected(pr.repo) && authorSelected(ghName(pr.author), ghIsBot(pr.author))
     && new Date(pr.mergedAt) >= trendStart,
   )
 
   const byRepo = new Map<string, Map<string, number[]>>()
   for (const pr of prs) {
-    const month = pr.mergedAt!.slice(0, 7)
-    if (!byRepo.has(pr.repo))
-      byRepo.set(pr.repo, new Map())
-    const m = byRepo.get(pr.repo)!
-    if (!m.has(month))
-      m.set(month, [])
-    m.get(month)!.push(cycleHours(pr))
+    const month = pr.mergedAt.slice(0, 7)
+    const m = getOrCreate(byRepo, pr.repo, () => new Map<string, number[]>())
+    getOrCreate(m, month, () => []).push(cycleHours(pr))
   }
 
   return [...byRepo.entries()]
