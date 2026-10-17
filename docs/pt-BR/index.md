@@ -1,43 +1,45 @@
 ---
 layout: home
 title: gitview
+description: "Métricas de time para gerentes de desenvolvimento — commits, PRs e releases da sua org do GitHub, coletados localmente, read-only."
 hero:
   name: gitview
-  text: Dashboard de métricas de git & GitHub
-  tagline: Dashboard open-source que transforma o histórico do git e a atividade do GitHub em métricas acionáveis para o time.
+  text: Métricas de time para gerentes de desenvolvimento
+  tagline: Commits, PRs e releases da sua org do GitHub — coletados na sua máquina, estritamente read-only.
   image:
     src: /logo.svg
     alt: Logo do gitview
   actions:
     - theme: brand
       text: Começar
-      link: /pt-BR/guide/introduction
+      link: /pt-BR/guide/quickstart
     - theme: alt
-      text: Ver no GitHub
+      text: Ver demo
+      link: https://enlighten-brasil.github.io/gitview/
+    - theme: alt
+      text: GitHub
       link: https://github.com/Enlighten-Brasil/gitview
 features:
-  - icon: 📊
-    title: Métricas que importam
-    details: Commits, pull requests, reviews e releases por pessoa, time e repositório — tudo em um só lugar.
-  - icon: 🔌
-    title: Integração com GitHub
-    details: Coletores incrementais puxam a atividade via API do GitHub com um personal access token.
-  - icon: 🎛️
-    title: Filtros e drill-down
-    details: Recorte cada gráfico por período, repositório ou pessoa do time para responder perguntas reais.
-  - icon: 👥
-    title: Ciente do time
-    details: Mapeie pessoas em times e aliases para que as métricas reflitam como a org realmente trabalha.
-  - icon: 📦
-    title: Publicação estática
-    details: Os dados vivem em arquivos JSON — publique o dashboard no GitHub Pages ou em qualquer host estático.
-  - icon: 🔒
-    title: Local-first
-    details: Tudo roda na sua máquina ou no CI; seus dados nunca saem do seu ambiente.
+  - title: Read-only de verdade
+    details: "O gitview nunca escreve nos repositórios que analisa. Com um GitHub App read-only o token emitido é fisicamente incapaz de escrever, e os clones gerenciados têm a URL de push travada (`remote.origin.pushurl=no-push`)."
+  - title: Roda local, dados seus
+    details: "Os coletores gravam SQLite e JSON na sua máquina; `.env` e `team.local.json` são gitignored. As únicas chamadas de rede vão para o GitHub — API e git — durante o setup e a coleta."
+  - title: Filtros e métricas de gestão
+    details: "Streak, ritmo, cycle time, fora do horário e resumo semanal — com filtros de período, repositório, dev, time e bots."
+  - title: Times e identidades
+    details: "Una e-mails de commit e logins do GitHub em perfis de dev; cada time ganha o seu dashboard em `/teams/<nome>`."
+  - title: 100% estático
+    details: "O `pnpm build` gera um `dist/` que você publica em qualquer host estático — a demo ao vivo é exatamente esse build."
+  - title: Open source MIT
+    details: "Licença MIT. O que vem a seguir vive nas issues e milestones do GitHub; como ajudar está no `CONTRIBUTING.md`."
 ---
 
 ## Como funciona
 
-1. **Colete** — os coletores puxam o histórico do git e a atividade do GitHub para arquivos JSON locais.
-2. **Build** — o app Vite renderiza o dashboard a partir dos dados coletados, sem backend.
-3. **Publique** — faça deploy da saída estática no GitHub Pages (como a [demo pública](https://enlighten-brasil.github.io/gitview/)) ou em qualquer host estático.
+Três passos, sem servidor para configurar no meio do caminho:
+
+1. **Conectar o GitHub** — device flow no browser, colar um PAT ou a ponte do `gh` CLI. Na primeira execução você cai no wizard `/setup`; não há nada para editar antes.
+2. **Coletar** — os coletores rodam `git log` para dentro de um SQLite e exportam JSON em `public/data/`; PRs e reviews vêm da API do GitHub, e as releases combinam tags locais com a API. A recoleta é incremental (o ↻ da navbar).
+3. **Navegar o dashboard** — commits, PRs, releases, streak, cycle time e fora do horário, com filtros de período, repositórios, devs e times.
+
+O pipeline completo (git → SQLite → `public/data/*.json` → frontend estático) está documentado em [Arquitetura](./architecture/pipeline.md).
