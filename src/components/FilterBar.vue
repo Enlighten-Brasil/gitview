@@ -121,6 +121,7 @@ function clearList(list: ListKey) {
           size="xs"
           :color="!isCustomRange() && filters.rangeMonths === r.months ? 'primary' : 'neutral'"
           :variant="!isCustomRange() && filters.rangeMonths === r.months ? 'solid' : 'outline'"
+          :aria-pressed="!isCustomRange() && filters.rangeMonths === r.months"
           @click="setRange(r.months)"
         >
           {{ r.label }}
@@ -130,6 +131,7 @@ function clearList(list: ListKey) {
           icon="i-lucide-calendar-range"
           :color="isCustomRange() ? 'primary' : 'neutral'"
           :variant="isCustomRange() ? 'solid' : 'outline'"
+          :aria-pressed="isCustomRange()"
           @click="toggleCustom"
         >
           Personalizado
@@ -161,6 +163,7 @@ function clearList(list: ListKey) {
               size="xs"
               :color="teamState(t.members) === 'all' ? 'primary' : teamState(t.members) === 'some' ? 'primary' : 'neutral'"
               :variant="teamState(t.members) === 'all' ? 'solid' : teamState(t.members) === 'some' ? 'soft' : 'ghost'"
+              :aria-pressed="teamState(t.members) !== 'none'"
               @click="toggleTeam(t.members)"
             >
               <span
@@ -185,13 +188,13 @@ function clearList(list: ListKey) {
           </UBadge>
           <span class="ml-auto flex items-center">
             <UTooltip text="selecionar todos">
-              <UButton icon="i-lucide-check-check" color="neutral" variant="ghost" size="xs" @click="selectAll('repos')" />
+              <UButton icon="i-lucide-check-check" color="neutral" variant="ghost" size="xs" aria-label="selecionar todos os repos" @click="selectAll('repos')" />
             </UTooltip>
             <UTooltip text="inverter seleção">
-              <UButton icon="i-lucide-arrow-left-right" color="neutral" variant="ghost" size="xs" @click="invert('repos')" />
+              <UButton icon="i-lucide-arrow-left-right" color="neutral" variant="ghost" size="xs" aria-label="inverter seleção de repos" @click="invert('repos')" />
             </UTooltip>
             <UTooltip text="limpar">
-              <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" @click="clearList('repos')" />
+              <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" aria-label="limpar seleção de repos" @click="clearList('repos')" />
             </UTooltip>
           </span>
         </span>
@@ -202,6 +205,7 @@ function clearList(list: ListKey) {
             size="xs"
             :color="filters.repos.includes(repo) ? 'primary' : 'neutral'"
             :variant="filters.repos.includes(repo) ? 'solid' : 'ghost'"
+            :aria-pressed="filters.repos.includes(repo)"
             @click="toggle(filters.repos, repo)"
           >
             {{ repo }}
@@ -222,13 +226,13 @@ function clearList(list: ListKey) {
             </UBadge>
             <span class="ml-auto flex items-center">
               <UTooltip text="selecionar todos">
-                <UButton icon="i-lucide-check-check" color="neutral" variant="ghost" size="xs" @click="selectAll('authors')" />
+                <UButton icon="i-lucide-check-check" color="neutral" variant="ghost" size="xs" aria-label="selecionar todos os devs" @click="selectAll('authors')" />
               </UTooltip>
               <UTooltip text="inverter seleção">
-                <UButton icon="i-lucide-arrow-left-right" color="neutral" variant="ghost" size="xs" @click="invert('authors')" />
+                <UButton icon="i-lucide-arrow-left-right" color="neutral" variant="ghost" size="xs" aria-label="inverter seleção de devs" @click="invert('authors')" />
               </UTooltip>
               <UTooltip text="limpar">
-                <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" @click="clearList('authors')" />
+                <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" aria-label="limpar seleção de devs" @click="clearList('authors')" />
               </UTooltip>
             </span>
           </span>
@@ -239,6 +243,7 @@ function clearList(list: ListKey) {
               size="xs"
               :color="filters.authors.includes(a.name) ? 'primary' : 'neutral'"
               :variant="filters.authors.includes(a.name) ? 'solid' : 'ghost'"
+              :aria-pressed="filters.authors.includes(a.name)"
               @click="toggle(filters.authors, a.name)"
             >
               {{ a.name }}

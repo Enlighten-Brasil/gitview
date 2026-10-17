@@ -40,7 +40,7 @@ const runTitle = computed(() => {
 <template>
   <UCard>
     <div class="flex flex-col gap-4">
-      <div class="flex items-center gap-2 font-medium">
+      <div class="flex items-center gap-2 font-medium" role="status" aria-live="polite">
         <UIcon
           :name="runPhase === 'done' ? 'i-lucide-circle-check' : runPhase === 'error' ? 'i-lucide-circle-x' : running ? 'i-lucide-loader-circle' : 'i-lucide-package-open'"
           :class="[running && 'animate-spin', runPhase === 'done' && 'text-success', runPhase === 'error' && 'text-error']"
@@ -53,7 +53,7 @@ const runTitle = computed(() => {
         <summary class="cursor-pointer px-3 py-2 text-xs text-dimmed select-none">
           detalhes da execução
         </summary>
-        <pre class="max-h-64 overflow-auto px-3 pb-3 font-mono text-xs leading-relaxed whitespace-pre-wrap">{{ [...setupLog, ...collectLog].join('\n') }}</pre>
+        <pre class="max-h-64 overflow-auto px-3 pb-3 font-mono text-xs leading-relaxed whitespace-pre-wrap" role="status" aria-live="polite">{{ [...setupLog, ...collectLog].join('\n') }}</pre>
       </details>
 
       <UAlert v-if="setupError" color="error" variant="subtle" icon="i-lucide-circle-x" :title="setupError" />

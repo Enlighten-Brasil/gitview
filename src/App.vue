@@ -18,8 +18,9 @@ onMounted(() => {
 <template>
   <UApp>
     <!-- splash enquanto o guard do boot espera o stats.json (1ª navegação) -->
-    <div v-if="!ready" class="flex h-screen items-center justify-center bg-muted">
+    <div v-if="!ready" class="flex h-screen items-center justify-center bg-muted" role="status">
       <UIcon name="i-lucide-git-graph" class="size-8 animate-pulse text-primary" />
+      <span class="sr-only">carregando…</span>
     </div>
     <RouterView v-else />
   </UApp>

@@ -144,20 +144,23 @@ function goTeam(name: string) {
       {{ current.description }}
     </p>
 
-    <!-- membros (chips com link pro perfil de commits) -->
+    <!-- membros (chips com link real pro perfil de commits — abre em nova aba/endereço copiável) -->
     <div v-if="current" class="flex flex-wrap gap-1.5 -mt-1">
-      <button
+      <UButton
         v-for="m in current.members"
         :key="m"
-        class="inline-flex items-center gap-1.5 rounded-full border border-default bg-elevated/50 py-0.5 ps-0.5 pe-2 text-xs hover:border-primary transition-colors cursor-pointer"
+        :to="{ name: '/devs/[name]', params: { name: m } }"
+        color="neutral"
+        variant="soft"
+        size="xs"
+        class="rounded-full pe-2 ps-0.5"
         :title="`dashboard de ${m}`"
-        @click="router.push({ name: '/devs/[name]', params: { name: m } })"
       >
         <span :class="`flex size-5 items-center justify-center rounded-full text-[9px] font-semibold text-white ${avatarBgClass(m)}`">
           {{ initialsOf(m) }}
         </span>
         {{ m }}
-      </button>
+      </UButton>
       <p v-if="!current.members.length" class="text-xs text-dimmed italic">
         sem membros cadastrados — edite em Times
       </p>

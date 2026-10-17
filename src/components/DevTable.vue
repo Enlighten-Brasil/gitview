@@ -6,9 +6,16 @@ import { fmtDate, fmtInt, fmtRatio } from '../format'
 
 const router = useRouter()
 
-/** clique na linha abre a página dedicada do dev */
+/** clique na linha abre a página dedicada do dev (atalho — o link na 1ª célula é o caminho acessível) */
 function openDev(author: string) {
   router.push({ name: '/devs/[name]', params: { name: author } })
+}
+
+/** o clique no link da 1ª célula já navega — não deixa o atalho da linha duplicar o push */
+function onRowClick(e: MouseEvent, author: string) {
+  if ((e.target as HTMLElement).closest('a'))
+    return
+  openDev(author)
 }
 
 type Key = 'commits' | 'additions' | 'deletions' | 'repos' | 'activeDays' | 'lastCommit' | 'streak'
@@ -23,6 +30,13 @@ function toggleSort(key: Key) {
     sortKey.value = key
     sortAsc.value = false
   }
+}
+
+/** aria-sort do th: só a coluna ativa anuncia a direção; as demais ficam 'none' */
+function ariaSort(key: Key): 'ascending' | 'descending' | 'none' {
+  if (sortKey.value !== key)
+    return 'none'
+  return sortAsc.value ? 'ascending' : 'descending'
 }
 
 const visibleAuthors = computed(() => {
@@ -109,29 +123,50 @@ function exportCsv() {
       <thead>
         <tr>
           <th>Dev</th>
-          <th class="num sortable" @click="toggleSort('commits')">
-            commits
+          <th class="num sortable" :aria-sort="ariaSort('commits')">
+            <button type="button" class="th-sort" @click="toggleSort('commits')">
+              commits
+              <UIcon v-if="sortKey === 'commits'" :name="sortAsc ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'" class="size-3 shrink-0" />
+            </button>
           </th>
-          <th class="num sortable" @click="toggleSort('additions')">
-            + linhas
+          <th class="num sortable" :aria-sort="ariaSort('additions')">
+            <button type="button" class="th-sort" @click="toggleSort('additions')">
+              + linhas
+              <UIcon v-if="sortKey === 'additions'" :name="sortAsc ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'" class="size-3 shrink-0" />
+            </button>
           </th>
-          <th class="num sortable" @click="toggleSort('deletions')">
-            − linhas
+          <th class="num sortable" :aria-sort="ariaSort('deletions')">
+            <button type="button" class="th-sort" @click="toggleSort('deletions')">
+              − linhas
+              <UIcon v-if="sortKey === 'deletions'" :name="sortAsc ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'" class="size-3 shrink-0" />
+            </button>
           </th>
-          <th class="num sortable" @click="toggleSort('repos')">
-            repos
+          <th class="num sortable" :aria-sort="ariaSort('repos')">
+            <button type="button" class="th-sort" @click="toggleSort('repos')">
+              repos
+              <UIcon v-if="sortKey === 'repos'" :name="sortAsc ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'" class="size-3 shrink-0" />
+            </button>
           </th>
-          <th class="num sortable" @click="toggleSort('activeDays')">
-            dias ativos
+          <th class="num sortable" :aria-sort="ariaSort('activeDays')">
+            <button type="button" class="th-sort" @click="toggleSort('activeDays')">
+              dias ativos
+              <UIcon v-if="sortKey === 'activeDays'" :name="sortAsc ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'" class="size-3 shrink-0" />
+            </button>
           </th>
           <th class="num">
             commits/dia ativo
           </th>
-          <th class="num sortable" @click="toggleSort('streak')">
-            streak 🔥
+          <th class="num sortable" :aria-sort="ariaSort('streak')">
+            <button type="button" class="th-sort" @click="toggleSort('streak')">
+              streak 🔥
+              <UIcon v-if="sortKey === 'streak'" :name="sortAsc ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'" class="size-3 shrink-0" />
+            </button>
           </th>
-          <th class="num sortable" @click="toggleSort('lastCommit')">
-            último commit
+          <th class="num sortable" :aria-sort="ariaSort('lastCommit')">
+            <button type="button" class="th-sort" @click="toggleSort('lastCommit')">
+              último commit
+              <UIcon v-if="sortKey === 'lastCommit'" :name="sortAsc ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'" class="size-3 shrink-0" />
+            </button>
           </th>
         </tr>
       </thead>
@@ -141,9 +176,13 @@ function exportCsv() {
           :key="a.author"
           class="dev-row"
           :class="{ selected: isSelected(a.author) }"
-          @click="openDev(a.author)"
+          @click="onRowClick($event, a.author)"
         >
-          <td>{{ a.author }}</td>
+          <td>
+            <RouterLink :to="{ name: '/devs/[name]', params: { name: a.author } }" class="dev-link">
+              {{ a.author }}
+            </RouterLink>
+          </td>
           <td class="num">
             {{ fmtInt(a.commits) }}
           </td>
@@ -184,6 +223,31 @@ function exportCsv() {
 </template>
 
 <style scoped>
+.th-sort {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.th-sort:hover {
+  color: var(--ui-text-highlighted);
+}
+.dev-link {
+  color: inherit;
+  text-decoration: none;
+}
+.dev-link:hover {
+  color: var(--ui-primary);
+}
 .dev-row {
   cursor: pointer;
 }
