@@ -19,7 +19,7 @@ import PrCycleTime from '@/components/PrCycleTime.vue'
 import PrOpenTable from '@/components/PrOpenTable.vue'
 import PrSummaryCards from '@/components/PrSummaryCards.vue'
 import SummaryCards from '@/components/SummaryCards.vue'
-import { filters, rangeLabel } from '@/data'
+import { filters, lockAuthors, rangeLabel } from '@/data'
 import { github, githubError } from '@/github'
 import { avatarBgClass, initialsOf, loadTeam, team, teamLoadError } from '@/team'
 
@@ -69,16 +69,15 @@ watch(former, (t) => {
 // travamento dos devs: mudou o time (ou o team.json chegou), trava os membros.
 // O segundo watch devolve o lock se algo limpar/alterar filters.authors nesta
 // rota (ex.: sanitize depois de um refresh de dados) — a fonte da verdade aqui
-// é o time, não o filtro.
-function lockAuthors() {
-  if (current.value)
-    filters.authors = [...current.value.members]
-}
-watch(current, lockAuthors, { immediate: true })
+// é o time, não o filtro. A escrita é sempre pela ação lockAuthors (issue #39).
+watch(current, (t) => {
+  if (t)
+    lockAuthors(t.members)
+}, { immediate: true })
 watch(() => filters.authors.join('\u0000'), () => {
   const t = current.value
   if (t && filters.authors.join('\u0000') !== t.members.join('\u0000'))
-    filters.authors = [...t.members]
+    lockAuthors(t.members)
 })
 
 // sugestões quando o nome não existe (mesma ideia da página do dev)

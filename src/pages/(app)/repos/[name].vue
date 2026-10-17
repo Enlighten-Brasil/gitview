@@ -4,7 +4,7 @@ import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { axisLabel, ct, legendText, splitLine, tooltipBase } from '@/chartTheme'
 import ChartPanel from '@/components/ChartPanel.vue'
-import { filters, inRange, isBot, isCustomRange, rangeLabel, stats } from '@/data'
+import { filters, inPeriodMonth, isBot, isCustomRange, rangeLabel, stats } from '@/data'
 import { fmtCompact, fmtDate, fmtDuration, median } from '@/format'
 import { ghIsBot, github } from '@/github'
 import { daysSinceLastRelease, loadReleases, releases, repoRelease } from '@/releases'
@@ -38,12 +38,12 @@ const periodFiltered = computed(() => filters.rangeMonths !== null || isCustomRa
 const histSuffix = computed(() => (periodFiltered.value ? ' (total)' : ''))
 
 // linhas mensais do repo dentro do período, respeitando o switch de bots
-// (com "Tudo", inRange aceita todos os meses e a soma equivale ao total histórico)
+// (com "Tudo", inPeriodMonth aceita todos os meses e a soma equivale ao total histórico)
 const periodMonthly = computed(() =>
   (stats.value?.monthly ?? []).filter(r =>
     r.repo === repo.value
     && (filters.showBots || !isBot(r.author))
-    && inRange(r.month),
+    && inPeriodMonth(r.month),
   ),
 )
 const periodCommits = computed(() => periodMonthly.value.reduce((s, r) => s + r.commits, 0))
@@ -60,7 +60,7 @@ const repoPrs = computed(() =>
 const openPrs = computed(() => repoPrs.value.filter(p => p.state === 'OPEN'))
 // mergeados filtrados pelo período (mês do merge)
 const mergedPrs = computed(() =>
-  repoPrs.value.filter(p => p.state === 'MERGED' && p.mergedAt && inRange(p.mergedAt.slice(0, 7))),
+  repoPrs.value.filter(p => p.state === 'MERGED' && p.mergedAt && inPeriodMonth(p.mergedAt.slice(0, 7))),
 )
 const cycleHours = computed(() =>
   median(mergedPrs.value.map(p => (new Date(p.mergedAt!).getTime() - new Date(p.createdAt).getTime()) / 3_600_000)),
@@ -142,7 +142,7 @@ const TYPE_COLORS: Record<string, string> = {
 const typesOption = computed<EChartsOption>(() => {
   const map = new Map<string, number>()
   for (const r of stats.value?.monthlyTypes ?? []) {
-    if (r.repo !== repo.value || !inRange(r.month))
+    if (r.repo !== repo.value || !inPeriodMonth(r.month))
       continue
     if (!filters.showBots && isBot(r.author))
       continue

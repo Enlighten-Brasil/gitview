@@ -1,7 +1,21 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { filters, isCustomRange, stats } from '@/data'
+import {
+  filters,
+  isCustomRange,
+  resetSelection,
+  setAuthors,
+  setCustomRange,
+  setRange,
+  setRepos,
+  setShowBots,
+  stats,
+  toggleAuthor,
+  toggleCustomRange,
+  toggleRepo,
+  toggleTeam,
+} from '@/data'
 import { loadTeam, team } from '@/team'
 
 const route = useRoute()
@@ -30,27 +44,12 @@ const ranges = [
   { label: 'Tudo', months: null },
 ] as const
 
-/** preset de período: limpa o range customizado */
-function setRange(months: number | null) {
-  filters.dateFrom = null
-  filters.dateTo = null
-  filters.rangeMonths = months
+/** datas do range custom (inputs) — escrita sempre pelas ações de @/data (issue #39) */
+function setDateFrom(v: string | null) {
+  setCustomRange(v, filters.dateTo)
 }
-
-/** ativa o modo personalizado pré-preenchendo com a janela atual; desativa limpando as datas */
-function toggleCustom() {
-  if (isCustomRange()) {
-    filters.dateFrom = null
-    filters.dateTo = null
-    return
-  }
-  const from = new Date()
-  if (filters.rangeMonths != null)
-    from.setMonth(from.getMonth() - filters.rangeMonths)
-  else
-    from.setFullYear(from.getFullYear() - 10)
-  filters.dateFrom = from.toISOString().slice(0, 10)
-  filters.dateTo = new Date().toISOString().slice(0, 10)
+function setDateTo(v: string | null) {
+  setCustomRange(filters.dateFrom, v)
 }
 
 const visibleAuthors = computed(() =>
@@ -72,41 +71,25 @@ function teamState(members: string[]): 'all' | 'some' | 'none' {
   return sel === 0 ? 'none' : sel === members.length ? 'all' : 'some'
 }
 
-function toggleTeam(members: string[]) {
-  if (teamState(members) === 'all') {
-    filters.authors = filters.authors.filter(a => !members.includes(a))
-  }
-  else {
-    filters.authors = [...new Set([...filters.authors, ...members])]
-  }
-}
-
 const hasSelection = computed(() => filters.repos.length > 0 || filters.authors.length > 0)
 
-function toggle(list: string[], value: string) {
-  const i = list.indexOf(value)
-  if (i >= 0)
-    list.splice(i, 1)
-  else list.push(value)
-}
-
-function clearSelection() {
-  filters.repos = []
-  filters.authors = []
-}
-
 type ListKey = 'repos' | 'authors'
+// escritas sempre pelas ações nomeadas de @/data (issue #39)
+const setters: Record<ListKey, (list: string[]) => void> = {
+  repos: setRepos,
+  authors: setAuthors,
+}
 function allOf(list: ListKey): string[] {
   return list === 'repos' ? (stats.value?.repos ?? []) : visibleAuthors.value.map(a => a.name)
 }
 function selectAll(list: ListKey) {
-  filters[list] = allOf(list)
+  setters[list](allOf(list))
 }
 function invert(list: ListKey) {
-  filters[list] = allOf(list).filter(v => !filters[list].includes(v))
+  setters[list](allOf(list).filter(v => !filters[list].includes(v)))
 }
 function clearList(list: ListKey) {
-  filters[list] = []
+  setters[list]([])
 }
 </script>
 
@@ -132,17 +115,17 @@ function clearList(list: ListKey) {
           :color="isCustomRange() ? 'primary' : 'neutral'"
           :variant="isCustomRange() ? 'solid' : 'outline'"
           :aria-pressed="isCustomRange()"
-          @click="toggleCustom"
+          @click="toggleCustomRange"
         >
           Personalizado
         </UButton>
       </div>
       <div v-if="isCustomRange()" class="flex items-center gap-1.5">
-        <UInput v-model="filters.dateFrom" type="date" size="xs" class="flex-1" />
+        <UInput :model-value="filters.dateFrom" type="date" size="xs" class="flex-1" @update:model-value="setDateFrom" />
         <span class="text-dimmed text-xs">→</span>
-        <UInput v-model="filters.dateTo" type="date" size="xs" class="flex-1" />
+        <UInput :model-value="filters.dateTo" type="date" size="xs" class="flex-1" @update:model-value="setDateTo" />
       </div>
-      <USwitch v-if="showBots" v-model="filters.showBots" label="incluir bots" size="sm" class="mt-1" />
+      <USwitch v-if="showBots" :model-value="filters.showBots" label="incluir bots" size="sm" class="mt-1" @update:model-value="setShowBots" />
     </section>
 
     <!-- repos no escopo 'full' e no 'team'; devs/chips de time só no 'full'
@@ -206,7 +189,7 @@ function clearList(list: ListKey) {
             :color="filters.repos.includes(repo) ? 'primary' : 'neutral'"
             :variant="filters.repos.includes(repo) ? 'solid' : 'ghost'"
             :aria-pressed="filters.repos.includes(repo)"
-            @click="toggle(filters.repos, repo)"
+            @click="toggleRepo(repo)"
           >
             {{ repo }}
           </UButton>
@@ -244,7 +227,7 @@ function clearList(list: ListKey) {
               :color="filters.authors.includes(a.name) ? 'primary' : 'neutral'"
               :variant="filters.authors.includes(a.name) ? 'solid' : 'ghost'"
               :aria-pressed="filters.authors.includes(a.name)"
-              @click="toggle(filters.authors, a.name)"
+              @click="toggleAuthor(a.name)"
             >
               {{ a.name }}
             </UButton>
@@ -258,7 +241,7 @@ function clearList(list: ListKey) {
           variant="ghost"
           icon="i-lucide-x"
           block
-          @click="clearSelection"
+          @click="resetSelection"
         >
           limpar filtros
         </UButton>

@@ -3,9 +3,13 @@
  * no force), política de cache e tratamento de erro num lugar só. Cada loader
  * do app (stats/commits/github/releases/team) vira um `defineLoader` e mantém
  * via opts a mensagem de erro e o efeito no dado em falha que a UI já conhece.
+ *
+ * Payloads em `shallowRef` + `markRaw` (issue #39): o load substitui o objeto
+ * inteiro, então reatividade profunda só gastaria CPU convertendo milhares de
+ * objetos dos JSONs em proxies a cada fetch.
  */
-import type { Ref } from 'vue'
-import { ref } from 'vue'
+import type { ShallowRef } from 'vue'
+import { markRaw, shallowRef } from 'vue'
 
 export interface LoaderOptions<T> {
   /** extrai o valor do JSON bruto (default: o JSON inteiro) */
@@ -19,14 +23,20 @@ export interface LoaderOptions<T> {
 }
 
 export interface Loader<T> {
-  data: Ref<T | null>
-  error: Ref<string | null>
+  /** payload do JSON — shallow: trocado por inteiro a cada load */
+  data: ShallowRef<T | null>
+  error: ShallowRef<string | null>
   load: (force?: boolean) => Promise<void>
 }
 
+/** markRaw num objeto: o payload é imutável pro app, só substituído no load */
+function markRawPayload<T>(value: T): T {
+  return value !== null && typeof value === 'object' ? markRaw(value as T & object) : value
+}
+
 export function defineLoader<T>(path: string, opts: LoaderOptions<T> = {}): Loader<T> {
-  const data = ref(null) as Ref<T | null>
-  const error = ref<string | null>(null)
+  const data = shallowRef(null) as ShallowRef<T | null>
+  const error = shallowRef<string | null>(null)
 
   async function load(force = false) {
     // política de cache unificada: já carregado e sem force → não refaz o fetch
@@ -37,14 +47,14 @@ export function defineLoader<T>(path: string, opts: LoaderOptions<T> = {}): Load
       const res = await fetch(force ? `${url}?t=${Date.now()}` : url)
       if (!res.ok)
         throw new Error(opts.httpError ? opts.httpError(res.status) : `HTTP ${res.status}`)
-      data.value = (opts.pick ?? ((json: unknown) => json as T))(await res.json())
+      data.value = markRawPayload((opts.pick ?? ((json: unknown) => json as T))(await res.json()))
       error.value = null
     }
     catch (err) {
       const e = err as Error
       // onErrorValue define o dado em falha; sem ele, o valor atual é preservado
       if (opts.onErrorValue !== undefined)
-        data.value = opts.onErrorValue
+        data.value = markRawPayload(opts.onErrorValue)
       error.value = typeof opts.errorMessage === 'function'
         ? opts.errorMessage(e)
         : opts.errorMessage ?? String(e.message ?? e)

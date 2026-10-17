@@ -1,12 +1,14 @@
 import type { GitHubData, PullRequest } from './types'
 import { computed } from 'vue'
-import { filters } from './data'
+import { authorSelected, inPeriodDay, repoSelected } from './filters-core'
 import { daysSince, fmtDuration, median } from './format'
 import { defineLoader } from './loader'
 
 // compat: median/fmtDuration mudaram para ./format (issue #32) — reexportados
 // aqui até os imports antigos terminarem de migrar
 export { fmtDuration, median }
+// predicados de filtro únicos (issue #39) — reexportados perto do consumo de PR
+export { authorSelected, cutoff, inPeriodDay, inPeriodMonth, repoSelected } from './filters-core'
 
 // loader do github.json — mensagem fixa preservada (a UI concatena com o alerta)
 const githubLoader = defineLoader<GitHubData>('github.json', {
@@ -27,45 +29,19 @@ export function ghIsBot(login: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// filtros (mesmos da sidebar: repos, devs, período, bots)
+// filtros (mesmos da sidebar: repos, devs, período, bots) — predicados
+// compartilhados vindos de ./filters-core (issue #39); o autor do PR é resolvido
+// de login para nome canônico antes do authorSelected
 // ---------------------------------------------------------------------------
-function repoOk(repo: string) {
-  return filters.repos.length === 0 || filters.repos.includes(repo)
-}
-function authorOk(login: string) {
-  if (!filters.showBots && ghIsBot(login))
-    return false
-  return filters.authors.length === 0 || filters.authors.includes(ghName(login))
-}
-function cutoff(): Date | null {
-  if (filters.dateFrom)
-    return new Date(`${filters.dateFrom}T00:00:00`)
-  if (filters.rangeMonths == null)
-    return null
-  const d = new Date()
-  d.setMonth(d.getMonth() - filters.rangeMonths)
-  return d
-}
-function inPeriod(iso: string | null): boolean {
-  if (!iso)
-    return false
-  const d = new Date(iso)
-  const c = cutoff()
-  if (c && d < c)
-    return false
-  if (filters.dateTo && d > new Date(`${filters.dateTo}T23:59:59`))
-    return false
-  return true
-}
 
 /** PRs abertos agora (período não se aplica — aberto é "agora") */
 export const openPrs = computed(() =>
-  (github.value?.prs ?? []).filter(pr => pr.state === 'OPEN' && repoOk(pr.repo) && authorOk(pr.author)),
+  (github.value?.prs ?? []).filter(pr => pr.state === 'OPEN' && repoSelected(pr.repo) && authorSelected(ghName(pr.author), ghIsBot(pr.author))),
 )
 
 /** PRs mergeados dentro do período filtrado */
 export const mergedPrs = computed(() =>
-  (github.value?.prs ?? []).filter(pr => pr.state === 'MERGED' && repoOk(pr.repo) && authorOk(pr.author) && inPeriod(pr.mergedAt)),
+  (github.value?.prs ?? []).filter(pr => pr.state === 'MERGED' && repoSelected(pr.repo) && authorSelected(ghName(pr.author), ghIsBot(pr.author)) && inPeriodDay(pr.mergedAt)),
 )
 
 /** abertos com idade em dias, mais antigos primeiro */
@@ -172,11 +148,13 @@ export interface CycleTrendRow {
 }
 
 export const cycleTrend = computed<CycleTrendRow[]>(() => {
-  const cutoff = new Date()
-  cutoff.setMonth(cutoff.getMonth() - 6)
+  // janela fixa de 6 meses (ignora o filtro de período) — predicados de
+  // repo/autor continuam os mesmos da sidebar
+  const trendStart = new Date()
+  trendStart.setMonth(trendStart.getMonth() - 6)
   const prs = (github.value?.prs ?? []).filter(pr =>
-    pr.state === 'MERGED' && pr.mergedAt && repoOk(pr.repo) && authorOk(pr.author)
-    && new Date(pr.mergedAt) >= cutoff,
+    pr.state === 'MERGED' && pr.mergedAt && repoSelected(pr.repo) && authorSelected(ghName(pr.author), ghIsBot(pr.author))
+    && new Date(pr.mergedAt) >= trendStart,
   )
 
   const byRepo = new Map<string, Map<string, number[]>>()
