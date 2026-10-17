@@ -6,7 +6,7 @@ import type { TeamDraft, TeamMetrics } from '@/team'
  * está em outro time), métricas agregadas e remoção com confirmação inline.
  * `disabled` (build estático) esconde toda a UI de edição.
  */
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { avatarBgClass, initialsOf, TEAM_PALETTE } from '@/team'
 
 const props = defineProps<{
@@ -28,9 +28,24 @@ function setColor(c: string) {
   colorOpen.value = false
 }
 
+// hex válido: #rgb, #rrggbb ou #rrggbbaa (3/6/8 dígitos) — o {3,8} antigo
+// aceitava comprimentos quebrados como #abc1 e aplicava cor inválida no avatar.
+// O critério-de-pronto da issue #30 exige #abc1 (4 dígitos) REJEITADO, então
+// #rgba fica de fora de propósito (ver PR: a Proposta dizia 3/4/6/8 em conflito
+// com o próprio critério e com a mensagem de erro citada)
+const HEX_RE = /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i
+
+/** mensagem de erro do campo de cor custom (vazia/limpa = sem erro) */
+const customColorError = computed(() => {
+  const v = customColor.value.trim()
+  return v && !HEX_RE.test(v) ? 'use #rgb, #rrggbb ou #rrggbbaa' : undefined
+})
+
 function commitCustom() {
   const v = customColor.value.trim()
-  if (/^#[0-9a-f]{3,8}$/i.test(v))
+  // hex inválido não é mais descartado em silêncio: o campo exibe o erro via
+  // :error (UFormField propaga aria-invalid ao UInput) e o valor fica pra correção
+  if (HEX_RE.test(v))
     setColor(v)
 }
 
@@ -116,7 +131,9 @@ function daysAgo(iso: string): string {
                     @click="setColor(c)"
                   />
                 </div>
-                <UInput v-model="customColor" size="xs" placeholder="#hex" class="font-mono" @keyup.enter="commitCustom" @blur="commitCustom" />
+                <UFormField :error="customColorError">
+                  <UInput v-model="customColor" size="xs" placeholder="#hex" class="font-mono" @keyup.enter="commitCustom" @blur="commitCustom" />
+                </UFormField>
                 <UButton label="sem cor" size="xs" color="neutral" variant="link" @click="setColor('')" />
               </div>
             </template>
