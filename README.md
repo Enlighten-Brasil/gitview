@@ -10,7 +10,7 @@ An engineering-manager dashboard for team metrics: commits, PRs and releases acr
 
 ## Project status
 
-The full pipeline works end to end: collectors stream `git log` into SQLite and export JSON to `public/data/`, PRs, reviews and releases come from the GitHub API, and the frontend is a 100% static build that deploys to any static host — the live demo above is exactly that build. CI runs the gates on every PR (`pnpm check:scrub`, `pnpm lint`, `pnpm typecheck`, `pnpm build`), and every release ships with a changeset and a single `chore(release)` commit (history in [CHANGELOG.md](CHANGELOG.md)). What comes next lives in the GitHub issues and milestones — see [ROADMAP.md](ROADMAP.md); how to help is in [CONTRIBUTING.md](CONTRIBUTING.md).
+The full pipeline works end to end: collectors stream `git log` into SQLite and export JSON to `public/data/`, PRs and reviews come from the GitHub API, releases combine local `git tag` data with the API, and the frontend is a 100% static build that deploys to any static host — the live demo above is exactly that build. CI runs the gates on every PR (`pnpm check:scrub`, `pnpm lint`, `pnpm typecheck`, `pnpm build`), and every release ships with a changeset and a single `chore(release)` commit (history in [CHANGELOG.md](CHANGELOG.md)). What comes next lives in the GitHub issues and milestones — see [ROADMAP.md](ROADMAP.md); how to help is in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Setup
 
