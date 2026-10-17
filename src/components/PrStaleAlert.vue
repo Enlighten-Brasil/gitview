@@ -21,7 +21,7 @@ const shown = computed(() => stale.value.slice(0, 5))
     </template>
 
     <p v-if="stale.length === 0" class="text-muted text-sm">
-      Nenhum PR parado além de {{ PR_STALE_DAYS }} dias. 👍
+      Nenhum PR parado além de {{ PR_STALE_DAYS }} dias. <UIcon name="i-lucide-thumbs-up" class="size-4 align-[-2px]" />
     </p>
 
     <template v-else>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { EChartsOption } from 'echarts'
+import { useToast } from '@nuxt/ui/composables'
 import * as echarts from 'echarts/core'
 import { ref } from 'vue'
 import VChart from 'vue-echarts'
@@ -13,20 +14,29 @@ const props = defineProps<{
   icon?: string
 }>()
 
+const toast = useToast()
 const wrap = ref<HTMLElement>()
 
 function exportPng() {
   const dom = wrap.value?.querySelector('[_echarts_instance_]') as HTMLElement | null
   const instance = dom ? echarts.getInstanceByDom(dom) : undefined
-  if (!instance)
+  if (!instance) {
+    toast.add({ title: 'Falha ao exportar a imagem', description: 'o gráfico ainda não está pronto', color: 'error' })
     return
-  const url = instance.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: ct.bg })
-  const a = document.createElement('a')
-  a.href = url
-  // normaliza acentos (NFD) antes de sanitizar — senão "Frequência" viraria "frequ-ncia"
-  const slug = props.title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-')
-  a.download = `gitview-${slug}.png`
-  a.click()
+  }
+  try {
+    const url = instance.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: ct.bg })
+    const a = document.createElement('a')
+    a.href = url
+    // normaliza acentos (NFD) antes de sanitizar — senão "Frequência" viraria "frequ-ncia"
+    const slug = props.title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-')
+    a.download = `gitview-${slug}.png`
+    a.click()
+    toast.add({ title: 'Imagem exportada', description: `gitview-${slug}.png`, color: 'success' })
+  }
+  catch (err) {
+    toast.add({ title: 'Falha ao exportar a imagem', description: String((err as Error).message ?? err), color: 'error' })
+  }
 }
 </script>
 

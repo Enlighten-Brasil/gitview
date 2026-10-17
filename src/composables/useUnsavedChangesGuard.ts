@@ -1,19 +1,26 @@
 import { onUnmounted } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
-
-const DIRTY_MSG = 'você tem mudanças não salvas no time — sair mesmo assim?'
+import { useConfirm } from '@/composables/useConfirm'
 
 /**
- * Guarda de saída do editor de times: confirma antes de navegar embora ou fechar
- * a aba com mudanças não salvas. O `window.confirm` é a única confirmação
- * síncrona que um before-hook de rota aceita (UI custom fica pra issue #38).
+ * Guarda de saída do editor de times: pergunta antes de navegar embora ou
+ * fechar a aba com mudanças não salvas. O hook de rota aceita Promise — a
+ * confirmação usa o `useConfirm` (UModal) unificado (issue #38); só o
+ * beforeunload continua nativo (o diálogo do navegador é o único que a aba
+ * aceita ao fechar).
  */
 export function useUnsavedChangesGuard(isDirty: () => boolean) {
-  onBeforeRouteLeave(() => {
+  const confirm = useConfirm()
+
+  onBeforeRouteLeave(async () => {
     if (!isDirty())
       return true
-    // eslint-disable-next-line no-alert -- UI custom seria assíncrona e não poderia cancelar a navegação
-    return window.confirm(DIRTY_MSG)
+    return confirm({
+      title: 'Sair sem salvar?',
+      description: 'Você tem mudanças não salvas no time — sair agora descarta as alterações.',
+      confirmLabel: 'sair mesmo assim',
+      cancelLabel: 'continuar editando',
+    })
   })
 
   function onBeforeUnload(e: BeforeUnloadEvent) {

@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import { useToast } from '@nuxt/ui/composables'
 import { computed, onUnmounted, ref } from 'vue'
 import { buildWeeklySummary } from '../summary'
 
 // slideover com o resumo da última semana fechada — gerado na abertura
 const open = ref(false)
 const copied = ref(false)
+const toast = useToast()
 const summary = computed(() => (open.value ? buildWeeklySummary() : null))
 
 // timer do "copiado!" — guardado pra limpar no unmount (nada de timer órfão)
@@ -13,10 +15,16 @@ let copiedTimer: ReturnType<typeof setTimeout> | undefined
 async function copy() {
   if (!summary.value)
     return
-  await navigator.clipboard.writeText(summary.value.markdown)
-  copied.value = true
-  clearTimeout(copiedTimer)
-  copiedTimer = setTimeout(() => (copied.value = false), 2000)
+  try {
+    await navigator.clipboard.writeText(summary.value.markdown)
+    copied.value = true
+    clearTimeout(copiedTimer)
+    copiedTimer = setTimeout(() => (copied.value = false), 2000)
+    toast.add({ title: 'Resumo copiado', description: 'markdown na área de transferência.', color: 'success' })
+  }
+  catch (err) {
+    toast.add({ title: 'Falha ao copiar o resumo', description: String((err as Error).message ?? err), color: 'error' })
+  }
 }
 
 onUnmounted(() => clearTimeout(copiedTimer))
@@ -31,6 +39,7 @@ function download() {
   a.download = `resumo-${summary.value.weekKey}.md`
   a.click()
   URL.revokeObjectURL(url)
+  toast.add({ title: 'Resumo baixado', description: a.download, color: 'success' })
 }
 </script>
 

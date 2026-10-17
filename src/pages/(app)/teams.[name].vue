@@ -145,21 +145,24 @@ function goTeam(name: string) {
 
     <!-- membros (chips com link real pro perfil de commits — abre em nova aba/endereço copiável) -->
     <div v-if="current" class="flex flex-wrap gap-1.5 -mt-1">
-      <UButton
+      <UTooltip
         v-for="m in current.members"
         :key="m"
-        :to="{ name: '/devs/[name]', params: { name: m } }"
-        color="neutral"
-        variant="soft"
-        size="xs"
-        class="rounded-full pe-2 ps-0.5"
-        :title="`dashboard de ${m}`"
+        :text="`dashboard de ${m}`"
       >
-        <span :class="`flex size-5 items-center justify-center rounded-full text-[9px] font-semibold text-white ${avatarBgClass(m)}`">
-          {{ initialsOf(m) }}
-        </span>
-        {{ m }}
-      </UButton>
+        <UButton
+          :to="{ name: '/devs/[name]', params: { name: m } }"
+          color="neutral"
+          variant="soft"
+          size="xs"
+          class="rounded-full pe-2 ps-0.5"
+        >
+          <span :class="`flex size-5 items-center justify-center rounded-full text-[9px] font-semibold text-white ${avatarBgClass(m)}`">
+            {{ initialsOf(m) }}
+          </span>
+          {{ m }}
+        </UButton>
+      </UTooltip>
       <p v-if="!current.members.length" class="text-xs text-dimmed italic">
         sem membros cadastrados — edite em Times
       </p>

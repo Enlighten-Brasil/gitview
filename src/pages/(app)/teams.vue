@@ -63,7 +63,7 @@ onMounted(async () => {
   await loadConfigState()
 })
 
-// guarda de navegação (window.confirm — a UI custom fica pra issue #38)
+// guarda de navegação — confirmação via useConfirm (UModal), assíncrona (issue #38)
 useUnsavedChangesGuard(() => dirty.value)
 
 // edição de perfil (modal) + import do GitHub (slideover)

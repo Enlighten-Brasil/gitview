@@ -207,8 +207,8 @@ const shownTags = computed(() => tags.value.slice(0, 30))
         :href="rel.url"
         target="_blank"
         rel="noopener"
-        class="text-xs text-primary hover:underline"
-      >GitHub ↗</a>
+        class="inline-flex items-center gap-0.5 text-xs text-primary hover:underline"
+      >GitHub <UIcon name="i-lucide-arrow-up-right" class="size-3 align-[-2px]" /></a>
       <span class="text-xs text-dimmed">— {{ rangeLabel }}</span>
     </div>
 

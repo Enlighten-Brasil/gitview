@@ -104,14 +104,14 @@ const cards = computed(() => {
     { value: fmtCompact(periodDels.value), label: 'linhas −', icon: 'i-lucide-minus', color: 'text-error' },
     { value: String(a.activeDays), label: `dias ativos${histSuffix.value}`, icon: 'i-lucide-calendar-check' },
     { value: fmtRatio(a.commits / Math.max(a.activeDays, 1)), label: `commits/dia ativo${histSuffix.value}`, icon: 'i-lucide-zap' },
-    { value: `${a.streak} (máx ${a.longestStreak})`, label: `streak 🔥${histSuffix.value}`, icon: 'i-lucide-flame' },
+    { value: `${a.streak} (máx ${a.longestStreak})`, label: `streak${histSuffix.value}`, icon: 'i-lucide-flame' },
     { value: String(a.repos), label: `repositórios${histSuffix.value}`, icon: 'i-lucide-git-branch' },
   ]
   if (github.value) {
     base.push(
       { value: String(myOpen.value.length), label: 'PRs abertos', icon: 'i-lucide-git-pull-request' },
       { value: fmtDuration(myCycleHours.value), label: 'cycle time mediano', icon: 'i-lucide-timer' },
-      { value: `${myReviews.value.total} (${myReviews.value.approvals} ✓)`, label: 'reviews feitas', icon: 'i-lucide-eye' },
+      { value: `${myReviews.value.total} (${myReviews.value.approvals} aprovações)`, label: 'reviews feitas', icon: 'i-lucide-eye' },
     )
   }
   return base

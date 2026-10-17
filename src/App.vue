@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 // App raiz só casaroteia: UApp (toasts/popovers do Nuxt UI) + a rota ativa.
 // O shell do dashboard (rail/navbar) é pages/(app)/_parent.vue; o do setup tem
@@ -23,5 +24,7 @@ onMounted(() => {
       <span class="sr-only">carregando…</span>
     </div>
     <RouterView v-else />
+    <!-- confirmação destrutiva unificada (useConfirm) — vive fora das rotas -->
+    <ConfirmDialog />
   </UApp>
 </template>

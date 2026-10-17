@@ -122,10 +122,10 @@ const option = computed<EChartsOption>(() => {
     tall
   >
     <template #actions>
-      <UButton size="xs" :color="mode === 'month' ? 'primary' : 'neutral'" :variant="mode === 'month' ? 'solid' : 'ghost'" @click="mode = 'month'">
+      <UButton size="xs" :color="mode === 'month' ? 'primary' : 'neutral'" :variant="mode === 'month' ? 'soft' : 'ghost'" :aria-pressed="mode === 'month'" @click="mode = 'month'">
         por mês
       </UButton>
-      <UButton size="xs" :color="mode === 'cumulative' ? 'primary' : 'neutral'" :variant="mode === 'cumulative' ? 'solid' : 'ghost'" @click="mode = 'cumulative'">
+      <UButton size="xs" :color="mode === 'cumulative' ? 'primary' : 'neutral'" :variant="mode === 'cumulative' ? 'soft' : 'ghost'" :aria-pressed="mode === 'cumulative'" @click="mode = 'cumulative'">
         acumulado
       </UButton>
     </template>

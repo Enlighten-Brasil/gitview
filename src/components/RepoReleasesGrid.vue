@@ -38,7 +38,7 @@ const rows = computed(() =>
       <USkeleton v-for="i in 6" :key="i" class="h-20 rounded-lg" />
     </div>
     <p v-else-if="!rows.length || releasesError" class="text-sm text-dimmed">
-      Sem dados de release — rode <code>pnpm collect:releases</code> (ou ↻ no navbar).
+      Sem dados de release — rode <code>pnpm collect:releases</code> (ou <UIcon name="i-lucide-refresh-cw" class="size-3.5 align-[-2px]" /> no navbar).
     </p>
 
     <div v-else class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">

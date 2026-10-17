@@ -3,12 +3,13 @@ import type { MemberAddItem, TeamMetrics } from '@/team'
 /**
  * Card de time editável: identidade (avatar/nome/descrição), paleta de cor em
  * popover, membros como chips removíveis + combobox de adição (marca quem já
- * está em outro time), métricas agregadas e remoção com confirmação inline.
+ * está em outro time), métricas agregadas e remoção com confirmação (useConfirm).
  * Fluxo unidirecional (issue #40): campos entram por defineModel e mudanças de
  * membros/remoção saem por emits carregando o `cid` — o card nunca muta estado
  * do pai. `disabled` (build estático) esconde toda a UI de edição.
  */
 import { computed, ref } from 'vue'
+import { useConfirm } from '@/composables/useConfirm'
 import { fmtDaysAgo } from '@/format'
 import { avatarBgClass, initialsOf, TEAM_PALETTE } from '@/team'
 
@@ -34,7 +35,7 @@ const color = defineModel<string>('color', { default: '' })
 
 const colorOpen = ref(false)
 const customColor = ref('')
-const confirmRemove = ref(false)
+const confirm = useConfirm()
 const pick = ref<string | null>(null)
 
 function setColor(c: string) {
@@ -73,6 +74,17 @@ function removeMember(m: string) {
   emit('remove-member', props.cid, m)
 }
 
+/** remoção do time é destrutiva — passa pelo useConfirm (UModal), sem swap inline */
+async function requestRemove() {
+  const ok = await confirm({
+    title: `Remover o time "${name.value.trim() || '?'}"?`,
+    description: 'Os membros voltam a ficar sem time na lista. O time só sai do team.local.json quando você salvar.',
+    confirmLabel: 'remover time',
+  })
+  if (ok)
+    emit('remove', props.cid)
+}
+
 const numFmt = new Intl.NumberFormat('pt-BR', { notation: 'compact' })
 </script>
 
@@ -88,25 +100,27 @@ const numFmt = new Intl.NumberFormat('pt-BR', { notation: 'compact' })
           {{ initialsOf(name || '?') }}
         </span>
         <div class="min-w-0 flex-1">
-          <UInput
-            v-if="!disabled"
-            v-model="name"
-            variant="none"
-            size="lg"
-            placeholder="Nome do time"
-            class="w-full font-semibold ps-0! text-lg"
-          />
+          <UFormField v-if="!disabled" label="nome do time" :ui="{ label: 'sr-only' }" class="w-full">
+            <UInput
+              v-model="name"
+              variant="none"
+              size="lg"
+              placeholder="Nome do time"
+              class="w-full font-semibold ps-0! text-lg"
+            />
+          </UFormField>
           <div v-else class="font-semibold text-lg truncate">
             {{ name }}
           </div>
-          <UInput
-            v-if="!disabled"
-            v-model="description"
-            variant="ghost"
-            size="xs"
-            placeholder="descrição (opcional)"
-            class="w-full text-xs ps-0!"
-          />
+          <UFormField v-if="!disabled" label="descrição do time" :ui="{ label: 'sr-only' }" class="w-full">
+            <UInput
+              v-model="description"
+              variant="ghost"
+              size="xs"
+              placeholder="descrição (opcional)"
+              class="w-full text-xs ps-0!"
+            />
+          </UFormField>
           <p v-else-if="description" class="text-xs text-dimmed truncate">
             {{ description }}
           </p>
@@ -135,28 +149,22 @@ const numFmt = new Intl.NumberFormat('pt-BR', { notation: 'compact' })
                     @click="setColor(c)"
                   />
                 </div>
-                <UFormField :error="customColorError">
+                <UFormField label="cor personalizada" :ui="{ label: 'sr-only' }" :error="customColorError">
                   <UInput v-model="customColor" size="xs" placeholder="#hex" class="font-mono" @keyup.enter="commitCustom" @blur="commitCustom" />
                 </UFormField>
                 <UButton label="sem cor" size="xs" color="neutral" variant="link" @click="setColor('')" />
               </div>
             </template>
           </UPopover>
-          <template v-if="!confirmRemove">
-            <UButton
-              icon="i-lucide-trash-2"
-              color="error"
-              variant="ghost"
-              size="xs"
-              square
-              aria-label="remover time"
-              @click="confirmRemove = true"
-            />
-          </template>
-          <template v-else>
-            <UButton label="remover?" size="xs" color="error" @click="emit('remove', cid)" />
-            <UButton size="xs" color="neutral" variant="ghost" aria-label="cancelar remoção" icon="i-lucide-x" @click="confirmRemove = false" />
-          </template>
+          <UButton
+            icon="i-lucide-trash-2"
+            color="error"
+            variant="ghost"
+            size="xs"
+            square
+            aria-label="remover time"
+            @click="requestRemove"
+          />
         </div>
       </div>
     </template>
@@ -188,16 +196,18 @@ const numFmt = new Intl.NumberFormat('pt-BR', { notation: 'compact' })
       </div>
 
       <!-- adicionar membro -->
-      <UInputMenu
-        v-if="!disabled"
-        v-model="pick"
-        :items="items"
-        value-key="value"
-        label-key="label"
-        placeholder="adicionar membro… (busca por nome)"
-        size="sm"
-        @update:model-value="addMember"
-      />
+      <UFormField v-if="!disabled" label="adicionar membro" :ui="{ label: 'sr-only' }">
+        <UInputMenu
+          v-model="pick"
+          :items="items"
+          value-key="value"
+          label-key="label"
+          placeholder="adicionar membro… (busca por nome)"
+          size="sm"
+          class="w-full"
+          @update:model-value="addMember"
+        />
+      </UFormField>
 
       <!-- métricas do time (dados coletados; período da sidebar não se aplica) -->
       <div class="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-default pt-3 text-xs text-dimmed">
@@ -213,10 +223,12 @@ const numFmt = new Intl.NumberFormat('pt-BR', { notation: 'compact' })
           <UIcon name="i-lucide-git-pull-request" class="size-3.5" />
           {{ numFmt.format(metrics.prs) }} PRs
         </span>
-        <span v-if="metrics.lastCommit" class="ml-auto inline-flex items-center gap-1" :title="`último commit: ${metrics.lastCommit}`">
-          <UIcon name="i-lucide-clock" class="size-3.5" />
-          {{ fmtDaysAgo(metrics.lastCommit) }}
-        </span>
+        <UTooltip v-if="metrics.lastCommit" :text="`último commit: ${metrics.lastCommit}`">
+          <span class="ml-auto inline-flex items-center gap-1">
+            <UIcon name="i-lucide-clock" class="size-3.5" />
+            {{ fmtDaysAgo(metrics.lastCommit) }}
+          </span>
+        </UTooltip>
         <!-- dashboard do time (rota funciona também no build estático) -->
         <UButton
           v-if="name.trim()"

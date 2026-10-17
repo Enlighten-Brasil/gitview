@@ -23,7 +23,7 @@ function pct(ratio: number): string {
     </template>
 
     <p v-if="falling.length === 0 && rising.length === 0" class="text-muted text-sm">
-      Todo mundo no ritmo habitual. 👍
+      Todo mundo no ritmo habitual. <UIcon name="i-lucide-thumbs-up" class="size-4 align-[-2px]" />
     </p>
 
     <template v-if="falling.length">

@@ -103,7 +103,7 @@ function clearList(list: ListKey) {
           :key="r.label"
           size="xs"
           :color="!isCustomRange() && filters.rangeMonths === r.months ? 'primary' : 'neutral'"
-          :variant="!isCustomRange() && filters.rangeMonths === r.months ? 'solid' : 'outline'"
+          :variant="!isCustomRange() && filters.rangeMonths === r.months ? 'soft' : 'outline'"
           :aria-pressed="!isCustomRange() && filters.rangeMonths === r.months"
           @click="setRange(r.months)"
         >
@@ -113,17 +113,21 @@ function clearList(list: ListKey) {
           size="xs"
           icon="i-lucide-calendar-range"
           :color="isCustomRange() ? 'primary' : 'neutral'"
-          :variant="isCustomRange() ? 'solid' : 'outline'"
+          :variant="isCustomRange() ? 'soft' : 'outline'"
           :aria-pressed="isCustomRange()"
           @click="toggleCustomRange"
         >
           Personalizado
         </UButton>
       </div>
-      <div v-if="isCustomRange()" class="flex items-center gap-1.5">
-        <UInput :model-value="filters.dateFrom" type="date" size="xs" class="flex-1" @update:model-value="setDateFrom" />
-        <span class="text-dimmed text-xs">→</span>
-        <UInput :model-value="filters.dateTo" type="date" size="xs" class="flex-1" @update:model-value="setDateTo" />
+      <div v-if="isCustomRange()" class="flex items-end gap-1.5">
+        <UFormField label="de" :ui="{ label: 'sr-only' }" class="flex-1">
+          <UInput :model-value="filters.dateFrom" type="date" size="xs" class="w-full" @update:model-value="setDateFrom" />
+        </UFormField>
+        <UIcon name="i-lucide-arrow-right" class="size-3.5 text-dimmed shrink-0 mb-1.5" />
+        <UFormField label="até" :ui="{ label: 'sr-only' }" class="flex-1">
+          <UInput :model-value="filters.dateTo" type="date" size="xs" class="w-full" @update:model-value="setDateTo" />
+        </UFormField>
       </div>
       <USwitch v-if="showBots" :model-value="filters.showBots" label="incluir bots" size="sm" class="mt-1" @update:model-value="setShowBots" />
     </section>
@@ -144,8 +148,8 @@ function clearList(list: ListKey) {
               v-for="t in teamFilters"
               :key="t.name"
               size="xs"
-              :color="teamState(t.members) === 'all' ? 'primary' : teamState(t.members) === 'some' ? 'primary' : 'neutral'"
-              :variant="teamState(t.members) === 'all' ? 'solid' : teamState(t.members) === 'some' ? 'soft' : 'ghost'"
+              :color="teamState(t.members) === 'none' ? 'neutral' : 'primary'"
+              :variant="teamState(t.members) === 'all' ? 'soft' : teamState(t.members) === 'some' ? 'outline' : 'ghost'"
               :aria-pressed="teamState(t.members) !== 'none'"
               @click="toggleTeam(t.members)"
             >
@@ -187,7 +191,7 @@ function clearList(list: ListKey) {
             :key="repo"
             size="xs"
             :color="filters.repos.includes(repo) ? 'primary' : 'neutral'"
-            :variant="filters.repos.includes(repo) ? 'solid' : 'ghost'"
+            :variant="filters.repos.includes(repo) ? 'soft' : 'ghost'"
             :aria-pressed="filters.repos.includes(repo)"
             @click="toggleRepo(repo)"
           >
@@ -225,7 +229,7 @@ function clearList(list: ListKey) {
               :key="a.name"
               size="xs"
               :color="filters.authors.includes(a.name) ? 'primary' : 'neutral'"
-              :variant="filters.authors.includes(a.name) ? 'solid' : 'ghost'"
+              :variant="filters.authors.includes(a.name) ? 'soft' : 'ghost'"
               :aria-pressed="filters.authors.includes(a.name)"
               @click="toggleAuthor(a.name)"
             >

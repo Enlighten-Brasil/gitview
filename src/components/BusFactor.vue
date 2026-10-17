@@ -114,7 +114,9 @@ function risk(r: RepoRisk): { color: 'error' | 'warning' | 'success', label: str
             <td>
               <span v-if="r.topReviewer" :class="r.blindSpot ? 'text-error font-medium' : ''">
                 {{ r.topReviewer }} · {{ Math.round(r.reviewShare * 100) }}%
-                <UIcon v-if="r.blindSpot" name="i-lucide-eye-off" class="size-3.5 align-[-2px]" title="o dev principal também domina as reviews" />
+                <UTooltip v-if="r.blindSpot" text="o dev principal também domina as reviews">
+                  <UIcon name="i-lucide-eye-off" class="size-3.5 align-[-2px]" />
+                </UTooltip>
               </span>
               <span v-else class="text-dimmed">—</span>
             </td>

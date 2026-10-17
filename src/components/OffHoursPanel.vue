@@ -52,6 +52,7 @@ function status(b: Row): { color: 'error' | 'warning' | 'success', label: string
             size="xs"
             :color="mode === '8sem' ? 'primary' : 'neutral'"
             :variant="mode === '8sem' ? 'soft' : 'ghost'"
+            :aria-pressed="mode === '8sem'"
             @click="mode = '8sem'"
           >
             8 semanas
@@ -60,6 +61,7 @@ function status(b: Row): { color: 'error' | 'warning' | 'success', label: string
             size="xs"
             :color="mode === 'periodo' ? 'primary' : 'neutral'"
             :variant="mode === 'periodo' ? 'soft' : 'ghost'"
+            :aria-pressed="mode === 'periodo'"
             @click="mode = 'periodo'"
           >
             {{ rangeLabel }}
@@ -69,7 +71,7 @@ function status(b: Row): { color: 'error' | 'warning' | 'success', label: string
     </template>
 
     <p v-if="rows.length === 0" class="text-muted text-sm">
-      Nenhum commit de fim de semana ou madrugada no período. 👍
+      Nenhum commit de fim de semana ou madrugada no período. <UIcon name="i-lucide-thumbs-up" class="size-4 align-[-2px]" />
     </p>
 
     <template v-else>
