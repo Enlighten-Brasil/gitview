@@ -1,5 +1,12 @@
 # gitview
 
+## 0.42.7
+
+### Patch Changes
+
+- fb2efda: Migra `grid.containLabel` para o API do ECharts 6 nos 4 gráficos afetados (CommitTypes, PrCycleTime, PrReviews e "Commits por dev" de /repos/:name): `outerBoundsMode: 'same'` + `outerBoundsContain: 'axisLabel'`, o equivalente oficial documentado — mesma projeção de layout de antes, sem o aviso `LegacyGridContainLabel` no console.
+- 19eaa41: Corrige o aviso `VUE_ROUTER_R0121` do vue-router no console: `src/urlState.ts` passou a chamar `history.replaceState(history.state, …)` nas duas reescritas de URL (watch de filtros e `afterEach`) em vez de `null`, preservando os metadados internos do router (localização anterior e `scrollPositions`) usados em voltar/avançar.
+
 ## 0.42.6
 
 ### Patch Changes
