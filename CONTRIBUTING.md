@@ -70,7 +70,7 @@ Commands, from the repo root:
 pnpm docs:dev       # vitepress dev served from / (DOCS_BASE=/)
 pnpm docs:build     # static build into docs/.vitepress/dist
 pnpm docs:preview   # serves the generated site locally
-pnpm check:docs     # docs gate (parity + links) — arrives with the sibling PR #73
+pnpm check:docs     # docs parity gate (EN ↔ pt-BR mirrors)
 ```
 
 On Windows/PowerShell run them as `pnpm.cmd docs:dev`, `pnpm.cmd docs:build`, `pnpm.cmd docs:preview` and `pnpm.cmd check:docs` (PowerShell 5.1 cannot execute `pnpm.ps1`).

@@ -70,7 +70,7 @@ Comandos, na raiz do repo:
 pnpm docs:dev       # vitepress dev servido da raiz (DOCS_BASE=/)
 pnpm docs:build     # build estático em docs/.vitepress/dist
 pnpm docs:preview   # serve o site gerado localmente
-pnpm check:docs     # gate das docs (paridade + links) — chega no PR irmão #73
+pnpm check:docs     # gate de paridade das docs (espelhos EN ↔ pt-BR)
 ```
 
 Em Windows/PowerShell, rode como `pnpm.cmd docs:dev`, `pnpm.cmd docs:build`, `pnpm.cmd docs:preview` e `pnpm.cmd check:docs` (o PowerShell 5.1 não executa o `pnpm.ps1`).
