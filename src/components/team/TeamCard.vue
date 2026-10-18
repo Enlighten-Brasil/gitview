@@ -221,7 +221,7 @@ const numFmt = new Intl.NumberFormat('pt-BR', { notation: 'compact' })
         </span>
         <span class="inline-flex items-center gap-1">
           <UIcon name="i-lucide-git-pull-request" class="size-3.5" />
-          {{ numFmt.format(metrics.prs) }} PRs
+          {{ numFmt.format(metrics.prs) }} {{ metrics.prs === 1 ? 'PR' : 'PRs' }}
         </span>
         <UTooltip v-if="metrics.lastCommit" :text="`último commit: ${metrics.lastCommit}`">
           <span class="ml-auto inline-flex items-center gap-1">

@@ -97,7 +97,7 @@ function assign(c: TeamCandidate) {
         <div class="min-w-0 flex-1">
           <span class="font-mono text-sm">{{ c.id }}</span>
           <span v-if="c.emails?.length" class="text-xs text-dimmed ml-2">{{ c.emails.join(', ') }}</span>
-          <span v-if="c.prs != null" class="text-xs text-dimmed ml-2">{{ c.prs }} PRs/reviews</span>
+          <span v-if="c.prs != null" class="text-xs text-dimmed ml-2">{{ c.prs }} {{ c.prs === 1 ? 'PR/review' : 'PRs/reviews' }}</span>
         </div>
         <template v-if="editable">
           <UBadge

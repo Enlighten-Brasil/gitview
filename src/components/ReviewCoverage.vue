@@ -48,7 +48,7 @@ const TEXT_CLASS: Record<RiskLevel, string> = {
         <span class="text-3xl font-bold tracking-tight" :class="TEXT_CLASS[status.color]">
           {{ pct }}%
         </span>
-        <span class="text-sm text-muted">{{ count }} de {{ total }} PRs mergeados sem review de outra pessoa</span>
+        <span class="text-sm text-muted">{{ count }} de {{ total }} {{ total === 1 ? 'PR mergeado' : 'PRs mergeados' }} sem review de outra pessoa</span>
       </div>
       <RiskBar :pct="pct / 100" :status="status" :show-value="false" class="mt-3" />
       <p class="text-dimmed text-xs mt-2.5">
