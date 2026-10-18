@@ -63,6 +63,7 @@ The site under `docs/` is VitePress: 19 English pages with a section-by-section 
 - **Both languages, same change.** Any doc edit updates the English page and its `docs/pt-BR/` mirror in the same PR. Nav and sidebar labels in `docs/.vitepress/config.ts` follow the page titles (`text:` == frontmatter `title`) — when a page's title changes, the labels change with it, in both locales.
 - **Anti-rot rule.** If your PR changes a UI label, a command or script name, a config key (`GITVIEW_*`, fields in `team.local.json`) or a metric rule, every doc page citing it is updated **in the same PR** — a label that changed in `src/` but not in the docs is a bug. Reviewers grep cited claims against the code; anything that doesn't match gets bounced.
 - **Docs do not duplicate the README.** Pages link to the README sections and deepen them (context, examples, edge cases) — they never restate them.
+- **Images are claims about the UI too.** The screenshots under `docs/public/screenshots/` come from the synthetic demo fixture, never real team data. If your PR changes a screen that appears in an image (a label, a panel, the layout), regenerate the capture in the same PR: `pnpm.cmd demo:shots` rebuilds `public/data/` from `scripts/make-demo-data.ts`, builds the app, serves it and re-shoots the four pages. A stale screenshot is a doc bug.
 
 Commands, from the repo root:
 
@@ -71,6 +72,7 @@ pnpm docs:dev       # vitepress dev served from / (DOCS_BASE=/)
 pnpm docs:build     # static build into docs/.vitepress/dist
 pnpm docs:preview   # serves the generated site locally
 pnpm check:docs     # docs parity gate (EN ↔ pt-BR mirrors)
+pnpm demo:shots     # regenerate the doc screenshots from the synthetic fixture
 ```
 
 On Windows/PowerShell run them as `pnpm.cmd docs:dev`, `pnpm.cmd docs:build`, `pnpm.cmd docs:preview` and `pnpm.cmd check:docs` (PowerShell 5.1 cannot execute `pnpm.ps1`).

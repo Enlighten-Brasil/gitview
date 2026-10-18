@@ -5,7 +5,7 @@ description: Passeio página a página do dashboard do gitview — que pergunta 
 
 # Passeio pelo dashboard
 
-O gitview é um dashboard somente leitura sobre os seus dados de git: o coletor exporta JSON para `public/data/`, e o frontend só lê. Este passeio percorre as páginas na ordem da navegação. Para cada uma: a pergunta que ela responde, os painéis que você vê (com os rótulos reais da tela), o que é interativo e para onde vão os links. As regras dos filtros têm página própria: [Regras dos filtros](./filters.md).
+O gitview é um dashboard somente leitura sobre os seus dados de git: o coletor exporta JSON para `public/data/`, e o frontend só lê. Este passeio percorre as páginas na ordem da navegação. Para cada uma: a pergunta que ela responde, os painéis que você vê (com os rótulos reais da tela), o que é interativo e para onde vão os links. As regras dos filtros têm página própria: [Regras dos filtros](./filters.md). As capturas vêm do fixture sintético da demo pública (`scripts/make-demo-data.ts`: devs Ana e Beto, repos `demo-*`) — nunca dados reais do time.
 
 A rail (barra de ícones à esquerda) agrupa as páginas: **Dashboards** (**Visão geral** `/`, **Devs** `/devs`, **Saúde** `/health`), **Times** `/teams`, **PRs** `/prs`, **Repos** `/repos`, e — só no dev server — **Config** `/settings`. O navbar no topo traz o badge de frescor dos dados, o botão do resumo semanal e (apenas em dev) os controles de coleta.
 
@@ -20,6 +20,8 @@ A página inicial. Três painéis, de cima para baixo:
 Interativo: os painéis de gráfico exportam PNG (ícone de download no cabeçalho do painel, toast **Imagem exportada**); cada chip de alerta navega; cada tooltip de gráfico mostra os números por trás.
 
 Links: chips de alerta (acima); a rail; e tudo o que os filtros da sidebar tocam.
+
+![Visão geral com cards de resumo, a faixa de alertas e o gráfico de commits por semana (dados da demo)](/screenshots/overview.png)
 
 ## Devs (`/devs`) — quem está fazendo o quê?
 
@@ -54,6 +56,8 @@ Interativo: alternância de granularidade da timeline, exportação de PNG dos g
 
 Links: botão **dashboard** no cabeçalho (volta para `/`); linhas de PR levam ao GitHub.
 
+![Perfil do dev: cards de métricas, commits por semana e o donut de distribuição por repositório (dados da demo)](/screenshots/dev.png)
+
 ## Saúde (`/health`) — onde o processo dói?
 
 A página de saúde. Cada card documenta os próprios thresholds no rodapé. Painéis:
@@ -69,6 +73,8 @@ Interativo: alternância de modo de **Fora do horário**; exportação de PNG do
 
 Links: os alertas da Visão geral deep-linkam para cá; nada nesta página leva pra fora.
 
+![Página Saúde: tabela de fora do horário, fix hotspots, gargalo de review e merge sem review (dados da demo)](/screenshots/health.png)
+
 ## PRs (`/prs`) — o que está travado e quão rápido os PRs andam?
 
 Precisa do `public/data/github.json` (coletado com `gh` autenticado); sem ele a página mostra **Sem dados do GitHub**. Três seções ancoradas alimentam o sub-nav contextual (**Abertos**, **Cycle time**, **Reviews**):
@@ -80,6 +86,8 @@ Precisa do `public/data/github.json` (coletado com `gh` autenticado); sem ele a 
 Interativo: exportação de PNG dos gráficos; linhas de PR levam ao GitHub.
 
 Links: o sub-nav da rail salta para `#abertos`, `#cycle-time`, `#reviews`; os alertas da Visão geral caem em `#abertos` e `#reviews`.
+
+![Página PRs: cards de resumo, tabelas de PRs parados/abertos e cycle time por repositório (dados da demo)](/screenshots/prs.png)
 
 ## Repos (`/repos`) — quais repos estão ativos e estão entregando?
 

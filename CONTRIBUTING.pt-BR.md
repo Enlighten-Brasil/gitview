@@ -63,6 +63,7 @@ O site em `docs/` é VitePress: 19 páginas em inglês com espelho pt-BR seção
 - **Os dois idiomas, mesma mudança.** Toda edição em docs atualiza a página em inglês e o espelho em `docs/pt-BR/` no mesmo PR. Labels de nav e sidebar em `docs/.vitepress/config.ts` seguem os títulos das páginas (`text:` == `title` do frontmatter) — quando o título de uma página muda, os labels mudam junto, nos dois idiomas.
 - **Regra anti-rot.** Se o seu PR muda um label de UI, um comando ou nome de script, uma chave de config (`GITVIEW_*`, campos do `team.local.json`) ou uma regra de métrica, toda página que cita isso é atualizada **no mesmo PR** — label que mudou no `src/` e não mudou na doc é bug. Revisor grepa os claims citados contra o código; o que não bater volta em review.
 - **Docs não duplicam o README.** As páginas linkam para as seções do README e as aprofundam (contexto, exemplos, casos-limite) — nunca as reescrevem.
+- **Imagem também é claim sobre a UI.** As capturas em `docs/public/screenshots/` vêm do fixture sintético da demo, nunca de dados reais do time. Se o seu PR muda uma tela que aparece numa imagem (label, painel, layout), regenere a captura no mesmo PR: `pnpm.cmd demo:shots` refaz `public/data/` com `scripts/make-demo-data.ts`, builda o app, sobe o preview e re-fotografa as quatro páginas. Captura desatualizada é bug de doc.
 
 Comandos, na raiz do repo:
 
@@ -71,6 +72,7 @@ pnpm docs:dev       # vitepress dev servido da raiz (DOCS_BASE=/)
 pnpm docs:build     # build estático em docs/.vitepress/dist
 pnpm docs:preview   # serve o site gerado localmente
 pnpm check:docs     # gate de paridade das docs (espelhos EN ↔ pt-BR)
+pnpm demo:shots     # regenera as capturas das docs a partir do fixture sintético
 ```
 
 Em Windows/PowerShell, rode como `pnpm.cmd docs:dev`, `pnpm.cmd docs:build`, `pnpm.cmd docs:preview` e `pnpm.cmd check:docs` (o PowerShell 5.1 não executa o `pnpm.ps1`).

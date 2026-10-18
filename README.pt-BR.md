@@ -8,6 +8,8 @@ Dashboard interno de métricas do time: commits, PRs e releases dos repositório
 
 **Demo ao vivo** (apenas dados sintéticos — nenhum dado real do time): https://enlighten-brasil.github.io/gitview/
 
+![A página Visão geral do gitview: cards de resumo, a faixa de alertas e o gráfico de commits por semana (dados sintéticos da demo)](docs/public/screenshots/overview.png)
+
 ## Estado do projeto
 
 O pipeline completo funciona de ponta a ponta: os coletores rodam `git log` para dentro de um SQLite e exportam JSON em `public/data/`, PRs e reviews vêm da API do GitHub, releases combinam as tags `git tag` locais com a API, e o frontend é um build 100% estático que publica em qualquer host estático — a demo ao vivo acima é exatamente esse build. O CI roda os gates em todo PR (`pnpm check:scrub`, `pnpm lint`, `pnpm typecheck`, `pnpm build`), e toda release sai com changeset e um commit único `chore(release)` (histórico no [CHANGELOG.md](CHANGELOG.md)). O que vem a seguir vive nas issues e milestones do GitHub — ver [ROADMAP.md](ROADMAP.md); como ajudar está no [CONTRIBUTING.pt-BR.md](CONTRIBUTING.pt-BR.md).
