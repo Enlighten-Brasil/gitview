@@ -1,5 +1,16 @@
 # gitview
 
+## 0.49.12
+
+### Patch Changes
+
+- d56baf1: AGENTS.md: forma canônica do `git log` com `--no-renames` e `data.ts` descrito como fachada (issue #41); docs de arquitetura alinhadas à forma do código
+- 58e0237: Corrige apenas comentários defasados (zero mudança de comportamento): o cabeçalho de `scripts/collect-plugin.ts` passa a descrever os quatro coletores em sequência, mais a verificação final (check-data), e o modo leve; `.env.example` e o cabeçalho de `scripts/lib/config.ts` passam a citar a rota canônica `/teams`.
+- 390240c: docs: o par CONTRIBUTING espelha os 4 gates do `ci.yml` na ordem do workflow (`check:scrub`, `lint`, `typecheck`, `build`) — a frase sobre o CI omitia `check:scrub`, e o bloco de gates locais passa a listá-lo. O `check:data` continua fora do CI de propósito: valida `public/data/`, que só existe após coleta local.
+- 2846edb: Rodapé do card "Fora do horário" descreve "3+ dos últimos 4 fins de semana ativos" — a copy agora diz o que `weekendsActive` realmente calcula (colunas de fim de semana com commit nas últimas 4 semanas da janela fixa de 8, sem exigir sequência); só texto, zero mudança de comportamento (issue #100).
+- d785d98: Guarda de plural nos 6 sites "N PRs" que mostravam "1 PRs": PrSummaryCards (merge sem review), summary exportável, ReviewCoverage ("PR/PRs mergeado(s)" conforme o total), PrCycleTime (tooltip por repo), TeamCard e TeamCandidatesSection. Ternário inline no padrão da casa — sem helper novo.
+- e68e62c: badge do RiskBar compara o pct quantizado que ele exibe (ex.: 0,247 mostrava 25% com selo "atenção"; agora resolve o tier pelo 25% impresso). Regra num único ponto: os 5 painéis de saúde herdam via `statusOf`.
+
 ## 0.49.11
 
 ### Patch Changes
