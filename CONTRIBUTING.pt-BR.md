@@ -45,7 +45,7 @@ A release é aplicada por quem mantém: `pnpm version:packages` bumpa a versão,
 
 ## dev-only vs build estático (importante)
 
-Os endpoints de escrita (`/__setup/*`, `/__collect`, `/__clean`, `/__team/config`, `/__team/github`) são **middleware do dev server** — não existem no `pnpm build`. Consequências:
+Os endpoints de escrita (`/__setup/*`, `/__auth/*`, `/__collect`, `/__clean`, `/__team/config`, `/__team/github`) são **middleware do dev server** — não existem no `pnpm build`. Consequências:
 
 - `/setup` (wizard), `/settings` e o botão de coleta (↻) só funcionam em `pnpm dev`.
 - `/teams` e `/repos` renderizam sempre (os dados vêm dos JSONs), mas **editam** só no dev — no build estático são somente leitura.
@@ -55,6 +55,25 @@ Se sua feature depende de escrever config/dados pela UI, ela nasce atrás de `im
 ## Os pares de docs (README + CONTRIBUTING)
 
 `README.md` (inglês) é o documento primário e `README.pt-BR.md` é o espelho seção a seção — este arquivo e o `CONTRIBUTING.pt-BR.md` seguem a mesma regra. Toda mudança de documentação atualiza os dois arquivos do par na mesma mudança, e todo comando ou label citado precisa existir no `package.json`/nos componentes.
+
+## Documentação
+
+O site em `docs/` é VitePress: 19 páginas em inglês com espelho pt-BR seção a seção (`docs/pt-BR/…`, mesmos nomes de arquivo). Mantê-lo saudável faz parte do trabalho:
+
+- **Os dois idiomas, mesma mudança.** Toda edição em docs atualiza a página em inglês e o espelho em `docs/pt-BR/` no mesmo PR. Labels de nav e sidebar em `docs/.vitepress/config.ts` seguem os títulos das páginas (`text:` == `title` do frontmatter) — quando o título de uma página muda, os labels mudam junto, nos dois idiomas.
+- **Regra anti-rot.** Se o seu PR muda um label de UI, um comando ou nome de script, uma chave de config (`GITVIEW_*`, campos do `team.local.json`) ou uma regra de métrica, toda página que cita isso é atualizada **no mesmo PR** — label que mudou no `src/` e não mudou na doc é bug. Revisor grepa os claims citados contra o código; o que não bater volta em review.
+- **Docs não duplicam o README.** As páginas linkam para as seções do README e as aprofundam (contexto, exemplos, casos-limite) — nunca as reescrevem.
+
+Comandos, na raiz do repo:
+
+```bash
+pnpm docs:dev       # vitepress dev servido da raiz (DOCS_BASE=/)
+pnpm docs:build     # build estático em docs/.vitepress/dist
+pnpm docs:preview   # serve o site gerado localmente
+pnpm check:docs     # gate das docs (paridade + links) — chega no PR irmão #73
+```
+
+Em Windows/PowerShell, rode como `pnpm.cmd docs:dev`, `pnpm.cmd docs:build`, `pnpm.cmd docs:preview` e `pnpm.cmd check:docs` (o PowerShell 5.1 não executa o `pnpm.ps1`).
 
 ## Reportar bugs
 
