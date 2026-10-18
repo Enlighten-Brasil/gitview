@@ -84,7 +84,7 @@ A `git log` pathspec excludes *commits*: a commit that only touches `pnpm-lock.y
 
 - `stats.json`: Σ`perAuthor.commits` = Σ`perRepo.commits` = Σ`monthly.commits` = `totals.commits`; non-negative counts; `heatmap.weekday` 0–6 and `hour` 0–23; `monthly.month` in `YYYY-MM`; `authors[].bot` is boolean.
 - `commits.json`: dates uniformly UTC (ending in `Z`), strictly non-increasing by timestamp, `hash` in 7-hex format.
-- `github.json`: `state` is `OPEN` or `MERGED`; `MERGED` has a valid `mergedAt`; no `repo#number` duplicates; review `state` in the closed union `APPROVED | CHANGES_REQUESTED | COMMENTED | DISMISSED | PENDING` (issue #42); nothing `MERGED` older than the 400-day window (issue #5).
+- `github.json`: `state` is `OPEN` or `MERGED`; `MERGED` has a valid `mergedAt`; no `repo#number` duplicates; review `state` in the closed union `APPROVED | CHANGES_REQUESTED | COMMENTED | DISMISSED | PENDING` (issue #42); nothing `MERGED` older than the 400-day window — the gate allows 401 days, one day of slack over `generatedAt` so a PR collected right at the cutoff isn't flagged (issue #5).
 - `releases.json`: tags in descending date order, non-negative commit counts, and `unreleased` + Σ commits in tags = the repo's commits in `stats.json`.
 - `team.json`: unique dev names; every team member is a known dev; `candidates[].kind` is `author` or `login` and never a ghost or bot; no case-duplicate logins within a dev.
 

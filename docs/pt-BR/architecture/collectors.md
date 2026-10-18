@@ -84,7 +84,7 @@ O `pnpm check:data` roda sozinho e como último passo do `pnpm collect` e do `/_
 
 - `stats.json`: Σ`perAuthor.commits` = Σ`perRepo.commits` = Σ`monthly.commits` = `totals.commits`; contagens não negativas; `heatmap.weekday` 0–6 e `hour` 0–23; `monthly.month` em `YYYY-MM`; `authors[].bot` booleano.
 - `commits.json`: datas uniformemente UTC (terminando em `Z`), estritamente não crescentes por timestamp, `hash` em formato 7-hex.
-- `github.json`: `state` é `OPEN` ou `MERGED`; `MERGED` tem `mergedAt` válido; sem duplicados `repo#number`; `state` de review na union fechada `APPROVED | CHANGES_REQUESTED | COMMENTED | DISMISSED | PENDING` (issue #42); nada `MERGED` mais velho que a janela de 400 dias (issue #5).
+- `github.json`: `state` é `OPEN` ou `MERGED`; `MERGED` tem `mergedAt` válido; sem duplicados `repo#number`; `state` de review na union fechada `APPROVED | CHANGES_REQUESTED | COMMENTED | DISMISSED | PENDING` (issue #42); nada `MERGED` mais velho que a janela de 400 dias — o gate aceita 401 dias, um dia de folga sobre `generatedAt` para não marcar um PR coletado exatamente no corte (issue #5).
 - `releases.json`: tags em ordem decrescente de data, contagens de commits não negativas, e `unreleased` + Σ commits das tags = commits do repo no `stats.json`.
 - `team.json`: nomes de dev únicos; todo membro de time é dev conhecido; `candidates[].kind` é `author` ou `login` e nunca ghost ou bot; sem logins duplicados por case dentro de um dev.
 

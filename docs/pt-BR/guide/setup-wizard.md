@@ -52,7 +52,8 @@ Com dados coletados, `/setup` redireciona para as Configurações (`/settings`) 
 - **gerenciar repositórios** — o mesmo picker no modo gerenciar: os repos atuais vêm pré-selecionados com o badge **atual**; desmarcar um avisa que o clone será apagado do disco, e **aplicar mudanças** pede confirmação (**Apagar repositórios do disco?** → **apagar e aplicar**). Remoção é sempre explícita.
 - Card **Manutenção dos dados locais** — **recoletar tudo** (re-scan completo), **limpar e recoletar** (apaga banco + JSONs e coleta de novo) e **apagar dados** (apaga sem recoletar — volta ao wizard; os clones ficam, a menos que você marque **apagar também os clones (data/repos)**).
 
-:::warning O wizard e as Configurações existem só no dev server (`pnpm dev` / `pnpm start`). No build estático (`pnpm build`) os endpoints `/__*` não existem e `/setup` mostra o alerta **Setup disponível apenas em modo dev**.
+:::warning
+O wizard e as Configurações existem só no dev server (`pnpm dev` / `pnpm start`). No build estático (`pnpm build`) os endpoints `/__*` não existem e `/setup` mostra o alerta **Setup disponível apenas em modo dev**.
 :::
 
 ## E pelo terminal?

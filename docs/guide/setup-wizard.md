@@ -52,7 +52,8 @@ Once there is data, `/setup` redirects to Settings (`/settings`) — the wizard 
 - **gerenciar repositórios** — the same picker in manage mode: current repos come pre-selected with the **atual** badge; unchecking one warns that its clone will be deleted from disk, and **aplicar mudanças** asks for confirmation (**Apagar repositórios do disco?** → **apagar e aplicar**). Removal is always explicit.
 - **Manutenção dos dados locais** card — **recoletar tudo** (full re-scan), **limpar e recoletar** (wipe database + JSONs, then re-collect) and **apagar dados** (wipe without re-collecting — returns to the wizard; the clones stay unless you tick **apagar também os clones (data/repos)**).
 
-:::warning The wizard and Settings exist only in the dev server (`pnpm dev` / `pnpm start`). In the static build (`pnpm build`) the `/__*` endpoints don't exist and `/setup` shows the alert **Setup disponível apenas em modo dev**.
+:::warning
+The wizard and Settings exist only in the dev server (`pnpm dev` / `pnpm start`). In the static build (`pnpm build`) the `/__*` endpoints don't exist and `/setup` shows the alert **Setup disponível apenas em modo dev**.
 :::
 
 ## What about the terminal?
