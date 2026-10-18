@@ -2,7 +2,9 @@ import type { Buffer } from 'node:buffer'
 import type { Connect, Plugin } from 'vite'
 /**
  * Plugin Vite (apenas dev): expõe GET /__collect como stream SSE que roda os
- * três coletores em sequência e transmite o progresso linha a linha.
+ * quatro coletores em sequência, mais a verificação final (check-data), e
+ * transmite o progresso linha a linha. No modo leve (`?light=1`) re-agrega
+ * commits e pula releases.
  *
  * - `?full=1` repassa `--full` (re-scan completo do git + refetch total de PRs)
  * - `?clean=1` apaga banco + JSONs antes de coletar (implica full)
