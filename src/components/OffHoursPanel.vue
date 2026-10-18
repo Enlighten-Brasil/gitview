@@ -1,8 +1,8 @@
 <script setup lang="ts">
 /**
  * Fora do horário — fds + madrugada por dev. Um card, duas janelas:
- * "8 semanas" (fixo, detecta padrão recente: 3+ fds seguidos) e "período"
- * (segue o filtro da sidebar, ignora devs com <20 commits no período).
+ * "8 semanas" (fixo, detecta padrão recente: 3+ dos últimos 4 fins de semana ativos)
+ * e "período" (segue o filtro da sidebar, ignora devs com <20 commits no período).
  * Funde os antigos BurnoutWatch (8sem) e OffHoursPeriod (período).
  */
 import type { RiskStatus, RiskTier } from '../risk'
@@ -38,8 +38,9 @@ const RISK_TIERS: RiskTier[] = [
 ]
 
 /**
- * risco no eixo dos tiers: ≥25% fora do horário (ou 3+ fds seguidos na janela
- * de 8 semanas) vira "padrão". A contagem absoluta (fds+madrugada ≥5) só tem
+ * risco no eixo dos tiers: ≥25% fora do horário (ou 3+ dos últimos 4 fins de
+ * semana ativos na janela de 8 semanas) vira "padrão". A contagem absoluta
+ * (fds+madrugada ≥5) só tem
  * sentido na janela fixa de 8 semanas; no modo "período" (1–24 meses) ela
  * acumularia trivialmente — lá o status é só por pct (como no antigo
  * OffHoursPeriod). As condições fora do pct entram como piso no eixo.
@@ -143,7 +144,7 @@ function riskStatus(b: Row): RiskStatus {
       </table>
       <p class="text-dimmed text-xs mt-2.5">
         fds = sáb/dom · madrugada = 22h–6h · padrão = ≥{{ Math.round(OFF_HOURS_PCT * 100) }}% fora do horário<template v-if="mode === '8sem'">
-          ou {{ OFF_HOURS_WEEKENDS }}+ fds seguidos (janela fixa de 8 semanas, ignora o filtro de período)
+          ou {{ OFF_HOURS_WEEKENDS }}+ dos últimos 4 fins de semana ativos (janela fixa de 8 semanas, ignora o filtro de período)
         </template><template v-else>
           no período · devs com &lt;{{ OFF_HOURS_MIN_COMMITS }} commits no período são ignorados
         </template>
