@@ -2,7 +2,9 @@
 # NUNCA usa dados reais: scripts/make-demo-data.ts gera devs "Ana"/"Beto" e
 # commits fictícios (e se recusa a sobrescrever public/data/ existente em
 # máquina de dev). O check-data roda aqui para validar shape + invariantes do
-# fixture antes de servir.
+# fixture antes de servir. As docs VitePress são buildadas na mesma pipeline e
+# entram no MESMO artefato sob dist/docs/ — demo em <base_path>/, docs em
+# <base_path>/docs/ (issue #73).
 name: Deploy demo
 
 on:
@@ -60,6 +62,13 @@ jobs:
 
       # fallback de SPA: deep links (/devs/Ana etc.) servem o index.html
       - run: cp dist/index.html dist/404.html
+
+      # docs no MESMO artefato do Pages (issue #73): a base vem do output do
+      # configure-pages + sufixo /docs/ (env lida por docs/.vitepress/config.ts).
+      # O 404.html continua só na raiz: URL inexistente sob /docs/ cai no shell
+      # do app — aceitável, documentado na issue.
+      - run: DOCS_BASE="${{ steps.pages.outputs.base_path }}/docs/" pnpm docs:build
+      - run: cp -r docs/.vitepress/dist dist/docs
 
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
