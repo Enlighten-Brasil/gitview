@@ -35,7 +35,7 @@ public/data/*.json ──► frontend 100% estático (Vue 3 + Vite + ECharts) �
 
 ### git log → data/gitview.db
 
-O `collect.ts` roda `git log --all --no-merges --numstat` em cada repo (streaming), normaliza cada commit — data em UTC ISO, nome canônico do autor via aliases — e insere no SQLite (`node:sqlite`, tabela `commits`, chave primária `(repo, hash)`). O insert é `INSERT OR IGNORE`, então re-rodar a coleta nunca duplica linhas.
+O `collect.ts` roda `git log --all --no-renames --no-merges --numstat` em cada repo (streaming), normaliza cada commit — data em UTC ISO, nome canônico do autor via aliases — e insere no SQLite (`node:sqlite`, tabela `commits`, chave primária `(repo, hash)`). O insert é `INSERT OR IGNORE`, então re-rodar a coleta nunca duplica linhas.
 
 :::info Por que merges não contam?
 Commits de merge trazem diff `+0−0` mas inflam commits/dia, ritmo e streaks — 17,6% do histórico escaneado era `Merge …`. A "produção" do merge já está no PR. Por isso o `collect.ts` remove os merges na chamada do `git log` por topologia (`--no-merges`), não por assunto: um commit single-parent com assunto "Merge" (squash/pull regravado) ainda conta. Histórico antigo já gravado no banco mantém os merges — rode `pnpm clean && pnpm collect` para aplicar a regra retroativamente. Ver [issue #7](https://github.com/Enlighten-Brasil/gitview/issues/7).
