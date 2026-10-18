@@ -9,6 +9,7 @@ const cards = computed(() => {
   // mesma janela de PR parado do alerta e do resumo (PR_STALE_DAYS)
   const stale = openAging.value.filter(pr => pr.ageDays >= PR_STALE_DAYS).length
   const drafts = openPrs.value.filter(pr => pr.draft).length
+  const n = mergedWithoutReview.value.count
   return [
     {
       value: String(openPrs.value.length),
@@ -45,7 +46,7 @@ const cards = computed(() => {
         : mergedWithoutReview.value.pct >= MERGE_NO_REVIEW_AMBER * 100
           ? 'text-warning'
           : undefined,
-      sub: `${mergedWithoutReview.value.count} PRs`,
+      sub: `${n} ${n === 1 ? 'PR' : 'PRs'}`,
     },
   ]
 })

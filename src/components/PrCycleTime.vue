@@ -13,7 +13,7 @@ const option = computed<EChartsOption>(() => {
       formatter: (p: unknown) => {
         const d = (p as { dataIndex: number }).dataIndex
         const r = rows[d]
-        return `${r.repo}: <b>${fmtDuration(r.medianHours)}</b> (mediana de ${r.count} PRs)`
+        return `${r.repo}: <b>${fmtDuration(r.medianHours)}</b> (mediana de ${r.count} ${r.count === 1 ? 'PR' : 'PRs'})`
       },
     }),
     // ECharts 6: outerBoundsMode/Contain substituem o legado `grid.containLabel`

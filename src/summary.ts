@@ -134,7 +134,7 @@ export function buildWeeklySummary(): WeeklySummary | null {
     out.push('## Pull requests')
     out.push(`- **${merged.length} mergeados**${delta(merged.length, prevMerged.length)}, cycle time mediano ${fmtDuration(cycle)}`)
     out.push(`- ${open.length} abertos agora, **${stale.length} parados há ${PR_STALE_DAYS}+ dias**${stale.length ? `: ${stale.slice(0, 3).map(x => `${x.pr.repo}#${x.pr.number} (${x.age}d)`).join(', ')}${stale.length > 3 ? '…' : ''}` : ''}`)
-    out.push(`- ${noReviewPct}% mergeados sem review${noReview.length ? ` (${noReview.length} PRs)` : ''}`)
+    out.push(`- ${noReviewPct}% mergeados sem review${noReview.length ? ` (${noReview.length} ${noReview.length === 1 ? 'PR' : 'PRs'})` : ''}`)
     if (topReviewers.length) {
       out.push(`- top reviewers: ${topReviewers.slice(0, 5).map(([name, n]) => `${name} (${n})`).join(', ')}`)
     }
