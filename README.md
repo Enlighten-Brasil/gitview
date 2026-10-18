@@ -8,6 +8,8 @@ An engineering-manager dashboard for team metrics: commits, PRs and releases acr
 
 **Live demo** (synthetic data only — no real team data): https://enlighten-brasil.github.io/gitview/
 
+![gitview's Visão geral page: summary cards, the alert strip and the commits-per-week chart (synthetic demo data)](docs/public/screenshots/overview.png)
+
 ## Project status
 
 The full pipeline works end to end: collectors stream `git log` into SQLite and export JSON to `public/data/`, PRs and reviews come from the GitHub API, releases combine local `git tag` data with the API, and the frontend is a 100% static build that deploys to any static host — the live demo above is exactly that build. CI runs the gates on every PR (`pnpm check:scrub`, `pnpm lint`, `pnpm typecheck`, `pnpm build`), and every release ships with a changeset and a single `chore(release)` commit (history in [CHANGELOG.md](CHANGELOG.md)). What comes next lives in the GitHub issues and milestones — see [ROADMAP.md](ROADMAP.md); how to help is in [CONTRIBUTING.md](CONTRIBUTING.md).

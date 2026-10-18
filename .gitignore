@@ -8,6 +8,9 @@ auto-imports.d.ts
 components.d.ts
 
 screenshot-*.png
+# exceção: as capturas da demo pública que ficam versionadas (docs + README)
+!docs/public/screenshots/*.png
+
 config.local.json*
 dev-server*.log
 

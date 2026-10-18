@@ -5,7 +5,7 @@ description: Page-by-page tour of the gitview dashboard — what question each p
 
 # Dashboard tour
 
-gitview is a read-only dashboard over your own git data: the collector exports JSON to `public/data/`, and the frontend just reads it. This tour walks the pages in navigation order. For each one: the question it answers, the panels you see (their real on-screen labels), what is interactive, and where the links go. Filter rules have their own page: [Filter rules](./filters.md).
+gitview is a read-only dashboard over your own git data: the collector exports JSON to `public/data/`, and the frontend just reads it. This tour walks the pages in navigation order. For each one: the question it answers, the panels you see (their real on-screen labels), what is interactive, and where the links go. Filter rules have their own page: [Filter rules](./filters.md). Screenshots come from the public demo's synthetic fixture (`scripts/make-demo-data.ts`: devs Ana and Beto, repos `demo-*`) — never real team data.
 
 The rail (left icon bar) groups the pages: **Dashboards** (**Visão geral** `/`, **Devs** `/devs`, **Saúde** `/health`), **Times** `/teams`, **PRs** `/prs`, **Repos** `/repos`, and — only on the dev server — **Config** `/settings`. The navbar on top carries the data freshness badge, the weekly summary button, and (dev only) the collection controls.
 
@@ -20,6 +20,8 @@ The landing page. Three panels, top to bottom:
 Interactive: chart panels export a PNG (download icon in the panel header, toast **Imagem exportada**); every alert chip navigates; every chart tooltip shows the underlying numbers.
 
 Links: alert chips (above); the rail; and everything the sidebar filters touch.
+
+![Visão geral with summary cards, the alert strip and the commits-per-week chart (demo data)](/screenshots/overview.png)
 
 ## Devs (`/devs`) — who is doing what?
 
@@ -54,6 +56,8 @@ Interactive: timeline granularity toggle, chart PNG export.
 
 Links: **dashboard** back button in the header (to `/`); PR rows link out to GitHub.
 
+![Dev profile: stat cards, commits per week and the repo distribution donut (demo data)](/screenshots/dev.png)
+
 ## Saúde (`/health`) — where does the process hurt?
 
 The health page. Each card documents its own thresholds in the footer. Panels:
@@ -69,6 +73,8 @@ Interactive: **Fora do horário** mode toggle; chart PNG export; the tables sort
 
 Links: alerts on the Visão geral deep-link here; nothing on this page links out.
 
+![Saúde page: off-hours table, fix hotspots, review bottleneck and merge-without-review panels (demo data)](/screenshots/health.png)
+
 ## PRs (`/prs`) — what's stuck, and how fast do PRs move?
 
 Needs `public/data/github.json` (collected with `gh` authenticated); otherwise the page shows **Sem dados do GitHub**. Three anchored sections feed the contextual sub-nav (**Abertos**, **Cycle time**, **Reviews**):
@@ -80,6 +86,8 @@ Needs `public/data/github.json` (collected with `gh` authenticated); otherwise t
 Interactive: chart PNG export; PR rows link to GitHub.
 
 Links: rail sub-nav jumps to `#abertos`, `#cycle-time`, `#reviews`; the Visão geral alerts land on `#abertos` and `#reviews`.
+
+![PRs page: summary cards, stale/open PR tables and cycle time per repo (demo data)](/screenshots/prs.png)
 
 ## Repos (`/repos`) — which repos are active, and are they shipping?
 
