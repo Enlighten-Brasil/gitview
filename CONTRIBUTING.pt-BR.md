@@ -18,13 +18,14 @@ O repo pina a policy de supply chain do pnpm `minimumReleaseAge: 1440` no `pnpm-
 Não há suíte de testes; estes são os checks:
 
 ```bash
-pnpm lint       # eslint (@antfu/eslint-config) — zero erros é requisito
-pnpm typecheck  # tsc --noEmit (scripts + src; templates .vue ficam fora)
-pnpm build      # vite build — o check de compilação
-pnpm check:data # valida shape + invariantes dos JSONs coletados (roda no fim do pnpm collect)
+pnpm check:scrub # scrub de identidade — arquivos tracked devem continuar livres dos termos de identidade removidos
+pnpm lint        # eslint (@antfu/eslint-config) — zero erros é requisito
+pnpm typecheck   # tsc --noEmit (scripts + src; templates .vue ficam fora)
+pnpm build       # vite build — o check de compilação
+pnpm check:data  # valida shape + invariantes dos JSONs coletados (roda no fim do pnpm collect)
 ```
 
-O CI (`.github/workflows/ci.yml`) roda `pnpm lint`, `pnpm typecheck` e `pnpm build` em todo PR e em push em `main`. O `check:data` fica fora do CI de propósito: ele valida `public/data/`, que só existe depois de uma coleta local.
+O CI (`.github/workflows/ci.yml`) roda `pnpm check:scrub`, `pnpm lint`, `pnpm typecheck` e `pnpm build` em todo PR e em push em `main`, nessa ordem. O `check:data` fica fora do CI de propósito: ele valida `public/data/`, que só existe depois de uma coleta local.
 
 ## Estilo
 
