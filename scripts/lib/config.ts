@@ -5,7 +5,7 @@
  *   id do GitHub, org, pasta dos repos, repos padrão/excluídos e porta do dev
  *   server. Variáveis de ambiente do shell têm prioridade sobre o arquivo.
  * - `team.local.json` (gitignored): perfis de devs, times e bots extras —
- *   editados pela UI em /team. Não é regenerável: `pnpm clean` não o toca.
+ *   editados pela UI em /teams. Não é regenerável: `pnpm clean` não o toca.
  * - O formato antigo (config.json + config.local.json) migra uma vez via
  *   `scripts/lib/legacy.ts`, disparado por loadConfig().
  *
