@@ -90,9 +90,17 @@ export default defineConfig<DefaultTheme.Config>({
           { text: 'Guide', link: '/guide/introduction', activeMatch: '/guide/' },
           { text: 'Configuration', link: '/configuration/env', activeMatch: '/configuration/' },
           { text: 'Dashboard', link: '/dashboard/tour', activeMatch: '/dashboard/' },
-          { text: 'Architecture', link: '/architecture/pipeline', activeMatch: '/architecture/' },
-          { text: 'Publishing', link: '/publishing/static-deploy', activeMatch: '/publishing/' },
-          { text: 'Contributing', link: '/contributing/development', activeMatch: '/contributing/' },
+          {
+            text: 'Contributing',
+            activeMatch: '/(architecture|contributing)/',
+            items: [
+              { text: 'Development setup', link: '/contributing/development' },
+              { text: 'Release ritual', link: '/contributing/release' },
+              { text: 'Pipeline', link: '/architecture/pipeline' },
+              { text: 'Collectors', link: '/architecture/collectors' },
+              { text: 'Data model', link: '/architecture/data-model' },
+            ],
+          },
           { text: 'FAQ', link: '/faq' },
         ],
         sidebar: {
@@ -105,6 +113,7 @@ export default defineConfig<DefaultTheme.Config>({
               { text: 'The setup wizard', link: 'setup-wizard' },
               { text: 'Connecting GitHub', link: 'connecting-github' },
               { text: 'Repositories', link: 'repositories' },
+              { text: 'Publishing the static build', link: 'publishing' },
             ],
           }],
           '/configuration/': [{
@@ -132,13 +141,6 @@ export default defineConfig<DefaultTheme.Config>({
               { text: 'Pipeline', link: 'pipeline' },
               { text: 'Collectors', link: 'collectors' },
               { text: 'Data model', link: 'data-model' },
-            ],
-          }],
-          '/publishing/': [{
-            text: 'Publishing',
-            base: '/publishing/',
-            items: [
-              { text: 'Publishing the static build', link: 'static-deploy' },
             ],
           }],
           '/contributing/': [{
@@ -171,9 +173,17 @@ export default defineConfig<DefaultTheme.Config>({
           { text: 'Guia', link: '/pt-BR/guide/introduction', activeMatch: '/pt-BR/guide/' },
           { text: 'Configuração', link: '/pt-BR/configuration/env', activeMatch: '/pt-BR/configuration/' },
           { text: 'Dashboard', link: '/pt-BR/dashboard/tour', activeMatch: '/pt-BR/dashboard/' },
-          { text: 'Arquitetura', link: '/pt-BR/architecture/pipeline', activeMatch: '/pt-BR/architecture/' },
-          { text: 'Publicação', link: '/pt-BR/publishing/static-deploy', activeMatch: '/pt-BR/publishing/' },
-          { text: 'Contribuição', link: '/pt-BR/contributing/development', activeMatch: '/pt-BR/contributing/' },
+          {
+            text: 'Contribuição',
+            activeMatch: '/pt-BR/(architecture|contributing)/',
+            items: [
+              { text: 'Ambiente de desenvolvimento', link: '/pt-BR/contributing/development' },
+              { text: 'Ritual de release', link: '/pt-BR/contributing/release' },
+              { text: 'Pipeline', link: '/pt-BR/architecture/pipeline' },
+              { text: 'Coletores', link: '/pt-BR/architecture/collectors' },
+              { text: 'Modelo de dados', link: '/pt-BR/architecture/data-model' },
+            ],
+          },
           { text: 'Perguntas frequentes', link: '/pt-BR/faq' },
         ],
         sidebar: {
@@ -186,6 +196,7 @@ export default defineConfig<DefaultTheme.Config>({
               { text: 'O wizard de configuração', link: 'setup-wizard' },
               { text: 'Conectando o GitHub', link: 'connecting-github' },
               { text: 'Repositórios', link: 'repositories' },
+              { text: 'Publicando o build estático', link: 'publishing' },
             ],
           }],
           '/pt-BR/configuration/': [{
@@ -213,13 +224,6 @@ export default defineConfig<DefaultTheme.Config>({
               { text: 'Pipeline', link: 'pipeline' },
               { text: 'Coletores', link: 'collectors' },
               { text: 'Modelo de dados', link: 'data-model' },
-            ],
-          }],
-          '/pt-BR/publishing/': [{
-            text: 'Publicação',
-            base: '/pt-BR/publishing/',
-            items: [
-              { text: 'Publicando o build estático', link: 'static-deploy' },
             ],
           }],
           '/pt-BR/contributing/': [{

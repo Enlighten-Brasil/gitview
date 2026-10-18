@@ -41,7 +41,7 @@ Nada para copiar ou editar antes: o `.env` é criado a partir do `.env.example` 
 - `pnpm build` gera um `dist/` 100% estático que qualquer host serve, desde que com fallback de SPA para os deep links.
 - No build estático o dashboard é somente leitura: setup, coleta e edição de times só existem em `pnpm dev`. Ajuste os times no dev, recolete e publique.
 
-Fluxo completo de publicação, inclusive o deploy da demo: [Publicando o build estático](docs/pt-BR/publishing/static-deploy.md).
+Fluxo completo de publicação, inclusive o deploy da demo: [Publicando o build estático](docs/pt-BR/guide/publishing.md).
 
 ## Comandos
 

@@ -51,7 +51,7 @@ Em PowerShell 5.1 rode tudo como `pnpm.cmd <script>`: o shim `pnpm.ps1` é bloqu
 
 - [Ambiente de desenvolvimento](docs/pt-BR/contributing/development.md): todos os comandos, os gates, as convenções de código e o mapa do `src/`.
 - [Ritual de release](docs/pt-BR/contributing/release.md): do changeset ao `chore(release)`, o que o CI exige e como propor mudança.
-- [Publicando o build estático](docs/pt-BR/publishing/static-deploy.md): o que o `pnpm build` gera e o que fica de fora dele.
+- [Publicando o build estático](docs/pt-BR/guide/publishing.md): o que o `pnpm build` gera e o que fica de fora dele.
 - `AGENTS.md` na raiz: pipeline, contrato de `route.meta` e regras dos filtros. Vários comportamentos "estranhos" dos filtros são intencionais e rotulados na UI.
 
 Escrever config ou dados pela UI só existe no dev server: os endpoints `/__*` são middleware e não entram no build. Feature nova que depende disso nasce atrás de `import.meta.env.DEV` e degrada para somente leitura no estático.

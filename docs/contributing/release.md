@@ -28,7 +28,7 @@ Two jobs in `.github/workflows/ci.yml`, triggered on every PR and on push to `ma
 
 Node 22, pnpm from the `packageManager` field, actions pinned by SHA. `check:data` stays out of CI: it validates `public/data/`, which is gitignored and only exists after a local collection with a token.
 
-`.github/workflows/pages.yml` builds and deploys the public demo from the synthetic fixture, with the docs in the same artifact. Details in [Publishing the static build](../publishing/static-deploy.md).
+`.github/workflows/pages.yml` builds and deploys the public demo from the synthetic fixture, with the docs in the same artifact. Details in [Publishing the static build](../guide/publishing.md).
 
 ## Roadmap and proposals
 

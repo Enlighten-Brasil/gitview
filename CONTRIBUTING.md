@@ -51,7 +51,7 @@ In PowerShell 5.1 run everything as `pnpm.cmd <script>`: the `pnpm.ps1` shim is 
 
 - [Development setup](docs/contributing/development.md): every command, the gates, the code conventions and the `src/` map.
 - [Release ritual](docs/contributing/release.md): from the changeset to the `chore(release)`, what CI requires, and how to propose a change.
-- [Publishing the static build](docs/publishing/static-deploy.md): what `pnpm build` produces and what stays out of it.
+- [Publishing the static build](docs/guide/publishing.md): what `pnpm build` produces and what stays out of it.
 - `AGENTS.md` at the root: pipeline, the `route.meta` contract and the filter rules. Several "strange" filter behaviors are intentional and labeled in the UI.
 
 Writing config or data through the UI only exists in the dev server: the `/__*` endpoints are middleware and don't enter the build. A new feature that depends on this is born behind `import.meta.env.DEV` and degrades to read-only in the static build.

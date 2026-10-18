@@ -35,7 +35,7 @@ Sim. No PowerShell 5.1 chame `pnpm.cmd`, porque o shim `pnpm.ps1` é bloqueado p
 
 ## Posso publicar o dashboard?
 
-Sim. `pnpm build` gera um `dist/` estático para qualquer host estático, com fallback de SPA para deep links. Nesse build o dashboard é somente leitura, sem `/setup`, `/settings` nem recoleta: ver [Publicando o build estático](./publishing/static-deploy.md).
+Sim. `pnpm build` gera um `dist/` estático para qualquer host estático, com fallback de SPA para deep links. Nesse build o dashboard é somente leitura, sem `/setup`, `/settings` nem recoleta: ver [Publicando o build estático](./guide/publishing.md).
 
 ## Próximos passos
 

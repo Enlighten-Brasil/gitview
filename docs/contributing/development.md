@@ -93,4 +93,4 @@ The full pipeline and the filter rules are in the root `AGENTS.md`. Read it befo
 3. Reka UI tabs don't respond to synthetic `.click()`: use a real click or navigate by URL (`/devs`, `/health`).
 4. Finish with the gates above, including `pnpm check:data` if you touched the collectors.
 
-After review, the path to a release is in [Release ritual](./release.md); the destination of `dist/` is in [Publishing the static build](../publishing/static-deploy.md).
+After review, the path to a release is in [Release ritual](./release.md); the destination of `dist/` is in [Publishing the static build](../guide/publishing.md).

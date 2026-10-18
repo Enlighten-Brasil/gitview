@@ -93,4 +93,4 @@ O pipeline completo e as regras dos filtros estão no `AGENTS.md` da raiz. Leia 
 3. Tabs do Reka UI não respondem a `.click()` sintético: use clique real ou navegue pela URL (`/devs`, `/health`).
 4. Feche com os gates acima, incluindo `pnpm check:data` se você mexeu nos coletores.
 
-Depois da revisão, o caminho até a versão está em [Ritual de release](./release.md); o destino do `dist/` está em [Publicando o build estático](../publishing/static-deploy.md).
+Depois da revisão, o caminho até a versão está em [Ritual de release](./release.md); o destino do `dist/` está em [Publicando o build estático](../guide/publishing.md).

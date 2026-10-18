@@ -110,4 +110,4 @@ Botão no navbar (tooltip **resumo da semana exportável**), não uma rota. Abre
 
 ## Build estático
 
-A interface só lê os dados coletados. No `pnpm build`, `/setup`, `/settings`, os botões de coleta e o editor de `/teams` não existem. Ajuste identidades e times sob `pnpm dev`, recolete com `pnpm collect` e só então publique, conforme [Publicando o build estático](../publishing/static-deploy.md).
+A interface só lê os dados coletados. No `pnpm build`, `/setup`, `/settings`, os botões de coleta e o editor de `/teams` não existem. Ajuste identidades e times sob `pnpm dev`, recolete com `pnpm collect` e só então publique, conforme [Publicando o build estático](../guide/publishing.md).

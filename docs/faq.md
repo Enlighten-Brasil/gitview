@@ -35,7 +35,7 @@ Yes. On PowerShell 5.1 call `pnpm.cmd`, because the `pnpm.ps1` shim is blocked b
 
 ## Can I publish the dashboard?
 
-Yes. `pnpm build` produces a static `dist/` for any static host, with SPA fallback for deep links. In that build the dashboard is read-only, with no `/setup`, `/settings` or re-collection: see [Publishing the static build](./publishing/static-deploy.md).
+Yes. `pnpm build` produces a static `dist/` for any static host, with SPA fallback for deep links. In that build the dashboard is read-only, with no `/setup`, `/settings` or re-collection: see [Publishing the static build](./guide/publishing.md).
 
 ## Next steps
 

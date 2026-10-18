@@ -28,7 +28,7 @@ Dois jobs em `.github/workflows/ci.yml`, disparados em todo PR e em push para `m
 
 Node 22, pnpm do campo `packageManager`, actions pinadas por SHA. O `check:data` fica fora do CI: ele valida `public/data/`, gitignored, que só existe depois de uma coleta local com token.
 
-O `.github/workflows/pages.yml` builda e deploya a demo pública a partir do fixture sintético, com as docs no mesmo artefato. Detalhes em [Publicando o build estático](../publishing/static-deploy.md).
+O `.github/workflows/pages.yml` builda e deploya a demo pública a partir do fixture sintético, com as docs no mesmo artefato. Detalhes em [Publicando o build estático](../guide/publishing.md).
 
 ## Roadmap e propostas
 

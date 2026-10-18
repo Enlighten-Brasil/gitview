@@ -41,7 +41,7 @@ Nothing to copy or edit first: `.env` is created from `.env.example` on the firs
 - `pnpm build` generates a 100% static `dist/` that any host serves, as long as there is an SPA fallback for the deep links.
 - In the static build the dashboard is read-only: setup, collection and team editing only exist in `pnpm dev`. Adjust teams in dev, re-collect, and publish.
 
-Full publishing flow, including the demo deploy: [Publishing the static build](docs/publishing/static-deploy.md).
+Full publishing flow, including the demo deploy: [Publishing the static build](docs/guide/publishing.md).
 
 ## Commands
 

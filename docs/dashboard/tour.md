@@ -110,4 +110,4 @@ A button in the navbar (tooltip **resumo da semana exportável**), not a route. 
 
 ## Static build
 
-The interface only reads the collected data. In `pnpm build`, `/setup`, `/settings`, the collection buttons and the `/teams` editor do not exist. Adjust identities and teams under `pnpm dev`, re-collect with `pnpm collect`, and only then publish, per [Publishing the static build](../publishing/static-deploy.md).
+The interface only reads the collected data. In `pnpm build`, `/setup`, `/settings`, the collection buttons and the `/teams` editor do not exist. Adjust identities and teams under `pnpm dev`, re-collect with `pnpm collect`, and only then publish, per [Publishing the static build](../guide/publishing.md).
