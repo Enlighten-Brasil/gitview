@@ -13,7 +13,7 @@ Uma pasta `dist/` só com arquivos estáticos: sem servidor em runtime, sem banc
 
 ## O que NÃO existe no build estático?
 
-Os endpoints de escrita (`/__setup/*`, `/__collect`, `/__clean`, `/__team/config`, `/__team/github`) são **middleware do dev server** — o `pnpm build` não os inclui. No build estático o dashboard é somente leitura:
+Os endpoints de escrita (`/__setup/*`, `/__auth/*`, `/__collect`, `/__clean`, `/__team/config`, `/__team/github`) são **middleware do dev server** — o `pnpm build` não os inclui. No build estático o dashboard é somente leitura:
 
 | Recurso | `pnpm dev` | build estático |
 |---|---|---|
