@@ -11,7 +11,7 @@ The `scripts/` collectors are the whole data pipeline of gitview: they read git 
 
 | script | output | source |
 |---|---|---|
-| `collect.ts` | `stats.json` (aggregates) + `commits.json` (last 100 commits/author) | `git log --all --no-merges --numstat` → SQLite (`data/gitview.db`, incremental) |
+| `collect.ts` | `stats.json` (aggregates) + `commits.json` (last 100 commits/author) | `git log --all --no-renames --no-merges --numstat` → SQLite (`data/gitview.db`, incremental) |
 | `collect-github.ts` | `github.json` (PRs + reviews, login→dev map) | GitHub GraphQL API (token in `.env` or `gh auth token`) |
 | `collect-releases.ts` | `releases.json` (tags, commits per tag, unreleased, notes) | `git tag` + GitHub REST API |
 | `collect-team.ts` | `team.json` (devs, teams, unmapped candidates) | `team.local.json` + `stats.json`/`github.json` already generated |

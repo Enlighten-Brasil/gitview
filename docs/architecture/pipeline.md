@@ -35,7 +35,7 @@ public/data/*.json ──► static frontend (Vue 3 + Vite + ECharts) — reads 
 
 ### git log → data/gitview.db
 
-`collect.ts` runs `git log --all --no-merges --numstat` in each repo (streaming), normalizes every commit — UTC ISO date, canonical author name via aliases — and inserts it into SQLite (`node:sqlite`, table `commits`, primary key `(repo, hash)`). The insert is `INSERT OR IGNORE`, so re-running the collection never duplicates rows.
+`collect.ts` runs `git log --all --no-renames --no-merges --numstat` in each repo (streaming), normalizes every commit — UTC ISO date, canonical author name via aliases — and inserts it into SQLite (`node:sqlite`, table `commits`, primary key `(repo, hash)`). The insert is `INSERT OR IGNORE`, so re-running the collection never duplicates rows.
 
 :::info Why don't merges count?
 Merge commits carry `+0−0` diffs but inflate commits/day, pace and streaks — 17.6% of the scanned history was `Merge …` commits. The "production" of a merge already shows up in the PR. So `collect.ts` removes them in the `git log` call by topology (`--no-merges`), not by subject: a single-parent commit whose subject says "Merge" (squash or rewritten pull) still counts. Old history already in the database keeps its merges — run `pnpm clean && pnpm collect` to apply the rule retroactively. See [issue #7](https://github.com/Enlighten-Brasil/gitview/issues/7).
