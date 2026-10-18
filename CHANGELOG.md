@@ -1,5 +1,13 @@
 # gitview
 
+## 0.49.11
+
+### Patch Changes
+
+- e537e36: docs: :::warning com o aviso no corpo (não no título) e a folga de 1 dia do gate `MERGED` descrita na página de coletores — par EN/pt-BR.
+  
+  Ref: #101
+
 ## 0.49.10
 
 ### Patch Changes
