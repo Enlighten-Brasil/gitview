@@ -1,5 +1,29 @@
 # gitview
 
+## 0.49.8
+
+### Patch Changes
+
+- f409d69: Documentação: seção Arquitetura publicada (pipeline, coletores e modelo de dados) em EN e pt-BR, com claims conferidos contra os scripts e as fixtures de dados.
+  
+  Ref: #77
+- 6bfcce5: Conteúdo da seção Configuração do site: env, team.local.json e manutenção dos dados (+ espelhos pt-BR).
+  
+  Ref: #76
+- 26b8a9b: Glossário de métricas do dashboard no site de docs (EN + espelho pt-BR): as fórmulas, janelas e thresholds dos 8 grupos de métricas conferidos contra os coletores e o `src/`.
+  
+  Ref: #81
+- eb81991: Conteúdo real da seção Dashboard do site de docs: tour página a página do dashboard e as regras dos filtros, nos dois idiomas, com painéis, labels, rotas e janelas fixas conferidos contra o código em src/.
+  
+  Ref: #80
+- 388461e: Docs da seção Primeiros passos: 5 páginas em EN + 5 espelhos pt-BR publicados no site VitePress, com claims conferidos contra o código.
+  
+  Ref: #75
+- d2b7e0d: Conteúdo real da home e do FAQ do site de docs (hero, 6 features, Como funciona e as 10 perguntas nos dois idiomas).
+  
+  Ref: #79
+- cd63c3a: docs: conteúdo das seções Publicando e Contribuindo do site (static-deploy, development, release + espelhos pt-BR). Ref: #78
+
 ## 0.49.7
 
 ### Patch Changes
