@@ -30,14 +30,20 @@ const RISK_HEX: Record<RiskLevel, string> = {
   success: 'var(--ui-success)',
 }
 
+/** o pct como a UI mostra: 0,247 → 0,25 (o badge nunca contradiz o número impresso) */
+export function displayPct(pct: number): number {
+  return Math.round(pct * 100) / 100
+}
+
 /**
  * Resolve o status do `pct` nos `tiers`: os patamares são avaliados do maior
  * `at` para o menor e o primeiro com `pct >= at` vence (o menor tier é o
  * fallback para `pct` fora da escala).
  */
 export function statusOf(pct: number, tiers: RiskTier[]): RiskStatus {
+  const shown = displayPct(pct)
   const sorted = [...tiers].sort((a, b) => b.at - a.at)
-  const tier = sorted.find(t => pct >= t.at) ?? sorted[sorted.length - 1]
+  const tier = sorted.find(t => shown >= t.at) ?? sorted[sorted.length - 1]
   // sem tiers não há o que resolver — devolve o nível neutro
   if (!tier)
     return { color: 'success', label: 'ok', hex: RISK_HEX.success }
