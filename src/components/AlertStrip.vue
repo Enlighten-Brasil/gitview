@@ -47,7 +47,7 @@ const alerts = computed<Alert[]>(() => {
   if (falling > 0)
     out.push({ icon: 'i-lucide-trending-down', value: falling, label: falling === 1 ? 'dev abaixo do ritmo' : 'devs abaixo do ritmo', to: '/devs', severity: 'warning' })
 
-  // fora do horário em padrão preocupante (3+ fds seguidos ou ≥25% — idem BurnoutWatch)
+  // fora do horário em padrão preocupante (3+ dos últimos 4 fins de semana ativos ou ≥25% — idem BurnoutWatch)
   const offHours = burnout.value.filter(b => b.weekendsActive >= OFF_HOURS_WEEKENDS || b.offHoursPct >= OFF_HOURS_PCT).length
   if (offHours > 0)
     out.push({ icon: 'i-lucide-moon', value: offHours, label: offHours === 1 ? 'dev em padrão fora do horário' : 'devs em padrão fora do horário', to: '/health', severity: 'error' })

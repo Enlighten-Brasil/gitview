@@ -56,7 +56,7 @@ export const UNRELEASED_RED = 50
 // --- Fora do horário (OffHoursPanel · AlertStrip · summary.ts · data.ts) ---
 /** % de fds+madrugada que caracteriza padrão preocupante */
 export const OFF_HOURS_PCT = 0.25
-/** fds ativos (seguidos) na janela de 8 semanas que caracteriza padrão */
+/** fds ativos (dos últimos 4) na janela de 8 semanas que caracteriza padrão */
 export const OFF_HOURS_WEEKENDS = 3
 /** atenção: % de fds+madrugada abaixo do padrão, mas ainda alto */
 export const OFF_HOURS_PCT_ATTENTION = 0.15
