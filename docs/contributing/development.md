@@ -1,114 +1,96 @@
 ---
 title: Development setup
-description: Clone, run and validate gitview locally — commands, gates, conventions and the Windows pitfalls worth knowing before your first PR.
+description: Requirements, every package.json command, PR gates, conventions, and the Windows pitfalls.
 ---
 
 # Development setup
 
-gitview is strictly read-only over the repos it analyzes: collectors read `git log`/tags and the GitHub API, and generate JSON in `public/data/`. PRs proposing to write to the analyzed repos are not accepted. This page gets you from clone to a validated change.
+gitview is read-only over the analyzed repos: the collectors read `git log`, tags and the GitHub API, and write JSON to `public/data/`. PRs proposing to write to the analyzed repos are not accepted.
 
-## How do I get the project running?
+## Requirements and first run
 
-Requirements (copied from the README — do not invent versions):
-
-- **Node 22.13+** — the collectors use `node:sqlite`, flag-free since 22.13; the CI runs Node 22
-- **pnpm 11.28** — pinned in the `packageManager` field: run `corepack enable` once, or install pnpm 11.28 directly
+- **Node 22.13+** (the collectors use `node:sqlite`, flag-free since 22.13; the CI runs Node 22)
+- **pnpm 11.28** (pinned in the `packageManager` field; `corepack enable` once resolves it)
+- **A GitHub account** (token in the `.env` or `gh auth login`)
 
 ```bash
 git clone git@github.com:Enlighten-Brasil/gitview.git
 cd gitview
 pnpm install
-pnpm dev        # http://localhost:5173 — first run lands on the /setup wizard
+pnpm dev        # http://localhost:5173; with no data, lands on the /setup wizard
 ```
 
-Nothing to copy or edit: `.env` is created automatically from `.env.example` on first run, and the team roster lives in `team.local.json` (both gitignored). To work without a real org, point `GITVIEW_REPOS_ROOT` at your own clones — a token with access to a small public org is enough.
+The `.env` is created from `.env.example` on the first run, and the team roster lives in `team.local.json`; both are gitignored. To work without the real org, point `GITVIEW_REPOS_ROOT` at your own clones: a token with access to a small public org is enough.
 
-One supply-chain quirk: the repo pins `minimumReleaseAge: 1440` in `pnpm-workspace.yaml`, so only packages published at least 24h ago install. A fresh dependency bump that trips `ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION` is expected — wait for the version to mature or list it under `minimumReleaseAgeExclude`.
+`pnpm-workspace.yaml` pins `minimumReleaseAge: 1440` and only installs packages published at least 24h ago. An `ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION` on a recent bump is expected: wait for the version to mature or list it in `minimumReleaseAgeExclude`.
 
-## Which commands exist?
+## Commands
 
-Every script in `package.json#scripts`, verbatim:
+All the scripts in `package.json`:
 
-| Command | Underlying script | What it does |
-|---|---|---|
-| `pnpm setup` | `tsx scripts/setup.ts` | terminal wizard: choose/clone the org's repos |
-| `pnpm collect` | `tsx scripts/collect.ts && tsx scripts/collect-github.ts && tsx scripts/collect-releases.ts && tsx scripts/collect-team.ts && tsx scripts/check-data.ts` | the 4 collectors in sequence + validation (incremental) |
-| `pnpm check:data` | `tsx scripts/check-data.ts` | shape validation of the generated JSONs |
-| `pnpm check:scrub` | `tsx scripts/check-scrub.ts` | tracked files must stay free of scrubbed identity terms (also a CI gate) |
-| `pnpm collect:github` | `tsx scripts/collect-github.ts` | PRs/reviews only |
-| `pnpm collect:releases` | `tsx scripts/collect-releases.ts` | releases only |
-| `pnpm collect:team` | `tsx scripts/collect-team.ts` | team roster only (`team.json`) |
-| `pnpm clean` | `tsx scripts/clean.ts` | deletes database + JSONs (regenerable; `-- --repos` includes the clones) |
-| `pnpm docs:dev` | `pnpm --filter gitview-docs dev` | docs site dev server (VitePress, in `docs/`) |
-| `pnpm docs:build` | `pnpm --filter gitview-docs build` | builds the docs site (fails on dead links) |
-| `pnpm docs:preview` | `pnpm --filter gitview-docs preview` | serves the built docs site locally |
-| `pnpm dev` | `vite` | dashboard at `http://localhost:5173` |
-| `pnpm start` | `vite` | alias of `dev` (setup/collection only exist on the dev server) |
-| `pnpm build` | `vite build` | static build (`dist/` — read-only, no setup endpoints) |
-| `pnpm lint` | `eslint .` | lint (zero errors required) |
-| `pnpm lint:fix` | `eslint . --fix` | lint with auto-fix |
-| `pnpm typecheck` | `tsc --noEmit` | type check (scripts + src) |
-| `pnpm preview` | `vite preview` | serves the built `dist/` locally |
-| `pnpm changeset` | `changeset` | record a change |
-| `pnpm version:packages` | `changeset version` | apply changesets (bump + CHANGELOG) |
-
-## Which gates do I run before a PR?
-
-There is no test suite — these five checks are the gates, and each catches something different:
-
-| Gate | What it catches |
+| Command | What it does |
 |---|---|
-| `pnpm lint` | eslint (`@antfu/eslint-config`, config in `eslint.config.js`): style and formatting — zero errors is the requirement |
-| `pnpm typecheck` | `tsc --noEmit` over `scripts/` + `src/` — type errors (`.vue` templates are out of scope) |
-| `pnpm build` | `vite build` — the compilation check; a broken import or template fails here |
-| `pnpm check:data` | shape + invariants of the collected JSONs in `public/data/` (also runs at the end of `pnpm collect`) |
-| `pnpm check:scrub` | regressions of the identity scrub — tracked files must stay free of the scrubbed employer identity terms ([issue #17](https://github.com/Enlighten-Brasil/gitview/issues/17)) |
+| `pnpm setup` | terminal wizard: choose and clone the org's repos |
+| `pnpm collect` | the 4 collectors in sequence, plus `check:data` (incremental) |
+| `pnpm collect:github` | PRs and reviews only |
+| `pnpm collect:releases` | releases only |
+| `pnpm collect:team` | the team roster only (`team.json`) |
+| `pnpm check:data` | shape and invariants of the JSONs; local data gate |
+| `pnpm check:scrub` | tracked files free of identity terms; CI gate |
+| `pnpm check:docs` | EN and pt-BR page parity; CI gate |
+| `pnpm clean` | deletes the database and JSONs; `-- --repos` includes the clones |
+| `pnpm dev` / `pnpm start` | dashboard at `http://localhost:5173` |
+| `pnpm build` | static build in `dist/`; CI gate |
+| `pnpm preview` | serves the locally built `dist/` |
+| `pnpm lint` | ESLint `@antfu/eslint-config`; CI gate |
+| `pnpm lint:fix` | lint with auto-fix |
+| `pnpm typecheck` | `tsc --noEmit` over `scripts/` and `src/`; CI gate |
+| `pnpm docs:dev` | docs site in dev (VitePress, `DOCS_BASE=/`) |
+| `pnpm docs:build` | docs site build; CI gate against dead links |
+| `pnpm docs:preview` | serves the built docs site |
+| `pnpm demo:shots` | regenerates the doc screenshots from the synthetic fixture |
+| `pnpm changeset` | record a change; required in PRs |
+| `pnpm version:packages` | apply changesets (bump + `CHANGELOG.md`) |
 
-The CI (`.github/workflows/ci.yml`) runs `pnpm check:scrub`, `pnpm lint`, `pnpm typecheck` and `pnpm build` on every PR and on pushes to `main`. `check:data` stays out of the CI on purpose.
+## Gates before the PR
 
-:::info Why doesn't the CI run check:data?
-`check:data` validates `public/data/`, which is gitignored and only exists after a local collection with a token. The CI does not collect and must not need a secret — so the data gate belongs on your machine, right after `pnpm collect`.
-:::
+There is no test suite. Before opening a PR, run `pnpm check:scrub`, `pnpm lint`, `pnpm typecheck` and `pnpm build`, plus `pnpm check:docs` when you touched `docs/` or `docs/.vitepress/config.ts`. Run `pnpm check:data` when you touched collectors or data shapes.
 
-## What conventions are mandatory?
+The CI (`.github/workflows/ci.yml`) runs scrub, lint, typecheck and build in the `gates` job, and `check:docs` plus `docs:build` in the `docs` job, on every PR and on push to `main`. `check:data` stays on your machine: `public/data/` is gitignored and only exists after a local collection with a token.
 
-- **Every change ships with a changeset**: `pnpm changeset` (`minor` = feature, `patch` = fix). The maintainer applies it with `pnpm version:packages`, which bumps the version, writes `CHANGELOG.md` and results in a single `chore(release): X.Y.Z` commit. A PR with code changes and no changeset comes back in review.
-- **Commits in pt-BR** (Conventional Commits: `feat(...)`, `fix(...)`, `docs(...)`, `chore(release): ...`), code in English, comments in pt-BR. Work commits that close roadmap issues end their body with `Ref: #N`.
-- **Formatting** is enforced by `pnpm lint` — `@antfu/eslint-config`: no semicolons, single quotes. Don't fight it; run `pnpm lint:fix` instead.
-- **Feedback copy** (unified pattern): every state-changing action emits a toast (`useToast`) — short title in initial caps ("Perfis salvos"), lowercase description, `color` always explicit. Destructive confirmations always go through `useConfirm()` (UModal): `title` = a direct question ("Descartar alterações?"), `description` = the concrete consequence, `confirmLabel` = the action ("descartar", "remover time"). `window.confirm` and ad-hoc modals are forbidden.
+## Mandatory conventions
+
+- **Every code change comes with a changeset**: `pnpm changeset` (`minor` = feature, `patch` = fix). A code PR without a changeset comes back in review.
+- **Commits in pt-BR**, Conventional Commits (`feat(...)`, `fix(...)`, `docs(...)`, `chore(release): ...`); code in English, comments in pt-BR. A commit that closes a roadmap issue ends its body with `Ref: #N`.
+- **Formatting is imposed by the lint**: `@antfu/eslint-config`, no semicolons, single quotes. Don't fight it: `pnpm lint:fix`.
+- **Feedback copy**: an action with an effect emits a toast (`useToast`) with a short title in initial caps and an explicit `color`. Destructive confirmation always goes through `useConfirm()` (UModal): `title` is the question, `description` is the consequence, `confirmLabel` is the action. `window.confirm` and ad-hoc modals are forbidden.
+- **A feature that writes config or data through the UI is born behind `import.meta.env.DEV`** and degrades in the static build: the page keeps rendering the JSONs, just without the editing controls.
 - **Deleting files**: `rm -- <path>` (recoverable launcher), never `Remove-Item`.
 
-:::info Why are commit messages in pt-BR?
-The team that builds and maintains gitview works in pt-BR, and the commit history is that team's working log. Code and public docs stay in English so the open-source community can use the project. Translated UI copy is deliberate too: the dashboard's interface is pt-BR.
-:::
+## What lives where in `src/`
 
-## What lives where in `src/`?
+- `data.ts`: global filters, filtered aggregations (monthly, weekly, heatmap, types), totals, delta, pace, off-hours.
+- `github.ts`: filtered PRs, aging, cycle time, reviews per dev, merge without review.
+- `releases.ts`: `releases.json` loader and cadence metrics.
+- `urlState.ts`: filters in the query string (`?range=&from=&to=&repos=&devs=&bots=`), scoped by `route.meta.filters`.
+- `summary.ts`: weekly summary in markdown, ignoring the sidebar filters.
+- `router/`: `guards.ts` applies the `route.meta` contract (`requiresData`, `onboarding`, `requiresServer`, `setupStep`, `section`, `filters`, `title`).
+- `pages/`: one route per file: shell `(app)/`, tabs `(dashboard)/`, `devs/[name]`, `repos/`, `prs`, `teams`, `settings/` and `setup/` (dev only), `[...path].vue` for 404.
+- `components/`: one component per panel; tables use the `.data-table` class.
 
-- `data.ts` — global filters (`filters`) and filtered aggregations (monthly/weekly/heatmap/types), totals + delta, pace, burnout, off-hours.
-- `github.ts` — filtered PRs, aging, cycle time, reviews per dev, merge without review.
-- `releases.ts` — `releases.json` loader + metrics (days since last release, cadence).
-- `urlState.ts` — filters in the query string (`?range=&from=&to=&repos=&devs=&bots=`), scoped by `route.meta.filters`.
-- `router/` — file-based routes + the global guard; `route.meta` is the contract (`requiresData`, `onboarding`, `requiresServer`, `setupStep`, `section`, `filters`, `title`).
-- `pages/` — one file per route (`(app)/` shell, `(dashboard)/` tabs, `devs/[name]`, `repos/`, `prs`, `teams`, `settings/` dev-only, `setup/` dev-only, `[...path].vue` 404).
-- `components/` — one component per panel; tables use the `.data-table` class.
+The full pipeline and the filter rules are in the root `AGENTS.md`. Read it before touching collectors or metrics: several filter behaviors look strange and are intentional.
 
-## What bites on Windows?
+## Windows
 
-- **PowerShell 5.1**: use `pnpm.cmd` — the `pnpm.ps1` shim is blocked by the Execution Policy.
-- **Never edit UTF-8 files via PowerShell** (`Set-Content`, redirection) — it produces mojibake. Use a real editor.
-- **Never pipe a file-mutating CLI through `2>&1 | Select-Object`** — it can abort the command mid-run.
+- PowerShell 5.1: use `pnpm.cmd`, because the `pnpm.ps1` shim is blocked by the Execution Policy.
+- Never edit a UTF-8 file via PowerShell (`Set-Content`, redirection): it produces mojibake.
+- Never pipe a file-mutating CLI through `2>&1 | Select-Object`: it can abort the command mid-run.
 
-## How do I validate the UI?
+## Validating the UI change
 
-There is no test suite, so validation is the gates plus your eyes on the running app:
+1. Run `pnpm dev` and exercise the path at `http://localhost:5173`.
+2. Check what actually renders (DOM texts, tables, values) and the browser console.
+3. Reka UI tabs don't respond to synthetic `.click()`: use a real click or navigate by URL (`/devs`, `/health`).
+4. Finish with the gates above, including `pnpm check:data` if you touched the collectors.
 
-1. `pnpm dev` → `http://localhost:5173` and exercise the change in the browser.
-2. Validate what actually renders — DOM texts, tables, values — and keep an eye on the browser console. What the page *says* it shows is the source of truth, not what a screenshot looks like.
-3. Reka UI tabs don't respond to synthetic `.click()` — click for real, or navigate by URL (`/devs`, `/health`, …).
-4. Finish with the gates: `pnpm lint`, `pnpm typecheck`, `pnpm build` (and `pnpm check:data` when you touched collectors or data shapes).
-
-## Next steps
-
-- [Release ritual](./release.md) — how your change lands after review.
-- [Publishing the static build](../publishing/static-deploy.md) — what happens to `pnpm build` output in production.
-- [CONTRIBUTING.md](https://github.com/Enlighten-Brasil/gitview/blob/main/CONTRIBUTING.md) — the short contributing guide in the repo.
+After review, the path to a release is in [Release ritual](./release.md); the destination of `dist/` is in [Publishing the static build](../publishing/static-deploy.md).

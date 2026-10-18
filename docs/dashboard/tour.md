@@ -1,158 +1,113 @@
 ---
 title: Dashboard tour
-description: Page-by-page tour of the gitview dashboard — what question each page answers, its panels, and where each link goes.
+description: "Each gitview dashboard page: the question it answers, the panels on screen and where the links go."
 ---
 
 # Dashboard tour
 
-gitview is a read-only dashboard over your own git data: the collector exports JSON to `public/data/`, and the frontend just reads it. This tour walks the pages in navigation order. For each one: the question it answers, the panels you see (their real on-screen labels), what is interactive, and where the links go. Filter rules have their own page: [Filter rules](./filters.md). Screenshots come from the public demo's synthetic fixture (`scripts/make-demo-data.ts`: devs Ana and Beto, repos `demo-*`) — never real team data.
+Pages follow navigation order. For each one: the question it answers, the panels with their real on-screen labels and the link exits. Filter behavior lives in [Filter rules](./filters.md); the data pipeline in [Pipeline](../architecture/pipeline.md). The screenshots use the public demo's synthetic data, never real team data.
 
-The rail (left icon bar) groups the pages: **Dashboards** (**Visão geral** `/`, **Devs** `/devs`, **Saúde** `/health`), **Times** `/teams`, **PRs** `/prs`, **Repos** `/repos`, and — only on the dev server — **Config** `/settings`. The navbar on top carries the data freshness badge, the weekly summary button, and (dev only) the collection controls.
+The left rail groups **Dashboards** (**Visão geral** `/`, **Devs** `/devs`, **Saúde** `/health`), **Times** `/teams`, **PRs** `/prs`, **Repos** `/repos` and, dev server only, **Config** `/settings`. The navbar carries the data freshness badge, the weekly summary button and, in dev, the collection controls. Every chart panel exports a PNG through the download icon (toast **Imagem exportada**) and the tooltips show the numbers behind each point.
 
-## Visão geral (`/`) — what is the team shipping right now?
+## Visão geral (`/`): what is the team shipping right now?
 
-The landing page. Three panels, top to bottom:
+- Summary cards, under the label **no período ·** *\<window\>*: **commits**, **linhas +**, **linhas −**, **devs ativos**, **repos ativos**, each with the delta against the equivalent previous window. The dim line **histórico total: …** repeats the totals.
+- Alert strip: only what is unhealthy, and it disappears when everything is fine. Each chip goes to the metric's canonical home: PRs parados → `/prs#abertos`, merges sem review → `/prs#reviews`, ritmo → `/devs`, fora do horário and inatividade → `/health`, commits não liberados → `/repos#tabela`.
+- **Commits por semana (por dev)** or **Commits por mês (por dev)**, toggled by the **semana** and **mês** buttons.
 
-- **SummaryCards** — the section label reads **no período ·** *\<window\>*. Cards: **commits**, **linhas +**, **linhas −**, **devs ativos**, **repos ativos**. Each card shows a delta against the previous equivalent window (tooltip **vs o mês anterior**, **vs os N meses anteriores** or **vs a janela anterior equivalente**). A dim line below repeats the lifetime totals: `histórico total: …`. The delta disappears in custom ranges and in **Tudo** — see [Filter rules](./filters.md).
-- **AlertStrip** — only shows what is unhealthy (all clear, the strip is gone). Each chip is a deep link to the canonical home of the metric: PRs parados → `/prs#abertos`, merges sem review → `/prs#reviews`, ritmo → `/devs`, fora do horário e inatividade → `/health`, commits não liberados → `/repos#tabela`.
-- **CommitsTimeline** — the chart title is **Commits por semana (por dev)** or **Commits por mês (por dev)**, with **semana** / **mês** toggle buttons.
+![Visão geral: summary cards, alert strip and commits per week (demo)](/screenshots/overview.png)
 
-Interactive: chart panels export a PNG (download icon in the panel header, toast **Imagem exportada**); every alert chip navigates; every chart tooltip shows the underlying numbers.
+## Devs (`/devs`): who is doing what?
 
-Links: alert chips (above); the rail; and everything the sidebar filters touch.
+- Period highlight: the top committer, with a crown and the badge **N% do período**.
+- **Campeão da semana — maior evolução**: the weekly winners (semana / dev / vs média / commits) and the **vitórias (período)** count. The prize measures evolution against each dev's own baseline, not volume; the formula is in [Metrics glossary](./metrics.md).
+- **Ritmo — últimas 4 semanas vs 8 anteriores**: who is below their own average.
+- **Dev × mês (comparação)**.
+- **Frequência — dia da semana × hora**.
+- **Ranking do time (histórico completo)**: Dev, commits, + linhas, − linhas, repos, dias ativos, commits/dia ativo, streak, último commit. Every column sorts except Dev and commits/dia ativo, with a **CSV** export (toast **CSV exportado**) and the record as a `máx` badge in the streak column. Full history on purpose; the period-scoped view is in the cards and heatmaps above.
 
-![Visão geral with summary cards, the alert strip and the commits-per-week chart (demo data)](/screenshots/overview.png)
+Each dev name opens the profile `/devs/:name`.
 
-## Devs (`/devs`) — who is doing what?
+## Dev profile (`/devs/:name`): what does this dev's work look like?
 
-The people page. Six panels:
+Answers what the person did in the selected period. `/dev/:name` stays as an alias; a name with no match in the data shows **Dev não encontrado** with **Quis dizer:** (did you mean) suggestions.
 
-- **PeriodHighlight** — the top committer of the filtered period (crown icon, badge **N% do período**).
-- **WeeklyChampions** — **Campeão da semana — maior evolução**. Two tables: the recent weekly winners (columns semana / dev / vs média / commits) and the title count (**vitórias (período)**). The prize rewards *evolution* (commits ÷ (the previous 8 weeks' average + 1), floor of 3 commits in the week), not raw volume — see [issue #10](https://github.com/Enlighten-Brasil/gitview/issues/10).
-- **PaceAlert** — **Ritmo — últimas 4 semanas vs 8 anteriores**. Who is falling behind their own baseline.
-- **AuthorMonthHeatmap** — **Dev × mês (comparação)**.
-- **ActivityHeatmap** — **Frequência — dia da semana × hora**.
-- **DevTable** — **Ranking do time (histórico completo)**. Columns Dev, commits, + linhas, − linhas, repos, dias ativos, commits/dia ativo, streak, último commit — everything except Dev and commits/dia ativo sorts, there is a **CSV** export button, and the streak column shows as a badge.
+- Cards for **commits**, **linhas +**, **linhas −** in the period, plus **dias ativos (total)**, **commits/dia ativo (total)**, **streak (total)**, **repositórios (total)**; with GitHub data, also **PRs abertos**, **cycle time mediano**, **reviews feitas**.
+- **Commits por semana** / **Commits por mês** for this dev only.
+- **Distribuição por repositório** (donut) and **Horários de atividade —** *\<window\>*, which under **Tudo** becomes **Horários de atividade — últimos 24 meses** (the aggregation limit).
+- **PRs abertos de** *\<first name\>*: current state, not scoped to the period.
+- **Últimos commits**: the commits of the period.
 
-Interactive: column sorting, **CSV** export (toast **CSV exportado**), chart PNG export, heatmap tooltips.
+The **dashboard** button goes back to `/`; PR rows open GitHub.
 
-Links: each dev name links to the dev profile `/devs/:name`. The ranking is intentionally full-history regardless of the period filter.
+![Dev profile: metric cards, commits per week and repo distribution (demo)](/screenshots/dev.png)
 
-:::info Why does the ranking ignore the period?
-**Ranking do time (histórico completo)** is a standing table — who the team *is*, not who happened to ship in the last quarter. The period-scoped view of the same people lives in the cards and charts above it, and in the heatmaps. The panel title says it out loud so nobody "fixes" it.
-:::
+## Saúde (`/health`): where does the process hurt?
 
-## Dev profile (`/devs/:name`) — what does this dev's work look like?
+Each card documents its own thresholds in the footer; the values are in [Metrics glossary](./metrics.md).
 
-Answers "what has \<name\> been doing in the selected period". The old route `/dev/:name` still works as an alias. If the name doesn't match collected data, the page says **Dev não encontrado** and offers **Quis dizer:** suggestions.
+- **Fora do horário** (off-hours): toggles between **8 semanas** and the current window label. Weekend and late-night commits per dev, with status **pontual**, **atenção**, **padrão** (on time, attention, standard).
+- **Fix hotspots — % de correção por repo**.
+- **Gargalo de review — quem segura os PRs** (review bottleneck: who is holding the PRs).
+- **Merge sem review — período filtrado**.
+- **Inatividade — repos e devs parados**: **repos sem commit há 30+ dias** and **devs sem commit há 21+ dias**. Measured up to today, ignores the filters.
+- **Bus factor — concentração por repositório**.
 
-- **DevStatCards** — **commits**, **linhas +**, **linhas −** (period) plus lifetime cards that gain a ` (total)` suffix when a period is active: **dias ativos (total)**, **commits/dia ativo (total)**, **streak (total)**, **repositórios (total)**. With GitHub data also: **PRs abertos**, **cycle time mediano**, **reviews feitas**.
-- **CommitsTimeline** for this dev only (**Commits por semana** / **Commits por mês**).
-- **Distribuição por repositório** (donut) and the hours heatmap — **Horários de atividade —** *\<window\>*, or **Horários de atividade — últimos 24 meses** under **Tudo** (the aggregation tops out at 24 months).
-- **PRs abertos de** *\<first name\>* — the dev's currently open PRs (state *now*, not period-scoped).
-- **Últimos commits** — the commit list for the period.
+The tables sort where a risk column exists; the Visão geral alerts point here and nothing on this page links out.
 
-Interactive: timeline granularity toggle, chart PNG export.
+![Saúde page: off-hours, fix hotspots, review bottleneck and merge without review (demo)](/screenshots/health.png)
 
-Links: **dashboard** back button in the header (to `/`); PR rows link out to GitHub.
+## PRs (`/prs`): what is stuck and how fast do PRs move?
 
-![Dev profile: stat cards, commits per week and the repo distribution donut (demo data)](/screenshots/dev.png)
+Depends on GitHub data, collected with an authenticated `gh`; without it the page shows **Sem dados do GitHub**. The contextual sub-nav covers three anchors, and the Visão geral alerts land on `#abertos` and `#reviews`.
 
-## Saúde (`/health`) — where does the process hurt?
+- `#abertos`: cards **PRs abertos** (with a drafts sub-line), **parados há +14 dias**, **mergeados no período**, **cycle time mediano**, **mergeados sem review**; then **PRs parados — abertos há 14+ dias** and **PRs abertos — mais antigos primeiro**.
+- `#cycle-time`: **Cycle time mediano por repo (criação → merge)** and **Tendência de cycle time — últimos 6 meses**, a fixed window.
+- `#reviews`: **Reviews por dev (no período)**.
 
-The health page. Each card documents its own thresholds in the footer. Panels:
+PR rows open GitHub.
 
-- **OffHoursPanel** — **Fora do horário**, with a mode toggle: **8 semanas** or the current window label. Weekend/late-night commits per dev, with status **pontual** / **atenção** / **padrão**.
-- **FixHotspots** — **Fix hotspots — % de correção por repo**.
-- **ReviewBottleneck** — **Gargalo de review — quem segura os PRs**.
-- **ReviewCoverage** — **Merge sem review — período filtrado**.
-- **InactiveWatch** — **Inatividade — repos e devs parados**, split in two lists: **repos sem commit há 30+ dias** and **devs sem commit há 21+ dias**. Measured until today — it deliberately ignores the filters.
-- **BusFactor** — **Bus factor — concentração por repositório**.
+![PRs page: summary cards, stale and open PR tables, cycle time per repository (demo)](/screenshots/prs.png)
 
-Interactive: **Fora do horário** mode toggle; chart PNG export; the tables sort by risk columns where shown.
+## Repos (`/repos`): which repos are active and shipping?
 
-Links: alerts on the Visão geral deep-link here; nothing on this page links out.
+Repository index, with an anchor sub-nav (**Tabela**, **Linhas +/−**, **Distribuição**, **Por mês**, **Tipos de commit**, **Releases**). The unreleased commits alert from Visão geral lands on `#tabela`.
 
-![Saúde page: off-hours table, fix hotspots, review bottleneck and merge-without-review panels (demo data)](/screenshots/health.png)
+- `#tabela` **Repositórios**: repo / commits / devs / % fix / último commit / última release / não liberados. Each row opens `/repos/:name`.
+- `#linhas` **Linhas adicionadas × removidas por mês** or **Crescimento líquido do código (acumulado)**, toggled by **por mês** and **acumulado**.
+- `#distribuicao` **Distribuição por repositório (período filtrado)**.
+- `#por-mes` **Repositório × mês**.
+- `#tipos` **Tipos de commit por mês (feat × fix × ...)** and **Mix por repo (% — ordenado por fix)**.
+- `#releases` **Releases por repositório**: last tag, age and the **X/mês** cadence over the last 12 months. Footer **marcos — ignoram o filtro de período · clique no repo pra ver a cadência completa** (milestones ignore the period filter; click a repo to see the full cadence).
 
-## PRs (`/prs`) — what's stuck, and how fast do PRs move?
+## Repo (`/repos/:name`): how is this repository doing?
 
-Needs `public/data/github.json` (collected with `gh` authenticated); otherwise the page shows **Sem dados do GitHub**. Three anchored sections feed the contextual sub-nav (**Abertos**, **Cycle time**, **Reviews**):
+`/repo/:name` stays as an alias; an unknown name shows **Repo não encontrado**. The period applies to commits, charts, merged PRs and cycle time; releases and open PRs are milestones or current state, as [Filter rules](./filters.md) describes.
 
-- `#abertos` — **PrSummaryCards**: **PRs abertos** (with a rascunhos sub-line), **parados há +14 dias**, **mergeados no período**, **cycle time mediano**, **mergeados sem review**. Then **PrStaleAlert** (**PRs parados — abertos há 14+ dias**) and **PrOpenTable** (**PRs abertos — mais antigos primeiro**).
-- `#cycle-time` — **PrCycleTime** (**Cycle time mediano por repo (criação → merge)**) and **CycleTrend** (**Tendência de cycle time — últimos 6 meses** — a fixed window, on purpose).
-- `#reviews` — **PrReviews** (**Reviews por dev (no período)**).
+- Cards for **commits**, **linhas +**, **linhas −**, **devs** in the period, **commits (total)** when a period is active, **última release (há Nd)**, **commits não liberados** (color by threshold), **dev principal** with the top share (colored above 50% and 70%) and, with GitHub data, **PRs abertos** and **cycle time mediano**.
+- **Tipos de commit** (donut) and **Commits por dev** (bars, top 10).
+- **Releases**: tag / data / commits / notas, the **pré** badge for prereleases and inline-expandable **notas**; the 30 most recent tags, with a notice. The commit counts *between* tags follow the period where they appear.
 
-Interactive: chart PNG export; PR rows link to GitHub.
+Tag rows open GitHub when a URL exists; the **repos** button goes back to `/repos` and **GitHub ↗** opens the repository when the release data carries the URL.
 
-Links: rail sub-nav jumps to `#abertos`, `#cycle-time`, `#reviews`; the Visão geral alerts land on `#abertos` and `#reviews`.
+## Times (`/teams`): the team editor
 
-![PRs page: summary cards, stale/open PR tables and cycle time per repo (demo data)](/screenshots/prs.png)
+Dev server only; in the static build the page shows **edição só no modo dev** (editing only in dev mode). The sections feed the sub-nav and each team card has a button to the dashboard `/teams/:name`.
 
-## Repos (`/repos`) — which repos are active, and are they shipping?
+- `#times`: one card per team (name, description, color picker, member chips), **novo time** in the section header and **importar do GitHub** at the top of the page. The save bar carries **desfazer**, **salvar** and **salvar + recoletar** (undo, save, save + re-collect).
+- `#devs`: one card per dev with GitHub logins and commit e-mails; **editar perfil** opens a modal with **título / cargo**, **descrição**, **e-mails de commit** and **logins do GitHub**.
+- `#sem-mapeamento`: collected identities with no dev mapped yet, with **associar** and **confirmar**. The candidates banner on the dashboard pages points here.
 
-The repo index. Anchors feed the sub-nav (**Tabela**, **Linhas +/−**, **Distribuição**, **Por mês**, **Tipos de commit**, **Releases**):
+## Team dashboard (`/teams/:name`): how is this team doing?
 
-- `#tabela` — **Repositórios**: repo / commits / devs / % fix / último commit / última release / não liberados.
-- `#linhas` — **Linhas adicionadas × removidas por mês** or **Crescimento líquido do código (acumulado)**, toggled by **por mês** / **acumulado**.
-- `#distribuicao` — **Distribuição por repositório (período filtrado)**.
-- `#por-mes` — **Repositório × mês**.
-- `#tipos` — **Tipos de commit por mês (feat × fix × ...)** and **Mix por repo (% — ordenado por fix)**.
-- `#releases` — **Releases por repositório**, with the footnote **marcos — ignoram o filtro de período · clique no repo pra ver a cadência completa**. Each repo shows last tag, age and cadence (**X/mês**, computed over a fixed trailing 12 months).
+The same panels as Visão geral, with the dev selection locked to the team members (the team registry is the source of truth). The header carries the team chip, the window label, the **times** button and **ver como filtro livre** (view as a free filter), which opens `/?devs=<members>` as an editable filter.
 
-Interactive: chart PNG export; rows and repo names open the repo page.
+Panels: summary cards, commits per week, **Dev × mês (comparação)** and commit types; with GitHub data, the PR cards, **PRs abertos — mais antigos primeiro** and **Cycle time mediano por repo**; and **Fora do horário**. Member chips open `/devs/:name`; a renamed team redirects from the old URL; an unknown name shows **Time não encontrado** with **Times disponíveis:**.
 
-Links: every row links to `/repos/:name`; the Visão geral unreleased-commits alert lands on `#tabela`.
+## Weekly summary: the meeting-ready export
 
-## Repo (`/repos/:name`) — how is this one repo doing?
+A button in the navbar (tooltip **resumo da semana exportável**), not a route. It opens the **Resumo da semana** slideover with the markdown of the last closed ISO week (Mon–Sun) against the previous one: `## Commits`, `## Pull requests`, `## Releases`, `## Atenção`. Outputs: **copiar markdown** (the button becomes **copiado!**) and **baixar .md** (writes `resumo-<weekKey>.md`). The report is for the whole team in the weekly meeting, which is why it ignores the sidebar filters and always excludes bots.
 
-Alias `/repo/:name` still works. Unknown names get **Repo não encontrado**. The period filter applies here (commits, charts, merged PRs, cycle time); releases and open PRs are milestones/state and stay out of it.
+## Static build
 
-- **StatCards** — **commits**, **linhas +**, **linhas −**, **devs** (period); with a period active also **commits (total)**. Release cards: **última release (há Nd)** and **commits não liberados** (color by threshold). Plus **dev principal** (top dev share, colored above 50%/70%), and with GitHub data **PRs abertos** and **cycle time mediano**.
-- **Tipos de commit** (donut) and **Commits por dev** (top 10 bar chart).
-- **Releases** — tag / data / commits / notas, with expandable **notas** and a **pré** badge for prereleases; shows the 30 most recent tags and says so.
-
-Interactive: tag rows open the tag on GitHub when a URL exists; **notas** expands inline.
-
-Links: **repos** back button (to `/repos`), a **GitHub ↗** link in the header when the release data has one.
-
-:::info Why do releases ignore the period?
-A release is a milestone — "when did this repo last ship" makes no sense cut to a quarter. The cards and the **Releases** table are deliberately period-blind, and the labels say so (`(total)`, **marcos — ignoram o filtro de período**). The commit counts *between* tags still follow the period where shown.
-:::
-
-## Times (`/teams`) — the team editor
-
-Dev-server only: in a static build the editor is disabled and the page says **edição só no modo dev**. Sections `#times`, `#devs`, `#sem-mapeamento` feed the sub-nav.
-
-- `#times` — one **TeamCard** per team: name, description, color picker, member chips. The section header carries **novo time**; **importar do GitHub** (slideover) lives at the top of the page. The save bar offers **desfazer**, **salvar**, **salvar + recoletar**.
-- `#devs` — one **DevCard** per dev with their GitHub logins and commit e-mails; **editar perfil** opens a modal with **título / cargo**, **descrição**, **e-mails de commit**, **logins do GitHub**.
-- `#sem-mapeamento` — **TeamCandidatesSection**: identities collected but not mapped to a dev, with **associar** / **confirmar** actions. The **CandidatesBanner** on `full`-scope pages deep-links here.
-
-Interactive: rename, recolor, add/remove members, import from GitHub, save + re-collect (dev only).
-
-Links: each **TeamCard** has a button that opens the team dashboard `/teams/:name`.
-
-## Team dashboard (`/teams/:name`) — how is this one team doing?
-
-Same panels as the main dashboard, but the dev filter is **locked to the team members** (source of truth: `team.json`). The header shows the team chip, the window label, a **times** back button and a **ver como filtro livre** button — that one opens `/?devs=<members>` as an editable filter.
-
-Panels: **SummaryCards**, **CommitsTimeline**, **AuthorMonthHeatmap**, **CommitTypes**, then — with GitHub data — **PrSummaryCards**, **PrOpenTable**, **PrCycleTime**, and finally **OffHoursPanel**. Member chips link to each dev's profile.
-
-Interactive: same as the panels they reuse; member chips navigate.
-
-Links: member chips → `/devs/:name`; **ver como filtro livre** → `/` with `?devs=…`; renamed teams redirect automatically (old URLs stay alive via `teams[].renamedFrom`). Unknown names get **Time não encontrado** with **Times disponíveis:** suggestions.
-
-## Weekly summary — the meeting-ready export
-
-Not a route — a button in the navbar (tooltip **resumo da semana exportável**). It opens a slideover titled **Resumo da semana** with the markdown of the **last closed ISO week** (Mon–Sun) compared to the previous one: `## Commits`, `## Pull requests`, `## Releases`, `## Atenção`. Export with **copiar markdown** (button flips to **copiado!**) or **baixar .md** (saves `resumo-<weekKey>.md`). The report covers the *whole team* for the weekly meeting — which is why it always skips bots and never reads the sidebar filters; filtered "what if" views belong to the dashboards.
-
-## The static build is read-only
-
-The frontend only reads the JSON files in `public/data/` — `pnpm build` produces a 100% static `dist/` you can serve from any static host (GitHub Pages, Netlify, nginx…). It needs **SPA fallback**: deep links like `/devs/<name>` must serve `index.html` (the router uses `createWebHistory`).
-
-In that build the dashboard is strictly read-only: `/setup`, `/settings` and the collection buttons (↻, **coleta completa (--full)**) don't exist, and the `/teams` editor is disabled — the `/__*` endpoints are dev-server middleware. Unify identities and tune teams under `pnpm dev`, re-collect with `pnpm collect`, then publish.
-
-## Next steps
-
-- [Filter rules](./filters.md) — how the period, teams and URL filters actually behave (including the fixed windows).
-- `README.md` — install, collect, publish (the "Publishing the dashboard (static build)" section).
+The interface only reads the collected data. In `pnpm build`, `/setup`, `/settings`, the collection buttons and the `/teams` editor do not exist. Adjust identities and teams under `pnpm dev`, re-collect with `pnpm collect`, and only then publish, per [Publishing the static build](../publishing/static-deploy.md).

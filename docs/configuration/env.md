@@ -1,86 +1,68 @@
 ---
 title: The .env file
-description: Every GITVIEW_* key with default and format — precedence, fresh reads, quoting, Windows paths and the legacy config.json migration.
+description: "The GITVIEW_* keys in .env: defaults, shell-vs-file precedence, and the format of each value."
 ---
 
 # The `.env` file
 
-The `.env` file holds the machine-level configuration: GitHub credentials, where the clones live, what to skip during scans and which timezone the time buckets use. It is gitignored, created automatically from `.env.example` on first run, and carries the project's **only secret** (`GITVIEW_GITHUB_TOKEN`).
+The `.env` holds the machine config: GitHub credentials, where the clones live, what to skip and which timezone the charts use. It is gitignored, it carries the project's only secret (`GITVIEW_GITHUB_TOKEN`), and it is created from `.env.example` on the first run of `pnpm dev`, `pnpm start` or any collector.
 
-## All keys at a glance
+## GitHub
 
-| key | what it does | default | format |
-|---|---|---|---|
-| `GITVIEW_GITHUB_CLIENT_ID` | Public Client ID of an OAuth App (`Ov…`) or GitHub App (`Iv…`) with device flow enabled — shows the **Conectar com GitHub** button in the setup wizard | empty (`.env.example` ships with an example) | string |
-| `GITVIEW_GITHUB_TOKEN` | Token written by the device flow, a pasted PAT or the setup UI. **Never commit it** | empty → falls back to `gh auth token` when the GitHub CLI is logged in | token string |
-| `GITVIEW_GITHUB_ORG` | Default org for the setup wizard and for the team import on `/teams` | empty | org login |
-| `GITVIEW_REPOS_ROOT` | Folder holding the repository clones | empty → `data/repos` (created by the setup) | absolute path or path relative to the repo root |
-| `GITVIEW_DEFAULT_REPOS` | Repos pre-selected in the setup wizard | empty = all non-archived repos | CSV |
-| `GITVIEW_EXCLUDE` | Folders skipped during repo discovery | empty | CSV |
-| `GITVIEW_EXCLUDE_PATHS` | Generated-file globs excluded from line metrics — adds to the built-in list below | empty = built-in list only | CSV of globs |
-| `GITVIEW_PORT` | Dev server port (`pnpm dev` / `pnpm start`) | `5173` | integer 1–65535 (out-of-range values are ignored) |
-| `GITVIEW_TIMEZONE` | IANA timezone of every time bucket (month, day, ISO week, weekend, night, heatmap) | `America/Sao_Paulo` | IANA name (`America/Sao_Paulo`, `Europe/Lisbon`, `UTC`) |
+| key | what it does | default |
+|---|---|---|
+| `GITVIEW_GITHUB_CLIENT_ID` | enables the **Conectar com GitHub** button | example `Ov…` value in the template |
+| `GITVIEW_GITHUB_TOKEN` | token used for collection | empty → `gh auth token` |
+| `GITVIEW_GITHUB_ORG` | default org for setup | empty |
 
-CSV values are comma-separated with surrounding whitespace trimmed (e.g. `repo-a, repo-b`). An empty line like `GITVIEW_GITHUB_ORG=` means "key exists, disabled".
+- The Client ID is public: the device flow uses no client secret. Without it, paste a PAT or use a logged-in `gh`, see [Connecting GitHub](../guide/connecting-github.md).
+- The token is stored in plain text in `.env`: the file is in `.gitignore` and the dev server refuses to serve it.
+- `GITVIEW_GITHUB_ORG` is also the org suggested by **importar do GitHub** on the `/teams` screen.
+
+## Repositories
+
+| key | what it does | default |
+|---|---|---|
+| `GITVIEW_REPOS_ROOT` | folder holding the repo clones | empty → `data/repos` |
+| `GITVIEW_DEFAULT_REPOS` | repos pre-selected in setup | empty → all non-archived |
+
+- List keys are CSV, comma-separated with no spaces at the edges: `GITVIEW_DEFAULT_REPOS=repo-a, repo-b`.
+- `GITVIEW_REPOS_ROOT` accepts an absolute path or one relative to the project root. On Windows use forward slashes (`C:/dev/repos/api`).
+- Setup writes the key when the clone finishes. To read clones you maintain yourself, see [Repositories](../guide/repositories.md).
+
+## Metrics and data
+
+| key | what it does | default |
+|---|---|---|
+| `GITVIEW_TIMEZONE` | timezone of all time buckets | `America/Sao_Paulo` |
+| `GITVIEW_EXCLUDE_PATHS` | globs added to the line exclusions | empty → built-in list only |
+
+- `GITVIEW_TIMEZONE` takes an IANA name (`Europe/Lisbon`, `UTC`). Day, month, ISO week, night hours and heatmap come from it, not from the machine clock. An invalid timezone prints a warning and falls back to `America/Sao_Paulo`.
+- `GITVIEW_EXCLUDE_PATHS` **adds to** the built-in list, never replaces it: `GITVIEW_EXCLUDE_PATHS='themes/**/vendor/**,docs/api/**'`. It only applies to commits scanned after the change. For history, use **limpar e recoletar** (clean and re-collect), see [Data maintenance](./maintenance.md).
+
+These generated files stay out of the +/− line metrics (their commits still count):
+
+```text
+package-lock.json  pnpm-lock.yaml  yarn.lock  bun.lock  bun.lockb
+Cargo.lock  composer.lock  Gemfile.lock  poetry.lock  Pipfile.lock
+pubspec.lock  Package.resolved  go.sum
+*.min.js  *.min.css  *.min.map  *.snap  *.generated.ts  *.generated.js  *.designer.cs
+```
 
 ## How values are resolved
 
-- **Precedence: shell variable → `.env` → default.** A shell variable always wins, even when the `.env` has a value. Empty or whitespace-only counts as "not set".
-- **Fresh read on every call.** The file is parsed on each collector run and is never loaded into the process environment, so a new token takes effect without restarting the dev server.
-- **First run creates the file.** `pnpm dev`, `pnpm start` or any collector copies `.env.example` into `.env` when it doesn't exist. When `.env.example` gains keys your `.env` doesn't have, the run prints a one-time warning listing them.
-- **The setup UI writes keys back line by line** (via `saveConfig()`), preserving comments and order; new keys are appended at the end. Team data never lands here — it goes to [`team.local.json`](./team.md).
+- **shell → `.env` → default.** The shell variable wins. Empty or whitespace-only counts as not set; `GITVIEW_GITHUB_ORG=` means "the key exists, disabled".
+- `.env` is re-read on every collector run: a swapped token takes effect on the next collection, no restart. `GITVIEW_PORT` is the exception, read at boot.
+- A new `.env.example` key missing from your `.env` triggers a warning (once per process): `! .env sem chaves novas do .env.example: ...`. Copy the line, or delete `.env` and run any collector to recreate it from the template.
+- The UI writes line by line and preserves comments and order, with the value in single quotes (`GITVIEW_REPOS_ROOT='C:/dev/my repos'`). The parser does not expand escapes inside single quotes. A value containing a single quote or a line break is rejected.
+- Team data does not land here: it goes to [`team.local.json`](./team.md).
 
-:::info Why is .env re-read on every run?
-The collectors run as children of the dev server and read the file at each invocation instead of inheriting a snapshot of the environment. That is what makes the token hot-swappable: paste a new PAT in the UI (or edit the file) and the very next collection uses it — no restart, no stale credential lingering in memory.
-:::
+## Advanced settings
 
-## Quoting and Windows paths
-
-- Values written by the setup UI are wrapped in **single quotes** (`GITVIEW_REPOS_ROOT='C:/dev/my repos'`). The parser does no escape expansion inside single quotes.
-- A value cannot contain a single quote or a line break — the UI refuses to write it.
-- On Windows use forward slashes (`C:/dev/repos/api`); add single quotes when the path contains spaces.
-
-## The built-in line-metric exclusions
-
-`GITVIEW_EXCLUDE_PATHS` **adds** patterns to this list — it never replaces it. The built-ins keep generated files out of the +/− line metrics:
-
-```text
-package-lock.json   pnpm-lock.yaml      yarn.lock          bun.lock
-bun.lockb           Cargo.lock          composer.lock      Gemfile.lock
-poetry.lock         Pipfile.lock        pubspec.lock       Package.resolved
-go.sum              *.min.js            *.min.css          *.min.map
-*.snap              *.generated.ts      *.generated.js     *.designer.cs
-```
-
-Without them a `chore: update version` commit drags +300k of lockfile into the numbers and distorts every chart. Example:
-
-```bash
-GITVIEW_EXCLUDE_PATHS='themes/**/vendor/**,docs/api/**'
-```
-
-Only commits scanned *after* the change respect the new globs — to re-apply them to the collected history, wipe and collect again (`pnpm clean && pnpm collect`, see [Data maintenance](./maintenance.md)).
-
-:::info Why does the timezone live in .env?
-Every time bucket (day, month, ISO week, weekend, night, heatmap) is computed in one canonical IANA timezone instead of the clock of the machine that collects. The same database then produces the same buckets on any machine, and a colleague in another timezone reading the same data sees identical charts — see [issue #8](https://github.com/Enlighten-Brasil/gitview/issues/8).
-:::
-
-## Coming from the legacy config.json / config.local.json
-
-Older releases kept config in a versioned `config.json` (aliases, org, exclusions) plus a gitignored `config.local.json` (token, repos root, profiles, teams). The migration to the current format is **one-shot and idempotent**, runs automatically the first time `loadConfig()` sees a `config.local.json`, and routes each field to its new home:
-
-| legacy field | new home |
-|---|---|
-| `githubToken`, `reposRoot` (from `config.local.json`) | `.env` (shell variables still win) |
-| `githubOrg`, `oauthClientId`, `defaultRepos`, `exclude` (from `config.json`) | `.env` |
-| `authors`, `githubUsers`, `devProfiles`, `teams`, `bots`, `githubBots` | `team.local.json` (aliases merged without duplicates) |
-
-After migrating, `config.local.json` is renamed to `config.local.json.migrated` (history preserved, still gitignored) and the migration becomes a no-op.
-
-:::warning
-If your machine still has the old files, run `pnpm dev` **before** pulling the release that removed `config.json` — the migration needs the old file in place. If you pull first, nothing is lost: re-map the aliases on the [`/teams`](./team.md) screen.
-:::
+- `GITVIEW_EXCLUDE`: folders skipped during repo discovery. Matches the exact subfolder name, it is not a glob (`node_modules, tmp`). Empty by default.
+- `GITVIEW_PORT`: dev server port, default `5173`. Accepts an integer from 1 to 65535; anything outside is ignored. Changing it requires restarting `pnpm dev`.
 
 ## Next steps
 
-- [Team config (`team.local.json`)](./team.md) — dev profiles, aliases, teams and bots.
-- [Data maintenance](./maintenance.md) — what is regenerable and how to reset it.
+- [Team config (`team.local.json`)](./team.md): profiles, aliases, teams and bots.
+- [Data maintenance](./maintenance.md): what is regenerable and how to reset.

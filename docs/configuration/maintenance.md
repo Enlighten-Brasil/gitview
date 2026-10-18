@@ -1,66 +1,52 @@
 ---
 title: Data maintenance
-description: What is regenerable, what is not, and when to use recoletar tudo, limpar e recoletar or apagar dados — UI and CLI.
+description: What is regenerable, what survives cleanup, and when to re-collect all, clean and re-collect or delete data.
 ---
 
 # Data maintenance
 
-Everything the dashboard shows is generated data: the SQLite database and the JSONs in `public/data/` are 100% regenerable from the repositories. Your `.env` and `team.local.json` are not — and no cleanup ever touches them.
+Everything the dashboard shows is generated data: the database and the JSONs rebuild themselves from the repositories. `.env` and `team.local.json` do not, and no cleanup ever touches them.
 
-## What is regenerable (and what is not)
+## What is regenerable
 
-| path | regenerable | notes |
+| path | regenerable | note |
 |---|---|---|
-| `data/gitview.db` (+ `-wal`/`-shm`) | yes | SQLite database rebuilt by the collectors |
-| `public/data/*.json` | yes | `stats.json`, `commits.json`, `github.json`, `releases.json`, `team.json` — the static build reads only these |
-| `data/repos/` | yes, but slow | managed bare clones; the next collection re-clones everything |
-| `.env` | **no** | machine config + the GitHub token |
-| `team.local.json` | **no** | your team roster — canonical names, aliases, teams, bots |
+| `data/gitview.db` (+ `-wal`/`-shm`) | yes | database recreated by the collectors |
+| `public/data/*.json` | yes | the 5 JSONs the frontend reads |
+| `data/repos/` | yes, but slow | bare clones; re-cloning is the expensive part |
+| `.env` | **no** | machine config and the token |
+| `team.local.json` | **no** | the team roster |
 
-## The "Manutenção dos dados locais" card
-
-Open **Config** → **Geral** (`/settings`; dev only — the card doesn't exist in the static build). The **Manutenção dos dados locais** card has three actions and a switch:
+## The actions
 
 | action | what it does | when to use |
 |---|---|---|
-| **recoletar tudo** | Runs a complete collection (`/__collect?full=1`) without deleting anything | Numbers look stale or incomplete but you want to keep the database |
-| **limpar e recoletar** | Asks "Limpar e recoletar?", wipes database + JSONs and runs a complete collection (`/__collect?full=1&clean=1`); clones untouched | A config change must be re-applied to the whole history (e.g. `GITVIEW_EXCLUDE_PATHS`), or the database looks inconsistent |
-| **apagar dados** | Asks "Apagar os dados locais?", wipes without collecting (`GET /__clean`) and returns to the setup wizard | Starting over — switching org/repos, handing the machine to someone else |
+| ↻ in the navbar, or `pnpm collect` | incremental collection, only what changed | day-to-day refresh |
+| **salvar + recoletar** (`/teams`) | light re-collection: re-applies aliases, no git scan | you changed an identity or profile |
+| **recoletar tudo** (re-collect all) | full collection without deleting the database | stale or incomplete numbers |
+| **limpar e recoletar** (clean and re-collect) | wipes database + JSONs and runs the full collection | new config must apply to the whole history |
+| **apagar dados** (delete data) | wipes without collecting and returns to the wizard | switching org or handing over the machine |
 
-The switch **apagar também os clones (data/repos)** also removes the managed clones on **apagar dados** — the next collection re-clones everything (slow). While an action runs, the card streams the collector log; on success it shows **dados regenerados com sucesso**.
+- The **Manutenção dos dados locais** (local data maintenance) card in **Config** → **Geral** holds the last three actions, with a live collector log. The card and the ↻ button exist on the dev server only.
+- Cleaning before re-collecting is what fixes a number computed with the wrong config: new `GITVIEW_EXCLUDE_PATHS`, a removed alias, a merge still stored in the database.
+- The **apagar também os clones (data/repos)** switch applies only to **apagar dados**; the next collection re-clones everything. After that the app returns to `/setup`, same as the first run.
 
-After **apagar dados** the app drops the in-memory "has data" state (`stats` + `resetBoot()`) and navigates to `/setup` without a reload — every data route now falls through to the wizard until the next collection, which is exactly the first-run behavior.
-
-:::info Why does changing GITVIEW_EXCLUDE_PATHS need limpar e recoletar?
-Line metrics are computed at collection time and stored in the database and JSONs — the exclusion globs only apply to commits scanned from then on. The old numbers were already counted without the new patterns, so re-scanning on top of them would leave the history inconsistent. Only a wipe rebuilds every commit's lines under the new list.
-:::
-
-:::info Why do the clones survive the default cleanup?
-Re-cloning is the expensive part of a rebuild (network + full history), while the database and JSONs rebuild in minutes from the clones already on disk. So the default cleanup keeps `data/repos/` and only the explicit flag — **apagar também os clones (data/repos)** or `pnpm clean -- --repos` — removes them.
-:::
-
-## The CLI equivalent
+## From the CLI
 
 ```bash
 pnpm clean              # deletes data/gitview.db* + public/data/*.json
-pnpm clean -- --repos   # also deletes the managed clones (next collection re-clones — slow)
-pnpm collect            # the 4 collectors in sequence + validation (incremental)
+pnpm clean -- --repos   # also deletes the clones in data/repos
+pnpm collect            # the 4 collectors in sequence + validation
 ```
 
-The CLI wipe is the same code as **apagar dados** (`scripts/lib/clean.ts`) — including the guarantee that `.env` and `team.local.json` survive. After `pnpm clean`, run `pnpm collect` (or hit the ↻ button in the navbar) to regenerate the JSONs; the console reminds you of exactly that. Note the `--` before `--repos`: pnpm needs it to forward the flag.
-
-## Choosing the right action
-
-- **Daily refresh** — the ↻ button or `pnpm collect`: incremental, adds new commits/PRs/releases on top of what is already collected.
-- **recoletar tudo** — runs all collectors in complete mode (`/__collect?full=1`) without losing the database.
-- **limpar e recoletar** — the fix for "the numbers were computed with the wrong config": changed `GITVIEW_EXCLUDE_PATHS`, suspects leftovers after a collector bug, or a mismatch between the database and the JSONs. Equivalent to `pnpm clean` + `pnpm collect`.
-- **apagar dados** — wipe without rebuilding: the dashboard goes back to the setup wizard and waits for you to choose repos and collect again.
+The `--` before `--repos` is required: without it pnpm does not forward the flag. After `pnpm clean`, run `pnpm collect` (or ↻) to regenerate the JSONs.
 
 :::warning
-**apagar dados** and `pnpm clean` delete collected data only. Identity mappings, teams and the token live in `team.local.json` and `.env` — see [Team config](./team.md) and [The .env file](./env.md) before you hand the machine over.
+None of these actions deletes config or roster: to zero out the token and the team, delete `.env` and `team.local.json` by hand.
 :::
 
 ## Next steps
 
-- [The .env file](./env.md) — the keys that shape what gets collected.
-- [Team config (`team.local.json`)](./team.md) — the one file that is never regenerated.
+- [The .env file](./env.md): the keys that define what is collected.
+- [Team config (`team.local.json`)](./team.md): the file that is never regenerated.
+- [Collectors](../architecture/collectors.md): the `--full` and `--reaggregate` flags.

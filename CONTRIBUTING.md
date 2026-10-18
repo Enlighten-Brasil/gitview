@@ -1,87 +1,61 @@
 # Contributing to gitview
 
-gitview is **read-only** over data: neither the collectors nor the UI write to the analyzed repositories — they read `git log`/tags and the GitHub API and generate JSON in `public/data/` (local, gitignored). PRs proposing to write to repos outside that line will not be accepted.
+gitview is read-only over the data: collectors and UI read `git log`, tags and the GitHub API, and write only to `public/data/` (local, gitignored). A PR proposing to write to the analyzed repos will not be accepted.
 
-## Dev environment
+## Getting started
 
 ```bash
+git clone git@github.com:Enlighten-Brasil/gitview.git
+cd gitview
 pnpm install
-pnpm dev        # http://localhost:5173 — first run lands on the /setup wizard
+pnpm dev        # http://localhost:5173; with no data, lands on the /setup wizard
 ```
 
-Requirements: **Node 22.13+** (the collectors use `node:sqlite`, flag-free since 22.13; the CI runs Node 22) and **pnpm 11.28** (pinned in the `packageManager` field — run `corepack enable` once so corepack picks it up, or install pnpm 11.28 directly). The `.env` is created automatically from `.env.example` on first run; the team roster lives in `team.local.json` (gitignored). To run it without a real org, point `GITVIEW_REPOS_ROOT` at your own clones (section "Pointing at existing clones" of the README) — a token with access to a small public org is enough.
+Requirements: **Node 22.13+** (`node:sqlite` flag-free since 22.13) and **pnpm 11.28** (pinned in the `packageManager` field; `corepack enable` once resolves it). The `.env` is created from `.env.example` on the first run and the team roster lives in `team.local.json`, both gitignored. Open a branch from `main` and send the PR against `main`.
 
-The repo pins pnpm's supply-chain policy `minimumReleaseAge: 1440` in `pnpm-workspace.yaml`: only packages published at least 24h ago install. A fresh dependency bump that trips `ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION` is expected — wait for the version to mature or list it under `minimumReleaseAgeExclude`.
+## Gates before the PR
 
-## Gates before opening a PR
-
-There is no test suite; these are the checks:
+There is no test suite:
 
 ```bash
-pnpm check:scrub # identity scrub — tracked files must stay free of the scrubbed identity terms
-pnpm lint        # eslint (@antfu/eslint-config) — zero errors is required
-pnpm typecheck   # tsc --noEmit (scripts + src; .vue templates are out of scope)
-pnpm build       # vite build — the compilation check
-pnpm check:data  # shape + invariants of the collected JSONs (runs at the end of pnpm collect)
+pnpm check:scrub  # tracked files free of the removed identity terms
+pnpm lint         # ESLint @antfu/eslint-config; zero errors is required
+pnpm typecheck    # tsc --noEmit over scripts/ and src/ (.vue templates out)
+pnpm build        # vite build; the compile check
+pnpm check:docs   # EN and pt-BR parity of the docs/ pages
+pnpm check:data   # shape and invariants of the collected JSONs (runs on your machine)
 ```
 
-The CI (`.github/workflows/ci.yml`) runs `pnpm check:scrub`, `pnpm lint`, `pnpm typecheck` and `pnpm build` on every PR and on pushes to `main`, in that order. `check:data` stays out of the CI on purpose: it validates `public/data/`, which only exists after a local collection.
+The CI runs `check:scrub`, `lint`, `typecheck` and `build` in the `gates` job, and `check:docs` plus `docs:build` in the `docs` job. `check:data` stays on your machine because `public/data/` is gitignored and only exists after a collection with a token.
 
-## Style
+## Changeset and commit
 
-- Code in English; comments and commit messages in **pt-BR**, Conventional Commits format (`feat(...)`, `fix(...)`, `docs(...)`, `chore(release): ...`).
-  - Why pt-BR: the team that builds and maintains gitview works in pt-BR and the commit history is that team's working log; code and public docs stay in English so the open-source community can use the project.
-- Formatting is enforced by `pnpm lint` — `eslint.config.js` applies `@antfu/eslint-config` (the maintainer's standard; **no semicolons**, **single quotes**) with the same vue exceptions as that standard (`no-mutating-props` and `prefer-separate-static-class` off — draft editors intentionally mutate parent objects).
-- Edit UTF-8 files with a real editor — on Windows/PowerShell, never `Set-Content`/redirection (mojibake).
+- Every code change comes with a changeset: `pnpm changeset` (`minor` = feature, `patch` = fix).
+- Commits in pt-BR, Conventional Commits (`feat(...)`, `fix(...)`, `docs(...)`); code in English; comments in pt-BR.
+- The maintainer closes a release with `pnpm version:packages` and a single `chore(release): X.Y.Z` commit.
+- Formatting is what the lint mandates: no semicolons, single quotes. `pnpm lint:fix` handles the rest.
 
-## Changesets — mandatory for every change
+## Docs
 
-Every code change ships with a changeset:
-
-```bash
-pnpm changeset   # minor = feature · patch = fix
-```
-
-The release is applied by the maintainer: `pnpm version:packages` bumps the version, writes the `CHANGELOG.md` and results in a single `chore(release): X.Y.Z` commit. Work commits that close roadmap issues end their body with `Ref: #N`. A PR with code changes and no changeset comes back in review.
-
-## dev-only vs static build (important)
-
-The write endpoints (`/__setup/*`, `/__auth/*`, `/__collect`, `/__clean`, `/__team/config`, `/__team/github`) are **dev-server middleware** — they do not exist in `pnpm build`. Consequences:
-
-- `/setup` (wizard), `/settings` and the re-collect button (↻) only work under `pnpm dev`.
-- `/teams` and `/repos` always render (the data comes from the JSONs), but only **edit** in dev — in the static build they are read-only.
-
-If your feature needs to write config/data through the UI, it is born behind `import.meta.env.DEV` and **must degrade gracefully in the static build**: the page keeps rendering the data, just without the editing controls. A new feature that does not respect this will not land.
-
-## The doc pairs (README + CONTRIBUTING)
-
-`README.md` (English) is the primary document and `README.pt-BR.md` is a section-by-section mirror — this file and `CONTRIBUTING.pt-BR.md` follow the same rule. Any documentation change updates both files of the pair in the same change, and any command or label you cite must exist in `package.json`/the components.
-
-## Documentation
-
-The site under `docs/` is VitePress: 19 English pages with a section-by-section pt-BR mirror (`docs/pt-BR/…`, same file names). Keeping it healthy is part of the work:
-
-- **Both languages, same change.** Any doc edit updates the English page and its `docs/pt-BR/` mirror in the same PR. Nav and sidebar labels in `docs/.vitepress/config.ts` follow the page titles (`text:` == frontmatter `title`) — when a page's title changes, the labels change with it, in both locales.
-- **Anti-rot rule.** If your PR changes a UI label, a command or script name, a config key (`GITVIEW_*`, fields in `team.local.json`) or a metric rule, every doc page citing it is updated **in the same PR** — a label that changed in `src/` but not in the docs is a bug. Reviewers grep cited claims against the code; anything that doesn't match gets bounced.
-- **Docs do not duplicate the README.** Pages link to the README sections and deepen them (context, examples, edge cases) — they never restate them.
-- **Images are claims about the UI too.** The screenshots under `docs/public/screenshots/` come from the synthetic demo fixture, never real team data. If your PR changes a screen that appears in an image (a label, a panel, the layout), regenerate the capture in the same PR: `pnpm.cmd demo:shots` rebuilds `public/data/` from `scripts/make-demo-data.ts`, builds the app, serves it and re-shoots the four pages. A stale screenshot is a doc bug.
-
-Commands, from the repo root:
+The site in `docs/` is VitePress, with a section-by-section pt-BR mirror in `docs/pt-BR/`. Both languages change in the same PR and `pnpm check:docs` enforces the pair. If a PR changes a UI label, a command, a `GITVIEW_*` key or a metric rule, every page that cites it changes too. The screenshots in `docs/public/screenshots/` come from the demo's synthetic fixture: regenerate them with `pnpm.cmd demo:shots`.
 
 ```bash
-pnpm docs:dev       # vitepress dev served from / (DOCS_BASE=/)
-pnpm docs:build     # static build into docs/.vitepress/dist
+pnpm docs:dev       # dev site, served from the root (DOCS_BASE=/)
+pnpm docs:build     # static build in docs/.vitepress/dist
 pnpm docs:preview   # serves the generated site locally
-pnpm check:docs     # docs parity gate (EN ↔ pt-BR mirrors)
-pnpm demo:shots     # regenerate the doc screenshots from the synthetic fixture
 ```
 
-On Windows/PowerShell run them as `pnpm.cmd docs:dev`, `pnpm.cmd docs:build`, `pnpm.cmd docs:preview` and `pnpm.cmd check:docs` (PowerShell 5.1 cannot execute `pnpm.ps1`).
+In PowerShell 5.1 run everything as `pnpm.cmd <script>`: the `pnpm.ps1` shim is blocked by the Execution Policy.
 
-## Reporting bugs
+## Where the detail lives
 
-Open a GitHub issue with what you did, what you expected and what happened — collector output and `check:data` warnings make bugs much faster to pin down. Remember the tool is read-only over analyzed repos and never writes to them.
+- [Development setup](docs/contributing/development.md): every command, the gates, the code conventions and the `src/` map.
+- [Release ritual](docs/contributing/release.md): from the changeset to the `chore(release)`, what CI requires, and how to propose a change.
+- [Publishing the static build](docs/publishing/static-deploy.md): what `pnpm build` produces and what stays out of it.
+- `AGENTS.md` at the root: pipeline, the `route.meta` contract and the filter rules. Several "strange" filter behaviors are intentional and labeled in the UI.
 
-## Architecture
+Writing config or data through the UI only exists in the dev server: the `/__*` endpoints are middleware and don't enter the build. A new feature that depends on this is born behind `import.meta.env.DEV` and degrades to read-only in the static build.
 
-The `AGENTS.md` at the root documents the pipeline (git → SQLite → `public/data/*.json`), the `route.meta`/guards contract and the filter rules — read it before touching collectors or metrics; several "weird" filter behaviors are intentional and labeled in the UI.
+## Reporting a bug
+
+Open an [issue](https://github.com/Enlighten-Brasil/gitview/issues) with what you did, what you expected and what happened. The collectors' output and the `pnpm check:data` warnings pin the bug down faster.

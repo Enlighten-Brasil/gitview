@@ -1,188 +1,124 @@
 ---
 title: Metrics glossary
-description: Exact formula and calculation window for every metric in the gitview dashboard — commits, PRs, releases, health thresholds and deltas.
+description: "Formula, window and threshold for every dashboard metric: commits, lines, PRs, reviews and releases."
 ---
 
 # Metrics glossary
 
-Every number on the dashboard has one formula and one window. This page states both, straight from the collectors and `src/`, so you can trust a card without reading the source. When documentation and code disagree, the code wins.
+Every number on the dashboard has a formula, a window and a reading. The per-route filter scope and the list of fixed windows are in [Filter rules](./filters.md); the data origin in [Pipeline](../architecture/pipeline.md). If docs and code disagree, the code wins.
 
 ## Summary table
 
 | Metric | What it measures | Window |
 |---|---|---|
-| Commits | non-merge commits (see [Activity](#activity)) | period filter |
-| Lines added / removed | numstat lines, generated files excluded | period filter |
-| Commits/active day | rhythm per day with commits | full history (`(total)`) |
-| Active days | distinct days with ≥1 commit | full history (`(total)`) |
-| Streak | consecutive commit days | full history (`(total)`) |
-| Hour heatmap | commits by weekday × hour | period filter (max 24 months) |
-| Commit types | conventional-commit mix per month/repo | period filter |
-| Pace | last 4 weeks vs the 8 before | fixed: 4 vs 8 weeks |
-| PR aging | days since `createdAt` of open PRs | "now" |
-| Cycle time | median creation → merge | period filter (trend: fixed 6 months) |
-| Reviews per dev | third-party reviews made | period filter |
-| Review concentration | top reviewer share per repo | period filter |
+| Commits | non-merge commits ([Activity](#activity)) | period filter |
+| Lines added / removed | numstat lines, generated excluded | period filter |
+| Commits/active day | pace per day with commits | full history |
+| Active days | distinct days with ≥1 commit | full history |
+| Streak | consecutive days with commits | full history |
+| Hour heatmap | commits by weekday × hour | period (max 24 months) |
+| Commit types | conventional-commit mix | period filter |
+| Pace | 4 weeks vs the 8 before | fixed |
+| PR aging | days since the PR opened | now |
+| Cycle time | median creation → merge | period; trend fixed |
+| Reviews per dev | third-party reviews | period filter |
+| Review concentration | top reviewer share | period filter |
 | Merge without review | % of merges with no third-party review | period filter |
-| Open PRs | PRs open at collection time | "now" |
-| Days since last release | days since the newest tag | milestones (ignore the sidebar) |
-| Release cadence | tags per month | fixed: last 12 months |
-| Commits per release | commits between tags | milestones (ignore the sidebar) |
-| Unreleased commits | commits since the newest tag | "now" |
-| Off-hours | weekend + late-night share | fixed: 8 weeks, or period |
-| Inactivity | days since last commit | up to today (ignores all filters) |
+| Open PRs | PRs open at the last collection | now |
+| Days since last release | days since the newest tag | milestones |
+| Release cadence | tags per month | fixed: 12 months |
+| Commits per release | commits between two tags | milestones |
+| Unreleased commits | commits after the newest tag | now |
+| Off-hours | weekend and late-night share | fixed: 8 weeks, or period |
+| Inactivity | days since the last commit | up to today, no filters |
 | Fix hotspots | % of `fix` commits per repo | period filter |
-| Bus factor | top author share per repo | period filter |
-| Review bottleneck | top reviewer share per repo | period filter |
-| Weekly Champions | evolution vs own baseline | per ISO week in the period |
-| Card delta | % change vs previous window | omitted in custom range and **Tudo** |
+| Bus factor | top author share | period filter |
+| Review bottleneck | top reviewer share | period filter |
+| Weekly Champions | growth against own baseline | ISO week in the period |
+| Card delta | % against the previous window | omitted in custom range and **Tudo** |
 
-Two window kinds exist. **Period filter** follows the sidebar (presets 1/3/6/12/24M or **Tudo**, plus a custom range `dateFrom`/`dateTo` that cuts by whole month — the aggregations are monthly/weekly, see [Filters](./filters.md)). **Fixed windows** ignore the period filter on purpose and say so in the card footer; they still respect the repo, dev and bot filters. Two panels ignore the sidebar entirely instead: releases (tags are milestones of the repo) and inactivity (measured up to today). Timestamps are stored in UTC ISO with milliseconds; time buckets are computed in `GITVIEW_TIMEZONE` (default `America/Sao_Paulo`).
+- A **fixed**, **now**, **milestones** or **full history** window: ignores the period on purpose and says so in the label, but respects repos, devs and bots. Only releases and inactivity ignore the entire sidebar.
+- Dates are stored in UTC ISO with milliseconds, and the time buckets (month, day, ISO week, weekend, late night, heatmap) come from `GITVIEW_TIMEZONE`, default `America/Sao_Paulo` ([Configuration](../configuration/env.md)).
 
 ## Activity
 
-### Commits
+**Commits**: one row of `git log --all --no-renames --no-merges --numstat` per repo, inside the window. Merges are out of every metric, removed by topology and not by subject: a single-parent commit with a "Merge" subject (squash or rewritten pull) counts, and the output of a merge already shows up in the PR. `pnpm clean && pnpm collect` applies the filter to history already in the database. Commits with an unreadable date drop out of all buckets.
 
-A commit is one row of `git log --all --no-renames --no-merges --numstat` per repo. **Merge commits are out of every metric**: they are removed in the `git log` call by topology (`--no-merges`), not by subject — a single-parent commit whose subject says "Merge" (squash or rewritten pull) still counts. Commits with an unreadable date are dropped from all buckets.
+**Lines added and removed**: sums of `--numstat` per commit. Lockfiles and generated files are filtered line by line in the parse, never via pathspec: the commit counts, its generated lines do not. `GITVIEW_EXCLUDE_PATHS` (CSV of globs) adds your own patterns, with `/` matching the whole path and without `/` matching only the file name. The default list is in [Collectors](../architecture/collectors.md).
 
-:::info Why don't merges count?
-Merge commits carried `+0−0` diffs but a large share of the scanned history was `Merge …` commits, inflating commits/day, pace and streaks. The "production" of a merge already shows up in the PR. Because the rule lives in the collector, old history already in the database keeps its merges — run `pnpm clean && pnpm collect` to apply it retroactively. See [issue #7](https://github.com/Enlighten-Brasil/gitview/issues/7).
-:::
+**Active days**: count of distinct calendar days with at least one commit. **Commits/active day**: `commits / max(diasAtivos, 1)`. Both are lifetime totals and appear with the `(total)` suffix on dev pages.
 
-### Lines added / removed
+**Streak**: pure calendar arithmetic over day keys in the canonical timezone, no local `Date` math, so DST and machine timezone cannot break the run. **streak** is the consecutive days ending on the last active day (a dev idle for 3 days still shows the run that ended there); **record** is the longest run ever, shown as `máx`.
 
-Additions and deletions come from the `--numstat` output, summed per commit. Lockfile and generated-file lines are filtered **while parsing the numstat** (never via pathspec — that would drop whole commits): the commit counts, its generated lines don't. The default list (`DEFAULT_EXCLUDE_PATHS`) covers lockfiles (`package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `bun.lock`, `bun.lockb`, `Cargo.lock`, `composer.lock`, `Gemfile.lock`, `poetry.lock`, `Pipfile.lock`, `pubspec.lock`, `Package.resolved`, `go.sum`) and generated assets (`*.min.js`, `*.min.css`, `*.min.map`, `*.snap`, `*.generated.ts`, `*.generated.js`, `*.designer.cs`). `GITVIEW_EXCLUDE_PATHS` (CSV of globs) appends your own patterns. A pattern with `/` matches the whole path at any depth; without `/` it matches the basename; matching is case-sensitive like gitignore.
+**Hour heatmap** (**Frequência — dia da semana × hora**): commits per (author, repo, month, weekday, hour), with `0 = dom … 6 = sáb` and hour `0–23`. The aggregation keeps at most 24 months, so **Tudo** has that cap, and the period cuts by month.
 
-### Commits/active day and active days
-
-```ts
-commitsPerActiveDay = commits / Math.max(activeDays, 1)
-```
-
-`activeDays` is the count of distinct calendar days with at least one commit. Both metrics are historical totals — on dev pages they carry the `(total)` suffix when a period filter is active, because they intentionally stay outside the period filter.
-
-### Streak
-
-Streaks use pure calendar arithmetic over day keys in the canonical timezone (no `Date` local math, no elapsed-time division — DST or machine timezone can't break a run):
-
-- **streak** (`streak`): consecutive days ending at the dev's last active day. A dev whose last commit was 3 days ago still shows the run that ended there.
-- **record** (`longestStreak`): longest consecutive run ever ("máx" in the ranking).
-
-### Hour heatmap
-
-The **Frequência — dia da semana × hora** heatmap aggregates `stats.heatmap` rows: commits per (author, repo, month, weekday, hour), with weekday `0 = dom … 6 = sáb` and hour `0–23`. The collector keeps at most the last 24 months of heatmap rows, so even **Tudo** shows at most 24 months here. The period filter applies at month granularity.
-
-:::info Why is there a canonical timezone?
-All time buckets — month, day, ISO week, weekend, late night, heatmap — are computed in `GITVIEW_TIMEZONE` (default `America/Sao_Paulo`) via `Intl`, never in the collecting machine's clock. The same database produces byte-identical aggregates on any machine, and UTC alone models nobody's "late night" in practice. Before [issue #8](https://github.com/Enlighten-Brasil/gitview/issues/8) the ISO week key used UTC while the other buckets used local time — the same commit could land in different weeks depending on where you collected.
-:::
-
-### Commit types
-
-The type is the conventional-commit prefix of the subject: `type(scope)!: description`. Anything matching `^([a-z]+)(\([^)]*\))?!?:` (case-insensitive) with `type` in `feat`, `fix`, `chore`, `refactor`, `docs`, `test`, `perf`, `style`, `build`, `ci` keeps its name; everything else becomes `outros`. The charts (**Tipos de commit por mês (feat × fix × ...)**, **Mix por repo (% — ordenado por fix)**) group into five categories — `feat`, `fix`, `refactor`, `chore`, `outros` — so `docs`/`test`/`perf`/`style`/`build`/`ci` are displayed inside `outros`. The fix-hotspot metric counts raw `fix` commits. Aggregation is monthly per (month, repo, author, type) in `stats.json#monthlyTypes`.
+**Commit types**: the conventional prefix of the subject (`type(scope)!: description`). Matches of `^([a-z]+)(\([^)]*\))?!?:` (case-insensitive) among `feat`, `fix`, `chore`, `refactor`, `docs`, `test`, `perf`, `style`, `build` and `ci` keep their name; the rest becomes `outros`. The charts group into `feat`, `fix`, `refactor`, `chore`, `outros`, so the remaining categories disappear into `outros`; fix hotspots counts raw `fix`. Aggregation is monthly per (month, repo, author, type).
 
 ## Pace
 
-**Ritmo — últimas 4 semanas vs 8 anteriores** compares the last 4 ISO weeks with the weekly average of the 8 before them:
-
-```ts
-recent  = commits in the last 4 ISO weeks
-prevAvg = (commits in the previous 8 ISO weeks) / 8
-ratio   = (recent / 4) / prevAvg   // null when prevAvg = 0
-```
-
-Windows are calendar weeks anchored on today (a week with no data counts 0 — the window never stretches). Only devs with `prevAvg ≥ 2` or `recent > 0` appear. The window is fixed: it ignores the period filter but respects repos, devs and bots. Alerts: **abaixo do ritmo** when `ratio ≤ 0.5`, **acelerando** when `ratio ≥ 1.5` (a green, positive list — not a risk tier).
+**Ritmo — últimas 4 semanas vs 8 anteriores**: `ratio = (commits in the last 4 ISO weeks / 4) / (commits in the 8 previous ISO weeks / 8)`, `null` when the previous average is 0. The weeks are calendar weeks anchored on today: a week with no data counts 0 and the window never stretches. The list includes devs with a previous average `≥ 2` or recent commits `> 0`. **abaixo do ritmo** (below pace) at `ratio ≤ 0.5`; **acelerando** (accelerating) at `ratio ≥ 1.5`.
 
 ## Pull requests
 
-All PR data comes from `github.json` (GraphQL: every OPEN PR plus MERGED PRs of the last 400 days). PR authors are resolved from GitHub login to the canonical dev name before any filter.
+From the GitHub collection: every open PR plus the ones merged in the last 400 days. GitHub login becomes the canonical dev name before any filter.
 
-### Aging (open PRs)
+**PR aging**: `days since createdAt` in whole days up to now, with 0 shown as "hoje" (today). **PRs abertos — mais antigos primeiro** paints age amber above 3 days and red above 7. **PRs parados — abertos há 14+ dias** lists the 5 oldest with age `≥ 14` (`mostrando N de M`; the full list is on the **PRs abertos — mais antigos primeiro** panel) and the badge turns error with 5 or more stale PRs.
 
-Age is `daysSince(createdAt)` — full days elapsed to now (0 shows as "hoje"). **PRs abertos — mais antigos primeiro** sorts oldest first; age is painted amber above 3 days and red above 7 days. **PRs parados — abertos há 14+ dias** lists the 5 oldest open PRs with `age ≥ 14` days (`mostrando N de M`; the full list is on the Pull requests tab); the badge turns error when 5 or more PRs are stale, and each listed row turns red at `age ≥ 30` days. Open PRs are a "now" metric: the period filter never applies to them.
+**Cycle time**: `cycleHours = (mergedAt - createdAt) / 3_600_000`. The **cycle time mediano** card is the median over PRs merged in the period: an even count uses the mean of the two central values, and with no PRs the result is 0. Per repo, only repos with 3 or more merged PRs in the period qualify. The **Tendência de cycle time** panel uses the last 6 months: one median per month, months with no PRs skipped, `subindo` (rising) when the last 3 months with data are strictly increasing, and repos with fewer than 3 PRs in the window stay out.
 
-### Cycle time
+**Reviews per dev and concentration per repo**: counts the reviews of PRs merged in the period, no self-review and no bots. **Reviews por dev** splits into total, `APPROVED` and `CHANGES_REQUESTED`. **Concentração por repo** is `top reviewer reviews / third-party reviews in the period`, sorted by that value.
 
-```ts
-cycleHours = (mergedAt - createdAt) / 3_600_000
-```
-
-The **cycle time mediano** card is the median of `cycleHours` over PRs merged in the filtered period (even count → mean of the two central values; no PRs → 0). Per repo, only repos with 3 or more merged PRs in the period get a median. The trend chart (`mediana do cycle time (criação → merge) por mês, com (n PRs)`) uses a **fixed 6-month window** (ignores the period filter, respects repos/devs/bots): one median per month, months with no PRs skipped, and `subindo` (rising) means the last 3 months with data are strictly increasing. Repos with fewer than 3 PRs in the window are dropped.
-
-### Reviews per dev and concentration per repo
-
-Reviews counted are those on PRs merged in the filtered period, excluding self-review (the PR author's own) and bot reviews. **Reviews per dev** splits them into total, `APPROVED` and `CHANGES_REQUESTED`. **Concentration per repo** (`reviewShareByRepo`) computes `topShare = topReviewerCount / thirdPartyReviewsInThePeriod` and sorts by it.
-
-### Merge without review
-
-A PR counts as "merged without review" when no review comes from another non-bot person. The metric is `round(withoutReview / mergedInThePeriod * 100)` — the **Merge sem review — período filtrado** card. Thresholds: ≥10% is attention, ≥20% is high (same values in the summary cards and the alert strip).
+**Merge without review**: a PR with no third-party non-bot review; `round(without review / merged in the period × 100)`. `≥ 10%` is attention and `≥ 20%` is critical, in the summary cards and the alert strip.
 
 ## Releases
 
-Release data comes from `releases.json` (local `git tag` for coverage, GitHub REST API for names and notes). Tags are milestones: the release panels ignore the sidebar entirely — the grid footer reads `marcos — ignoram o filtro de período`. Commits are attributed to tags by **timestamp comparison, never text** (mixed UTC offsets used to assign commits to the wrong tag when compared as strings).
+From the release collection: local `git tag` for coverage and the GitHub REST API for names and notes. Tags are milestones, so the panels ignore the entire sidebar. Commits are attributed to tags by timestamp comparison, never by text.
 
-- **Days since last release**: `daysSince(tags[0].date)` — tags are stored newest first; `null` when the repo has no tags. At 30+ days the label turns warning (release "atrasada").
-- **Release cadence**: tags with date in the last 12 months ÷ 12, shown as `X/mês`.
-- **Commits per release**: commits whose timestamp falls in `(previous tag, this tag]` (ascending timestamps, two-pointer). Each tag row shows its own count.
-- **Unreleased commits** (`unreleased`): commits after the newest tag. The badge `N não liberados` appears at ≥20 (attention) and turns red at ≥50.
+- **Days since last release**: days since the newest tag, `null` with no tags, warning at 30+ days.
+- **Release cadence**: tags with a date in the last 12 months divided by 12, shown as `X/mês`.
+- **Commits per release**: commits with a timestamp in `(previous tag, this tag]`; each tag row shows its own count.
+- **Unreleased commits**: commits after the newest tag; badge `N não liberados` from 20, red from 50.
 
-## Off-hours / burnout
+## Off-hours
 
-**Fora do horário** counts `weekend` (Sat/Sun) and `night` (22h–6h) commits — both in the canonical timezone — and shows `offHoursPct = (weekend + night) / total`. The card has two modes:
+`weekend` (Sat and Sun) and `night` (22h–6h) commits in the canonical timezone: `offHoursPct = (weekend + night) / total`. A row appears only with `total > 0` and at least one off-hours commit.
 
-- **8 semanas** — fixed 8-week window (ignores the period filter). Also shows `fds ativos (últ. 4)`: how many of the window's last 4 weekly rows carry a weekend commit — counted per author × repo × week, so the same weekend in two repos counts twice. Rows need `total > 0` and at least one weekend/night commit.
-- **período** (labeled with the current range) — follows the sidebar filter. Devs with fewer than 20 commits in the period are ignored (`OFF_HOURS_MIN_COMMITS`); like the 8-week mode, a row only appears with at least one weekend/night commit.
-
-Status tiers: **padrão** at `offHoursPct ≥ 25%` or `fds ativos (últ. 4) ≥ 3`; **atenção** at `≥ 15%` — in the 8-week mode, having 5 or more weekend/night commits raises the floor to attention even below 15%; **pontual** below. The period mode judges by percentage only. In the weekly summary, a dev is flagged at `≥ 25%` off-hours with at least 5 commits that week.
+- **8 weeks mode**: fixed window. Shows `fds ativos (últ. 4)` (active weekends in the last 4): how many of the window's last 4 weekly rows carry a weekend commit, counted per author × repo × week (the same weekend in two repos counts twice).
+- **Period mode**: follows the sidebar, ignores devs with fewer than 20 commits in the period and judges by percentage only.
+- Status: **padrão** at `offHoursPct ≥ 25%` or `fds ativos (últ. 4) ≥ 3`; **atenção** at `≥ 15%`, raised to attention in 8 weeks mode when there are 5+ off-hours commits; **pontual** below.
+- In the weekly summary, the dev is flagged at `≥ 25%` with at least 5 commits in the week.
 
 ## Health thresholds
 
-Every `/health` card documents its own thresholds in the footer. Most values come from `src/thresholds.ts` (centralized since issue #26); the bus-factor and review-bottleneck tiers are still written inline in their panels. The values:
+Each card on the Saúde page documents its own values in the footer.
 
 | Card | Metric | Attention | Critical |
 |---|---|---|---|
-| Ritmo (`PaceAlert`, `AlertStrip`) | ratio vs previous average | falling `≤ 0.5×` (warning in the strip) | `≤ 0.5×` is the error list in the panel; `≥ 1.5×` shows **acelerando** in green — positive, not a risk tier |
-| PRs parados (`PrStaleAlert`) | age of open PRs | `≥ 14` days | badge error at `≥ 5` stale PRs; row error at `≥ 30` days |
-| Idade de PR (`PrOpenTable`) | age of open PR | `> 3` days | `> 7` days |
-| Merge sem review (`ReviewCoverage`, `PrSummaryCards`) | % merged without review | `≥ 10%` | `≥ 20%` |
-| Inatividade — dev (`InactiveWatch`) | days since last commit | `≥ 21` days | `≥ 60` days |
-| Inatividade — repo (`InactiveWatch`) | days since last commit | `≥ 30` days | `≥ 90` days |
-| Fix hotspots (`FixHotspots`, `RepoTable`) | % of `fix` commits | `≥ 25%` | `≥ 35%` |
-| Commits não liberados (`RepoTable`, `RepoReleasesGrid`) | commits since last tag | `≥ 20` | `≥ 50` |
-| Fora do horário (`OffHoursPanel`) | off-hours share | `≥ 15%` (or 5+ weekend/night commits in 8-week mode) | `≥ 25%` or 3+ active weekends |
-| Releases (`RepoReleasesGrid`) | days since last tag | `≥ 30` days | — |
-| Bus factor (`BusFactor`) | top author share | `≥ 50%` | `≥ 70%` with ≤2 active devs, or top author `≥ 50%` who also does `≥ 70%` of reviews |
-| Gargalo de review (`ReviewBottleneck`) | top reviewer share | `≥ 50%` | `≥ 70%` |
+| Pace | ratio vs the previous average | `≤ 0.5×` | `≤ 0.5×` becomes error in the panel |
+| Stale PRs | age of an open PR | `≥ 14` days | error badge with `≥ 5` stale |
+| PR age (table) | age of an open PR | `> 3` days | `> 7` days |
+| Merge without review | % without third-party review | `≥ 10%` | `≥ 20%` |
+| Inactivity (dev) | days since the last commit | `≥ 21` days | `≥ 60` days |
+| Inactivity (repo) | days since the last commit | `≥ 30` days | `≥ 90` days |
+| Fix hotspots | % of `fix` commits | `≥ 25%` | `≥ 35%` |
+| Unreleased commits | commits since the last tag | `≥ 20` | `≥ 50` |
+| Off-hours | weekend and late-night share | `≥ 15%` | `≥ 25%` or 3+ weekends |
+| Releases | days since the last tag | `≥ 30` days | — |
+| Bus factor | top author share | `≥ 50%` | see note below |
+| Review bottleneck | top reviewer share | `≥ 50%` | `≥ 70%` |
 
-Sample-size guards (small samples are noise): fix hotspots ignore repos with fewer than 20 commits in the period; bus factor ignores repos with fewer than 10 commits; review bottleneck ignores repos with fewer than 5 reviews. Bus factor's "blind spot" (the top author also dominates reviews) needs at least 5 reviews on the repo.
-
-Inactivity is the one metric measured **up to today, ignoring every sidebar filter** (all repos, all devs, bots excluded from the dev list) — someone quiet for weeks should show up no matter what you filtered. `daysSince` is whole days: `floor((now − lastCommit) / 86 400 000)`.
+- **Bus factor** is critical at `≥ 70%` with at most 2 active devs, or at `≥ 50%` when the same author also does `≥ 70%` of the repo's reviews (review blind spot, which requires at least 5 reviews on the repo).
+- **Minimum sample**: fix hotspots ignores repos with fewer than 20 commits in the period; bus factor, fewer than 10 commits; review bottleneck, fewer than 5 reviews.
+- **Inactivity** is the only metric measured up to today, with the sidebar ignored: all repos, all devs, bots off the list. Days are whole: `floor((now − last commit) / 86 400 000)`.
+- **Acelerando** (`ratio ≥ 1.5`) is green and not a risk tier; the alert strip uses the same drop at `≤ 0.5×`. Each stale PR row turns error at `≥ 30` days.
 
 ## Weekly Champions
 
-**Campeão da semana — maior evolução** rewards improvement, not volume. For each ISO week in the filtered period:
+**Campeão da semana — maior evolução**, for each ISO week in the period: `ratio = commits / (mean of the 8 calendar weeks before it inside the period + 1)`, with candidates from 3 commits in the week. The highest `ratio` wins; ties break by more commits, then by name. An empty week counts 0 and does not stretch the window; weeks before the start of the period do not count; a week with no previous week inside the period stays out. **vitórias (período)** counts the titles per dev in the window.
 
-```ts
-// candidates: devs with >= 3 commits in the week (MIN_WEEK_COMMITS)
-// baseline: the 8 calendar ISO weeks before it, restricted to the period
-ratio = commits / (baselineMean + 1)   // baselineMean = sum / weeksInWindow
-```
+## Card delta
 
-The winner is the highest ratio; ties break by more commits, then name. The baseline uses **calendar** weeks — an empty week counts 0 instead of stretching the window — and only weeks inside the filtered period count (`semanas anteriores ao início do período não contam`); a week with no prior week in the period leaves the ranking. The **vitórias (período)** table counts titles per dev across the period.
+The summary cards compare against the equivalent previous window: in a 6M preset, the 6 months immediately before the cutoff, with the same repo, dev and bot filters.
 
-:::info Why reward evolution?
-Pure volume gave 82% of the weeks to the same dev and rewarded commit-splitting. The formula `commits ÷ (mean of the previous 8 weeks + 1)` prizes rhythm: the `+1` in the denominator gives 2× to someone starting from zero, so returning from vacation wins a week, not the whole board. The 3-commit floor kills noise from tiny averages. See [issue #10](https://github.com/Enlighten-Brasil/gitview/issues/10).
-:::
-
-## Card deltas
-
-Summary cards (commits, `linhas +`, `linhas −`, `devs ativos`, `repos ativos`) show a delta versus the **equivalent previous window**: for a 6M preset, the 6 months immediately before the cutoff. The comparison window is built with the same repo/dev/bot filters as the current one.
-
-- The delta is **omitted** in a custom range and in **Tudo** — no comparable window exists (`previousTotals` returns `null`) — and also when the previous window sums zero (nothing to divide by).
-- `pct = round((current − previous) / previous * 100)`; absolute change up to 2% shows as flat (`DELTA_FLAT_PCT`).
-- Color: commits/devs/repos rising is green, falling red; line counts are neutral.
-- Tooltip: `vs o mês anterior` for a 1M preset, `vs os N meses anteriores` otherwise.
-
-## Next steps
-
-- [Pipeline](../architecture/pipeline.md) — where each metric's data comes from (collectors, JSONs, invariants).
-- [Development](../contributing/development.md) — how to run the collectors and change thresholds safely.
+- `pct = round((current − previous) / previous × 100)`; an absolute change of up to 2% appears as flat. Omitted in a custom range, in **Tudo** and when the previous window sums to zero.
+- Color: commits, devs and repos rising are green, falling are red; lines are neutral. Tooltip: `vs o mês anterior` in the 1M preset, `vs os N meses anteriores` in the others.

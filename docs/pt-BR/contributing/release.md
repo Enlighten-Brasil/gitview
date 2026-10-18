@@ -1,61 +1,49 @@
 ---
 title: Ritual de release
-description: Do changeset ao commit único chore(release) — além do que o CI exige, onde vive o roadmap e a regra de paridade das docs.
+description: Do changeset ao commit único chore(release), o que o CI exige, como propor mudança e a paridade das docs.
 ---
 
 # Ritual de release
 
-Toda mudança no gitview percorre o mesmo caminho: um changeset, commits de trabalho em pt-BR, o bump de versão, os gates, e um commit `chore(release): X.Y.Z`. Este mapa é o caminho — siga-o e a revisão continua entediante.
+Toda mudança percorre o mesmo caminho: um changeset, commits de trabalho em pt-BR, o bump de versão, os gates e um commit único `chore(release): X.Y.Z`. Antes do primeiro PR, veja [Ambiente de desenvolvimento](./development.md).
 
-## Como uma release acontece?
+## Os cinco passos
 
-Cinco passos, em ordem:
+1. **Registre a mudança** com `pnpm changeset` (`minor` = feature, `patch` = fix), commitado junto com o código. PR de código sem changeset volta na revisão.
+2. **Commits de trabalho** em pt-BR, Conventional Commits (`feat(...)`, `fix(...)`, `docs(...)`). Commit que fecha issue do roadmap termina o corpo com `Ref: #N`.
+3. **Aplique a versão** com `pnpm version:packages`: bumpa o `package.json` e escreve a entrada do `CHANGELOG.md`. Não existe script `version`, então nunca bumpa com `pnpm version` ou `npm version` cru.
+4. **Rode os gates**: `pnpm check:scrub`, `pnpm lint`, `pnpm typecheck`, `pnpm build`, mais `pnpm check:data` quando mexeu em coletores ou shapes de dados.
+5. **Commit de release**: um commit único `chore(release): X.Y.Z` com o bump e o changelog. A versão atual fica no `package.json`, o histórico no `CHANGELOG.md`.
 
-1. **Registrar a mudança** — `pnpm changeset` (`minor` = feature, `patch` = fix), commitado junto com o código. PR com mudança de código sem changeset vem de volta na revisão.
-2. **Commits de trabalho** — mensagens em pt-BR, Conventional Commits (`feat(...)`, `fix(...)`, `docs(...)`, …). Commits que fecham issues do roadmap terminam o corpo com `Ref: #N`.
-3. **Aplicar a versão** — `pnpm version:packages`: bumpa a versão no `package.json` e escreve a entrada no `CHANGELOG.md`. Não existe script `version` no `package.json` — nunca bumpa com `pnpm version`/`npm version` cru.
-4. **Rodar os gates** — `pnpm check:scrub`, `pnpm lint`, `pnpm typecheck`, `pnpm build` (adicione `pnpm check:data` quando mexeu em coletores ou shapes de dados).
-5. **Commit de release** — um commit único `chore(release): X.Y.Z` com o bump e o changelog. A versão atual vive no `package.json`; o histórico vive no `CHANGELOG.md`.
+Quem contribui responde pelos passos 1 e 2. Quem mantém aplica os passos 3 a 5. O resto é revisão.
 
-Quem mantém aplica os passos 3–5; quem contribui responde pelos passos 1–2. O resto é revisão.
+## O que o CI exige
 
-## O que o CI exige?
+Dois jobs em `.github/workflows/ci.yml`, disparados em todo PR e em push para `main`:
 
-Dois workflows, dois trabalhos:
+| Job | Passos |
+|---|---|
+| `gates` | `pnpm install --frozen-lockfile`, `pnpm check:scrub`, `pnpm lint`, `pnpm typecheck`, `pnpm build` |
+| `docs` | `pnpm check:docs` (paridade EN e pt-BR) e `pnpm docs:build` (dead link derruba o build) |
 
-- **`.github/workflows/ci.yml`** ("CI") — roda em todo PR e em push para `main`: `pnpm install --frozen-lockfile`, depois `pnpm check:scrub` (anti-regressão do scrub de identidade, [issue #17](https://github.com/Enlighten-Brasil/gitview/issues/17)), `pnpm lint`, `pnpm typecheck`, `pnpm build`. Node 22, pnpm do campo `packageManager`, actions pinadas por SHA (higiene de supply chain em repo público). O `check:data` fica fora de propósito — ele valida `public/data/`, que só existe depois de uma coleta local.
-- **`.github/workflows/pages.yml`** ("Deploy demo") — builda e deploya a demo pública no GitHub Pages a partir de um fixture sintético. Detalhes em [Publicando o build estático](../publishing/static-deploy.md).
+Node 22, pnpm do campo `packageManager`, actions pinadas por SHA. O `check:data` fica fora do CI: ele valida `public/data/`, gitignored, que só existe depois de uma coleta local com token.
 
-Se o CI está verde e os gates passam localmente, a mudança está pronta para release.
+O `.github/workflows/pages.yml` builda e deploya a demo pública a partir do fixture sintético, com as docs no mesmo artefato. Detalhes em [Publicando o build estático](../publishing/static-deploy.md).
 
-## Onde fica o roadmap?
+## Roadmap e propostas
 
-Nas [issues do GitHub](https://github.com/Enlighten-Brasil/gitview/issues) e nos milestones — o que não está em issue não está planejado. O [`ROADMAP.md`](https://github.com/Enlighten-Brasil/gitview/blob/main/ROADMAP.md) é intencionalmente minúsculo: sem checklists, sem status, sem regras duplicadas. Para ver o que vem a seguir, abra o milestone atual.
+O roadmap vive nas [issues do GitHub](https://github.com/Enlighten-Brasil/gitview/issues) e nos milestones; o [`ROADMAP.md`](https://github.com/Enlighten-Brasil/gitview/blob/main/ROADMAP.md) só aponta para lá. O que não está em issue não está planejado.
 
-:::info Por que o ROADMAP.md é tão pequeno?
-Porque roadmap escrito em markdown apodrece: checklist desatualizado, status duplicado, regra que ninguém sincroniza. O tracker do GitHub já é a fonte de verdade — issues e milestones — então o `ROADMAP.md` só aponta para lá e nunca precisa de manutenção. O que não está em issue não está planejado.
-:::
+Para propor uma mudança, abra uma issue com três blocos:
 
-## Como proponho uma mudança?
+- **Contexto**: que situação motiva a mudança e o que dói hoje.
+- **Proposta**: o comportamento desejado, não o detalhe de implementação.
+- **Critério**: o que precisa ser verdade para considerar pronto.
 
-Abra uma [issue no GitHub](https://github.com/Enlighten-Brasil/gitview/issues) com três seções:
+Para bug, a receita é mais simples: o que você fez, o que esperava, o que aconteceu. A saída dos coletores e os avisos do `pnpm check:data` amarram o bug mais rápido. A ferramenta é read-only sobre os repos analisados: proposta de escrever neles está fora da linha do projeto.
 
-- **Contexto** — que situação motiva a mudança; o que dói hoje.
-- **Proposta** — o que você quer mudar, no nível do comportamento (não do detalhe de implementação).
-- **Critério** — o que precisa ser verdade para considerar pronto.
+## Paridade de docs
 
-Para bugs, a receita é mais simples: o que você fez, o que esperava, o que aconteceu — a saída dos coletores e os avisos do `pnpm check:data` amarram bugs bem mais rápido. Lembre-se: a ferramenta é read-only sobre os repos analisados; propostas de escrever neles estão fora da linha do projeto.
+`README.md` é o documento primário e `README.pt-BR.md` é o espelho seção a seção; a mesma regra vale para `CONTRIBUTING.md` / `CONTRIBUTING.pt-BR.md` e para cada página de `docs/` com seu par em `docs/pt-BR/`. Toda mudança de doc atualiza os dois arquivos no mesmo PR, e o `pnpm check:docs` cobra o par. Todo comando ou label citado precisa existir no `package.json` ou no código.
 
-## Por que as docs saem em pares?
-
-O `README.md` (inglês) é o documento primário e o `README.pt-BR.md` é o espelho seção a seção — a mesma regra vale para `CONTRIBUTING.md` / `CONTRIBUTING.pt-BR.md`. Toda mudança de documentação atualiza **os dois** arquivos do par **na mesma** mudança, e todo comando ou label citado precisa existir no `package.json` / nos componentes. Não existe etapa de "traduzir depois": mudança de doc sem par não entra.
-
-:::info Por que docs e README têm pares de idioma?
-O projeto é brasileiro em manutenção e open-source em distribuição: o time trabalha em pt-BR, a comunidade lê inglês. Em vez de escolher um idioma e excluir metade do público, cada documento tem um par — `X.md` (primário, inglês) e `X.pt-BR.md` (espelho seção a seção). A regra do "mesma mudança, os dois arquivos" é o que impede o espelho de virar tradução abandonada.
-:::
-
-## Próximos passos
-
-- [Ambiente de desenvolvimento](./development.md) — comandos, gates e convenções em detalhe.
-- [Publicando o build estático](../publishing/static-deploy.md) — como uma release vira um dashboard live.
-- [CHANGELOG.md](https://github.com/Enlighten-Brasil/gitview/blob/main/CHANGELOG.md) — o histórico de releases.
+Mudou um label de UI, um comando, uma chave `GITVIEW_*`, um campo do `team.local.json` ou uma regra de métrica? Atualize no mesmo PR toda página que cita isso e regenere as capturas afetadas com `pnpm.cmd demo:shots`. Página de docs aprofunda o README, não o reescreve.

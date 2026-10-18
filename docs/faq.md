@@ -1,57 +1,43 @@
 ---
-title: FAQ
-description: "Short answers to common gitview questions: clones, token and privacy, Windows, teams, merges, publishing and what is regenerable."
+title: Frequently asked questions
+description: Short answers on clones, token and privacy, Windows, aliases, merges and publishing the dashboard.
 ---
 
-# FAQ
+# Frequently asked questions
 
-Short answers to the questions that come up most. Each one links to where the details live.
+## Do I need to clone the repositories manually?
 
-## Do I need to clone the repos myself?
-
-No. The setup clones the repositories you pick into `data/repos/` (bare managed clones) and refreshes them with `git fetch` on every collection. If you already keep clones somewhere, set `GITVIEW_REPOS_ROOT` to that folder — collectors look there first. In that mode the numbers reflect your local clones, so `git pull` the repos before collecting. See the [quick start](./guide/quickstart.md).
+No. Setup clones the repos you pick into `data/repos/` (bare clones) and runs `git fetch` in them on every collection. With your own clones, point `GITVIEW_REPOS_ROOT` at the folder that holds them and run `git pull` before collecting: see [Repositories](./guide/repositories.md).
 
 ## Is the gh CLI required?
 
-No — it is an optional bridge. Authentication happens in the UI (device flow or a pasted PAT). When `GITVIEW_GITHUB_TOKEN` is empty and `gh auth login` is active, collectors fall back to `gh auth token`. See the [environment reference](./configuration/env.md).
+No, it is an optional bridge. Authenticate through the UI (device flow or a pasted PAT); with `GITVIEW_GITHUB_TOKEN` empty and `gh` logged in, collection falls back to `gh auth token`: see [Connecting GitHub](./guide/connecting-github.md).
 
-## Do my data go to any server?
+## Does my data leave the machine?
 
-No. Collection writes a local SQLite database (`data/gitview.db`) and JSONs under `public/data/`; the frontend only reads those JSONs in the browser. The only outbound calls go to GitHub — the API and git — during setup and collection. See the [pipeline](./architecture/pipeline.md).
+No. Collection writes `data/gitview.db` and the JSONs in `public/data/`, and the browser only reads those files. The only outbound calls go to GitHub, during setup and collection.
 
-## Is it safe? What about the token?
+## Does gitview write to my repositories? What about the token?
 
-The device flow needs no client secret (never add one) and stores the token in `.env`, which is gitignored. For a real permission guarantee use a **GitHub App** with *Repository → Contents: Read-only* — the token it issues is physically incapable of writing. Managed clones also get denyPush (`remote.origin.pushurl=no-push`). See the [environment reference](./configuration/env.md).
+No: it reads `git log`, `git tag` and the GitHub API, and managed clones block push (`remote.origin.pushurl=no-push`). The token stays in `.env`, gitignored and out of the dev server's reach. For a read-only guarantee enforced by permission, use a GitHub App with *Contents: Read-only*: see [Connecting GitHub](./guide/connecting-github.md).
 
-## My numbers changed after cleaning and re-collecting. Why?
+## I changed an alias and the numbers did not change. Why?
 
-:::info Why do re-collections change old numbers?
-Two usual causes. Identity aliases: without a mapping in `team.local.json`, every commit e-mail and GitHub login counts as its own author, and unifying them rewrites `stats.json`. And `GITVIEW_EXCLUDE_PATHS` (generated files) only applies to new commits. To rewrite the history, run `pnpm clean && pnpm collect` — the buttons **limpar e recoletar** (UI) do the same. Details in the [metrics reference](./dashboard/metrics.md).
-:::
+An alias only takes effect when the data is re-aggregated: use **salvar + recoletar** (save + re-collect) in `/teams`. Removing an alias does not rename what is already in the database, and that takes `pnpm clean && pnpm collect`: see [Data maintenance](./configuration/maintenance.md).
+
+## Do merges count in the metrics?
+
+No. `git log` runs with `--no-merges`, so merges stay out of commits, pace and streaks. History already written before that keeps its merges until `pnpm clean && pnpm collect`: see [Metrics glossary](./dashboard/metrics.md).
 
 ## Does it work on Windows?
 
-Yes. On PowerShell 5.1 call `pnpm.cmd` — the `pnpm.ps1` shim is blocked by Execution Policy. In `.env`, write paths with forward slashes (`C:/dev/repos/api`), or single-quote values that contain spaces. See the [environment reference](./configuration/env.md).
-
-## Can I use it with another org or team?
-
-Yes. Set `GITVIEW_GITHUB_ORG` (and `GITVIEW_DEFAULT_REPOS` for the setup pre-selection) and keep your roster in `team.local.json` — dev profiles, aliases and teams, all editable in `/teams`. The project ships no machine or team data. See the README section [Using it with another team/org](https://github.com/Enlighten-Brasil/gitview#using-it-with-another-teamorg).
-
-## Merges don't show up in the metrics — is that a bug?
-
-:::info Why don't merges count?
-By design (decision in [issue #7](https://github.com/Enlighten-Brasil/gitview/issues/7)): 17.6% of commits were `Merge …` with +0−0 and they inflated commits/day, pace and streak — the merged work is already counted in the PR. The filter is topological (`git log --no-merges`), not by subject. Old rows still contain merges until you run `pnpm clean && pnpm collect`.
-:::
+Yes. On PowerShell 5.1 call `pnpm.cmd`, because the `pnpm.ps1` shim is blocked by the Execution Policy. In `.env` paths use forward slashes: `C:/dev/repos/api`.
 
 ## Can I publish the dashboard?
 
-Yes. `pnpm build` produces a 100% static `dist/` — serve it from any static host (GitHub Pages, Netlify, nginx…). It needs SPA fallback: deep links like `/devs/<name>` must serve `index.html`. The static build is read-only: no `/setup`, `/settings` or re-collect. See [Publishing the dashboard](https://github.com/Enlighten-Brasil/gitview#publishing-the-dashboard-static-build).
-
-## What is regenerable and what is not?
-
-The database (`data/gitview.db*`), the JSONs in `public/data/` and the managed clones are regenerable from the repositories — `pnpm clean` deletes the first two (`--repos` also the clones). `.env` and `team.local.json` are **not** regenerable: they are your machine config and team roster, and `pnpm clean` never touches them. See the [data model](./architecture/data-model.md).
+Yes. `pnpm build` produces a static `dist/` for any static host, with SPA fallback for deep links. In that build the dashboard is read-only, with no `/setup`, `/settings` or re-collection: see [Publishing the static build](./publishing/static-deploy.md).
 
 ## Next steps
 
-- [Quick start](./guide/quickstart.md)
-- [Architecture](./architecture/pipeline.md)
+- [Quick start](./guide/quickstart.md): from clone to dashboard.
+- [Data maintenance](./configuration/maintenance.md): re-collection and cleanup.

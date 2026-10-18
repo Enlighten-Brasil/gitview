@@ -1,74 +1,55 @@
 ---
 title: The setup wizard
-description: What each /setup step does, what lands in data/repos/, and how to reopen the wizard later — or run pnpm setup in the terminal.
+description: "What each /setup step does: connect GitHub, pick repos, clone, collect and set up the team."
 ---
 
 # The setup wizard
 
-On first run the wizard (route `/setup`) connects GitHub, clones the repos you pick and runs the first collection. Three steps plus one optional — and it is the only way in until there is collected data.
+With no collected data, the wizard (route `/setup`) is the only way in: it connects GitHub, clones the repos you pick and runs the first collection. Three steps plus one optional. The UI shows **Configurar gitview** with the indicator "passo 1 de 3 — conectar o GitHub".
 
-## What are the steps?
+| step | route | what it does |
+|---|---|---|
+| 1 · connect GitHub | `/setup/github` | authenticates via device flow, PAT or `gh` bridge |
+| 2 · choose repositories | `/setup/repos` | picks the org, ticks the repositories |
+| 3 · clone and collect | `/setup/collect` | bare clones in `data/repos/`, first collection |
+| 4 · set up the team (optional) | `/setup/team` | links unmapped identities to devs |
 
-The wizard renders outside the dashboard shell (no rail/navbar) with the title **Configurar gitview** and a step indicator like **passo 1 de 3 — conectar o GitHub** (the UI is pt-BR; labels stay as on screen). The sequence:
+## Step 1: connect GitHub
 
-| # | route | step label (UI) | what it does |
-|---|---|---|---|
-| 1 | `/setup/github` | **conectar o GitHub** | authenticate (device flow / PAT / `gh` bridge) |
-| 2 | `/setup/repos` | **escolher repositórios** | pick org and repos |
-| 3 | `/setup/collect` | **clonar e coletar** | bare clones in `data/repos/` + first collection |
-| 4 (optional) | `/setup/team` | **definir o time** | link unmapped identities to devs |
+Follow one of the three authentication paths in [Connecting GitHub](./connecting-github.md). When the status shows **Conectado como @\<login\>**, the **continuar** button moves to step 2.
 
-### Step 1 — connect GitHub
+## Step 2: choose repositories
 
-The card **Conectar sua conta do GitHub** offers the three authentication paths (see [Connecting GitHub](./connecting-github.md)). When the status shows **Conectado como @\<login\>**, the **continuar** button goes to step 2.
+Pick the org, search and tick the repositories; the **clonar e coletar** (clone and collect) button moves on. Pre-selection comes from `GITVIEW_DEFAULT_REPOS` (empty = all non-archived) and the selection survives F5. Picker details are in [Repositories](./repositories.md).
 
-### Step 2 — choose repositories
+## Step 3: clone and collect
 
-The card **Quais repositórios entram no dashboard?** lists the org's repos from the GitHub API: pick the org in **organização** (your orgs plus a `<login> (pessoal)` entry), filter with **buscar repositórios**, tick what enters. Pre-selection comes from `GITVIEW_DEFAULT_REPOS` (CSV in `.env`; empty = all non-archived repos). Quick picks: **padrão do time** (the CSV), **todos**, **nenhum**. Archived repos show the **arquivado** badge and can't be selected. The selection survives F5 (kept in sessionStorage). The submit button is **clonar e coletar**.
+One screen, two phases:
 
-### Step 3 — clone and collect
+1. **clone**: the missing repos become bare clones in `data/repos/`, in parallel;
+2. **collect**: the first collection runs with live progress in an expandable log.
 
-One screen, two phases (panel **Clonar e coletar**):
+Switching routes does not interrupt the run; when you come back, the log continues where it stopped. At the end, **abrir dashboard** (open dashboard) moves to step 4 (or straight to the dashboard) and **voltar** (back) returns to step 2. What lands on disk: the clones, the database at `data/gitview.db` and the JSONs in `public/data/`. Those JSONs are validated at the end of every collection; if validation fails, the collection fails.
 
-1. **clone** — the missing repos become bare clones in `data/repos/`, in parallel (pool of 4);
-2. **collect** — the first collection runs with live progress over SSE (the log is expandable).
+## Step 4: set up the team (optional)
 
-Changing routes does not kill the run: come back and the log continues where it stopped. When both phases finish, **abrir dashboard** appears (**voltar** goes back to step 2 while idle).
+Only appears when the collection found git authors or GitHub logins without a mapping. **unificar agora** (unify now) opens the identity editor at `/teams#sem-mapeamento`; **pular — abrir dashboard** (skip, open dashboard) goes straight to the dashboard. With no candidates the screen shows **Nenhuma identidade sem mapear** (no unmapped identities) and **abrir dashboard** moves on directly. It is the only `/setup` route that stays accessible once data exists.
 
-What lands on disk: `data/repos/<repo>` (clones), `data/gitview.db` (SQLite) and `public/data/*.json` (stats, commits, PRs, releases, team). The JSONs are validated at the end of every collection (`check-data.ts`) — a validation error fails the collection.
+## Reopening later
 
-### Step 4 — define the team (optional)
-
-Only appears when the first collection found candidates — git authors and GitHub logins not linked to any dev. The card counts them ("N identidades aparecem sem mapear"); **unificar agora** takes you to the identity editor at `/teams#sem-mapeamento` and **pular — abrir dashboard** skips it. With no candidates the card shows **Nenhuma identidade sem mapear** and **abrir dashboard** goes straight to the dashboard. This is the only `/setup/*` route that survives having data — you can return to it later.
-
-:::info Por que os clones são bare?
-A bare clone has no working tree — only refs and objects. The collectors read `git log` and `git tag` from those, never from a checkout, so the clones are smaller and refresh faster. Unifying identities later rewrites names already in the database only on a re-collection — that is why step 3 can run again from Settings.
-:::
-
-## How do I reopen it later?
-
-Once there is data, `/setup` redirects to Settings (`/settings`) — the wizard is a first-run flow. The rail item **Config** (⚙, dev only) opens Settings. There you get:
-
-- **gerenciar repositórios** — the same picker in manage mode: current repos come pre-selected with the **atual** badge; unchecking one warns that its clone will be deleted from disk, and **aplicar mudanças** asks for confirmation (**Apagar repositórios do disco?** → **apagar e aplicar**). Removal is always explicit.
-- **Manutenção dos dados locais** card — **recoletar tudo** (full re-scan), **limpar e recoletar** (wipe database + JSONs, then re-collect) and **apagar dados** (wipe without re-collecting — returns to the wizard; the clones stay unless you tick **apagar também os clones (data/repos)**).
+With collected data, `/setup` redirects to Settings (`/settings`, the **Config** item in the rail, dev only). There you manage repositories and use **recoletar tudo** (re-collect everything), **limpar e recoletar** (clear and re-collect) or **apagar dados** (delete data); each action's effect is in [Data maintenance](../configuration/maintenance.md).
 
 :::warning
-The wizard and Settings exist only in the dev server (`pnpm dev` / `pnpm start`). In the static build (`pnpm build`) the `/__*` endpoints don't exist and `/setup` shows the alert **Setup disponível apenas em modo dev**.
+The wizard and Settings only exist in the dev server. In the static build (`pnpm build`), `/setup` shows the alert **Setup disponível apenas em modo dev** (setup available in dev mode only).
 :::
 
-## What about the terminal?
+## From the terminal
 
-`pnpm setup` runs the same clone flow in the terminal — handy for automation:
+`pnpm setup` runs the same clone flow in the terminal:
 
 ```bash
 pnpm setup              # interactive picker ("all" = non-archived, Enter = GITVIEW_DEFAULT_REPOS)
-pnpm setup -- --yes     # no questions: GITVIEW_DEFAULT_REPOS, else all non-archived
+pnpm setup -- --yes     # no questions; requires GITVIEW_GITHUB_ORG
 ```
 
-It uses the configured token (which may come from `gh`), clones the missing repos into `data/repos/` and writes `GITVIEW_REPOS_ROOT=data/repos` to the `.env`. If a working repos folder already exists outside `data/repos`, it asks before migrating (**Migrar pros clones gerenciados em data/repos? [y/N]**). At the end it prints the next commands (`pnpm collect`, `pnpm dev`).
-
-## Next steps
-
-- [Connecting GitHub](./connecting-github.md) — pick the credential.
-- [Repositories](./repositories.md) — how the clones work and how to point at your own.
-- [Reference: .env keys](../configuration/env.md) — every `GITVIEW_*` key.
+It uses the token from `.env` (or from `gh`, if logged in), clones the missing repos into `data/repos/` and writes `GITVIEW_REPOS_ROOT=data/repos` to `.env`. If a repos folder already exists outside `data/repos`, it asks before migrating. At the end it prints the next commands.

@@ -1,44 +1,42 @@
 ---
 title: Publishing the static build
-description: What pnpm build produces, what it drops, the SPA fallback every host needs, and how the public demo is deployed.
+description: Generate the dist with pnpm build, serve it with an SPA fallback, and keep the gitview demo on GitHub Pages.
 ---
 
 # Publishing the static build
 
-`pnpm build` turns the dashboard into a 100% static `dist/` with no server of its own — the frontend only reads the JSONs in `public/data/`. This page covers what the build contains, what it deliberately leaves out, and how to serve it anywhere.
+`pnpm build` generates a 100% static `dist/`: HTML, JS, CSS and the collected JSONs. No runtime server, no database, no git. Any static host serves it.
 
-## What does `pnpm build` produce?
+## What goes into the build
 
-A `dist/` folder with static files only: no runtime server, no database, no git access. Everything the dashboard shows comes from the JSONs copied from `public/data/` (`stats.json`, `commits.json`, `github.json`, `releases.json`, `team.json`) — nothing is recalculated from git in the browser. Any static host can serve it.
+The dashboard reads only the five JSONs in `public/data/`: `stats.json`, `commits.json`, `github.json`, `releases.json`, `team.json`. Nothing is recalculated from git in the browser. New data means a new build: run `pnpm collect` before publishing.
 
-## What does not exist in the static build?
+## What doesn't exist in the static build
 
-The write endpoints (`/__setup/*`, `/__auth/*`, `/__collect`, `/__clean`, `/__team/config`, `/__team/github`) are **dev-server middleware** — `pnpm build` does not include them. In the static build the dashboard is strictly read-only:
+The write endpoints (`/__setup/*`, `/__auth/*`, `/__collect`, `/__clean`, `/__team/config`, `/__team/github`) are dev-server middleware and don't enter the `dist/`.
 
 | Feature | `pnpm dev` | static build |
 |---|---|---|
-| `/setup` (setup wizard) | works | doesn't exist — only works under `pnpm dev` |
-| `/settings` | works | doesn't exist (`requiresServer` routes are dev-only) |
-| Re-collect button (↻) | works | doesn't render (`import.meta.env.DEV` only) |
-| `/teams` editor | works | disabled — `/teams` and `/repos` still render the data from the JSONs, without editing controls |
-| `/__*` endpoints | dev-server middleware | don't exist |
+| `/setup` (wizard) | works | doesn't exist |
+| `/settings` | works | doesn't exist |
+| Re-collect button (↻) | works | doesn't render |
+| Editing in `/teams` | works | disabled |
+| Data for `/teams` and `/repos` | render | render |
 
-Practical consequence: unify identities and tune teams in dev, re-collect, then publish. Config changes made in the UI never reach an already-published `dist/` — new data means a new build.
+Unify identities and adjust the teams in dev, re-collect, and only then publish: config made through the UI never reaches an already-published `dist/`.
 
-## Why do deep links need an SPA fallback?
+## SPA fallback
 
-The router uses `createWebHistory`: `/devs/<name>` is a real URL, not a hash. When someone opens that link directly (or refreshes the page), the server must answer with `index.html` — otherwise the host returns its own 404 and the dashboard never boots.
+The router uses `createWebHistory`: `/devs/<name>` is a real URL. On a refresh or a direct link the host must answer `index.html` for a nonexistent path, or the deep link dies on the server's 404.
 
-The minimum configuration per host:
-
-- **GitHub Pages** has no rewrite rules — the trick is to copy the entry file: `cp dist/index.html dist/404.html`. Pages serves `404.html` for unknown paths, and the router takes over from there.
-- **Netlify** (generic host reference — check your host's own docs): publish `dist/` and add a `_redirects` file:
+- **GitHub Pages**: no rewrite rules. Copy the entry file: `cp dist/index.html dist/404.html`.
+- **Netlify**: `_redirects` at the published root.
 
 ```text
 /*  /index.html  200
 ```
 
-- **nginx** (generic host reference — check your host's own docs):
+- **nginx**:
 
 ```nginx
 location / {
@@ -46,42 +44,31 @@ location / {
 }
 ```
 
-Hosting under a subfolder (like `/gitview/`)? Build with the right base — see the `--base` flag in the GitHub Pages section below.
+- **Subfolder**: pass the base at build time, e.g. `pnpm exec vite build --base "/gitview/"`.
 
-## What is the publishing flow?
+## Publishing flow
 
-Three steps, repeated whenever the data should change:
+1. On the machine with the token and clones, refresh the data: `pnpm collect` (or the ↻ button in `pnpm dev`).
+2. Generate the build: `pnpm build`.
+3. Publish `dist/` with the SPA fallback above.
+4. Repeat steps 1 and 2 on a cron or CI job with `GITVIEW_GITHUB_TOKEN`.
 
-1. On the machine with the token and clones: refresh the data (`pnpm collect`, or the ↻ button under `pnpm dev`) and run `pnpm build`.
-2. Serve `dist/` from any static host, with the SPA fallback above.
-3. Fresh data = repeat steps 1–2 periodically. A cron/CI job holding `GITVIEW_GITHUB_TOKEN` works — that is exactly what the demo's workflow does, minus the real data.
+Commands and gates are in [Development setup](../contributing/development.md); the path from change to release is in [Release ritual](../contributing/release.md).
 
-## How is the public demo deployed on GitHub Pages?
+## Demo deploy on GitHub Pages
 
-The live demo runs at https://enlighten-brasil.github.io/gitview/ — synthetic data only, no real team data. The workflow is `.github/workflows/pages.yml` ("Deploy demo"): it triggers on push to `main`, on `workflow_dispatch`, and on a monthly schedule (`0 6 1 * *`). The steps in order:
+The demo at https://enlighten-brasil.github.io/gitview/ comes from `.github/workflows/pages.yml`, triggered on push to `main`, on `workflow_dispatch` and on the monthly cron `0 6 1 * *`:
 
 ```bash
-pnpm exec tsx scripts/make-demo-data.ts   # 100% synthetic fixture (devs "Ana"/"Beto", repos demo-*)
-pnpm check:data                           # validates the fixture's shape + invariants before serving
-pnpm exec vite build --base "<base_path>/"  # base computed by actions/configure-pages
-cp dist/index.html dist/404.html          # SPA fallback for GitHub Pages
+pnpm exec tsx scripts/make-demo-data.ts   # synthetic fixture for the five JSONs
+pnpm check:data                           # validates the fixture before the build
+pnpm exec vite build --base "<base_path>/"
+cp dist/index.html dist/404.html          # SPA fallback
+DOCS_BASE="<base_path>/docs/" pnpm docs:build
+cp -r docs/.vitepress/dist dist/docs
 ```
 
-Then `actions/upload-pages-artifact` + `actions/deploy-pages` publish `dist/`. Two details worth knowing:
-
-- **Dynamic base**: `actions/configure-pages` computes `base_path` (root on a user page, `/gitview/` on a project page) and the router matches it through `import.meta.env.BASE_URL` — one build works in both. Your own Pages deploy needs the same `--base` treatment if it lives under a subfolder.
-- **The workflow never touches real data**: the fixture is generated fresh in CI and validated with `pnpm check:data` before the build.
-
-:::info Why does the demo use synthetic data?
-The fixture (`scripts/make-demo-data.ts`) generates fictional devs ("Ana"/"Beto"), fake commits and `demo-*` repos so the public demo never exposes a real team's data. Dates anchor to "today" (UTC) at build time, so the dashboard always covers the default 12M preset — the cost is a fixture that is not byte-identical across days. The script also refuses to overwrite existing `public/data/` without `--force`, so it can't swallow a dev machine's collection.
-:::
-
-:::info Why does the demo rebuild monthly?
-The fixture anchors its dates to "today" at build time: without rebuilds the demo would age out of the short presets and look "dead". That's why `pages.yml` schedules a monthly rebuild ([issue #21](https://github.com/Enlighten-Brasil/gitview/issues/21)) — and because GitHub disables schedules after ~60 days of repo inactivity, manual `workflow_dispatch` stays available as a fallback.
-:::
-
-## Next steps
-
-- [Development setup](../contributing/development.md) — run the project locally and validate changes before publishing.
-- [Release ritual](../contributing/release.md) — how changes land, from changeset to `chore(release)`.
-- [README — Publishing the dashboard](https://github.com/Enlighten-Brasil/gitview#publishing-the-dashboard-static-build) — the short version of this flow.
+- `actions/configure-pages` computes the `base_path`: root on a user page, `/gitview/` on a project page. The router uses `import.meta.env.BASE_URL`, so one build serves both cases.
+- The docs site ships in the same artifact, under `dist/docs/`. Its base comes from `DOCS_BASE`; locally `pnpm docs:dev` and `pnpm docs:preview` run with `DOCS_BASE=/`.
+- The fixture is generated from scratch in CI, with fictional devs ("Ana"/"Beto") and `demo-*` repos. The script refuses to overwrite an existing `public/data/` without `--force`.
+- The fixture's dates anchor to today (UTC) at build time, which is why the monthly rebuild keeps the demo inside the short period presets. GitHub disables schedules after ~60 days without activity in the repo: run `workflow_dispatch` in that case.

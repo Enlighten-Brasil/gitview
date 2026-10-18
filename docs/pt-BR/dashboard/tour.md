@@ -1,158 +1,113 @@
 ---
 title: Passeio pelo dashboard
-description: Passeio página a página do dashboard do gitview — que pergunta cada página responde, seus painéis e para onde vai cada link.
+description: "Cada página do dashboard do gitview: a pergunta que responde, os painéis na tela e para onde vão os links."
 ---
 
 # Passeio pelo dashboard
 
-O gitview é um dashboard somente leitura sobre os seus dados de git: o coletor exporta JSON para `public/data/`, e o frontend só lê. Este passeio percorre as páginas na ordem da navegação. Para cada uma: a pergunta que ela responde, os painéis que você vê (com os rótulos reais da tela), o que é interativo e para onde vão os links. As regras dos filtros têm página própria: [Regras dos filtros](./filters.md). As capturas vêm do fixture sintético da demo pública (`scripts/make-demo-data.ts`: devs Ana e Beto, repos `demo-*`) — nunca dados reais do time.
+As páginas vêm na ordem da navegação. Para cada uma: a pergunta que ela responde, os painéis com os rótulos reais da tela e as saídas dos links. O comportamento dos filtros tem casa própria em [Regras dos filtros](./filters.md); o pipeline de dados, em [Pipeline](../architecture/pipeline.md). As capturas usam os dados sintéticos da demo pública, nunca dados reais do time.
 
-A rail (barra de ícones à esquerda) agrupa as páginas: **Dashboards** (**Visão geral** `/`, **Devs** `/devs`, **Saúde** `/health`), **Times** `/teams`, **PRs** `/prs`, **Repos** `/repos`, e — só no dev server — **Config** `/settings`. O navbar no topo traz o badge de frescor dos dados, o botão do resumo semanal e (apenas em dev) os controles de coleta.
+A rail à esquerda agrupa **Dashboards** (**Visão geral** `/`, **Devs** `/devs`, **Saúde** `/health`), **Times** `/teams`, **PRs** `/prs`, **Repos** `/repos` e, só no dev server, **Config** `/settings`. A navbar traz o badge de frescor dos dados, o botão do resumo semanal e, em dev, os controles de coleta. Todo painel de gráfico exporta PNG pelo ícone de download (toast **Imagem exportada**) e os tooltips mostram os números por trás de cada ponto.
 
-## Visão geral (`/`) — o que o time está entregando agora?
+## Visão geral (`/`): o que o time está entregando agora?
 
-A página inicial. Três painéis, de cima para baixo:
+- Cards de resumo, sob o rótulo **no período ·** *\<janela\>*: **commits**, **linhas +**, **linhas −**, **devs ativos**, **repos ativos**, cada um com o delta contra a janela anterior equivalente. A linha discreta **histórico total: …** repete os totais.
+- Faixa de alertas: só o que está fora do saudável, e some quando está tudo certo. Cada chip leva à casa canônica da métrica: PRs parados → `/prs#abertos`, merges sem review → `/prs#reviews`, ritmo → `/devs`, fora do horário e inatividade → `/health`, commits não liberados → `/repos#tabela`.
+- **Commits por semana (por dev)** ou **Commits por mês (por dev)**, alternado pelos botões **semana** e **mês**.
 
-- **SummaryCards** — o rótulo da seção lê **no período ·** *\<janela\>*. Cards: **commits**, **linhas +**, **linhas −**, **devs ativos**, **repos ativos**. Cada card mostra um delta contra a janela anterior equivalente (tooltip **vs o mês anterior**, **vs os N meses anteriores** ou **vs a janela anterior equivalente**). Uma linha discreta embaixo repete os totais históricos: `histórico total: …`. O delta desaparece em ranges custom e em **Tudo** — ver [Regras dos filtros](./filters.md).
-- **AlertStrip** — mostra só o que está fora do saudável (tudo certo, a faixa some). Cada chip é um deep-link para a casa canônica da métrica: PRs parados → `/prs#abertos`, merges sem review → `/prs#reviews`, ritmo → `/devs`, fora do horário e inatividade → `/health`, commits não liberados → `/repos#tabela`.
-- **CommitsTimeline** — o título do gráfico é **Commits por semana (por dev)** ou **Commits por mês (por dev)**, com botões de alternância **semana** / **mês**.
+![Visão geral: cards de resumo, faixa de alertas e commits por semana (demo)](/screenshots/overview.png)
 
-Interativo: os painéis de gráfico exportam PNG (ícone de download no cabeçalho do painel, toast **Imagem exportada**); cada chip de alerta navega; cada tooltip de gráfico mostra os números por trás.
+## Devs (`/devs`): quem está fazendo o quê?
 
-Links: chips de alerta (acima); a rail; e tudo o que os filtros da sidebar tocam.
+- Destaque do período: quem mais commitou, com coroa e badge **N% do período**.
+- **Campeão da semana — maior evolução**: os vencedores por semana (semana / dev / vs média / commits) e a contagem **vitórias (período)**. O prêmio mede evolução contra a própria linha de base, não volume; a fórmula está em [Glossário de métricas](./metrics.md).
+- **Ritmo — últimas 4 semanas vs 8 anteriores**: quem está abaixo da própria média.
+- **Dev × mês (comparação)**.
+- **Frequência — dia da semana × hora**.
+- **Ranking do time (histórico completo)**: Dev, commits, + linhas, − linhas, repos, dias ativos, commits/dia ativo, streak e último commit. Ordenável menos Dev e commits/dia ativo, com exportação **CSV** (toast **CSV exportado**) e o recorde como badge `máx` na coluna de streak. É histórico completo de propósito; a visão recortada ao período está nos cards e heatmaps acima.
 
-![Visão geral com cards de resumo, a faixa de alertas e o gráfico de commits por semana (dados da demo)](/screenshots/overview.png)
+Cada nome de dev abre o perfil `/devs/:name`.
 
-## Devs (`/devs`) — quem está fazendo o quê?
+## Perfil do dev (`/devs/:name`): como é o trabalho deste dev?
 
-A página de pessoas. Seis painéis:
+Responde o que a pessoa fez no período selecionado. `/dev/:name` continua como alias; nome sem correspondência nos dados mostra **Dev não encontrado** com sugestões **Quis dizer:**.
 
-- **PeriodHighlight** — quem mais commitou no período filtrado (ícone de coroa, badge **N% do período**).
-- **WeeklyChampions** — **Campeão da semana — maior evolução**. Duas tabelas: os vencedores recentes por semana (colunas semana / dev / vs média / commits) e a contagem de títulos (**vitórias (período)**). O prêmio premia *evolução* (commits ÷ (média das 8 semanas anteriores + 1), piso de 3 commits na semana), não volume puro — ver [issue #10](https://github.com/Enlighten-Brasil/gitview/issues/10).
-- **PaceAlert** — **Ritmo — últimas 4 semanas vs 8 anteriores**. Quem está abaixo da própria linha de base.
-- **AuthorMonthHeatmap** — **Dev × mês (comparação)**.
-- **ActivityHeatmap** — **Frequência — dia da semana × hora**.
-- **DevTable** — **Ranking do time (histórico completo)**. Colunas Dev, commits, + linhas, − linhas, repos, dias ativos, commits/dia ativo, streak, último commit — tudo ordenável menos Dev e commits/dia ativo; botão de exportação **CSV**; e a coluna streak como badge.
+- Cards de **commits**, **linhas +**, **linhas −** no período, mais **dias ativos (total)**, **commits/dia ativo (total)**, **streak (total)**, **repositórios (total)**; com dados do GitHub, também **PRs abertos**, **cycle time mediano**, **reviews feitas**.
+- **Commits por semana** / **Commits por mês** só deste dev.
+- **Distribuição por repositório** (donut) e **Horários de atividade —** *\<janela\>*, que em **Tudo** vira **Horários de atividade — últimos 24 meses** (limite da agregação).
+- **PRs abertos de** *\<primeiro nome\>*: estado atual, não recortado ao período.
+- **Últimos commits**: os commits do período.
 
-Interativo: ordenação de colunas, exportação **CSV** (toast **CSV exportado**), exportação de PNG dos gráficos, tooltips dos heatmaps.
+O botão **dashboard** volta para `/`; linhas de PR abrem o GitHub.
 
-Links: cada nome de dev leva ao perfil `/devs/:name`. O ranking é intencionalmente de histórico completo, ignorando o filtro de período.
+![Perfil do dev: cards de métricas, commits por semana e distribuição por repositório (demo)](/screenshots/dev.png)
 
-:::info Por que o ranking ignora o período?
-**Ranking do time (histórico completo)** é uma tabela permanente — quem o time *é*, não quem por acaso entregou no último trimestre. A visão das mesmas pessoas recortada ao período mora nos cards e gráficos acima, e nos heatmaps. O título do painel diz isso em voz alta pra ninguém "corrigir".
-:::
+## Saúde (`/health`): onde o processo dói?
 
-## Perfil do dev (`/devs/:name`) — como é o trabalho deste dev?
+Cada card documenta os próprios thresholds no rodapé; os valores estão em [Glossário de métricas](./metrics.md).
 
-Responde "o que \<nome\> fez no período selecionado". A rota antiga `/dev/:name` continua funcionando como alias. Se o nome não casa com os dados coletados, a página mostra **Dev não encontrado** e oferece sugestões de **Quis dizer:**.
+- **Fora do horário**: alternado entre **8 semanas** e o rótulo da janela atual. Commits de fim de semana e madrugada por dev, com status **pontual**, **atenção**, **padrão**.
+- **Fix hotspots — % de correção por repo**.
+- **Gargalo de review — quem segura os PRs**.
+- **Merge sem review — período filtrado**.
+- **Inatividade — repos e devs parados**: **repos sem commit há 30+ dias** e **devs sem commit há 21+ dias**. Medido até hoje, ignora os filtros.
+- **Bus factor — concentração por repositório**.
 
-- **DevStatCards** — **commits**, **linhas +**, **linhas −** (período) mais os cards históricos que ganham o sufixo ` (total)` quando há período ativo: **dias ativos (total)**, **commits/dia ativo (total)**, **streak (total)**, **repositórios (total)**. Com dados do GitHub também: **PRs abertos**, **cycle time mediano**, **reviews feitas**.
-- **CommitsTimeline** só deste dev (**Commits por semana** / **Commits por mês**).
-- **Distribuição por repositório** (donut) e o heatmap de horários — **Horários de atividade —** *\<janela\>*, ou **Horários de atividade — últimos 24 meses** em **Tudo** (a agregação cobre no máximo 24 meses).
-- **PRs abertos de** *\<primeiro nome\>* — os PRs abertos do dev agora (estado *atual*, não recortado ao período).
-- **Últimos commits** — a lista de commits do período.
+As tabelas ordenam onde existe coluna de risco; os alertas da Visão geral apontam para cá e nada daqui leva para fora.
 
-Interativo: alternância de granularidade da timeline, exportação de PNG dos gráficos.
+![Página Saúde: fora do horário, fix hotspots, gargalo de review e merge sem review (demo)](/screenshots/health.png)
 
-Links: botão **dashboard** no cabeçalho (volta para `/`); linhas de PR levam ao GitHub.
+## PRs (`/prs`): o que está travado e quão rápido os PRs andam?
 
-![Perfil do dev: cards de métricas, commits por semana e o donut de distribuição por repositório (dados da demo)](/screenshots/dev.png)
+Depende dos dados do GitHub, coletados com `gh` autenticado; sem eles a página mostra **Sem dados do GitHub**. O sub-nav contextual cobre três âncoras e os alertas da Visão geral caem em `#abertos` e `#reviews`.
 
-## Saúde (`/health`) — onde o processo dói?
+- `#abertos`: cards **PRs abertos** (com linha auxiliar de rascunhos), **parados há +14 dias**, **mergeados no período**, **cycle time mediano**, **mergeados sem review**; depois **PRs parados — abertos há 14+ dias** e **PRs abertos — mais antigos primeiro**.
+- `#cycle-time`: **Cycle time mediano por repo (criação → merge)** e **Tendência de cycle time — últimos 6 meses**, de janela fixa.
+- `#reviews`: **Reviews por dev (no período)**.
 
-A página de saúde. Cada card documenta os próprios thresholds no rodapé. Painéis:
+Linhas de PR abrem o GitHub.
 
-- **OffHoursPanel** — **Fora do horário**, com alternância de modo: **8 semanas** ou o rótulo da janela atual. Commits de fim de semana/madrugada por dev, com status **pontual** / **atenção** / **padrão**.
-- **FixHotspots** — **Fix hotspots — % de correção por repo**.
-- **ReviewBottleneck** — **Gargalo de review — quem segura os PRs**.
-- **ReviewCoverage** — **Merge sem review — período filtrado**.
-- **InactiveWatch** — **Inatividade — repos e devs parados**, dividido em duas listas: **repos sem commit há 30+ dias** e **devs sem commit há 21+ dias**. Medido até hoje — ignora os filtros de propósito.
-- **BusFactor** — **Bus factor — concentração por repositório**.
+![Página PRs: cards de resumo, tabelas de PRs parados e abertos, cycle time por repositório (demo)](/screenshots/prs.png)
 
-Interativo: alternância de modo de **Fora do horário**; exportação de PNG dos gráficos; as tabelas ordenam pelas colunas de risco onde existem.
+## Repos (`/repos`): quais repos estão ativos e entregando?
 
-Links: os alertas da Visão geral deep-linkam para cá; nada nesta página leva pra fora.
+Índice de repositórios, com sub-nav por âncora (**Tabela**, **Linhas +/−**, **Distribuição**, **Por mês**, **Tipos de commit**, **Releases**). O alerta de commits não liberados da Visão geral cai em `#tabela`.
 
-![Página Saúde: tabela de fora do horário, fix hotspots, gargalo de review e merge sem review (dados da demo)](/screenshots/health.png)
+- `#tabela` **Repositórios**: repo / commits / devs / % fix / último commit / última release / não liberados. Cada linha abre `/repos/:name`.
+- `#linhas` **Linhas adicionadas × removidas por mês** ou **Crescimento líquido do código (acumulado)**, alternado por **por mês** e **acumulado**.
+- `#distribuicao` **Distribuição por repositório (período filtrado)**.
+- `#por-mes` **Repositório × mês**.
+- `#tipos` **Tipos de commit por mês (feat × fix × ...)** e **Mix por repo (% — ordenado por fix)**.
+- `#releases` **Releases por repositório**: última tag, idade e cadência **X/mês** sobre os últimos 12 meses. Rodapé **marcos — ignoram o filtro de período · clique no repo pra ver a cadência completa**.
 
-## PRs (`/prs`) — o que está travado e quão rápido os PRs andam?
+## Repo (`/repos/:name`): como está este repositório?
 
-Precisa do `public/data/github.json` (coletado com `gh` autenticado); sem ele a página mostra **Sem dados do GitHub**. Três seções ancoradas alimentam o sub-nav contextual (**Abertos**, **Cycle time**, **Reviews**):
+`/repo/:name` continua como alias; nome desconhecido mostra **Repo não encontrado**. O período vale para commits, gráficos, PRs mergeados e cycle time; releases e PRs abertos são marcos ou estado atual, como descreve [Regras dos filtros](./filters.md).
 
-- `#abertos` — **PrSummaryCards**: **PRs abertos** (com linha auxiliar de rascunhos), **parados há +14 dias**, **mergeados no período**, **cycle time mediano**, **mergeados sem review**. Depois **PrStaleAlert** (**PRs parados — abertos há 14+ dias**) e **PrOpenTable** (**PRs abertos — mais antigos primeiro**).
-- `#cycle-time` — **PrCycleTime** (**Cycle time mediano por repo (criação → merge)**) e **CycleTrend** (**Tendência de cycle time — últimos 6 meses** — janela fixa, de propósito).
-- `#reviews` — **PrReviews** (**Reviews por dev (no período)**).
+- Cards de **commits**, **linhas +**, **linhas −**, **devs** no período, **commits (total)** quando há período ativo, **última release (há Nd)**, **commits não liberados** (cor por threshold), **dev principal** com a participação do topo (colorida acima de 50% e 70%) e, com dados do GitHub, **PRs abertos** e **cycle time mediano**.
+- **Tipos de commit** (donut) e **Commits por dev** (barras, top 10).
+- **Releases**: tag / data / commits / notas, badge **pré** para prereleases e **notas** expansível inline; as 30 tags mais recentes, com aviso. As contagens de commits *entre* tags seguem o período onde aparecem.
 
-Interativo: exportação de PNG dos gráficos; linhas de PR levam ao GitHub.
+Linhas de tag abrem o GitHub quando existe URL; o botão **repos** volta para `/repos` e **GitHub ↗** abre o repositório quando os dados de release trazem a URL.
 
-Links: o sub-nav da rail salta para `#abertos`, `#cycle-time`, `#reviews`; os alertas da Visão geral caem em `#abertos` e `#reviews`.
+## Times (`/teams`): o editor de times
 
-![Página PRs: cards de resumo, tabelas de PRs parados/abertos e cycle time por repositório (dados da demo)](/screenshots/prs.png)
+Só no dev server; no build estático a página avisa **edição só no modo dev**. As seções alimentam o sub-nav e cada card de time tem botão para o dashboard `/teams/:name`.
 
-## Repos (`/repos`) — quais repos estão ativos e estão entregando?
+- `#times`: um card por time (nome, descrição, seletor de cor, chips de membros), **novo time** no cabeçalho da seção e **importar do GitHub** no topo da página. A barra de salvamento traz **desfazer**, **salvar** e **salvar + recoletar**.
+- `#devs`: um card por dev com logins do GitHub e e-mails de commit; **editar perfil** abre modal com **título / cargo**, **descrição**, **e-mails de commit** e **logins do GitHub**.
+- `#sem-mapeamento`: identidades coletadas ainda sem dev associado, com **associar** e **confirmar**. O banner de candidatos das páginas de dashboard aponta para cá.
 
-O índice de repositórios. As âncoras alimentam o sub-nav (**Tabela**, **Linhas +/−**, **Distribuição**, **Por mês**, **Tipos de commit**, **Releases**):
+## Dashboard do time (`/teams/:name`): como está este time?
 
-- `#tabela` — **Repositórios**: repo / commits / devs / % fix / último commit / última release / não liberados.
-- `#linhas` — **Linhas adicionadas × removidas por mês** ou **Crescimento líquido do código (acumulado)**, alternados por **por mês** / **acumulado**.
-- `#distribuicao` — **Distribuição por repositório (período filtrado)**.
-- `#por-mes` — **Repositório × mês**.
-- `#tipos` — **Tipos de commit por mês (feat × fix × ...)** e **Mix por repo (% — ordenado por fix)**.
-- `#releases` — **Releases por repositório**, com a nota de rodapé **marcos — ignoram o filtro de período · clique no repo pra ver a cadência completa**. Cada repo mostra a última tag, a idade e a cadência (**X/mês**, calculada sobre os últimos 12 meses fixos).
+Os mesmos painéis da Visão geral, com a seleção de devs travada nos membros do time (o cadastro de times é a fonte da verdade). O cabeçalho traz o chip do time, o rótulo da janela, o botão **times** e **ver como filtro livre**, que abre `/?devs=<membros>` como filtro editável.
 
-Interativo: exportação de PNG dos gráficos; linhas e nomes de repo abrem a página do repo.
+Painéis: cards de resumo, commits por semana, **Dev × mês (comparação)** e tipos de commit; com dados do GitHub, os cards de PR, **PRs abertos — mais antigos primeiro** e **Cycle time mediano por repo**; e **Fora do horário**. Chips de membros abrem `/devs/:name`; time renomeado redireciona a partir da URL antiga; nome desconhecido mostra **Time não encontrado** com **Times disponíveis:**.
 
-Links: cada linha leva a `/repos/:name`; o alerta de commits não liberados da Visão geral cai em `#tabela`.
+## Resumo semanal: a exportação pronta para a reunião
 
-## Repo (`/repos/:name`) — como está este repositório?
+Botão no navbar (tooltip **resumo da semana exportável**), não uma rota. Abre o slideover **Resumo da semana** com o markdown da última semana ISO fechada (seg–dom) contra a anterior: `## Commits`, `## Pull requests`, `## Releases`, `## Atenção`. Saídas: **copiar markdown** (o botão vira **copiado!**) e **baixar .md** (grava `resumo-<weekKey>.md`). O relatório é do time inteiro para a reunião semanal, por isso ignora os filtros da sidebar e sempre exclui bots.
 
-O alias `/repo/:name` continua funcionando. Nomes desconhecidos recebem **Repo não encontrado**. O filtro de período vale aqui (commits, gráficos, PRs mergeados, cycle time); releases e PRs abertos são marcos/estado atual e ficam de fora.
+## Build estático
 
-- **StatCards** — **commits**, **linhas +**, **linhas −**, **devs** (período); com período ativo também **commits (total)**. Cards de release: **última release (há Nd)** e **commits não liberados** (cor por threshold). Mais **dev principal** (participação do topo, colorido acima de 50%/70%), e com dados do GitHub **PRs abertos** e **cycle time mediano**.
-- **Tipos de commit** (donut) e **Commits por dev** (gráfico de barras do top 10).
-- **Releases** — tag / data / commits / notas, com **notas** expansível e badge **pré** para prereleases; mostra as 30 tags mais recentes e avisa.
-
-Interativo: linhas de tag abrem a tag no GitHub quando existe URL; **notas** expande inline.
-
-Links: botão **repos** no cabeçalho (volta para `/repos`), link **GitHub ↗** no cabeçalho quando os dados de release trazem um.
-
-:::info Por que releases ignoram o período?
-Release é marco — "quando este repo entregou pela última vez" não faz sentido recortado a um trimestre. Os cards e a tabela **Releases** são period-blind de propósito, e os rótulos dizem isso (`(total)`, **marcos — ignoram o filtro de período**). As contagens de commits *entre* tags seguem o período onde aparecem.
-:::
-
-## Times (`/teams`) — o editor de times
-
-Só no dev server: no build estático o editor fica desativado e a página diz **edição só no modo dev**. As seções `#times`, `#devs`, `#sem-mapeamento` alimentam o sub-nav.
-
-- `#times` — um **TeamCard** por time: nome, descrição, seletor de cor, chips de membros. O cabeçalho da seção traz **novo time**; **importar do GitHub** (slideover) fica no topo da página. A barra de salvamento oferece **desfazer**, **salvar**, **salvar + recoletar**.
-- `#devs` — um **DevCard** por dev com seus logins do GitHub e e-mails de commit; **editar perfil** abre um modal com **título / cargo**, **descrição**, **e-mails de commit**, **logins do GitHub**.
-- `#sem-mapeamento` — **TeamCandidatesSection**: identidades coletadas ainda sem mapeamento para um dev, com ações **associar** / **confirmar**. O **CandidatesBanner** das páginas de escopo `full` deep-linka para cá.
-
-Interativo: renomear, recolorir, adicionar/remover membros, importar do GitHub, salvar + recoletar (só em dev).
-
-Links: cada **TeamCard** tem um botão que abre o dashboard do time `/teams/:name`.
-
-## Dashboard do time (`/teams/:name`) — como está este time?
-
-Os mesmos painéis do dashboard principal, mas o filtro de devs fica **travado nos membros do time** (fonte da verdade: `team.json`). O cabeçalho mostra o chip do time, o rótulo da janela, um botão **times** de volta e um botão **ver como filtro livre** — este abre `/?devs=<membros>` como filtro editável.
-
-Painéis: **SummaryCards**, **CommitsTimeline**, **AuthorMonthHeatmap**, **CommitTypes**, depois — com dados do GitHub — **PrSummaryCards**, **PrOpenTable**, **PrCycleTime**, e por fim **OffHoursPanel**. Os chips de membros levam ao perfil de cada dev.
-
-Interativo: igual aos painéis que a página reutiliza; chips de membros navegam.
-
-Links: chips de membros → `/devs/:name`; **ver como filtro livre** → `/` com `?devs=…`; times renomeados redirecionam sozinhos (URLs antigas continuam vivas via `teams[].renamedFrom`). Nomes desconhecidos recebem **Time não encontrado** com sugestões de **Times disponíveis:**.
-
-## Resumo semanal — a exportação pronta pra reunião
-
-Não é uma rota — é um botão no navbar (tooltip **resumo da semana exportável**). Ele abre um slideover intitulado **Resumo da semana** com o markdown da **última semana ISO fechada** (seg–dom) comparada com a anterior: `## Commits`, `## Pull requests`, `## Releases`, `## Atenção`. Exporte com **copiar markdown** (o botão vira **copiado!**) ou **baixar .md** (grava `resumo-<weekKey>.md`). O relatório cobre o *time inteiro* pra reunião semanal — por isso sempre exclui bots e nunca lê os filtros da sidebar; as visões de "e se" filtradas pertencem aos dashboards.
-
-## O build estático é somente leitura
-
-O frontend só lê os arquivos JSON de `public/data/` — `pnpm build` gera um `dist/` 100% estático que você serve em qualquer host estático (GitHub Pages, Netlify, nginx…). Ele precisa de **SPA fallback**: deep-links como `/devs/<name>` devem servir `index.html` (o router usa `createWebHistory`).
-
-Nesse build o dashboard é estritamente somente leitura: `/setup`, `/settings` e os botões de coleta (↻, **coleta completa (--full)**) não existem, e o editor de `/teams` fica desativado — os endpoints `/__*` são middleware do dev server. Unifique identidades e ajuste times sob `pnpm dev`, recolete com `pnpm collect`, e só então publique.
-
-## Próximos passos
-
-- [Regras dos filtros](./filters.md) — como o período, os times e os filtros da URL se comportam de verdade (incluindo as janelas fixas).
-- `README.md` — instalar, coletar, publicar (seção "Publishing the dashboard (static build)").
+A interface só lê os dados coletados. No `pnpm build`, `/setup`, `/settings`, os botões de coleta e o editor de `/teams` não existem. Ajuste identidades e times sob `pnpm dev`, recolete com `pnpm collect` e só então publique, conforme [Publicando o build estático](../publishing/static-deploy.md).

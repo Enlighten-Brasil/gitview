@@ -4,128 +4,76 @@
 
 **Português (pt-BR):** [README.pt-BR.md](README.pt-BR.md)
 
-An engineering-manager dashboard for team metrics: commits, PRs and releases across your GitHub org's repositories — everything runs locally and is strictly read-only over the repos it analyzes. MIT-licensed.
+**Simple git metrics for any team.** Commits, PRs and releases from your GitHub org, collected on your machine. gitview reads `git log`, tags and the GitHub API, generates JSON, and serves a dashboard that never writes to the analyzed repositories. MIT licensed.
 
-**Live demo** (synthetic data only — no real team data): https://enlighten-brasil.github.io/gitview/
+**Live demo** (synthetic data only, no real team data): https://enlighten-brasil.github.io/gitview/
 
-![gitview's Visão geral page: summary cards, the alert strip and the commits-per-week chart (synthetic demo data)](docs/public/screenshots/overview.png)
+**Docs:** https://enlighten-brasil.github.io/gitview/docs/
 
-## Project status
+![The gitview Visão geral page: summary cards, the alert strip and the commits-per-week chart (synthetic demo data)](docs/public/screenshots/overview.png)
 
-The full pipeline works end to end: collectors stream `git log` into SQLite and export JSON to `public/data/`, PRs and reviews come from the GitHub API, releases combine local `git tag` data with the API, and the frontend is a 100% static build that deploys to any static host — the live demo above is exactly that build. CI runs the gates on every PR (`pnpm check:scrub`, `pnpm lint`, `pnpm typecheck`, `pnpm build`), and every release ships with a changeset and a single `chore(release)` commit (history in [CHANGELOG.md](CHANGELOG.md)). What comes next lives in the GitHub issues and milestones — see [ROADMAP.md](ROADMAP.md); how to help is in [CONTRIBUTING.md](CONTRIBUTING.md).
+## Run it now
 
-## Setup
-
-Requirements:
-
-- **Node 22.13+** (collectors use `node:sqlite`, flag-free since 22.13; the CI runs Node 22)
-- **pnpm 11.28** (pinned in the `packageManager` field — `corepack enable` once, or install pnpm 11.28 directly)
-- A GitHub account — authenticated through the UI itself (**device flow** or pasting a **PAT**), or via **GitHub CLI** (`gh auth login`), which works as a bridge when no token is set in `.env`
+Requirements: **Node 22.13+**, **pnpm 11.28** (pinned in the `packageManager` field; `corepack enable` once resolves it) and a GitHub account.
 
 ```bash
 git clone git@github.com:Enlighten-Brasil/gitview.git
 cd gitview
 pnpm install
-pnpm dev       # or pnpm start — http://localhost:5173 — first run lands on the /setup wizard
+pnpm dev        # http://localhost:5173
 ```
 
-Nothing to copy or edit before running: `.env` is created automatically from `.env.example` on first run (`pnpm dev`, `pnpm start` or any collector).
+Nothing to copy or edit first: `.env` is created from `.env.example` on the first run. With no collected data, the app opens the `/setup` wizard in four steps: connect to GitHub (device flow, pasted PAT or `gh auth login`), choose the repositories, clone and collect, and optionally map the team identities.
 
-### The `.env` (machine config — gitignored)
+## What the dashboard shows
 
-| key | what it's for |
-|---|---|
-| `GITVIEW_GITHUB_CLIENT_ID` | public OAuth/GitHub App Client ID with device flow enabled — prefilled in `.env.example`; empty disables the "Connect with GitHub" button |
-| `GITVIEW_GITHUB_TOKEN` | token saved by the device flow/PAT. **It's the project's only secret** — when empty, falls back to `gh auth token` if the gh CLI is logged in |
-| `GITVIEW_GITHUB_ORG` | default org for the setup wizard and team import |
-| `GITVIEW_REPOS_ROOT` | folder holding the clones. Empty = `data/repos` (created by the setup) |
-| `GITVIEW_DEFAULT_REPOS` | CSV of repos pre-selected in the setup (empty = all non-archived) |
-| `GITVIEW_EXCLUDE` | CSV of folders skipped during repo discovery |
-| `GITVIEW_EXCLUDE_PATHS` | CSV of generated-file globs excluded from line metrics (adds to the default lockfile/minified list). Only affects new commits — for history: `pnpm clean && pnpm collect` |
-| `GITVIEW_PORT` | dev server port (default 5173) |
-| `GITVIEW_TIMEZONE` | IANA timezone of every time bucket (day/month/ISO week/weekend/night/heatmap) — aggregates no longer depend on the collecting machine's clock. Default: `America/Sao_Paulo` |
+- **Visão geral** (`/`): commits, lines and pace for the period, with an alert strip that goes straight to the problem.
+- **Devs** (`/devs`, `/devs/<name>`): ranking with commits, lines, active days and streak, day-and-hour heatmap, weekly champion by improvement, exportable CSV.
+- **PRs** (`/prs`): aging of the open ones, cycle time, reviews per dev, merge without review.
+- **Repos** (`/repos`, `/repos/<name>`): activity per repository and releases with the GitHub notes.
+- **Times** (`/teams`, `/teams/<name>`): group devs by team and open the team dashboard, with period and repos filterable.
+- **Saúde** (`/health`): off-hours work, fix hotspots, review bottleneck, inactivity and bus factor.
+- **Resumo semanal**: markdown of the last closed ISO week against the previous one, ready to paste into the meeting.
 
-Precedence: shell variable → `.env` → default. The file is read **fresh** on every collector run (a new token takes effect without restarting the dev server). Windows paths: use forward slashes (`C:/dev/repos/api`), or single quotes if they contain spaces.
+## Collect and publish
 
-> ⚠ **Upgrading from the old format**: if you still have `config.json`/`config.local.json` and haven't run anything from this release, run `pnpm dev` **before** pulling — the migration moves everything into `.env` + `team.local.json` (since then, each machine keeps its aliases in its own `team.local.json`; `pnpm clean` never deletes it).
+- `pnpm collect` runs the collectors and the data validation; collection is incremental.
+- `pnpm build` generates a 100% static `dist/` that any host serves, as long as there is an SPA fallback for the deep links.
+- In the static build the dashboard is read-only: setup, collection and team editing only exist in `pnpm dev`. Adjust teams in dev, re-collect, and publish.
 
-### Team config (`team.local.json` — gitignored)
-
-Dev profiles (title, description), aliases (commit e-mails, GitHub logins), teams and extra bots. All editable through the **/teams** screen (dev only; persisted via `/__team/config`). Saving regenerates `team.json` right away, so team names/colours/members show up immediately in the sidebar chips and `/teams/<name>` dashboards — identity aliases still need a re-collection (they rewrite `stats.json`). It is the single source of canonical names — without it the dashboard still works, every e-mail/login becomes its own author, and the collector lists the "candidates" for you to link up.
-
-Each team also gets a shareable dashboard at **`/teams/<name>`** — KPIs, commit timeline, PRs and off-hours with the devs locked to its members (period and repos stay filterable). Renaming a team keeps old links alive: the previous names are stored in `renamedFrom` and `/teams/<old-name>` redirects to the current one.
-
-### Setup through the UI (`/setup`)
-
-On first run (no collected data) the dashboard redirects to the 3-step wizard plus one optional step (`/setup/github` → `/setup/repos` → `/setup/collect` → `/setup/team`) — also reachable later via the **Config** item in the side rail (⚙, dev only; with data it opens **Settings** `/settings` directly):
-
-1. **Connect GitHub** — device flow (the browser opens `github.com/login/device`, you type the code; the token lands in your `.env`), pasting a **PAT** (repo + read:org), or the `gh auth login` bridge. With a Client ID configured the button shows up; without one, the other paths still work.
-2. **Choose repositories** — lists your org's repos (or your personal account's), with search and pre-selection from `GITVIEW_DEFAULT_REPOS`.
-3. **Clone and collect** — creates bare clones in `data/repos/` and runs the first collection with live progress.
-4. **(Optional) Define your team** — only appears when the first collection found unmapped identities (git authors/GitHub logins not linked to a dev yet) and takes you straight to the editor at `/teams#sem-mapeamento` (the dashboard UI is pt-BR); with no candidates the wizard goes right to the dashboard.
-
-Clones in `data/repos/` are refreshed automatically with `git fetch` on every collection run (the token is injected through git environment variables, never written into the clone). You don't need the repos cloned anywhere, nor the `gh` CLI installed.
-
-### Setup from the terminal (alternative)
-
-`pnpm setup` runs the same clone flow in the terminal (uses the configured token — which may come from `gh`). Handy for automation.
-
-### Pointing at existing clones
-
-If you already have the repos cloned and prefer to use them, collectors look for the folder in this order:
-
-1. `GITVIEW_REPOS_ROOT` environment variable
-2. `GITVIEW_REPOS_ROOT` in the `.env`
-3. Default: `data/repos` (the setup's managed clones)
-
-In this mode the data reflects your local clones' state — `git pull` the repos before collecting if you want fresh numbers.
-
-### Using it with another team/org
-
-The project ships no machine or team data: `.env` and `team.local.json` are gitignored and created by each user (`.env.example` is the only template, with an example Client ID). Typical adjustments:
-
-- `GITVIEW_GITHUB_ORG` / `GITVIEW_DEFAULT_REPOS` — org and setup pre-selection
-- `GITVIEW_GITHUB_CLIENT_ID` — Client ID of your (or your org's) **GitHub App** (recommended, starts with `Iv…`) or **OAuth App** (`Ov…`) with **Device Flow enabled** (GitHub → Settings → Developer settings). Never add a client secret — the device flow doesn't use one.
-
-> **Actually read-only**: use a **GitHub App** with *Repository → Contents: Read-only* (+ *Metadata*, automatic) installed on the org — the token it issues is physically incapable of writing. OAuth Apps and `gh auth login` use the `repo` scope, which is read+write: gitview only ever reads, and managed clones have their push URL locked (`remote.origin.pushurl=no-push`), but the real permission guarantee comes from the GitHub App.
-
-### Cleaning up and starting over
-
-The database and JSONs are 100% regenerable from the repositories (`team.local.json` is **not** — it's your team roster):
-
-- **UI**: **Config → Geral** (`/settings`) → "Manutenção dos dados locais" card → *recoletar tudo* (full re-scan), *limpar e recoletar* (wipes database + JSONs and re-collects; clones are kept) or *apagar dados* (wipe without re-collecting — returns to the /setup wizard).
-- **CLI**: `pnpm clean` (deletes `data/gitview.db*` + `public/data/*.json`) and then `pnpm collect`. `pnpm clean -- --repos` also deletes the clones (the next collection re-clones everything — slow).
+Full publishing flow, including the demo deploy: [Publishing the static build](docs/publishing/static-deploy.md).
 
 ## Commands
 
 ```bash
-pnpm dev / start        # dashboard at http://localhost:5173 (navbar: ↻ re-collect; the Config rail item ⚙ opens Settings — with no data it falls back to the /setup wizard)
-pnpm setup              # terminal wizard: choose/clone the org's repos
+pnpm dev / start        # dashboard at http://localhost:5173
+pnpm setup              # terminal wizard: choose and clone the org's repos
 pnpm collect            # the 4 collectors in sequence + validation (incremental)
-pnpm collect:github     # PRs/reviews only
+pnpm collect:github     # PRs and reviews only
 pnpm collect:releases   # releases only
-pnpm check:data         # shape validation of the generated JSONs
-pnpm check:scrub        # tracked files must stay free of scrubbed identity terms (also a CI gate)
-pnpm clean              # deletes database + JSONs (regenerable; --repos includes the clones)
-pnpm build              # static build (dist/ — read-only, no setup endpoints)
+pnpm collect:team       # the team roster only
+pnpm check:data         # validates shape and invariants of the collected JSONs
+pnpm check:scrub        # identity gate for tracked files (also in CI)
+pnpm lint / lint:fix    # ESLint @antfu/eslint-config
+pnpm typecheck          # tsc --noEmit (scripts + src)
+pnpm build              # static build in dist/
+pnpm preview            # serves the local dist/
+pnpm clean              # deletes database + JSONs; -- --repos also deletes the clones
+pnpm docs:dev           # docs site in docs/ (VitePress)
 pnpm changeset          # record a change
 pnpm version:packages   # apply changesets (bump + CHANGELOG)
 ```
 
-## Publishing the dashboard (static build)
+## Data on your machine
 
-The frontend only reads the JSONs in `public/data/` — `pnpm build` produces a 100% static `dist/`, with no server of its own. Publishing flow:
+The `.env` holds the machine config (token, org, clones folder) and `team.local.json` holds the team roster (profiles, aliases, teams). Both are gitignored and created by you; `GITVIEW_GITHUB_TOKEN` is the project's only secret. Database, clones and JSONs are regenerable from the repositories.
 
-1. On the machine with the token and clones: refresh the data (`pnpm collect`, or the ↻ in the navbar under `pnpm dev`) and run `pnpm build`.
-2. Serve `dist/` from any static host (GitHub Pages, Netlify, nginx…). It needs **SPA fallback**: deep links like `/devs/<name>` must serve `index.html` (the router uses `createWebHistory`).
-3. Fresh data = repeat steps 1–2 periodically (a cron/CI job with the token works).
+Full reference: [The .env file](docs/configuration/env.md) and [Team config](docs/configuration/team.md).
 
-**In the static build the dashboard is read-only**: `/setup`, `/settings` and collection (↻) don't exist, and the `/teams` editor is disabled — the `/__*` endpoints are dev-server middleware (details in `CONTRIBUTING.md`). Unify identities and tune teams in dev, re-collect, then publish.
+For a token physically incapable of writing, use a **GitHub App** with *Repository Contents: Read-only* and put its Client ID in the `.env`. The device flow does not use a client secret.
 
-## Conventions
+## Contributing
 
-- Every change = changeset (`minor` feature / `patch` fix) → `pnpm version:packages` → a single `chore(release): X.Y.Z` commit.
-- Commit messages in pt-BR (Conventional Commits), code in English, comments in pt-BR.
-- `data/` (database + clones), `public/data/`, `.env` and `team.local.json` are local and gitignored.
-- Architecture details and filter rules: see `AGENTS.md`.
-- Contributing guide (setup, gates, release ritual): `CONTRIBUTING.md` — pt-BR version: `CONTRIBUTING.pt-BR.md`.
+Branch from `main`, gates before the PR (`pnpm check:scrub`, `pnpm lint`, `pnpm typecheck`, `pnpm build`), a changeset for every change, and a pt-BR commit in Conventional format. The flow is in [CONTRIBUTING.md](CONTRIBUTING.md) and detailed in [Development setup](docs/contributing/development.md) and [Release ritual](docs/contributing/release.md). The roadmap lives in the GitHub issues and milestones.
+
+License: MIT.

@@ -31,7 +31,7 @@ function pageUrl(page: string): string | undefined {
 
 export default defineConfig<DefaultTheme.Config>({
   title: 'gitview docs',
-  description: 'Documentation for gitview, the open-source git & GitHub metrics dashboard.',
+  description: 'Documentation for gitview, simple git metrics for any team.',
   base,
   cleanUrls: false,
   // dark-first, como o app (o toggle de tema continua disponível)
@@ -65,7 +65,7 @@ export default defineConfig<DefaultTheme.Config>({
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:site_name', content: 'gitview docs' }],
     ['meta', { property: 'og:title', content: 'gitview docs' }],
-    ['meta', { property: 'og:description', content: 'Documentation for gitview, the open-source git & GitHub metrics dashboard.' }],
+    ['meta', { property: 'og:description', content: 'Documentation for gitview, simple git metrics for any team.' }],
     ['meta', { property: 'og:image', content: ogImageUrl }],
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
     ['meta', { name: 'twitter:image', content: ogImageUrl }],
@@ -80,7 +80,7 @@ export default defineConfig<DefaultTheme.Config>({
       label: 'English',
       lang: 'en',
       title: 'gitview docs',
-      description: 'Documentation for gitview, the open-source git & GitHub metrics dashboard.',
+      description: 'Documentation for gitview, simple git metrics for any team.',
       // o alpha.20 faz merge do head por locale no HTML estático de cada rota
       head: [
         ['meta', { property: 'og:locale', content: 'en_US' }],
@@ -162,7 +162,7 @@ export default defineConfig<DefaultTheme.Config>({
       lang: 'pt-BR',
       link: '/pt-BR/',
       title: 'gitview docs',
-      description: 'Documentação do gitview, o dashboard open-source de métricas de git e GitHub.',
+      description: 'Documentação do gitview, métricas de git simples para qualquer time.',
       head: [
         ['meta', { property: 'og:locale', content: 'pt_BR' }],
       ],

@@ -1,114 +1,96 @@
 ---
 title: Ambiente de desenvolvimento
-description: Clone, rode e valide o gitview localmente — comandos, gates, convenções e as armadilhas do Windows antes do seu primeiro PR.
+description: Requisitos, todos os comandos do package.json, gates de PR, convenções e as armadilhas do Windows.
 ---
 
 # Ambiente de desenvolvimento
 
-O gitview é estritamente read-only sobre os repos que analisa: os coletores leem `git log`/tags e a API do GitHub, e geram JSON em `public/data/`. PRs que proponham escrever nos repos analisados não são aceitos. Esta página leva do clone a uma mudança validada.
+O gitview é read-only sobre os repos analisados: os coletores leem `git log`, tags e a API do GitHub, e escrevem JSON em `public/data/`. PRs que proponham escrever nos repos analisados não são aceitos.
 
-## Como faço o projeto rodar?
+## Requisitos e primeiro run
 
-Requisitos (copiados do README — não invente versões):
-
-- **Node 22.13+** — os coletores usam `node:sqlite`, sem flag desde a 22.13; o CI roda Node 22
-- **pnpm 11.28** — pinado no campo `packageManager`: rode `corepack enable` uma vez, ou instale o pnpm 11.28 direto
+- **Node 22.13+** (os coletores usam `node:sqlite`, sem flag desde a 22.13; o CI roda Node 22)
+- **pnpm 11.28** (pinado no campo `packageManager`; `corepack enable` uma vez resolve)
+- **Uma conta GitHub** (token no `.env` ou `gh auth login`)
 
 ```bash
 git clone git@github.com:Enlighten-Brasil/gitview.git
 cd gitview
 pnpm install
-pnpm dev        # http://localhost:5173 — na primeira execução cai no wizard /setup
+pnpm dev        # http://localhost:5173; sem dados, cai no assistente /setup
 ```
 
-Nada para copiar ou editar: o `.env` é criado sozinho a partir do `.env.example` na primeira execução, e o cadastro do time vive no `team.local.json` (ambos gitignored). Para trabalhar sem a org real, aponte `GITVIEW_REPOS_ROOT` para clones seus — um token com acesso a uma org pública pequena basta.
+O `.env` nasce do `.env.example` na primeira execução e o cadastro do time vive no `team.local.json`; ambos são gitignored. Para trabalhar sem a org real, aponte `GITVIEW_REPOS_ROOT` para clones seus: um token com acesso a uma org pública pequena basta.
 
-Uma peculiaridade de supply chain: o repo pina `minimumReleaseAge: 1440` no `pnpm-workspace.yaml`, então só instala pacote publicado há pelo menos 24h. Um bump de dependência recente que esbarre no `ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION` é esperado — espere a versão amadurecer ou liste-a em `minimumReleaseAgeExclude`.
+O `pnpm-workspace.yaml` fixa `minimumReleaseAge: 1440` e só instala pacote publicado há pelo menos 24h. Um `ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION` num bump recente é esperado: espere a versão amadurecer ou liste-a em `minimumReleaseAgeExclude`.
 
-## Quais comandos existem?
+## Comandos
 
-Todos os scripts do `package.json#scripts`, na íntegra:
+Todos os scripts do `package.json`:
 
-| Comando | Script | O que faz |
-|---|---|---|
-| `pnpm setup` | `tsx scripts/setup.ts` | wizard no terminal: escolher/clonar os repos da org |
-| `pnpm collect` | `tsx scripts/collect.ts && tsx scripts/collect-github.ts && tsx scripts/collect-releases.ts && tsx scripts/collect-team.ts && tsx scripts/check-data.ts` | os 4 coletores em sequência + validação (incremental) |
-| `pnpm check:data` | `tsx scripts/check-data.ts` | validação de shape dos JSONs gerados |
-| `pnpm check:scrub` | `tsx scripts/check-scrub.ts` | arquivos tracked devem continuar livres dos termos de identidade do scrub (também é gate de CI) |
-| `pnpm collect:github` | `tsx scripts/collect-github.ts` | só PRs/reviews |
-| `pnpm collect:releases` | `tsx scripts/collect-releases.ts` | só releases |
-| `pnpm collect:team` | `tsx scripts/collect-team.ts` | só o cadastro do time (`team.json`) |
-| `pnpm clean` | `tsx scripts/clean.ts` | apaga banco + JSONs (regenerável; `-- --repos` inclui os clones) |
-| `pnpm docs:dev` | `pnpm --filter gitview-docs dev` | dev server do site de docs (VitePress, em `docs/`) |
-| `pnpm docs:build` | `pnpm --filter gitview-docs build` | builda o site de docs (falha com dead links) |
-| `pnpm docs:preview` | `pnpm --filter gitview-docs preview` | serve o site de docs buildado localmente |
-| `pnpm dev` | `vite` | dashboard em `http://localhost:5173` |
-| `pnpm start` | `vite` | alias do `dev` (setup/coleta só existem no dev server) |
-| `pnpm build` | `vite build` | build estático (`dist/` — somente leitura, sem endpoints de setup) |
-| `pnpm lint` | `eslint .` | lint (zero erros é requisito) |
-| `pnpm lint:fix` | `eslint . --fix` | lint com auto-fix |
-| `pnpm typecheck` | `tsc --noEmit` | checagem de tipos (scripts + src) |
-| `pnpm preview` | `vite preview` | serve o `dist/` buildado localmente |
-| `pnpm changeset` | `changeset` | registrar uma mudança |
-| `pnpm version:packages` | `changeset version` | aplicar changesets (bump + CHANGELOG) |
-
-## Quais gates eu rodo antes de um PR?
-
-Não há suíte de testes — estes cinco checks são os gates, e cada um pega uma coisa diferente:
-
-| Gate | O que pega |
+| Comando | O que faz |
 |---|---|
-| `pnpm lint` | eslint (`@antfu/eslint-config`, config no `eslint.config.js`): estilo e formatação — zero erros é o requisito |
-| `pnpm typecheck` | `tsc --noEmit` sobre `scripts/` + `src/` — erros de tipo (templates `.vue` ficam fora) |
-| `pnpm build` | `vite build` — o check de compilação; import ou template quebrado falha aqui |
-| `pnpm check:data` | shape + invariantes dos JSONs coletados em `public/data/` (também roda no fim do `pnpm collect`) |
-| `pnpm check:scrub` | regressões do scrub de identidade — arquivos tracked devem continuar livres dos termos de identidade do empregador removidos ([issue #17](https://github.com/Enlighten-Brasil/gitview/issues/17)) |
+| `pnpm setup` | assistente no terminal: escolher e clonar os repos da org |
+| `pnpm collect` | os 4 coletores em sequência, mais `check:data` (incremental) |
+| `pnpm collect:github` | só PRs e reviews |
+| `pnpm collect:releases` | só releases |
+| `pnpm collect:team` | só o cadastro do time (`team.json`) |
+| `pnpm check:data` | shape e invariantes dos JSONs; gate local de dados |
+| `pnpm check:scrub` | tracked livres dos termos de identidade; gate de CI |
+| `pnpm check:docs` | paridade EN e pt-BR das páginas; gate de CI |
+| `pnpm clean` | apaga banco e JSONs; `-- --repos` inclui os clones |
+| `pnpm dev` / `pnpm start` | dashboard em `http://localhost:5173` |
+| `pnpm build` | build estático em `dist/`; gate de CI |
+| `pnpm preview` | serve o `dist/` buildado localmente |
+| `pnpm lint` | ESLint `@antfu/eslint-config`; gate de CI |
+| `pnpm lint:fix` | lint com auto-fix |
+| `pnpm typecheck` | `tsc --noEmit` em `scripts/` e `src/`; gate de CI |
+| `pnpm docs:dev` | site de docs em dev (VitePress, `DOCS_BASE=/`) |
+| `pnpm docs:build` | build do site de docs; gate de CI contra dead link |
+| `pnpm docs:preview` | serve o site de docs buildado |
+| `pnpm demo:shots` | regenera as capturas das docs do fixture sintético |
+| `pnpm changeset` | registrar uma mudança; obrigatório em PR |
+| `pnpm version:packages` | aplicar changesets (bump + `CHANGELOG.md`) |
 
-O CI (`.github/workflows/ci.yml`) roda `pnpm check:scrub`, `pnpm lint`, `pnpm typecheck` e `pnpm build` em todo PR e em push para `main`. O `check:data` fica fora do CI de propósito.
+## Gates antes do PR
 
-:::info Por que o CI não roda check:data?
-O `check:data` valida `public/data/`, que é gitignored e só existe depois de uma coleta local com token. O CI não coleta e não deve precisar de segredo — então o gate de dados é na sua máquina, logo após o `pnpm collect`.
-:::
+Não há suíte de testes. Antes de abrir PR rode `pnpm check:scrub`, `pnpm lint`, `pnpm typecheck` e `pnpm build`, mais `pnpm check:docs` quando mexeu em `docs/` ou em `docs/.vitepress/config.ts`. Rode `pnpm check:data` quando mexeu em coletores ou shapes de dados.
 
-## Quais convenções são obrigatórias?
+O CI (`.github/workflows/ci.yml`) roda scrub, lint, typecheck e build no job `gates`, e `check:docs` mais `docs:build` no job `docs`, em todo PR e em push para `main`. O `check:data` fica na sua máquina: `public/data/` é gitignored, só existe depois de uma coleta local com token.
 
-- **Toda mudança vem com changeset**: `pnpm changeset` (`minor` = feature, `patch` = fix). Quem mantém aplica com `pnpm version:packages`, que bumpa a versão, escreve o `CHANGELOG.md` e resulta num commit único `chore(release): X.Y.Z`. PR com mudança de código sem changeset vem de volta na revisão.
-- **Commits em pt-BR** (Conventional Commits: `feat(...)`, `fix(...)`, `docs(...)`, `chore(release): ...`), código em inglês, comentários em pt-BR. Commits de trabalho que fecham issues do roadmap terminam o corpo com `Ref: #N`.
-- **Formatação** é imposta por `pnpm lint` — `@antfu/eslint-config`: sem ponto-e-vírgula, aspas simples. Não brigue com ele; rode `pnpm lint:fix`.
-- **Copy de feedback** (padrão unificado): toda ação com efeito emite toast (`useToast`) — título curto em inicial maiúscula ("Perfis salvos"), descrição em minúsculas, `color` sempre explícita. Confirmações destrutivas sempre passam por `useConfirm()` (UModal): `title` = pergunta direta ("Descartar alterações?"), `description` = a consequência concreta, `confirmLabel` = a ação ("descartar", "remover time"). `window.confirm` e modais ad hoc são proibidos.
+## Convenções obrigatórias
+
+- **Toda mudança de código vem com changeset**: `pnpm changeset` (`minor` = feature, `patch` = fix). PR de código sem changeset volta na revisão.
+- **Commits em pt-BR**, Conventional Commits (`feat(...)`, `fix(...)`, `docs(...)`, `chore(release): ...`); código em inglês, comentários em pt-BR. Commit que fecha issue do roadmap termina o corpo com `Ref: #N`.
+- **Formatação imposta pelo lint**: `@antfu/eslint-config`, sem ponto-e-vírgula, aspas simples. Não brigue com ele: `pnpm lint:fix`.
+- **Copy de feedback**: ação com efeito emite toast (`useToast`) com título curto em inicial maiúscula e `color` explícita. Confirmação destrutiva sempre passa por `useConfirm()` (UModal): `title` é a pergunta, `description` é a consequência, `confirmLabel` é a ação. `window.confirm` e modal ad hoc são proibidos.
+- **Feature que escreve config ou dados pela UI nasce atrás de `import.meta.env.DEV`** e degrada no build estático: a página segue renderizando os JSONs, só sem os controles de edição.
 - **Deleção de arquivos**: `rm -- <path>` (launcher recuperável), nunca `Remove-Item`.
 
-:::info Por que as mensagens de commit são em pt-BR?
-O time que constrói e mantém o gitview trabalha em pt-BR, e o histórico de commits é o log de trabalho desse time. Código e docs públicos ficam em inglês para a comunidade open-source usar o projeto. A copy traduzida da UI também é deliberada: a interface do dashboard é em pt-BR.
-:::
+## Onde mora o quê no `src/`
 
-## O que vive onde no `src/`?
+- `data.ts`: filtros globais, agregações filtradas (monthly, weekly, heatmap, types), totais, delta, ritmo, fora do horário.
+- `github.ts`: PRs filtrados, aging, cycle time, reviews por dev, merge sem review.
+- `releases.ts`: loader do `releases.json` e métricas de cadência.
+- `urlState.ts`: filtros na query string (`?range=&from=&to=&repos=&devs=&bots=`), com escopo por `route.meta.filters`.
+- `summary.ts`: resumo semanal em markdown, ignorando os filtros da sidebar.
+- `router/`: `guards.ts` aplica o contrato de `route.meta` (`requiresData`, `onboarding`, `requiresServer`, `setupStep`, `section`, `filters`, `title`).
+- `pages/`: uma rota por arquivo: shell `(app)/`, abas `(dashboard)/`, `devs/[name]`, `repos/`, `prs`, `teams`, `settings/` e `setup/` (dev only), `[...path].vue` para 404.
+- `components/`: um componente por painel; tabelas usam a classe `.data-table`.
 
-- `data.ts` — filtros globais (`filters`) e agregações filtradas (monthly/weekly/heatmap/types), totais + delta, ritmo, burnout, fora do horário.
-- `github.ts` — PRs filtrados, aging, cycle time, reviews por dev, merge sem review.
-- `releases.ts` — loader do `releases.json` + métricas (dias desde a última release, cadência).
-- `urlState.ts` — filtros na query string (`?range=&from=&to=&repos=&devs=&bots=`), com escopo por `route.meta.filters`.
-- `router/` — rotas por arquivo + o guard global; `route.meta` é o contrato (`requiresData`, `onboarding`, `requiresServer`, `setupStep`, `section`, `filters`, `title`).
-- `pages/` — um arquivo por rota (shell `(app)/`, abas `(dashboard)/`, `devs/[name]`, `repos/`, `prs`, `teams`, `settings/` dev only, `setup/` dev only, `[...path].vue` 404).
-- `components/` — um componente por painel; tabelas usam a classe `.data-table`.
+O pipeline completo e as regras dos filtros estão no `AGENTS.md` da raiz. Leia antes de mexer em coletores ou métricas: vários comportamentos de filtro parecem estranhos e são intencionais.
 
-## O que morde no Windows?
+## Windows
 
-- **PowerShell 5.1**: use `pnpm.cmd` — o shim `pnpm.ps1` é bloqueado pela Execution Policy.
-- **Nunca edite arquivos UTF-8 via PowerShell** (`Set-Content`, redireção) — sai mojibake. Use um editor de verdade.
-- **Nunca piper CLI que muta arquivos por `2>&1 | Select-Object`** — pode abortar o comando no meio.
+- PowerShell 5.1: use `pnpm.cmd`, porque o shim `pnpm.ps1` é bloqueado pela Execution Policy.
+- Nunca edite arquivo UTF-8 via PowerShell (`Set-Content`, redireção): sai mojibake.
+- Nunca pipe CLI que muta arquivos por `2>&1 | Select-Object`: pode abortar o comando no meio.
 
-## Como valido a UI?
+## Validar a mudança na UI
 
-Não há suíte de testes, então a validação são os gates mais o olho no app rodando:
+1. `pnpm dev` e exercite o caminho em `http://localhost:5173`.
+2. Confira o que de fato renderiza (textos do DOM, tabelas, valores) e o console do navegador.
+3. Tabs do Reka UI não respondem a `.click()` sintético: use clique real ou navegue pela URL (`/devs`, `/health`).
+4. Feche com os gates acima, incluindo `pnpm check:data` se você mexeu nos coletores.
 
-1. `pnpm dev` → `http://localhost:5173` e exercite a mudança no navegador.
-2. Valide o que de fato renderiza — textos do DOM, tabelas, valores — e fique de olho no console do navegador. O que a página *diz* que mostra é a fonte de verdade, não como um screenshot parece.
-3. Tabs do Reka UI não respondem a `.click()` sintético — clique de verdade, ou navegue pela URL (`/devs`, `/health`, …).
-4. Feche com os gates: `pnpm lint`, `pnpm typecheck`, `pnpm build` (e `pnpm check:data` quando você mexeu em coletores ou shapes de dados).
-
-## Próximos passos
-
-- [Ritual de release](./release.md) — como a sua mudança entra depois da revisão.
-- [Publicando o build estático](../publishing/static-deploy.md) — o que acontece com a saída do `pnpm build` em produção.
-- [CONTRIBUTING.pt-BR.md](https://github.com/Enlighten-Brasil/gitview/blob/main/CONTRIBUTING.pt-BR.md) — o guia de contribuição curto do repositório.
+Depois da revisão, o caminho até a versão está em [Ritual de release](./release.md); o destino do `dist/` está em [Publicando o build estático](../publishing/static-deploy.md).
