@@ -10,6 +10,25 @@ const base = process.env.DOCS_BASE ?? '/gitview/docs/'
 
 const repoUrl = 'https://github.com/Enlighten-Brasil/gitview'
 
+// O vitepress 2.0.0-alpha.20 NÃO tem `siteUrl` (só `sitemap.hostname` resolve
+// absolutos). As tags absolutas de SEO/OG são montadas a partir da base de
+// produção fixa abaixo — em dev/preview (DOCS_BASE=/) as tags continuam
+// apontando para o site publicado, que é o comportamento correto para
+// crawlers e compartilhamento social.
+const prodSiteUrl = 'https://enlighten-brasil.github.io/gitview/docs/'
+const ogImageUrl = `${prodSiteUrl}og.png`
+
+/** URL absoluta de uma página do dist (`configuration/env.md` → `.../gitview/docs/configuration/env.html`). */
+function pageUrl(page: string): string | undefined {
+  // a 404 gerada não deve entrar no índice social/canonical
+  if (page === '404.md' || page === '404.html')
+    return undefined
+  // no alpha.20, `page` chega com a extensão da FONTE (.md); com cleanUrls
+  // falso o arquivo real escrito no dist é .html
+  const html = page.replace(/\.md$/, '.html')
+  return prodSiteUrl + html.replace(/(^|\/)index\.html$/, '$1')
+}
+
 export default defineConfig<DefaultTheme.Config>({
   title: 'gitview docs',
   description: 'Documentation for gitview, the open-source git & GitHub metrics dashboard.',
@@ -18,10 +37,38 @@ export default defineConfig<DefaultTheme.Config>({
   // dark-first, como o app (o toggle de tema continua disponível)
   appearance: 'dark',
 
+  // sitemap.xml no build: o hostname inclui o path da base (o `new URL(rel, hostname)`
+  // do plugin exige a barra final para preservar `/gitview/docs/`)
+  sitemap: {
+    hostname: prodSiteUrl,
+  },
+
+  // Tags por página que o alpha.20 NÃO emite sozinho: og:title/og:description
+  // específicos, og:url, canonical e twitter:title/description (mergeHead
+  // sobrescreve os genéricos do `head` raiz quando a chave coincide).
+  transformHead({ page, title, description }) {
+    const url = pageUrl(page)
+    if (!url)
+      return
+    return [
+      ['meta', { property: 'og:title', content: title }],
+      ['meta', { property: 'og:description', content: description }],
+      ['meta', { property: 'og:url', content: url }],
+      ['link', { rel: 'canonical', href: url }],
+      ['meta', { name: 'twitter:title', content: title }],
+      ['meta', { name: 'twitter:description', content: description }],
+    ]
+  },
+
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: `${base}favicon.svg` }],
+    ['meta', { property: 'og:type', content: 'website' }],
+    ['meta', { property: 'og:site_name', content: 'gitview docs' }],
     ['meta', { property: 'og:title', content: 'gitview docs' }],
     ['meta', { property: 'og:description', content: 'Documentation for gitview, the open-source git & GitHub metrics dashboard.' }],
+    ['meta', { property: 'og:image', content: ogImageUrl }],
+    ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
+    ['meta', { name: 'twitter:image', content: ogImageUrl }],
   ],
 
   markdown: {
@@ -34,6 +81,10 @@ export default defineConfig<DefaultTheme.Config>({
       lang: 'en',
       title: 'gitview docs',
       description: 'Documentation for gitview, the open-source git & GitHub metrics dashboard.',
+      // o alpha.20 faz merge do head por locale no HTML estático de cada rota
+      head: [
+        ['meta', { property: 'og:locale', content: 'en_US' }],
+      ],
       themeConfig: {
         nav: [
           { text: 'Guide', link: '/guide/introduction', activeMatch: '/guide/' },
@@ -51,7 +102,7 @@ export default defineConfig<DefaultTheme.Config>({
             items: [
               { text: 'Introduction', link: 'introduction' },
               { text: 'Quickstart', link: 'quickstart' },
-              { text: 'Setup wizard', link: 'setup-wizard' },
+              { text: 'The setup wizard', link: 'setup-wizard' },
               { text: 'Connecting GitHub', link: 'connecting-github' },
               { text: 'Repositories', link: 'repositories' },
             ],
@@ -60,18 +111,18 @@ export default defineConfig<DefaultTheme.Config>({
             text: 'Configuration',
             base: '/configuration/',
             items: [
-              { text: 'Environment variables', link: 'env' },
-              { text: 'Team', link: 'team' },
-              { text: 'Maintenance', link: 'maintenance' },
+              { text: 'The .env file', link: 'env' },
+              { text: 'Team config (team.local.json)', link: 'team' },
+              { text: 'Data maintenance', link: 'maintenance' },
             ],
           }],
           '/dashboard/': [{
             text: 'Dashboard',
             base: '/dashboard/',
             items: [
-              { text: 'Tour', link: 'tour' },
-              { text: 'Filters', link: 'filters' },
-              { text: 'Metrics', link: 'metrics' },
+              { text: 'Dashboard tour', link: 'tour' },
+              { text: 'Filter rules', link: 'filters' },
+              { text: 'Metrics glossary', link: 'metrics' },
             ],
           }],
           '/architecture/': [{
@@ -87,15 +138,15 @@ export default defineConfig<DefaultTheme.Config>({
             text: 'Publishing',
             base: '/publishing/',
             items: [
-              { text: 'Static deploy', link: 'static-deploy' },
+              { text: 'Publishing the static build', link: 'static-deploy' },
             ],
           }],
           '/contributing/': [{
             text: 'Contributing',
             base: '/contributing/',
             items: [
-              { text: 'Development', link: 'development' },
-              { text: 'Release process', link: 'release' },
+              { text: 'Development setup', link: 'development' },
+              { text: 'Release ritual', link: 'release' },
             ],
           }],
         },
@@ -112,6 +163,9 @@ export default defineConfig<DefaultTheme.Config>({
       link: '/pt-BR/',
       title: 'gitview docs',
       description: 'Documentação do gitview, o dashboard open-source de métricas de git e GitHub.',
+      head: [
+        ['meta', { property: 'og:locale', content: 'pt_BR' }],
+      ],
       themeConfig: {
         nav: [
           { text: 'Guia', link: '/pt-BR/guide/introduction', activeMatch: '/pt-BR/guide/' },
@@ -120,7 +174,7 @@ export default defineConfig<DefaultTheme.Config>({
           { text: 'Arquitetura', link: '/pt-BR/architecture/pipeline', activeMatch: '/pt-BR/architecture/' },
           { text: 'Publicação', link: '/pt-BR/publishing/static-deploy', activeMatch: '/pt-BR/publishing/' },
           { text: 'Contribuição', link: '/pt-BR/contributing/development', activeMatch: '/pt-BR/contributing/' },
-          { text: 'FAQ', link: '/pt-BR/faq' },
+          { text: 'Perguntas frequentes', link: '/pt-BR/faq' },
         ],
         sidebar: {
           '/pt-BR/guide/': [{
@@ -128,8 +182,8 @@ export default defineConfig<DefaultTheme.Config>({
             base: '/pt-BR/guide/',
             items: [
               { text: 'Introdução', link: 'introduction' },
-              { text: 'Início rápido', link: 'quickstart' },
-              { text: 'Assistente de configuração', link: 'setup-wizard' },
+              { text: 'Quickstart', link: 'quickstart' },
+              { text: 'O wizard de configuração', link: 'setup-wizard' },
               { text: 'Conectando o GitHub', link: 'connecting-github' },
               { text: 'Repositórios', link: 'repositories' },
             ],
@@ -138,18 +192,18 @@ export default defineConfig<DefaultTheme.Config>({
             text: 'Configuração',
             base: '/pt-BR/configuration/',
             items: [
-              { text: 'Variáveis de ambiente', link: 'env' },
-              { text: 'Time', link: 'team' },
-              { text: 'Manutenção', link: 'maintenance' },
+              { text: 'O arquivo .env', link: 'env' },
+              { text: 'Config do time (team.local.json)', link: 'team' },
+              { text: 'Manutenção dos dados', link: 'maintenance' },
             ],
           }],
           '/pt-BR/dashboard/': [{
             text: 'Dashboard',
             base: '/pt-BR/dashboard/',
             items: [
-              { text: 'Tour', link: 'tour' },
-              { text: 'Filtros', link: 'filters' },
-              { text: 'Métricas', link: 'metrics' },
+              { text: 'Passeio pelo dashboard', link: 'tour' },
+              { text: 'Regras dos filtros', link: 'filters' },
+              { text: 'Glossário de métricas', link: 'metrics' },
             ],
           }],
           '/pt-BR/architecture/': [{
@@ -165,15 +219,15 @@ export default defineConfig<DefaultTheme.Config>({
             text: 'Publicação',
             base: '/pt-BR/publishing/',
             items: [
-              { text: 'Deploy estático', link: 'static-deploy' },
+              { text: 'Publicando o build estático', link: 'static-deploy' },
             ],
           }],
           '/pt-BR/contributing/': [{
             text: 'Contribuição',
             base: '/pt-BR/contributing/',
             items: [
-              { text: 'Desenvolvimento', link: 'development' },
-              { text: 'Processo de release', link: 'release' },
+              { text: 'Ambiente de desenvolvimento', link: 'development' },
+              { text: 'Ritual de release', link: 'release' },
             ],
           }],
         },
