@@ -13,7 +13,7 @@ A `dist/` folder with static files only: no runtime server, no database, no git 
 
 ## What does not exist in the static build?
 
-The write endpoints (`/__setup/*`, `/__collect`, `/__clean`, `/__team/config`, `/__team/github`) are **dev-server middleware** — `pnpm build` does not include them. In the static build the dashboard is strictly read-only:
+The write endpoints (`/__setup/*`, `/__auth/*`, `/__collect`, `/__clean`, `/__team/config`, `/__team/github`) are **dev-server middleware** — `pnpm build` does not include them. In the static build the dashboard is strictly read-only:
 
 | Feature | `pnpm dev` | static build |
 |---|---|---|

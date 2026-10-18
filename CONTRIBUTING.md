@@ -45,7 +45,7 @@ The release is applied by the maintainer: `pnpm version:packages` bumps the vers
 
 ## dev-only vs static build (important)
 
-The write endpoints (`/__setup/*`, `/__collect`, `/__clean`, `/__team/config`, `/__team/github`) are **dev-server middleware** — they do not exist in `pnpm build`. Consequences:
+The write endpoints (`/__setup/*`, `/__auth/*`, `/__collect`, `/__clean`, `/__team/config`, `/__team/github`) are **dev-server middleware** — they do not exist in `pnpm build`. Consequences:
 
 - `/setup` (wizard), `/settings` and the re-collect button (↻) only work under `pnpm dev`.
 - `/teams` and `/repos` always render (the data comes from the JSONs), but only **edit** in dev — in the static build they are read-only.
@@ -55,6 +55,25 @@ If your feature needs to write config/data through the UI, it is born behind `im
 ## The doc pairs (README + CONTRIBUTING)
 
 `README.md` (English) is the primary document and `README.pt-BR.md` is a section-by-section mirror — this file and `CONTRIBUTING.pt-BR.md` follow the same rule. Any documentation change updates both files of the pair in the same change, and any command or label you cite must exist in `package.json`/the components.
+
+## Documentation
+
+The site under `docs/` is VitePress: 19 English pages with a section-by-section pt-BR mirror (`docs/pt-BR/…`, same file names). Keeping it healthy is part of the work:
+
+- **Both languages, same change.** Any doc edit updates the English page and its `docs/pt-BR/` mirror in the same PR. Nav and sidebar labels in `docs/.vitepress/config.ts` follow the page titles (`text:` == frontmatter `title`) — when a page's title changes, the labels change with it, in both locales.
+- **Anti-rot rule.** If your PR changes a UI label, a command or script name, a config key (`GITVIEW_*`, fields in `team.local.json`) or a metric rule, every doc page citing it is updated **in the same PR** — a label that changed in `src/` but not in the docs is a bug. Reviewers grep cited claims against the code; anything that doesn't match gets bounced.
+- **Docs do not duplicate the README.** Pages link to the README sections and deepen them (context, examples, edge cases) — they never restate them.
+
+Commands, from the repo root:
+
+```bash
+pnpm docs:dev       # vitepress dev served from / (DOCS_BASE=/)
+pnpm docs:build     # static build into docs/.vitepress/dist
+pnpm docs:preview   # serves the generated site locally
+pnpm check:docs     # docs gate (parity + links) — arrives with the sibling PR #73
+```
+
+On Windows/PowerShell run them as `pnpm.cmd docs:dev`, `pnpm.cmd docs:build`, `pnpm.cmd docs:preview` and `pnpm.cmd check:docs` (PowerShell 5.1 cannot execute `pnpm.ps1`).
 
 ## Reporting bugs
 
