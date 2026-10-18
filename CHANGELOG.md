@@ -1,5 +1,13 @@
 # gitview
 
+## 0.49.10
+
+### Patch Changes
+
+- 6ee2afb: docs: quatro capturas da demo (dados sintéticos) na doc e no README + `pnpm demo:shots` para regenerá-las com Chrome headless, recusando capture de dados reais.
+  
+  Ref: #96
+
 ## 0.49.9
 
 ### Patch Changes
