@@ -1,43 +1,45 @@
 ---
 layout: home
 title: gitview
+description: "Team metrics for engineering managers — commits, PRs and releases across your GitHub org, collected locally and read-only."
 hero:
   name: gitview
-  text: Git & GitHub metrics dashboard
-  tagline: Open-source dashboard that turns git history and GitHub activity into actionable team metrics.
+  text: Team metrics for engineering managers
+  tagline: Commits, PRs and releases across your GitHub org — collected on your machine, strictly read-only.
   image:
     src: /logo.svg
     alt: gitview logo
   actions:
     - theme: brand
-      text: Get started
-      link: /guide/introduction
+      text: Getting started
+      link: /guide/quickstart
     - theme: alt
-      text: View on GitHub
+      text: Live demo
+      link: https://enlighten-brasil.github.io/gitview/
+    - theme: alt
+      text: GitHub
       link: https://github.com/Enlighten-Brasil/gitview
 features:
-  - icon: 📊
-    title: Metrics that matter
-    details: Commits, pull requests, reviews and releases per person, team and repository — all in one place.
-  - icon: 🔌
-    title: GitHub integration
-    details: Incremental collectors pull activity through the GitHub API with a personal access token.
-  - icon: 🎛️
-    title: Filters and drill-down
-    details: Slice every chart by period, repository or team member to answer real questions.
-  - icon: 👥
-    title: Team-aware
-    details: Map people to teams and aliases so the metrics reflect how your org actually works.
-  - icon: 📦
-    title: Static publishing
-    details: Data lives in JSON files — publish the dashboard to GitHub Pages or any static host.
-  - icon: 🔒
-    title: Local-first
-    details: Everything runs on your machine or CI; your data never leaves your environment.
+  - title: Read-only, for real
+    details: "gitview never writes to the repositories it analyzes. With a read-only GitHub App the issued token physically cannot write, and managed clones get their push URL locked (`remote.origin.pushurl=no-push`)."
+  - title: Runs locally, data stays yours
+    details: "Collectors write SQLite and JSON on your machine; `.env` and `team.local.json` are gitignored. The only network calls go to GitHub — the API and git — during setup and collection."
+  - title: Management filters and metrics
+    details: "Streak, pace, cycle time, off-hours and a weekly summary — filter by period, repository, developer, team and bots."
+  - title: Teams and identities
+    details: "Unify commit e-mails and GitHub logins into dev profiles; every team gets its own dashboard at `/teams/<name>`."
+  - title: 100% static
+    details: "`pnpm build` outputs a `dist/` you can serve from any static host — the live demo is exactly that build."
+  - title: MIT open source
+    details: "Licensed under MIT. What comes next lives in GitHub issues and milestones; how to help is in `CONTRIBUTING.md`."
 ---
 
 ## How it works
 
-1. **Collect** — the collectors pull git history and GitHub activity into local JSON files.
-2. **Build** — the Vite app renders the dashboard from the collected data, no backend required.
-3. **Publish** — deploy the static output to GitHub Pages (like the [live demo](https://enlighten-brasil.github.io/gitview/)) or any static host.
+Three steps, no servers to configure in between:
+
+1. **Connect GitHub** — device flow in the browser, a pasted PAT, or the `gh` CLI as a bridge. The first run lands on the `/setup` wizard; there is nothing to edit beforehand.
+2. **Collect** — the collectors stream `git log` into SQLite and export JSON to `public/data/`; PRs and reviews come from the GitHub API, and releases combine local tags with the API. Re-collection is incremental (the ↻ in the navbar).
+3. **Browse the dashboard** — commits, PRs, releases, streak, cycle time and off-hours, with filters for period, repositories, developers and teams.
+
+The full pipeline (git → SQLite → `public/data/*.json` → static frontend) is documented in [Architecture](./architecture/pipeline.md).
