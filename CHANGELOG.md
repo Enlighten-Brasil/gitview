@@ -1,5 +1,11 @@
 # gitview
 
+## 0.49.15
+
+### Patch Changes
+
+- a369ad9: Header das docs com 5 itens: página de publicação vira parte do Guia; dropdown Contribuição agrupa Arquitetura e contribuição.
+
 ## 0.49.14
 
 ### Patch Changes
