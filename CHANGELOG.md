@@ -1,5 +1,11 @@
 # gitview
 
+## 0.49.14
+
+### Patch Changes
+
+- ec9eb9a: Revisão editorial completa das documentações (EN + pt-BR): tom direto, slogan novo, sem conteúdo de migração/legado.
+
 ## 0.49.13
 
 ### Patch Changes
