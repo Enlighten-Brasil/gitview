@@ -5,7 +5,7 @@ description: "Cada página do dashboard do gitview: a pergunta que responde, os 
 
 # Passeio pelo dashboard
 
-As páginas vêm na ordem da navegação. Para cada uma: a pergunta que ela responde, os painéis com os rótulos reais da tela e as saídas dos links. O comportamento dos filtros tem casa própria em [Regras dos filtros](./filters.md); o pipeline de dados, em [Pipeline](../architecture/pipeline.md). As capturas usam os dados sintéticos da demo pública, nunca dados reais do time.
+As páginas vêm na ordem da navegação. Para cada uma: a pergunta que ela responde, os painéis com os rótulos reais da tela e as saídas dos links. O comportamento dos filtros tem casa própria em [Regras dos filtros](../dashboard/filters.md); o pipeline de dados, em [Pipeline](../architecture/pipeline.md). As capturas usam os dados sintéticos da demo pública, nunca dados reais do time.
 
 A rail à esquerda agrupa **Dashboards** (**Visão geral** `/`, **Devs** `/devs`, **Saúde** `/health`), **Times** `/teams`, **PRs** `/prs`, **Repos** `/repos` e, só no dev server, **Config** `/settings`. A navbar traz o badge de frescor dos dados, o botão do resumo semanal e, em dev, os controles de coleta. Todo painel de gráfico exporta PNG pelo ícone de download (toast **Imagem exportada**) e os tooltips mostram os números por trás de cada ponto.
 
@@ -20,7 +20,7 @@ A rail à esquerda agrupa **Dashboards** (**Visão geral** `/`, **Devs** `/devs`
 ## Devs (`/devs`): quem está fazendo o quê?
 
 - Destaque do período: quem mais commitou, com coroa e badge **N% do período**.
-- **Campeão da semana — maior evolução**: os vencedores por semana (semana / dev / vs média / commits) e a contagem **vitórias (período)**. O prêmio mede evolução contra a própria linha de base, não volume; a fórmula está em [Glossário de métricas](./metrics.md).
+- **Campeão da semana — maior evolução**: os vencedores por semana (semana / dev / vs média / commits) e a contagem **vitórias (período)**. O prêmio mede evolução contra a própria linha de base, não volume; a fórmula está em [Glossário de métricas](../dashboard/metrics.md).
 - **Ritmo — últimas 4 semanas vs 8 anteriores**: quem está abaixo da própria média.
 - **Dev × mês (comparação)**.
 - **Frequência — dia da semana × hora**.
@@ -44,7 +44,7 @@ O botão **dashboard** volta para `/`; linhas de PR abrem o GitHub.
 
 ## Saúde (`/health`): onde o processo dói?
 
-Cada card documenta os próprios thresholds no rodapé; os valores estão em [Glossário de métricas](./metrics.md).
+Cada card documenta os próprios thresholds no rodapé; os valores estão em [Glossário de métricas](../dashboard/metrics.md).
 
 - **Fora do horário**: alternado entre **8 semanas** e o rótulo da janela atual. Commits de fim de semana e madrugada por dev, com status **pontual**, **atenção**, **padrão**.
 - **Fix hotspots — % de correção por repo**.
@@ -82,7 +82,7 @@ Linhas de PR abrem o GitHub.
 
 ## Repo (`/repos/:name`): como está este repositório?
 
-`/repo/:name` continua como alias; nome desconhecido mostra **Repo não encontrado**. O período vale para commits, gráficos, PRs mergeados e cycle time; releases e PRs abertos são marcos ou estado atual, como descreve [Regras dos filtros](./filters.md).
+`/repo/:name` continua como alias; nome desconhecido mostra **Repo não encontrado**. O período vale para commits, gráficos, PRs mergeados e cycle time; releases e PRs abertos são marcos ou estado atual, como descreve [Regras dos filtros](../dashboard/filters.md).
 
 - Cards de **commits**, **linhas +**, **linhas −**, **devs** no período, **commits (total)** quando há período ativo, **última release (há Nd)**, **commits não liberados** (cor por threshold), **dev principal** com a participação do topo (colorida acima de 50% e 70%) e, com dados do GitHub, **PRs abertos** e **cycle time mediano**.
 - **Tipos de commit** (donut) e **Commits por dev** (barras, top 10).
@@ -110,4 +110,4 @@ Botão no navbar (tooltip **resumo da semana exportável**), não uma rota. Abre
 
 ## Build estático
 
-A interface só lê os dados coletados. No `pnpm build`, `/setup`, `/settings`, os botões de coleta e o editor de `/teams` não existem. Ajuste identidades e times sob `pnpm dev`, recolete com `pnpm collect` e só então publique, conforme [Publicando o build estático](../guide/publishing.md).
+A interface só lê os dados coletados. No `pnpm build`, `/setup`, `/settings`, os botões de coleta e o editor de `/teams` não existem. Ajuste identidades e times sob `pnpm dev`, recolete com `pnpm collect` e só então publique, conforme [Publicando o build estático](./publishing.md).

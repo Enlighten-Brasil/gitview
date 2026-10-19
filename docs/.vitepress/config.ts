@@ -88,8 +88,17 @@ export default defineConfig<DefaultTheme.Config>({
       themeConfig: {
         nav: [
           { text: 'Guide', link: '/guide/introduction', activeMatch: '/guide/' },
-          { text: 'Configuration', link: '/configuration/env', activeMatch: '/configuration/' },
-          { text: 'Dashboard', link: '/dashboard/tour', activeMatch: '/dashboard/' },
+          {
+            text: 'Reference',
+            activeMatch: '/(configuration|dashboard)/',
+            items: [
+              { text: 'The .env file', link: '/configuration/env' },
+              { text: 'Team config (team.local.json)', link: '/configuration/team' },
+              { text: 'Data maintenance', link: '/configuration/maintenance' },
+              { text: 'Filter rules', link: '/dashboard/filters' },
+              { text: 'Metrics glossary', link: '/dashboard/metrics' },
+            ],
+          },
           {
             text: 'Contributing',
             activeMatch: '/(architecture|contributing)/',
@@ -113,6 +122,7 @@ export default defineConfig<DefaultTheme.Config>({
               { text: 'The setup wizard', link: 'setup-wizard' },
               { text: 'Connecting GitHub', link: 'connecting-github' },
               { text: 'Repositories', link: 'repositories' },
+              { text: 'Dashboard tour', link: 'tour' },
               { text: 'Publishing the static build', link: 'publishing' },
             ],
           }],
@@ -129,7 +139,6 @@ export default defineConfig<DefaultTheme.Config>({
             text: 'Dashboard',
             base: '/dashboard/',
             items: [
-              { text: 'Dashboard tour', link: 'tour' },
               { text: 'Filter rules', link: 'filters' },
               { text: 'Metrics glossary', link: 'metrics' },
             ],
@@ -171,8 +180,17 @@ export default defineConfig<DefaultTheme.Config>({
       themeConfig: {
         nav: [
           { text: 'Guia', link: '/pt-BR/guide/introduction', activeMatch: '/pt-BR/guide/' },
-          { text: 'Configuração', link: '/pt-BR/configuration/env', activeMatch: '/pt-BR/configuration/' },
-          { text: 'Dashboard', link: '/pt-BR/dashboard/tour', activeMatch: '/pt-BR/dashboard/' },
+          {
+            text: 'Referência',
+            activeMatch: '/pt-BR/(configuration|dashboard)/',
+            items: [
+              { text: 'O arquivo .env', link: '/pt-BR/configuration/env' },
+              { text: 'Config do time (team.local.json)', link: '/pt-BR/configuration/team' },
+              { text: 'Manutenção dos dados', link: '/pt-BR/configuration/maintenance' },
+              { text: 'Regras dos filtros', link: '/pt-BR/dashboard/filters' },
+              { text: 'Glossário de métricas', link: '/pt-BR/dashboard/metrics' },
+            ],
+          },
           {
             text: 'Contribuição',
             activeMatch: '/pt-BR/(architecture|contributing)/',
@@ -196,6 +214,7 @@ export default defineConfig<DefaultTheme.Config>({
               { text: 'O wizard de configuração', link: 'setup-wizard' },
               { text: 'Conectando o GitHub', link: 'connecting-github' },
               { text: 'Repositórios', link: 'repositories' },
+              { text: 'Passeio pelo dashboard', link: 'tour' },
               { text: 'Publicando o build estático', link: 'publishing' },
             ],
           }],
@@ -212,7 +231,6 @@ export default defineConfig<DefaultTheme.Config>({
             text: 'Dashboard',
             base: '/pt-BR/dashboard/',
             items: [
-              { text: 'Passeio pelo dashboard', link: 'tour' },
               { text: 'Regras dos filtros', link: 'filters' },
               { text: 'Glossário de métricas', link: 'metrics' },
             ],
