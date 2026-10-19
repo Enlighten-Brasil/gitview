@@ -64,6 +64,10 @@ export interface Config {
   productionRef?: string
   /** refs de integração (default develop,staging); filtrada por existência em cada repo */
   integrationRefs?: string[]
+  /** dias sem atividade para branch com aheadProd=0 virar "pousada" (issue #123); default 30 */
+  branchStaleDays?: number
+  /** nomes exatos de branches de bot (extras ao BOT_BRANCH_RE de lib/team.ts); comparação lowercase */
+  botBranches?: string[]
   /** porta do dev server */
   port?: number
   /** perfis de devs (aliases de e-mail/login, título, descrição) */
@@ -97,6 +101,8 @@ const ENV_KEYS: Record<string, keyof Config> = {
   GITVIEW_TIMEZONE: 'timezone',
   GITVIEW_PRODUCTION_REF: 'productionRef',
   GITVIEW_INTEGRATION_REFS: 'integrationRefs',
+  GITVIEW_BRANCH_STALE_DAYS: 'branchStaleDays',
+  GITVIEW_BOT_BRANCHES: 'botBranches',
 }
 
 /**
@@ -126,6 +132,14 @@ export const DEFAULT_EXCLUDE_PATHS = [
   '*.generated.js',
   '*.designer.cs',
 ]
+
+/**
+ * Dias sem atividade para uma branch sem commits à frente da produção
+ * (aheadProd = 0) ser classificada como "pousada" no branches.json (issue
+ * #123). 30 casa com o ciclo mensal de release; GITVIEW_BRANCH_STALE_DAYS
+ * sobrescreve (inteiro >= 0 — inválido cai no default, como GITVIEW_PORT).
+ */
+export const DEFAULT_BRANCH_STALE_DAYS = 30
 
 /** campos que vivem no team.local.json (não vão para o .env) */
 const TEAM_FIELDS = new Set<keyof Config>(['devProfiles', 'teams', 'bots', 'githubBots'])
@@ -219,6 +233,16 @@ export function loadConfig(): Config {
     config.productionRef = productionRef
   const integrationRefs = envValue('GITVIEW_INTEGRATION_REFS', file)
   config.integrationRefs = integrationRefs ? parseCsv(integrationRefs) : [...DEFAULT_INTEGRATION_REFS]
+  const branchStaleDays = envValue('GITVIEW_BRANCH_STALE_DAYS', file)
+  if (branchStaleDays) {
+    // defensivo: saveConfig grava String(valor), mas o .env pode ser editado à mão
+    const n = Number(branchStaleDays)
+    if (Number.isInteger(n) && n >= 0)
+      config.branchStaleDays = n
+  }
+  const botBranches = envValue('GITVIEW_BOT_BRANCHES', file)
+  if (botBranches)
+    config.botBranches = parseCsv(botBranches)
 
   return { ...config, ...readTeamFile() }
 }

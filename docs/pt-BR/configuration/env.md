@@ -35,6 +35,17 @@ O `.env` guarda a config da máquina: credenciais do GitHub, onde estão os clon
 - `GITVIEW_INTEGRATION_REFS` é filtrada por repo: branches ausentes do clone saem da lista daquele repo. Resultado vazio é legítimo e não imprime nada.
 - As duas chaves de refs também são editáveis pelo app: o card **Refs dos repositórios** em **Config → Geral** (só no dev server) grava as chaves no `.env` e mostra, como hint somente-leitura, o valor resolvido por repo — o que a coleta vai usar de fato, incluindo os fallbacks por repo.
 
+## Branches
+
+| chave | o que faz | default |
+|---|---|---|
+| `GITVIEW_BRANCH_STALE_DAYS` | dias sem atividade para uma branch sem commits à frente da produção (`aheadProd = 0`) ser classificada como `pousada` no `branches.json` | `30` |
+| `GITVIEW_BOT_BRANCHES` | nomes exatos de branches de bot (CSV) | vazio → só o padrão de prefixo |
+
+- O `collect-branches.ts` dá a cada branch exatamente um status de uma union fechada: `production`, `integration`, `feature`, `bot` ou `pousada`. Branches de bot casam com o prefixo `dependabot/` ou `renovate/` (`BOT_BRANCH_RE` em `scripts/lib/team.ts`); `GITVIEW_BOT_BRANCHES` acrescenta nomes exatos, comparados sem diferenciar maiúsculas. *Logins* de bot do GitHub (`githubBots` no `team.local.json`) casam logins, não nomes de ref — não classificam branches.
+- `GITVIEW_BRANCH_STALE_DAYS` aceita inteiro ≥ 0; vazio ou inválido cai no default 30, que casa com o ciclo mensal de release. `pousada` também exige `aheadProd = 0` — branch velha com commits à frente da produção continua `feature`.
+- O `branches.json` é fato puramente git: `authorsAhead` leva e-mails crus de commit (`%ae`), nunca nomes canônicos, e as linhas somam o numstat cru. Edição de alias/time reflete sem recoletar — o frontend mapeia e-mail→dev via `team.json#devs[].emails`.
+
 ## Métricas e dados
 
 | chave | o que faz | default |

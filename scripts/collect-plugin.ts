@@ -2,9 +2,9 @@ import type { Buffer } from 'node:buffer'
 import type { Connect, Plugin } from 'vite'
 /**
  * Plugin Vite (apenas dev): expõe GET /__collect como stream SSE que roda os
- * quatro coletores em sequência, mais a verificação final (check-data), e
+ * cinco coletores em sequência, mais a verificação final (check-data), e
  * transmite o progresso linha a linha. No modo leve (`?light=1`) re-agrega
- * commits e pula releases.
+ * commits e pula releases e branches.
  *
  * - `?full=1` repassa `--full` (re-scan completo do git + refetch total de PRs)
  * - `?clean=1` apaga banco + JSONs antes de coletar (implica full)
@@ -26,13 +26,17 @@ interface CollectStep { script: string, label: string, args?: string[] }
 const STEPS: CollectStep[] = [
   { script: 'scripts/collect.ts', label: 'commits' },
   { script: 'scripts/collect-github.ts', label: 'pull requests' },
+  { script: 'scripts/collect-branches.ts', label: 'branches' },
   { script: 'scripts/collect-releases.ts', label: 'releases' },
   { script: 'scripts/collect-team.ts', label: 'time' },
   { script: 'scripts/check-data.ts', label: 'verificação' },
 ]
 
 // ?light=1 (edição de time/aliases em /teams): sem git fetch/scan nem releases —
-// re-agrega o banco com os aliases novos, incremental de PRs, team + verificação
+// re-agrega o banco com os aliases novos, incremental de PRs, team + verificação.
+// collect-branches fica FORA de propósito (issue #123): a light não faz fetch,
+// então o frescor de branches.json fica atrelado ao fetch do full (como o
+// stats.json) — re-enumerar aqui daria resultado idêntico ao último full, só custo.
 const STEPS_LIGHT: CollectStep[] = [
   { script: 'scripts/collect.ts', label: 'commits (reagregação)', args: ['--reaggregate'] },
   { script: 'scripts/collect-github.ts', label: 'pull requests' },

@@ -11,10 +11,11 @@
   },
   "scripts": {
     "setup": "tsx scripts/setup.ts",
-    "collect": "tsx scripts/collect.ts && tsx scripts/collect-github.ts && tsx scripts/collect-releases.ts && tsx scripts/collect-team.ts && tsx scripts/check-data.ts",
+    "collect": "tsx scripts/collect.ts && tsx scripts/collect-github.ts && tsx scripts/collect-branches.ts && tsx scripts/collect-releases.ts && tsx scripts/collect-team.ts && tsx scripts/check-data.ts",
     "check:data": "tsx scripts/check-data.ts",
     "check:docs": "tsx scripts/check-docs.ts",
     "check:scrub": "tsx scripts/check-scrub.ts",
+    "collect:branches": "tsx scripts/collect-branches.ts",
     "collect:github": "tsx scripts/collect-github.ts",
     "collect:releases": "tsx scripts/collect-releases.ts",
     "collect:team": "tsx scripts/collect-team.ts",

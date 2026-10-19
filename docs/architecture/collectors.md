@@ -5,7 +5,7 @@ description: What each collector in scripts/ reads, what it writes, and how to c
 
 # Collectors
 
-The collectors in `scripts/` read the git repos and the GitHub API and write the five JSONs in `public/data/`. `pnpm collect` runs the four in sequence and ends with `check-data.ts`; collectors that walk repos use a pool of 4. Identity mapping is explicit: logins and e-mails resolve to canonical names via `devProfiles` in `team.local.json` (`scripts/lib/team.ts`), never by fuzzy matching.
+The collectors in `scripts/` read the git repos and the GitHub API and write the six JSONs in `public/data/`. `pnpm collect` runs the five in sequence and ends with `check-data.ts`; collectors that walk repos use a pool of 4. Identity mapping is explicit: logins and e-mails resolve to canonical names via `devProfiles` in `team.local.json` (`scripts/lib/team.ts`), never by fuzzy matching.
 
 ## Summary
 
@@ -13,9 +13,10 @@ The collectors in `scripts/` read the git repos and the GitHub API and write the
 |---|---|---|
 | `collect.ts` | `stats.json` (aggregates) + `commits.json` (last 100/author) | `git log --all --no-renames --no-merges --numstat` → incremental SQLite |
 | `collect-github.ts` | `github.json` (PRs + reviews, login→dev map) | GitHub GraphQL API (token in `.env` or `gh`) |
+| `collect-branches.ts` | `branches.json` (branch inventory: closed-union status, ahead/behind without merges, raw author e-mails ahead, +/− lines) | `git for-each-ref` + `git log`/`rev-list` on the local clones |
 | `collect-releases.ts` | `releases.json` (tags, commits per tag, unreleased, notes) | `git tag` + GitHub REST API |
 | `collect-team.ts` | `team.json` (devs, teams, unmapped candidates) | `team.local.json` + `stats.json`/`github.json` |
-| `check-data.ts` | — (validation only; exit 1 on error) | the 5 JSONs in `public/data/` |
+| `check-data.ts` | — (validation only; exit 1 on error) | the 6 JSONs in `public/data/` |
 
 ## Incremental collection
 
@@ -23,12 +24,13 @@ The collectors in `scripts/` read the git repos and the GitHub API and write the
 - **`--full`**: rescans the whole history, ignoring the watermark.
 - **`--reaggregate`**: skips the fetch and `git log`; re-applies aliases to stored rows and re-exports the JSONs.
 - **`collect-github.ts`**: refetches only PRs updated since the last collection (1-day margin) and merges with the previous file; stored MERGED PRs are preserved, the fresh OPEN list is the truth, and PRs whose `mergedAt` fell outside the window expire. `--full` ignores the cache in the fetch, and the previous file remains as a safety net: a repo that fails does not show up empty on the dashboard.
+- **`collect-branches.ts`**: no incremental mode — every run re-enumerates `refs/heads` in full (pool of 4 with async spawns; ~25s for ~200 branches on 14 repos). It never fetches: freshness is tied to the `collect.ts` fetch at the start of the chain, like `stats.json`.
 
 On every `collect.ts` run: repos outside the selection are pruned from the database (if they come back, the empty watermark forces a full scan) and dates outside the UTC format are normalized.
 
 ## Light re-collection
 
-`GET /__collect?light=1` (the **salvar + recoletar** (save + re-collect) button in `/teams`) runs `collect.ts --reaggregate`, incremental `collect-github.ts`, `collect-team.ts` and `check-data.ts`. It skips the git scan and releases: team edits change identity, not history.
+`GET /__collect?light=1` (the **salvar + recoletar** (save + re-collect) button in `/teams`) runs `collect.ts --reaggregate`, incremental `collect-github.ts`, `collect-team.ts` and `check-data.ts`. It skips the git scan, releases and branches: team edits change identity, not history — and without a fetch, re-enumerating branches would return exactly what the last full collection produced, at a cost.
 
 ## Managed clones: fetch and read-only
 
@@ -64,8 +66,9 @@ Insert rules do not reach rows already stored, and removed aliases do not revert
 ## Commands
 
 ```bash
-pnpm collect            # the 4 collectors in sequence + check-data at the end
+pnpm collect            # the 5 collectors in sequence + check-data at the end
 pnpm collect:github     # PRs only
+pnpm collect:branches   # branches only
 pnpm collect:releases   # releases only
 pnpm collect:team       # team only
 pnpm check:data         # validation only (shape + invariants)

@@ -1,11 +1,11 @@
 ---
 title: Pipeline
-description: Como o gitview transforma git e a API do GitHub nos cinco JSONs de public/data que o frontend estático lê.
+description: Como o gitview transforma git e a API do GitHub nos seis JSONs de public/data que o frontend estático lê.
 ---
 
 # Pipeline
 
-O gitview produz cinco JSONs em `public/data/`. O frontend lê só esses arquivos; nada do git é recalculado no navegador. `data/gitview.db` e `public/data/*` são gitignored, sempre regenerados pelos coletores.
+O gitview produz seis JSONs em `public/data/`. O frontend lê só esses arquivos; nada do git é recalculado no navegador. `data/gitview.db` e `public/data/*` são gitignored, sempre regenerados pelos coletores.
 
 ```text
 git log --all --no-merges --numstat        API GraphQL do GitHub          git tag + API REST do GitHub
@@ -18,6 +18,11 @@ data/gitview.db                            public/data/github.json       public/
         │  agrega (buckets em GITVIEW_TIMEZONE)
         ├──────────────────────────────► public/data/stats.json   (agregados do dashboard)
         └──────────────────────────────► public/data/commits.json (100 últimos commits/autor)
+
+git for-each-ref + git log/rev-list --no-merges
+  (por repo, pool de 4, spawns assíncronos)
+        │
+        └──────────────────────────────► public/data/branches.json (inventário de branches + status)
 
 team.local.json + stats.json + github.json
         │
@@ -41,6 +46,10 @@ public/data/*.json ──► frontend 100% estático (Vue 3 + Vite + ECharts) �
 
 `collect-github.ts` busca todos os PRs OPEN e os MERGED dos últimos 400 dias, com reviews inline na mesma query (paginação por cursor além de 100). Auth via `GITVIEW_GITHUB_TOKEN` (`.env` ou shell), com `gh auth token` como ponte opcional.
 
+### refs do git → branches.json
+
+O `collect-branches.ts` enumera `refs/heads` de cada clone (tip + data de committer) e calcula, por branch, ahead/behind vs a ref de produção e vs a primeira ref de integração — merges fora de toda contagem — mais os e-mails crus (`%ae`) e as linhas +/− dos autores à frente da produção. Cada branch recebe exatamente um status de uma union fechada (`production`, `integration`, `feature`, `bot`, `pousada`); os vínculos com PRs são calculados pelo frontend em join com o `github.json` (`headRef`). Roda só na cadeia full — a recoleta leve o pula (sem fetch, o resultado seria idêntico).
+
 ### git tag + API REST do GitHub → releases.json
 
 `collect-releases.ts` lê as tags locais (`git tag`) para cobertura universal e as enriquece com nome, notas e URL da API REST. A contagem de commits entre tags vem do `data/gitview.db` e compara timestamps, nunca texto.
@@ -51,7 +60,7 @@ public/data/*.json ──► frontend 100% estático (Vue 3 + Vite + ECharts) �
 
 ## check-data.ts: o gate
 
-Lê os cinco JSONs e checa estrutura e invariantes entre arquivos. Erro derruba a coleta com exit 1; avisos nunca bloqueiam. A lista por arquivo está em [Modelo de dados](./data-model.md).
+Lê os seis JSONs e checa estrutura e invariantes entre arquivos. Erro derruba a coleta com exit 1; avisos nunca bloqueiam. A lista por arquivo está em [Modelo de dados](./data-model.md).
 
 ## O que é dev only
 

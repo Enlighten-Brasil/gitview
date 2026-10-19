@@ -10,7 +10,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
-import { isProgressScope, isPrReviewState } from '../src/types'
+import { BRANCH_STATUSES, isBranchStatus, isProgressScope, isPrReviewState } from '../src/types'
 
 const DATA_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'data')
 
@@ -396,6 +396,85 @@ if (team) {
   }
 }
 
+// ── branches.json (6º JSON — inventário de branches, issue #123) ──────────
+const branches = load('branches.json')
+if (branches) {
+  genAt(branches, 'branches.json')
+  listShape(branches, 'repos', ['repo', 'productionRef', 'integrationRefs', 'branches'], 'branches.json')
+  // repo do branches.json precisa existir no stats.json (mesma descoberta de repos)
+  const statsRepos = new Set(isArr(stats?.repos) ? (stats!.repos as string[]) : [])
+  const nowMs = Date.now()
+  for (const r of (isArr(branches.repos) ? branches.repos : []) as Record<string, unknown>[]) {
+    const where = `branches.repos["${String(r.repo)}"]`
+    if (statsRepos.size > 0 && !statsRepos.has(String(r.repo)))
+      errors.push(`${where}: repo ausente do stats.json#repos — descoberta/config divergente entre coletores`)
+    if (typeof r.productionRef !== 'string' || !r.productionRef)
+      errors.push(`${where}.productionRef: esperado string não vazia`)
+    if (!isArr(r.integrationRefs) || !r.integrationRefs.every(x => typeof x === 'string')) {
+      errors.push(`${where}.integrationRefs: esperado lista de strings`)
+    }
+    else if (r.integrationRefs.length === 0) {
+      // repo sem develop/staging é legítimo (seam lib/refs.ts) — só vale aviso
+      warn(false, `${where}: sem ref de integração (develop?) — aheadInt/behindInt nulos neste repo`)
+    }
+    if (!isArr(r.branches)) {
+      errors.push(`${where}.branches: esperado lista`)
+      continue
+    }
+    const seen = new Set<string>()
+    let prodCount = 0
+    let prodName = ''
+    for (const b of r.branches as Record<string, unknown>[]) {
+      const bw = `${where}.branches["${String(b.name)}"]`
+      const name = typeof b.name === 'string' ? b.name : ''
+      if (!name) {
+        errors.push(`${where}.branches: entrada sem nome`)
+        continue
+      }
+      if (seen.has(name)) {
+        errors.push(`${where}.branches: nome duplicado "${name}"`)
+        break
+      }
+      seen.add(name)
+      if (!isBranchStatus(b.status))
+        errors.push(`${bw}.status: inesperado "${String(b.status)}" — union fechada (${BRANCH_STATUSES.join(', ')})`)
+      if (!/^[0-9a-f]{7,40}$/.test(String(b.tip ?? '')))
+        errors.push(`${bw}.tip: fora do formato 7-40 hex ("${String(b.tip)}")`)
+      for (const f of ['aheadProd', 'behindProd', 'additions', 'deletions'] as const) {
+        if (typeof b[f] !== 'number' || !Number.isInteger(b[f]) || Number(b[f]) < 0)
+          errors.push(`${bw}.${f}: esperado inteiro >= 0, veio ${JSON.stringify(b[f])}`)
+      }
+      // nullable por design: repo sem ref de integração viaja null (nunca 0 falso)
+      for (const f of ['aheadInt', 'behindInt'] as const) {
+        const v = b[f]
+        if (v !== null && (typeof v !== 'number' || !Number.isInteger(v) || v < 0))
+          errors.push(`${bw}.${f}: esperado inteiro >= 0 ou null (repo sem ref de integração), veio ${JSON.stringify(v)}`)
+      }
+      // e-mail CRU (%ae) por design (desvio do padrão canônico — fato puramente git)
+      if (!isArr(b.authorsAhead) || !b.authorsAhead.every(e => typeof e === 'string' && e.includes('@')))
+        errors.push(`${bw}.authorsAhead: esperado lista de e-mails crus (strings com "@")`)
+      const t = Date.parse(String(b.lastActivity ?? ''))
+      if (Number.isNaN(t)) {
+        errors.push(`${bw}.lastActivity: data inválida ("${String(b.lastActivity)}")`)
+      }
+      else {
+        warn(t <= nowMs + 86_400_000, `${bw}.lastActivity no futuro (${String(b.lastActivity)}) — relógio do autor errado?`)
+      }
+      if (b.status === 'production') {
+        prodCount++
+        prodName = name
+      }
+    }
+    // exatamente 1 branch production por repo, com nome == productionRef do próprio JSON
+    if (prodCount !== 1) {
+      errors.push(`${where}: ${prodCount} branches com status "production" — esperado exatamente 1`)
+    }
+    else if (prodName !== r.productionRef) {
+      errors.push(`${where}: branch production "${prodName}" != productionRef "${String(r.productionRef)}"`)
+    }
+  }
+}
+
 // ── veredito ──────────────────────────────────────────────────────────────
 if (warnings.length) {
   console.warn(`\n⚠ check-data: ${warnings.length} aviso(s) de qualidade (não bloqueiam):`)
@@ -408,4 +487,4 @@ if (errors.length) {
   process.exit(1)
 }
 
-console.log('✓ check-data: stats/commits/github/releases/team com shape e invariantes ok')
+console.log('✓ check-data: stats/commits/github/releases/team/branches com shape e invariantes ok')
