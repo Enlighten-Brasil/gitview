@@ -33,6 +33,7 @@ O `.env` guarda a config da máquina: credenciais do GitHub, onde estão os clon
 - O setup grava a chave ao terminar o clone. Para ler clones que você mantém, veja [Repositórios](../guide/repositories.md).
 - `GITVIEW_PRODUCTION_REF` é global com fallback por repo: quando o ref não existe num clone, aquele repo cai para a detecção automática (`origin/HEAD` → `HEAD` → `main` → `master`) e um aviso nomeia o repo. Repo com commits e sem ref de produção resolvível é erro, nunca vazio silencioso.
 - `GITVIEW_INTEGRATION_REFS` é filtrada por repo: branches ausentes do clone saem da lista daquele repo. Resultado vazio é legítimo e não imprime nada.
+- As duas chaves de refs também são editáveis pelo app: o card **Refs dos repositórios** em **Config → Geral** (só no dev server) grava as chaves no `.env` e mostra, como hint somente-leitura, o valor resolvido por repo — o que a coleta vai usar de fato, incluindo os fallbacks por repo.
 
 ## Métricas e dados
 

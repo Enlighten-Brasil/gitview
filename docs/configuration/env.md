@@ -33,6 +33,7 @@ The `.env` holds the machine config: GitHub credentials, where the clones live, 
 - Setup writes the key when the clone finishes. To read clones you maintain yourself, see [Repositories](../guide/repositories.md).
 - `GITVIEW_PRODUCTION_REF` is global with a per-repo fallback: when the ref does not exist in a clone, that repo falls back to auto-detection (`origin/HEAD` → `HEAD` → `main` → `master`) and a warning names the repo. A repo with commits and no resolvable production ref is an error, never a silent empty value.
 - `GITVIEW_INTEGRATION_REFS` is filtered per repo: branches missing from a clone drop out of its list. An empty result is legitimate and prints nothing.
+- Both ref keys are also editable in the app: the **Refs dos repositórios** card in **Config → Geral** (dev server only) saves them to `.env` and shows, as a read-only hint, the resolved value per repo — what the collection will actually use, including the per-repo fallbacks.
 
 ## Metrics and data
 

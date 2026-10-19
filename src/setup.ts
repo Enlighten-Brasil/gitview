@@ -6,6 +6,17 @@
 import { getJson, postJson } from './api'
 import { useSseProgress } from './sse'
 
+export interface RepoRefs {
+  name: string
+  /** produção resolvida (nome curto) — null só quando nada é resolvível (error) */
+  production: string | null
+  /** integração resolvida (filtrada por existência no repo); vazia é legítimo */
+  integration: string[]
+  /** GITVIEW_PRODUCTION_REF explícito não existe neste repo — a coleta cai na detecção automática */
+  productionFallback: boolean
+  error?: string
+}
+
 export interface SetupStatus {
   auth: { login: string, via: string } | null
   oauthConfigured: boolean
@@ -14,13 +25,24 @@ export interface SetupStatus {
   hasData: boolean
   defaultOrg: string | null
   defaultRepos: string[]
+  /** GITVIEW_PRODUCTION_REF configurado — null = auto por repo */
+  productionRef: string | null
+  /** GITVIEW_INTEGRATION_REFS efetivo (default develop,staging quando vazio) */
+  integrationRefs: string[]
+  /** resolvido por repo — só com { refs: true } (spawna git no servidor, com cache) */
+  resolvedRefs?: RepoRefs[]
 }
 
 export interface OrgEntry { login: string, personal?: boolean }
 export interface RepoEntry { name: string, archived: boolean, pushed_at: string | null, private: boolean }
 
-export function fetchSetupStatus(): Promise<SetupStatus> {
-  return getJson('/__setup/status')
+export function fetchSetupStatus(opts: { refs?: boolean } = {}): Promise<SetupStatus> {
+  return getJson(`/__setup/status${opts.refs ? '?refs=1' : ''}`)
+}
+
+/** salva as refs do card "Refs dos repositórios" no .env (dev only) */
+export function saveRepoRefs(payload: { productionRef: string, integrationRefs: string[] }): Promise<{ ok: true, productionRef: string | null, integrationRefs: string[] }> {
+  return postJson('/__setup/refs', payload)
 }
 
 export function fetchOrgs(): Promise<OrgEntry[]> {

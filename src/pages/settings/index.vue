@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import type { SetupStatus } from '@/setup'
+import type { RepoRefs, SetupStatus } from '@/setup'
 import { useToast } from '@nuxt/ui/composables'
 /**
- * Geral: repos no dashboard + manutenção dos dados locais + resumo da conta.
+ * Geral: repos no dashboard + refs de produção/integração + manutenção dos
+ * dados locais + resumo da conta.
  * Gerenciar repositórios e conta agora têm rotas próprias (/settings/*).
  */
 import { computed, onMounted, ref } from 'vue'
@@ -10,16 +11,72 @@ import { useRouter } from 'vue-router'
 import { collectError, collecting, collectLog, collectSucceeded, startCollect } from '@/collect'
 import { useConfirm } from '@/composables/useConfirm'
 import { stats } from '@/data'
-import { getCachedStatus, resetBoot } from '@/router/guards'
-import { cleanLocalData } from '@/setup'
+import { getCachedStatus, resetBoot, serverMode } from '@/router/guards'
+import { cleanLocalData, fetchSetupStatus, saveRepoRefs } from '@/setup'
 
 const router = useRouter()
 const toast = useToast()
 const confirm = useConfirm()
 const status = ref<SetupStatus | null>(null)
 
+// ---------------------------------------------------------------------------
+// refs dos repositórios (GITVIEW_PRODUCTION_REF / GITVIEW_INTEGRATION_REFS)
+// ---------------------------------------------------------------------------
+const prodRef = ref('')
+const integRefs = ref('')
+const resolvedRefs = ref<RepoRefs[] | null>(null)
+const refsLoading = ref(false)
+const refsSaving = ref(false)
+const refsError = ref<string | null>(null)
+
+/** hint somente-leitura: o resolvido por repo vem do servidor (spawna git lá, nunca no browser) */
+async function loadResolvedRefs() {
+  if (!serverMode)
+    return
+  refsLoading.value = true
+  refsError.value = null
+  try {
+    const st = await fetchSetupStatus({ refs: true })
+    resolvedRefs.value = st.resolvedRefs ?? []
+  }
+  catch (err) {
+    refsError.value = (err as Error).message
+  }
+  finally {
+    refsLoading.value = false
+  }
+}
+
+async function saveRefs() {
+  refsSaving.value = true
+  try {
+    const saved = await saveRepoRefs({
+      productionRef: prodRef.value.trim(),
+      integrationRefs: integRefs.value.split(',').map(s => s.trim()).filter(Boolean),
+    })
+    // a config efetiva pode diferir do digitado (vazio → default): ressincroniza os inputs
+    prodRef.value = saved.productionRef ?? ''
+    integRefs.value = (saved.integrationRefs ?? []).join(',')
+    toast.add({ title: 'Refs salvas', description: 'o .env foi atualizado — a coleta usa os valores resolvidos por repo.', color: 'success' })
+    getCachedStatus(true).then((st) => {
+      status.value = st
+    })
+    await loadResolvedRefs()
+  }
+  catch (err) {
+    toast.add({ title: 'Falha ao salvar as refs', description: (err as Error).message, color: 'error' })
+  }
+  finally {
+    refsSaving.value = false
+  }
+}
+
 onMounted(async () => {
   status.value = await getCachedStatus()
+  prodRef.value = status.value?.productionRef ?? ''
+  integRefs.value = (status.value?.integrationRefs ?? []).join(',')
+  // em background: resolver 14 repos spawna git (~6s na 1ª vez; cache no servidor)
+  loadResolvedRefs()
 })
 
 // ---------------------------------------------------------------------------
@@ -118,6 +175,122 @@ async function deleteAllData() {
             variant="outline"
             to="/settings/repos"
           />
+        </div>
+      </div>
+    </UCard>
+
+    <!-- refs de produção/integração (GITVIEW_PRODUCTION_REF / GITVIEW_INTEGRATION_REFS) -->
+    <UCard>
+      <div class="flex flex-col gap-4">
+        <div class="flex items-center gap-2 font-medium">
+          <UIcon name="i-lucide-git-branch" class="size-5" />
+          Refs dos repositórios
+        </div>
+        <p class="text-sm text-dimmed">
+          Quais branches a coleta trata como produção e integração. Produção vazia =
+          detecção automática por repo (<code>origin/HEAD → HEAD → main → master</code>);
+          integração vazia = <code>develop,staging</code>. Valor que não existe num repo
+          não quebra a coleta: aquele repo cai na detecção automática com um aviso.
+        </p>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <UFormField label="Ref de produção (GITVIEW_PRODUCTION_REF)">
+            <UInput
+              v-model="prodRef"
+              placeholder="auto (HEAD do clone)"
+              class="w-full"
+              :disabled="!serverMode"
+              @keyup.enter="saveRefs"
+            />
+          </UFormField>
+          <UFormField label="Refs de integração (GITVIEW_INTEGRATION_REFS)">
+            <UInput
+              v-model="integRefs"
+              placeholder="develop,staging"
+              class="w-full"
+              :disabled="!serverMode"
+              @keyup.enter="saveRefs"
+            />
+          </UFormField>
+        </div>
+        <div class="flex justify-end">
+          <UButton
+            label="salvar refs"
+            icon="i-lucide-save"
+            color="neutral"
+            variant="outline"
+            :loading="refsSaving"
+            :disabled="!serverMode"
+            @click="saveRefs"
+          />
+        </div>
+
+        <!-- hint somente-leitura: o que a coleta vai usar de fato em cada clone -->
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center gap-2 text-sm font-medium">
+            O que a coleta vai usar
+            <UIcon
+              v-if="refsLoading"
+              name="i-lucide-loader-circle"
+              class="size-4 animate-spin text-dimmed"
+            />
+            <UBadge v-else-if="resolvedRefs" color="neutral" variant="subtle" size="sm">
+              {{ resolvedRefs.length }} repos
+            </UBadge>
+          </div>
+          <UAlert
+            v-if="refsError"
+            color="error"
+            variant="subtle"
+            icon="i-lucide-circle-x"
+            :title="refsError"
+          />
+          <p v-else-if="refsLoading && !resolvedRefs" class="text-sm text-dimmed">
+            resolvendo as refs nos clones locais…
+          </p>
+          <table v-else-if="resolvedRefs?.length" class="data-table">
+            <thead>
+              <tr>
+                <th>repo</th>
+                <th>produção</th>
+                <th>integração</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="r in resolvedRefs" :key="r.name">
+                <td>{{ r.name }}</td>
+                <td>
+                  <UBadge v-if="r.production" color="neutral" variant="soft" size="sm">
+                    {{ r.production }}
+                  </UBadge>
+                  <span
+                    v-if="r.productionFallback"
+                    class="align-middle text-warning"
+                    :title="`a ref explícita não existe em ${r.name} — a coleta cai na detecção automática`"
+                  >
+                    <UIcon name="i-lucide-triangle-alert" class="size-3.5" />
+                  </span>
+                  <span v-if="r.error" class="text-error text-xs" :title="r.error">sem ref resolvível</span>
+                </td>
+                <td>
+                  <div class="flex flex-wrap items-center gap-1">
+                    <UBadge
+                      v-for="i in r.integration"
+                      :key="i"
+                      color="neutral"
+                      variant="soft"
+                      size="sm"
+                    >
+                      {{ i }}
+                    </UBadge>
+                    <span v-if="!r.integration.length" class="text-dimmed">—</span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p v-else-if="resolvedRefs" class="text-sm text-dimmed">
+            Nenhum repo descoberto — configure os repositórios primeiro.
+          </p>
         </div>
       </div>
     </UCard>
