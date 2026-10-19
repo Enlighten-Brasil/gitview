@@ -35,6 +35,17 @@ The `.env` holds the machine config: GitHub credentials, where the clones live, 
 - `GITVIEW_INTEGRATION_REFS` is filtered per repo: branches missing from a clone drop out of its list. An empty result is legitimate and prints nothing.
 - Both ref keys are also editable in the app: the **Refs dos repositórios** card in **Config → Geral** (dev server only) saves them to `.env` and shows, as a read-only hint, the resolved value per repo — what the collection will actually use, including the per-repo fallbacks.
 
+## Branches
+
+| key | what it does | default |
+|---|---|---|
+| `GITVIEW_BRANCH_STALE_DAYS` | days without activity for a branch with no commits ahead of production (`aheadProd = 0`) to be classified as `pousada` in `branches.json` | `30` |
+| `GITVIEW_BOT_BRANCHES` | exact branch names treated as bot branches (CSV) | empty → prefix pattern only |
+
+- `collect-branches.ts` gives every branch exactly one status of a closed union: `production`, `integration`, `feature`, `bot` or `pousada`. Bot branches match the `dependabot/` or `renovate/` prefix (`BOT_BRANCH_RE` in `scripts/lib/team.ts`); `GITVIEW_BOT_BRANCHES` adds exact names, compared case-insensitively. GitHub bot *logins* (`githubBots` in `team.local.json`) match logins, not ref names — they do not classify branches.
+- `GITVIEW_BRANCH_STALE_DAYS` accepts an integer ≥ 0; empty or invalid falls back to the default 30, which matches a monthly release cycle. `pousada` also requires `aheadProd = 0` — an old branch with commits ahead of production stays `feature`.
+- `branches.json` is pure git fact: `authorsAhead` carries raw commit e-mails (`%ae`), never canonical names, and the line counts sum the raw numstat. Alias/team edits reflect without re-collecting — the frontend maps e-mail→dev via `team.json#devs[].emails`.
+
 ## Metrics and data
 
 | key | what it does | default |

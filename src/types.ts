@@ -183,3 +183,64 @@ export interface TeamData {
   teams: TeamInfo[]
   candidates: TeamCandidate[]
 }
+
+// ---------------------------------------------------------------------------
+// branches.json — inventário de branches por repo (issue #123)
+// ---------------------------------------------------------------------------
+/**
+ * Status de branch (union fechada no padrão PR_REVIEW_STATES):
+ * - `production`: a ref de produção do repo (nome == productionRef)
+ * - `integration`: ref de integração (nome ∈ integrationRefs)
+ * - `bot`: nome casa BOT_BRANCH_RE (dependabot/*, renovate/*) ou GITVIEW_BOT_BRANCHES
+ * - `pousada`: aheadProd == 0 e sem atividade há ≥ GITVIEW_BRANCH_STALE_DAYS dias
+ * - `feature`: demais
+ * Vínculos com PR ('viva-sem-PR', 'pousada-via-squash') NÃO fazem parte da
+ * union: o frontend os calcula em join com github.json (headRef).
+ */
+export const BRANCH_STATUSES = ['production', 'integration', 'feature', 'bot', 'pousada'] as const
+
+export type BranchStatus = typeof BRANCH_STATUSES[number]
+
+/** valida o `status` de uma linha do branches.json (usado no check-data) */
+export function isBranchStatus(value: unknown): value is BranchStatus {
+  return typeof value === 'string' && (BRANCH_STATUSES as readonly string[]).includes(value)
+}
+
+export interface BranchRow {
+  name: string
+  /** SHA do commit da ponta (o gate aceita 7-40 hex; o coletor grava o full de for-each-ref) */
+  tip: string
+  /** última atividade (committerdate do tip) em UTC ISO com milis */
+  lastActivity: string
+  /** commits SEM merges à frente da ref de produção (decisão #7) */
+  aheadProd: number
+  /** commits SEM merges da produção ausentes da branch */
+  behindProd: number
+  /** vs a PRIMEIRA ref de integração resolvida; null quando o repo não tem nenhuma */
+  aheadInt: number | null
+  behindInt: number | null
+  /**
+   * E-mails crus (%ae) distintos dos autores à frente de produção — desvio
+   * consciente do padrão canônico do stats.json: branches.json é fato
+   * puramente git (edição de alias/time reflete sem recoletar); o frontend
+   * mapeia e-mail→dev via team.json#devs[].emails.
+   */
+  authorsAhead: string[]
+  additions: number
+  deletions: number
+  status: BranchStatus
+}
+
+export interface RepoBranches {
+  repo: string
+  /** ref de produção resolvida pelo seam (scripts/lib/refs.ts) */
+  productionRef: string
+  /** refs de integração que EXISTEM no repo (pode ser vazio) */
+  integrationRefs: string[]
+  branches: BranchRow[]
+}
+
+export interface BranchesData {
+  generatedAt: string
+  repos: RepoBranches[]
+}

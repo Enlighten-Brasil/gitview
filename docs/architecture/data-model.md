@@ -1,11 +1,11 @@
 ---
 title: Data model
-description: The shapes of the five JSONs in public/data/ and the invariants the check-data gate requires of each.
+description: The shapes of the six JSONs in public/data/ and the invariants the check-data gate requires of each.
 ---
 
 # Data model
 
-The frontend consumes exactly five JSONs in `public/data/`. The shape is a contract: when a field the UI reads disappears, `check-data.ts` fails the collection. The gate's general behavior is in [Collectors](./collectors.md); here are the keys and the checks of each file.
+The frontend consumes exactly six JSONs in `public/data/`. The shape is a contract: when a field the UI reads disappears, `check-data.ts` fails the collection. The gate's general behavior is in [Collectors](./collectors.md); here are the keys and the checks of each file.
 
 ## Summary
 
@@ -16,8 +16,9 @@ The frontend consumes exactly five JSONs in `public/data/`. The shape is a contr
 | `github.json` | PRs (OPEN + MERGED from the 400-day window) with reviews | `collect-github.ts` |
 | `releases.json` | tags, commits per tag, unreleased, notes | `collect-releases.ts` |
 | `team.json` | devs, teams, unmapped candidates | `collect-team.ts` |
+| `branches.json` | branch inventory per repo: status, ahead/behind without merges, authors ahead | `collect-branches.ts` |
 
-Rules common to all five: top-level object with `generatedAt` (ISO timestamp of the run), authors already canonical (aliases applied at collection), commit dates in UTC ISO with milliseconds. Lists are sparse: zero rows do not exist (no `commits: 0` filler).
+Rules common to all six: top-level object with `generatedAt` (ISO timestamp of the run), commit dates in UTC ISO with milliseconds. Authors are already canonical (aliases applied at collection) in every file **except `branches.json`**, which carries raw git e-mails (`%ae`) by design — pure git fact; the frontend maps e-mail→dev via `team.json#devs[].emails`. Lists are sparse: zero rows do not exist (no `commits: 0` filler).
 
 ## stats.json
 
@@ -113,3 +114,47 @@ Rules common to all five: top-level object with `generatedAt` (ISO timestamp of 
 | `candidates` | `[{ kind, id, emails?, prs? }]` | unmapped identities: `kind: "author"` (raw git name, with `emails`) or `kind: "login"` (GitHub login, with `prs` count) |
 
 **The gate requires**: dev names unique; every team member is a known dev; `candidates[].kind` ∈ {`author`, `login`}, never `ghost` and never a bot login; no case-duplicate logins within a dev.
+
+## branches.json
+
+| key | shape | meaning |
+|---|---|---|
+| `repos` | `[{ repo, productionRef, integrationRefs, branches }]` | one entry per repo; `productionRef`/`integrationRefs` are the refs resolved by `scripts/lib/refs.ts` (`integrationRefs` only lists refs that exist in that repo) |
+
+| branch key | shape | meaning |
+|---|---|---|
+| `name` | string | branch name (short name of the `refs/heads` ref) |
+| `tip` | string | SHA of the tip commit (full 40-hex as enumerated from the clone) |
+| `lastActivity` | string ISO | committer date of the tip, UTC |
+| `aheadProd` / `behindProd` | number | commits ahead of / behind the production ref, **without merges** (issue #7 decision) |
+| `aheadInt` / `behindInt` | number \| null | same vs the FIRST resolved integration ref (config order); `null` when the repo has no integration ref |
+| `authorsAhead` | `string[]` | distinct **raw e-mails** (`%ae`) of the authors of the commits ahead of production |
+| `additions` / `deletions` | number | raw numstat sums of the commits ahead of production |
+| `status` | string | closed union: `production`, `integration`, `feature`, `bot`, `pousada` |
+
+`pousada` = `aheadProd = 0` and no activity for ≥ `GITVIEW_BRANCH_STALE_DAYS` days (default 30). `bot` matches the `dependabot/` or `renovate/` prefix (`BOT_BRANCH_RE`) or an exact name in `GITVIEW_BOT_BRANCHES`. Status precedence: production → integration → bot → pousada → feature. Links to PRs (branch alive without a PR, pousada merged via squash) are computed by the frontend joining `github.json` (`headRef`) — they are not part of the status.
+
+```json
+{
+  "repo": "<repo>",
+  "productionRef": "main",
+  "integrationRefs": ["develop"],
+  "branches": [
+    {
+      "name": "feat/new-export",
+      "tip": "3f9a1c7e5b2d84061fa9c3e7b5d20481af6c9e3b",
+      "lastActivity": "2026-01-23T21:06:42.000Z",
+      "aheadProd": 4,
+      "behindProd": 12,
+      "aheadInt": 4,
+      "behindInt": 0,
+      "authorsAhead": ["ana-dev@example.com"],
+      "additions": 140,
+      "deletions": 32,
+      "status": "feature"
+    }
+  ]
+}
+```
+
+**The gate requires**: valid `generatedAt`; every `repo` present in `stats.json#repos`; exactly one branch with status `production` per repo, named the same as that entry's `productionRef`; branch names unique per repo; `tip` matching `^[0-9a-f]{7,40}$`; `aheadProd`/`behindProd`/`additions`/`deletions` integers ≥ 0; `aheadInt`/`behindInt` integers ≥ 0 or `null`; `status` inside the closed union; `authorsAhead` a list of strings containing `@`; `lastActivity` parseable as a date. **Non-blocking warnings**: `lastActivity` in the future (more than 1 day of slack); a repo without any integration ref.

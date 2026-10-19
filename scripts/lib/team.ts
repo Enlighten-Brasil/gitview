@@ -39,6 +39,18 @@ export function botLoginSet(config: Config): Set<string> {
 /** padrão de login de bot do GitHub (dependabot[bot], renovate-bot, ...) — usado por todos os coletores */
 export const BOT_LOGIN_RE = /(\[bot\]|-bot$|^dependabot)/i
 
+/**
+ * Padrão de NOME DE BRANCH de bot (issue #123) — BOT_LOGIN_RE/DEFAULT_GITHUB_BOTS
+ * casam logins do GitHub, não nomes de ref ('renovate/x' não casa com nenhum
+ * deles). Extras exatos via GITVIEW_BOT_BRANCHES (botBranchSet).
+ */
+export const BOT_BRANCH_RE = /^(dependabot|renovate)\//
+
+/** nomes exatos de branch de bot da config (GITVIEW_BOT_BRANCHES) — lowercase, padrão do botLoginSet */
+export function botBranchSet(config: Config): Set<string> {
+  return new Set((config.botBranches ?? []).map(b => b.toLowerCase()))
+}
+
 /** nomes canônicos de bot no git (termina com [bot] ou está em config.bots) */
 export function botAuthorNames(config: Config, authors: { name: string }[]): Set<string> {
   const extra = new Set((config.bots ?? []).map(b => b.toLowerCase()))

@@ -1,6 +1,6 @@
 // scripts/make-demo-data.ts — fixture sintético da demo pública (GitHub Pages)
 //
-// Gera os 5 JSONs de public/data/ com dados 100% FICTÍCIOS (devs "Ana"/"Beto",
+// Gera os 6 JSONs de public/data/ com dados 100% FICTÍCIOS (devs "Ana"/"Beto",
 // repos demo-*, commits fake) para a demo servir sem nenhum dado real do time.
 // As datas se ancoram em "hoje" (UTC) de propósito: a demo sempre cobre o
 // período default de 12M — o custo é o fixture não ser byte-idêntico entre dias.
@@ -13,7 +13,7 @@ import { getOrCreate } from '../src/collections'
 const OUT = join(process.cwd(), 'public', 'data')
 const FORCE = process.argv.includes('--force')
 
-const TARGETS = ['stats.json', 'commits.json', 'github.json', 'releases.json', 'team.json']
+const TARGETS = ['stats.json', 'commits.json', 'github.json', 'branches.json', 'releases.json', 'team.json']
 if (!FORCE) {
   const existing = TARGETS.filter(f => existsSync(join(OUT, f)))
   if (existing.length) {
@@ -264,14 +264,21 @@ const commitsJson = {
 
 // PRs fictícios — invariantes: MERGED tem mergedAt, sem repo#number duplicado
 const day = (back: number, hour: number) => isoNoMs(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - back, hour, 12)))
+// tip/headRefOid fictício determinístico (40-hex, único por nome): char codes em hex
+function fakeTip(name: string): string {
+  let h = ''
+  for (const ch of name)
+    h += ch.charCodeAt(0).toString(16).padStart(2, '0')
+  return h.repeat(Math.ceil(40 / Math.max(h.length, 1))).slice(0, 40)
+}
 const prs = [
-  { repo: 'demo-api', number: 12, title: 'feat: endpoint de pedidos', state: 'MERGED', draft: false, author: 'ana', createdAt: day(70, 13), mergedAt: day(68, 15), additions: 240, deletions: 18, changedFiles: 6, reviews: [{ author: 'beto', state: 'APPROVED', submittedAt: day(69, 10) }] },
-  { repo: 'demo-api', number: 15, title: 'fix: paginação da listagem', state: 'MERGED', draft: false, author: 'beto', createdAt: day(50, 9), mergedAt: day(49, 11), additions: 60, deletions: 22, changedFiles: 3, reviews: [{ author: 'ana', state: 'APPROVED', submittedAt: day(49, 10) }] },
-  { repo: 'demo-api', number: 18, title: 'chore: atualiza dependências', state: 'MERGED', draft: false, author: 'ana', createdAt: day(30, 14), mergedAt: day(30, 16), additions: 120, deletions: 110, changedFiles: 2, reviews: [] },
-  { repo: 'demo-api', number: 21, title: 'feat: relatório de faturamento', state: 'OPEN', draft: true, author: 'beto', createdAt: day(4, 10), mergedAt: null, additions: 310, deletions: 5, changedFiles: 8, reviews: [] },
-  { repo: 'demo-web', number: 7, title: 'feat: tela de relatórios', state: 'MERGED', draft: false, author: 'beto', createdAt: day(40, 11), mergedAt: day(37, 17), additions: 520, deletions: 40, changedFiles: 11, reviews: [{ author: 'ana', state: 'APPROVED', submittedAt: day(38, 9) }, { author: 'beto', state: 'COMMENTED', submittedAt: day(38, 8) }] },
-  { repo: 'demo-web', number: 9, title: 'fix: timezone do agrupamento semanal', state: 'MERGED', draft: false, author: 'ana', createdAt: day(20, 8), mergedAt: day(19, 12), additions: 45, deletions: 30, changedFiles: 4, reviews: [{ author: 'beto', state: 'APPROVED', submittedAt: day(19, 11) }] },
-  { repo: 'demo-web', number: 11, title: 'refactor: serviço de autenticação', state: 'OPEN', draft: false, author: 'ana', createdAt: day(2, 15), mergedAt: null, additions: 180, deletions: 140, changedFiles: 7, reviews: [{ author: 'beto', state: 'CHANGES_REQUESTED', submittedAt: day(1, 9) }] },
+  { repo: 'demo-api', number: 12, title: 'feat: endpoint de pedidos', state: 'MERGED', draft: false, author: 'ana', createdAt: day(70, 13), mergedAt: day(68, 15), additions: 240, deletions: 18, changedFiles: 6, headRef: 'feat/order-endpoint', baseRef: 'main', headRefOid: fakeTip('feat/order-endpoint'), reviews: [{ author: 'beto', state: 'APPROVED', submittedAt: day(69, 10) }] },
+  { repo: 'demo-api', number: 15, title: 'fix: paginação da listagem', state: 'MERGED', draft: false, author: 'beto', createdAt: day(50, 9), mergedAt: day(49, 11), additions: 60, deletions: 22, changedFiles: 3, headRef: 'fix/list-pagination', baseRef: 'main', headRefOid: fakeTip('fix/list-pagination'), reviews: [{ author: 'ana', state: 'APPROVED', submittedAt: day(49, 10) }] },
+  { repo: 'demo-api', number: 18, title: 'chore: atualiza dependências', state: 'MERGED', draft: false, author: 'ana', createdAt: day(30, 14), mergedAt: day(30, 16), additions: 120, deletions: 110, changedFiles: 2, headRef: 'chore/deps-update', baseRef: 'main', headRefOid: fakeTip('chore/deps-update'), reviews: [] },
+  { repo: 'demo-api', number: 21, title: 'feat: relatório de faturamento', state: 'OPEN', draft: true, author: 'beto', createdAt: day(4, 10), mergedAt: null, additions: 310, deletions: 5, changedFiles: 8, headRef: 'feat/billing-report', baseRef: 'main', headRefOid: fakeTip('feat/billing-report'), reviews: [] },
+  { repo: 'demo-web', number: 7, title: 'feat: tela de relatórios', state: 'MERGED', draft: false, author: 'beto', createdAt: day(40, 11), mergedAt: day(37, 17), additions: 520, deletions: 40, changedFiles: 11, headRef: 'feat/reports-screen', baseRef: 'main', headRefOid: fakeTip('feat/reports-screen'), reviews: [{ author: 'ana', state: 'APPROVED', submittedAt: day(38, 9) }, { author: 'beto', state: 'COMMENTED', submittedAt: day(38, 8) }] },
+  { repo: 'demo-web', number: 9, title: 'fix: timezone do agrupamento semanal', state: 'MERGED', draft: false, author: 'ana', createdAt: day(20, 8), mergedAt: day(19, 12), additions: 45, deletions: 30, changedFiles: 4, headRef: 'fix/weekly-grouping-tz', baseRef: 'main', headRefOid: fakeTip('fix/weekly-grouping-tz'), reviews: [{ author: 'beto', state: 'APPROVED', submittedAt: day(19, 11) }] },
+  { repo: 'demo-web', number: 11, title: 'refactor: serviço de autenticação', state: 'OPEN', draft: false, author: 'ana', createdAt: day(2, 15), mergedAt: null, additions: 180, deletions: 140, changedFiles: 7, headRef: 'refactor/auth-service', baseRef: 'main', headRefOid: fakeTip('refactor/auth-service'), reviews: [{ author: 'beto', state: 'CHANGES_REQUESTED', submittedAt: day(1, 9) }] },
 ]
 
 const github = {
@@ -306,8 +313,44 @@ const team = {
   candidates: [],
 }
 
+// branches.json (issue #123): inventário coerente com os PRs acima — os headRefs
+// dos PRs existem como branches (menos chore/deps-update, apagada após squash:
+// headRef sobrevive no PR), com os 5 status cobertos. demo-web não tem develop
+// (aheadInt/behindInt nulos). authorsAhead leva e-mail CRU (fato puramente git).
+const branches = {
+  generatedAt,
+  repos: [
+    {
+      repo: 'demo-api',
+      productionRef: 'main',
+      integrationRefs: ['develop'],
+      branches: [
+        { name: 'main', tip: fakeTip('main'), lastActivity: day(1, 12), aheadProd: 0, behindProd: 0, aheadInt: 0, behindInt: 4, authorsAhead: [], additions: 0, deletions: 0, status: 'production' },
+        { name: 'develop', tip: fakeTip('develop'), lastActivity: day(1, 10), aheadProd: 4, behindProd: 0, aheadInt: 0, behindInt: 0, authorsAhead: ['ana@example.com', 'beto@example.com'], additions: 320, deletions: 45, status: 'integration' },
+        { name: 'feat/order-endpoint', tip: fakeTip('feat/order-endpoint'), lastActivity: day(69, 14), aheadProd: 0, behindProd: 96, aheadInt: 0, behindInt: 12, authorsAhead: [], additions: 0, deletions: 0, status: 'pousada' },
+        { name: 'fix/list-pagination', tip: fakeTip('fix/list-pagination'), lastActivity: day(50, 8), aheadProd: 0, behindProd: 74, aheadInt: 0, behindInt: 9, authorsAhead: [], additions: 0, deletions: 0, status: 'pousada' },
+        { name: 'feat/billing-report', tip: fakeTip('feat/billing-report'), lastActivity: day(3, 17), aheadProd: 6, behindProd: 3, aheadInt: 6, behindInt: 0, authorsAhead: ['beto@example.com'], additions: 310, deletions: 5, status: 'feature' },
+        { name: 'dependabot/npm_and_yarn/axios', tip: fakeTip('dependabot/npm_and_yarn/axios'), lastActivity: day(10, 6), aheadProd: 1, behindProd: 12, aheadInt: 1, behindInt: 12, authorsAhead: ['support@dependabot.com'], additions: 84, deletions: 22, status: 'bot' },
+      ],
+    },
+    {
+      repo: 'demo-web',
+      productionRef: 'main',
+      integrationRefs: [],
+      branches: [
+        { name: 'main', tip: fakeTip('main-web'), lastActivity: day(2, 9), aheadProd: 0, behindProd: 0, aheadInt: null, behindInt: null, authorsAhead: [], additions: 0, deletions: 0, status: 'production' },
+        { name: 'feat/reports-screen', tip: fakeTip('feat/reports-screen'), lastActivity: day(38, 11), aheadProd: 0, behindProd: 58, aheadInt: null, behindInt: null, authorsAhead: [], additions: 0, deletions: 0, status: 'pousada' },
+        { name: 'fix/weekly-grouping-tz', tip: fakeTip('fix/weekly-grouping-tz'), lastActivity: day(20, 8), aheadProd: 0, behindProd: 21, aheadInt: null, behindInt: null, authorsAhead: [], additions: 0, deletions: 0, status: 'feature' },
+        { name: 'refactor/auth-service', tip: fakeTip('refactor/auth-service'), lastActivity: day(2, 15), aheadProd: 9, behindProd: 2, aheadInt: null, behindInt: null, authorsAhead: ['ana@example.com'], additions: 180, deletions: 140, status: 'feature' },
+        { name: 'renovate/vue', tip: fakeTip('renovate/vue'), lastActivity: day(5, 3), aheadProd: 1, behindProd: 4, aheadInt: null, behindInt: null, authorsAhead: ['bot@renovateapp.com'], additions: 12, deletions: 12, status: 'bot' },
+      ],
+    },
+  ],
+}
+
 mkdirSync(OUT, { recursive: true })
-for (const [name, data] of Object.entries({ 'stats.json': stats, 'commits.json': commitsJson, 'github.json': github, 'releases.json': releases, 'team.json': team }))
+for (const [name, data] of Object.entries({ 'stats.json': stats, 'commits.json': commitsJson, 'github.json': github, 'branches.json': branches, 'releases.json': releases, 'team.json': team }))
   writeFileSync(join(OUT, name), `${JSON.stringify(data, null, 2)}\n`)
 
-console.log(`make-demo-data: 5 arquivos gerados em ${OUT} (${commits.length} commits fictícios, ${prs.length} PRs)`)
+const demoBranches = branches.repos.reduce((n, r) => n + r.branches.length, 0)
+console.log(`make-demo-data: 6 arquivos gerados em ${OUT} (${commits.length} commits fictícios, ${prs.length} PRs, ${demoBranches} branches)`)

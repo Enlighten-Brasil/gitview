@@ -1,11 +1,11 @@
 ---
 title: Modelo de dados
-description: Os shapes dos cinco JSONs de public/data/ e os invariantes que o gate do check-data exige de cada um.
+description: Os shapes dos seis JSONs de public/data/ e os invariantes que o gate do check-data exige de cada um.
 ---
 
 # Modelo de dados
 
-O frontend consome exatamente cinco JSONs em `public/data/`. O shape é contrato: quando um campo que a UI lê some, o `check-data.ts` derruba a coleta. O comportamento geral do gate está em [Coletores](./collectors.md); aqui estão as chaves e as checagens de cada arquivo.
+O frontend consome exatamente seis JSONs em `public/data/`. O shape é contrato: quando um campo que a UI lê some, o `check-data.ts` derruba a coleta. O comportamento geral do gate está em [Coletores](./collectors.md); aqui estão as chaves e as checagens de cada arquivo.
 
 ## Resumo
 
@@ -16,8 +16,9 @@ O frontend consome exatamente cinco JSONs em `public/data/`. O shape é contrato
 | `github.json` | PRs (OPEN + MERGED da janela de 400 dias) com reviews | `collect-github.ts` |
 | `releases.json` | tags, commits por tag, não liberados, notas | `collect-releases.ts` |
 | `team.json` | devs, times, candidatos sem mapeamento | `collect-team.ts` |
+| `branches.json` | inventário de branches por repo: status, ahead/behind sem merges, autores à frente | `collect-branches.ts` |
 
-Regras comuns aos cinco: objeto no topo com `generatedAt` (timestamp ISO da execução), autores já canônicos (aliases aplicados na coleta), datas de commit em UTC ISO com milissegundos. As listas são esparsas: linhas zeradas não existem (nada de `commits: 0` de preenchimento).
+Regras comuns aos seis: objeto no topo com `generatedAt` (timestamp ISO da execução), datas de commit em UTC ISO com milissegundos. Autores já canônicos (aliases aplicados na coleta) em todo arquivo **exceto `branches.json`**, que leva e-mails crus do git (`%ae`) por design — fato puramente git; o frontend mapeia e-mail→dev via `team.json#devs[].emails`. As listas são esparsas: linhas zeradas não existem (nada de `commits: 0` de preenchimento).
 
 ## stats.json
 
@@ -113,3 +114,47 @@ Regras comuns aos cinco: objeto no topo com `generatedAt` (timestamp ISO da exec
 | `candidates` | `[{ kind, id, emails?, prs? }]` | identidades sem mapeamento: `kind: "author"` (nome cru do git, com `emails`) ou `kind: "login"` (login do GitHub, com contagem `prs`) |
 
 **O gate exige**: nomes de dev únicos; todo membro de time é dev conhecido; `candidates[].kind` ∈ {`author`, `login`}, nunca `ghost` nem login de bot; sem logins duplicados ignorando maiúsculas dentro de um dev.
+
+## branches.json
+
+| chave | shape | significado |
+|---|---|---|
+| `repos` | `[{ repo, productionRef, integrationRefs, branches }]` | uma entrada por repo; `productionRef`/`integrationRefs` são as refs resolvidas por `scripts/lib/refs.ts` (`integrationRefs` lista só as que existem naquele repo) |
+
+| chave de branch | shape | significado |
+|---|---|---|
+| `name` | string | nome da branch (nome curto do ref em `refs/heads`) |
+| `tip` | string | SHA do commit da ponta (40-hex completo, como enumerado do clone) |
+| `lastActivity` | string ISO | committer date do tip, em UTC |
+| `aheadProd` / `behindProd` | number | commits à frente / atrás da ref de produção, **sem merges** (decisão da issue #7) |
+| `aheadInt` / `behindInt` | number \| null | idem vs a PRIMEIRA ref de integração resolvida (ordem da config); `null` quando o repo não tem ref de integração |
+| `authorsAhead` | `string[]` | e-mails **crus** (`%ae`) distintos dos autores dos commits à frente da produção |
+| `additions` / `deletions` | number | somas cruas do numstat dos commits à frente da produção |
+| `status` | string | union fechada: `production`, `integration`, `feature`, `bot`, `pousada` |
+
+`pousada` = `aheadProd = 0` e sem atividade há ≥ `GITVIEW_BRANCH_STALE_DAYS` dias (default 30). `bot` casa o prefixo `dependabot/` ou `renovate/` (`BOT_BRANCH_RE`) ou nome exato em `GITVIEW_BOT_BRANCHES`. Precedência de status: production → integration → bot → pousada → feature. Os vínculos com PRs (branch viva sem PR, pousada mergeada via squash) são calculados pelo frontend em join com o `github.json` (`headRef`) — não fazem parte do status.
+
+```json
+{
+  "repo": "<repo>",
+  "productionRef": "main",
+  "integrationRefs": ["develop"],
+  "branches": [
+    {
+      "name": "feat/new-export",
+      "tip": "3f9a1c7e5b2d84061fa9c3e7b5d20481af6c9e3b",
+      "lastActivity": "2026-01-23T21:06:42.000Z",
+      "aheadProd": 4,
+      "behindProd": 12,
+      "aheadInt": 4,
+      "behindInt": 0,
+      "authorsAhead": ["ana-dev@example.com"],
+      "additions": 140,
+      "deletions": 32,
+      "status": "feature"
+    }
+  ]
+}
+```
+
+**O gate exige**: `generatedAt` válido; todo `repo` presente no `stats.json#repos`; exatamente 1 branch com status `production` por repo, com nome igual ao `productionRef` daquela entrada; nomes de branch únicos por repo; `tip` casando `^[0-9a-f]{7,40}$`; `aheadProd`/`behindProd`/`additions`/`deletions` inteiros ≥ 0; `aheadInt`/`behindInt` inteiros ≥ 0 ou `null`; `status` dentro da union fechada; `authorsAhead` lista de strings com `@`; `lastActivity` parseável como data. **Avisos não bloqueantes**: `lastActivity` no futuro (mais de 1 dia de folga); repo sem nenhuma ref de integração.
