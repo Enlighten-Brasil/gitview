@@ -15,15 +15,15 @@
  * NULL quando nenhuma fonte existe (alcançável só por tag).
  *
  * LIMITAÇÃO medida (issue #118): branch longeva engole a atribuição — no
- * en-space, `legacy-v1` é o source de 55% dos branch commits (119/215). O
- * `--source` atribui o commit ao primeiro ref que o alcança na ordem da
- * caminhada; ref_hint é "primeiro ref alcançável" (melhor esforço), NÃO
- * "a branch onde o trabalho aconteceu".
+ * maior dos 14 repos reais, uma única branch legada é o source de 55% dos
+ * branch commits (119/215). O `--source` atribui o commit ao primeiro ref
+ * que o alcança na ordem da caminhada; ref_hint é "primeiro ref alcançável"
+ * (melhor esforço), NÃO "a branch onde o trabalho aconteceu".
  *
  * Custos medidos nos 14 repos reais (Windows, clones bare): 23 rev-lists
- * ≈ 1,7 s + 14 walks ≈ 0,8 s = ~2,5 s sequencial (pior repo en-space ~0,4 s).
- * O walk escoteado cobre 100% dos branch commits (215/215 en-space,
- * 121/121 enlighten-api) e nunca retorna tag (parte de `--branches`).
+ * ≈ 1,7 s + 14 walks ≈ 0,8 s = ~2,5 s sequencial (pior repo ~0,4 s).
+ * O walk escoteado cobre 100% dos branch commits (215/215 e 121/121 nos
+ * dois maiores repos) e nunca retorna tag (parte de `--branches`).
  */
 import { Buffer } from 'node:buffer'
 import { spawn } from 'node:child_process'
