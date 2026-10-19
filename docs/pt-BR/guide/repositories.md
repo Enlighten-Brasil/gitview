@@ -23,6 +23,7 @@ Só os repos que faltam são clonados, em paralelo. No modo gerenciar, desmarcar
 O setup clona cada repo como clone bare (sem working tree) em `data/repos/` e grava `GITVIEW_REPOS_ROOT=data/repos` no `.env`. Depois disso:
 
 - toda coleta começa com `git fetch --all --prune --tags` em cada clone gerenciado; fetch que falha cai no cache local com warning;
+- depois do fetch (e da classificação de escopo), o coletor apaga do banco todo commit que não está mais alcançável por nenhuma ref do repo (`git rev-list --all`) — os commits originais de uma branch squash-mergeada e apagada automaticamente no remote inflariam os totais para sempre. O efeito é retroativo: totais históricos podem diminuir sem nenhum fato novo, e o log do coletor (`🧹 N commits inalcançáveis removidos (branches apagadas)`) é o único rastro;
 - o token é injetado só no ambiente do processo do git, nunca na linha de comando nem no config do clone;
 - cada clone recebe `remote.origin.pushurl=no-push`: push é impossível no nível do git.
 
@@ -30,4 +31,4 @@ O setup clona cada repo como clone bare (sem working tree) em `data/repos/` e gr
 
 Defina `GITVIEW_REPOS_ROOT` com a pasta que contém os repos, um por subpasta. Checkouts normais e bare funcionam. A precedência dos valores e o formato dos caminhos estão em [O arquivo `.env`](../configuration/env.md).
 
-Nesse modo os números refletem o estado dos seus clones locais: rode `git pull` nos repos antes de coletar para ter dados frescos. O badge de frescor na navbar diz quando a coleta foi feita.
+Nesse modo os números refletem o estado dos seus clones locais: rode `git pull` nos repos antes de coletar para ter dados frescos. O expurgo de commits inalcançáveis nunca se aplica aqui — só os clones gerenciados, que o coletor acabou de atualizar com fetch, são expurgados, já que um checkout normal pode estar com refs desatualizados. O badge de frescor na navbar diz quando a coleta foi feita.

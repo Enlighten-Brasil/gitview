@@ -175,6 +175,31 @@ function parseGitLog(raw: string): RawCommit[] {
   return commits
 }
 
+/**
+ * Set completo de alcançabilidade do repo (issue #120): UM `git rev-list --all`
+ * cobre branches (merges inclusos), remote-tracking refs e tags. Os sets do
+ * lib/scope.ts NÃO servem para expurgo: rev-list de prod/integrações + walk
+ * `--branches --no-merges` deixa de fora merges de branch e commits alcançáveis
+ * só por tag. Streaming como o gitLog — repo grande emite centenas de KB.
+ */
+function gitRevListAll(repoPath: string): Promise<Set<string>> {
+  return new Promise((resolvePromise, reject) => {
+    const child = spawn('git', ['-C', repoPath, 'rev-list', '--all'])
+    const chunks: Buffer[] = []
+    const errChunks: Buffer[] = []
+    child.stdout.on('data', (c: Buffer) => chunks.push(c))
+    child.stderr.on('data', (c: Buffer) => errChunks.push(c))
+    child.on('error', reject)
+    child.on('close', (code) => {
+      if (code !== 0) {
+        reject(new Error(`git rev-list falhou em ${repoPath}: ${Buffer.concat(errChunks).toString().trim()}`))
+        return
+      }
+      resolvePromise(new Set(Buffer.concat(chunks).toString('utf-8').split('\n').filter(Boolean)))
+    })
+  })
+}
+
 // ---------------------------------------------------------------------------
 // banco
 // ---------------------------------------------------------------------------
@@ -497,6 +522,79 @@ async function main() {
       }
     })
     console.log(`🏷 Escopo classificado em ${((Date.now() - scopeT0) / 1000).toFixed(1)}s (pool de 4, ${repos.length} repos) — ${scopeUpdated} linhas atualizadas${scopeFailed ? ` · ${scopeFailed} repos com falha` : ''}`)
+
+    // -----------------------------------------------------------------------
+    // expurgo de commits inalcançáveis (issue #120) — INSERT OR IGNORE nunca
+    // remove e o fetch --prune acima já descartou refs mortos: branch
+    // squash-mergeada e apagada no remote (fluxo padrão do GitHub) deixaria os
+    // commits originais no banco para sempre, inflando o 'Tudo'. SOMENTE clones
+    // gerenciados, que acabaram de receber fetch --prune nesta execução —
+    // checkout normal pode estar com refs desatualizados sem fetch, e não se
+    // expurga o que não se atualizou. Um fetch que falhou não muda os refs,
+    // então tampouco cria inalcançável falso. O set é UM `git rev-list --all`
+    // próprio por repo (custo medido: 1,2 s somado nos 14 repos reais, pior
+    // repo 0,3 s). Watermark: expurgar commits recentes abaixa o MAX(date) do
+    // repo e só alarga o --since da próxima coleta — benigno, o INSERT OR
+    // IGNORE absorve a sobreposição. Nunca roda no --reaggregate (este bloco
+    // vive dentro do if (!REAGGREGATE)): sem git não há alcançabilidade nova.
+    // -----------------------------------------------------------------------
+    const managedForPurge = repos.filter(r => isManagedRepo(r.path))
+    const purgeT0 = Date.now()
+    let purgedTotal = 0
+    if (managedForPurge.length) {
+      console.log(`\nExpurgando commits inalcançáveis em ${managedForPurge.length} clones gerenciados (rev-list --all)...`)
+      const selectHashes = db.prepare('SELECT hash FROM commits WHERE repo = ?')
+      const deleteUnreachable = db.prepare('DELETE FROM commits WHERE repo = ? AND hash = ?')
+      await mapPool(managedForPurge, 4, async (repo) => {
+        const t0 = Date.now()
+        try {
+          const rows = selectHashes.all(repo.name) as { hash: string }[]
+          if (!rows.length)
+            return
+          const reachable = await gitRevListAll(repo.path)
+          // guarda defensiva: rev-list vazio com linhas no banco é anomalia
+          // (refs zerados/clone corrompido) — pular preserva o histórico
+          if (!reachable.size) {
+            console.warn(`! ${repo.name}: rev-list --all vazio com ${rows.length} commits no banco — expurgo pulado`)
+            return
+          }
+          const dead = rows.filter(r => !reachable.has(r.hash))
+          if (!dead.length)
+            return
+          // diff em JS + DELETE por hash em transação (set com dezenas de
+          // milhares de hashes nunca vira NOT IN literal); node:sqlite é
+          // síncrono — nenhum await entre BEGIN e COMMIT
+          let removed = 0
+          db.exec('BEGIN')
+          try {
+            for (const row of dead)
+              removed += Number(deleteUnreachable.run(repo.name, row.hash).changes)
+            db.exec('COMMIT')
+          }
+          catch (err) {
+            db.exec('ROLLBACK')
+            throw err
+          }
+          purgedTotal += removed
+          if (removed > 0)
+            console.log(`🧹 ${repo.name}: ${removed} commits inalcançáveis removidos (branches apagadas) (${((Date.now() - t0) / 1000).toFixed(1)}s)`)
+        }
+        catch (err) {
+          // falha num repo não derruba a coleta (padrão dos passos acima):
+          // as linhas dele simplesmente ficam como estão
+          console.error(`✗ ${repo.name}: expurgo falhou — linhas mantidas (${(err as Error).message})`)
+        }
+      })
+    }
+    if (repos.length) {
+      const skippedUnmanaged = repos.length - managedForPurge.length
+      const skipNote = skippedUnmanaged ? ` · ${skippedUnmanaged} repos não gerenciados pulados (refs podem estar desatualizados sem fetch)` : ''
+      const secs = ((Date.now() - purgeT0) / 1000).toFixed(1)
+      if (purgedTotal > 0)
+        console.log(`🧹 Expurgo: ${purgedTotal} commits inalcançáveis removidos em ${secs}s (${managedForPurge.length} clones gerenciados${skipNote})`)
+      else
+        console.log(`✓ Expurgo: nenhum commit inalcançável (${managedForPurge.length} clones gerenciados verificados em ${secs}s${skipNote})`)
+    }
   }
   else {
     // --reaggregate não roda git: a classificação pula inteira e linhas com
