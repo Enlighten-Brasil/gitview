@@ -1,11 +1,16 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Plugin } from 'vite'
-import type { DevProfile, TeamConfig } from './lib/config'
+import type { Config, DevProfile, TeamConfig } from './lib/config'
+import type { RepoInfo } from './lib/repos'
 import { Buffer } from 'node:buffer'
 /**
  * Plugin Vite (apenas dev): endpoints locais pro onboarding pela UI.
  *
  *  GET  /__setup/status                     auth, reposRoot atual, defaults
+ *                                           (?refs=1: + productionRef/integrationRefs
+ *                                           da config e o resolvido por repo —
+ *                                           card "Refs dos repositórios")
+ *  POST /__setup/refs                       { productionRef, integrationRefs } → .env
  *  POST /__auth/device                      inicia o device flow (requer client id)
  *  POST /__auth/device/poll                 { deviceCode } -> pending/ok (grava o token)
  *  POST /__auth/token                       { token } — PAT colado (valida antes de gravar)
@@ -28,6 +33,7 @@ import process from 'node:process'
 import { cleanLocalData } from './lib/clean'
 import { loadConfig, rootDir, saveConfig } from './lib/config'
 import { currentUser, devicePoll, deviceStart, getToken, listOrgMembers, listOrgRepos, listOrgs, listOrgTeams, listUserRepos } from './lib/github'
+import { resolveIntegRefs, resolveProdRef } from './lib/refs'
 import { cloneBare, discoverRepos, MANAGED_REPOS_DIR, mapPool, resolveReposRootSafe } from './lib/repos'
 
 const tsxCli = join(rootDir, 'node_modules', 'tsx', 'dist', 'cli.mjs')
@@ -196,6 +202,90 @@ function sanitizeTeams(input: unknown): TeamConfig[] {
   })
 }
 
+// ---------------------------------------------------------------------------
+// refs de produção/integração (card "Refs dos repositórios" em /settings)
+// ---------------------------------------------------------------------------
+interface RepoRefs {
+  name: string
+  /** produção resolvida (nome curto) — null só quando nada é resolvível (error) */
+  production: string | null
+  /** integração resolvida (filtrada por existência no repo); vazia é legítimo */
+  integration: string[]
+  /** GITVIEW_PRODUCTION_REF explícito não existe neste repo — a coleta cai na detecção automática */
+  productionFallback: boolean
+  error?: string
+}
+
+/**
+ * Cache por processo da resolução: o hint spawna git por repo (~0,5s/repo em
+ * Windows), então /__setup/status?refs=1 só recalcula quando reposRoot, o
+ * conjunto de repos ou os valores configurados mudam (o save troca a chave).
+ * Fetch nos clones durante a coleta só reflete no restart do dev server —
+ * aceitável para um hint somente-leitura.
+ */
+let refsCache: { key: string, resolved: RepoRefs[] } | null = null
+
+/** mesma normalização do shortName de scripts/lib/refs.ts (não exportado lá) */
+function shortRefName(ref: string): string {
+  return ref
+    .replace(/^refs\/remotes\/origin\//, '')
+    .replace(/^refs\/heads\//, '')
+    .replace(/^origin\//, '')
+}
+
+function resolveAllRefs(config: Config, reposRoot: string, repos: RepoInfo[]): RepoRefs[] {
+  const key = JSON.stringify([reposRoot, repos.map(r => r.name), config.productionRef ?? '', config.integrationRefs ?? []])
+  if (refsCache?.key === key)
+    return refsCache.resolved
+  const explicit = shortRefName(config.productionRef?.trim() || '')
+  const resolved: RepoRefs[] = repos.map((r) => {
+    try {
+      const production = resolveProdRef(r.path, config.productionRef)
+      return {
+        name: r.name,
+        production,
+        integration: resolveIntegRefs(r.path, config.integrationRefs),
+        productionFallback: !!explicit && explicit !== production,
+      }
+    }
+    catch (err) {
+      // repo sem ref de produção resolvível é erro no seam — vira linha com error, não 500
+      return { name: r.name, production: null, integration: [], productionFallback: false, error: String((err as Error).message ?? err) }
+    }
+  })
+  refsCache = { key, resolved }
+  return resolved
+}
+
+/** nome de ref aceitável no .env (sem aspa/quebra — quoteEnvValue já recusa); '' = limpar */
+function sanitizeRef(v: unknown, field: string): string {
+  if (typeof v !== 'string')
+    throw new Error(`${field} deve ser string`)
+  const s = v.trim()
+  if (!s)
+    return ''
+  if (s.length > 200 || !/^\w[\w./-]*$/.test(s))
+    throw new Error(`ref inválida em ${field}: "${s}" — use nomes de branch (ex.: main, release/1.2)`)
+  return s
+}
+
+/** lista de refs: array JSON ou CSV; ausente/nulo preserva o valor atual (undefined) */
+function sanitizeRefList(v: unknown, field: string): string[] | undefined {
+  if (v === undefined || v === null)
+    return undefined
+  const raw = Array.isArray(v) ? v : typeof v === 'string' ? v.split(',') : null
+  if (!raw)
+    throw new Error(`${field} deve ser uma lista (ou CSV)`)
+  return [...new Set(raw.map((x, i) => sanitizeRef(x, `${field}[${i}]`)).filter(Boolean))]
+}
+
+/** produção: string (vazio = auto) ou undefined (campo ausente = não mexe) */
+function sanitizeRefOpt(v: unknown, field: string): string | undefined {
+  if (v === undefined || v === null)
+    return undefined
+  return sanitizeRef(v, field)
+}
+
 let applying = false
 
 export function setupPlugin(): Plugin {
@@ -203,12 +293,15 @@ export function setupPlugin(): Plugin {
     name: 'gitview-setup',
     apply: 'serve',
     configureServer(server) {
-      // status geral do ambiente
-      server.middlewares.use('/__setup/status', async (_req, res) => {
+      // status geral do ambiente (?refs=1: + refs configuradas e resolvidas por repo)
+      server.middlewares.use('/__setup/status', async (req, res) => {
         try {
           const config = loadConfig()
           const reposRoot = resolveReposRootSafe(config)
           const repos = reposRoot ? discoverRepos(reposRoot, config.exclude ?? []) : []
+          // o hint por repo spawna git (~0,5s/repo): só com ?refs=1, com cache por
+          // processo — o status base (guard/wizard/poll de auth) continua barato
+          const wantRefs = new URL(req.url ?? '', 'http://localhost').searchParams.get('refs') === '1'
           const auth = getToken()
           let login: string | null = null
           if (auth) {
@@ -227,10 +320,52 @@ export function setupPlugin(): Plugin {
             hasData: existsSync(join(rootDir, 'public', 'data', 'stats.json')),
             defaultOrg: config.githubOrg ?? null,
             defaultRepos: config.defaultRepos ?? [],
+            productionRef: config.productionRef ?? null,
+            integrationRefs: config.integrationRefs ?? [],
+            ...(wantRefs ? { resolvedRefs: reposRoot ? resolveAllRefs(config, reposRoot, repos) : [] } : {}),
           })
         }
         catch (err) {
           json(res, 500, { error: String((err as Error).message ?? err) })
+        }
+      })
+
+      // refs de produção/integração do card "Refs dos repositórios" (/settings):
+      // grava GITVIEW_PRODUCTION_REF / GITVIEW_INTEGRATION_REFS no .env via
+      // saveConfig (linha a linha, preserva comentários). Sem validação contra
+      // os repos: ref inexistente cai no fallback por repo com warn na coleta
+      // (comportamento do seam scripts/lib/refs.ts). A leitura do resolvido é
+      // o GET /__setup/status?refs=1 acima. Prefixo novo dentro de /__setup —
+      // não colide com /status, /orgs, /repos nem /apply (connect casa por prefixo).
+      server.middlewares.use('/__setup/refs', async (req, res) => {
+        if (req.method !== 'POST') {
+          json(res, 405, { error: 'use GET /__setup/status?refs=1 para ler as refs' })
+          return
+        }
+        const body = await readBody(req)
+        if (!body) {
+          json(res, 400, { error: 'corpo JSON inválido' })
+          return
+        }
+        try {
+          const productionRef = sanitizeRefOpt(body.productionRef, 'productionRef')
+          const integrationRefs = sanitizeRefList(body.integrationRefs, 'integrationRefs')
+          const patch: Partial<Config> = {}
+          if (productionRef !== undefined)
+            patch.productionRef = productionRef
+          if (integrationRefs !== undefined)
+            patch.integrationRefs = integrationRefs
+          saveConfig(patch)
+          // devolve a config efetiva pós-save ('' vira null/default — o cliente ressincroniza os inputs)
+          const saved = loadConfig()
+          json(res, 200, {
+            ok: true,
+            productionRef: saved.productionRef ?? null,
+            integrationRefs: saved.integrationRefs ?? [],
+          })
+        }
+        catch (err) {
+          json(res, 400, { error: String((err as Error).message ?? err) })
         }
       })
 
