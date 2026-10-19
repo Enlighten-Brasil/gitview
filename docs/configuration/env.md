@@ -25,10 +25,14 @@ The `.env` holds the machine config: GitHub credentials, where the clones live, 
 |---|---|---|
 | `GITVIEW_REPOS_ROOT` | folder holding the repo clones | empty → `data/repos` |
 | `GITVIEW_DEFAULT_REPOS` | repos pre-selected in setup | empty → all non-archived |
+| `GITVIEW_PRODUCTION_REF` | branch treated as production | empty → auto per repo |
+| `GITVIEW_INTEGRATION_REFS` | integration branches (CSV) | `develop,staging` |
 
 - List keys are CSV, comma-separated with no spaces at the edges: `GITVIEW_DEFAULT_REPOS=repo-a, repo-b`.
 - `GITVIEW_REPOS_ROOT` accepts an absolute path or one relative to the project root. On Windows use forward slashes (`C:/dev/repos/api`).
 - Setup writes the key when the clone finishes. To read clones you maintain yourself, see [Repositories](../guide/repositories.md).
+- `GITVIEW_PRODUCTION_REF` is global with a per-repo fallback: when the ref does not exist in a clone, that repo falls back to auto-detection (`origin/HEAD` → `HEAD` → `main` → `master`) and a warning names the repo. A repo with commits and no resolvable production ref is an error, never a silent empty value.
+- `GITVIEW_INTEGRATION_REFS` is filtered per repo: branches missing from a clone drop out of its list. An empty result is legitimate and prints nothing.
 
 ## Metrics and data
 
