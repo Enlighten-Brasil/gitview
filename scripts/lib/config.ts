@@ -19,6 +19,7 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { parseEnv } from 'node:util'
 import { migrateLegacyConfig } from './legacy'
+import { DEFAULT_INTEGRATION_REFS } from './refs'
 
 export interface DevProfile {
   /** cargo/função (ex.: "Gerente de desenvolvimento") */
@@ -59,6 +60,10 @@ export interface Config {
   excludePaths?: string[]
   /** fuso canônico dos buckets de tempo (issue #8); default America/Sao_Paulo */
   timezone?: string
+  /** ref de produção (branch que representa o que está em produção); vazio = auto por repo (scripts/lib/refs.ts) */
+  productionRef?: string
+  /** refs de integração (default develop,staging); filtrada por existência em cada repo */
+  integrationRefs?: string[]
   /** porta do dev server */
   port?: number
   /** perfis de devs (aliases de e-mail/login, título, descrição) */
@@ -90,6 +95,8 @@ const ENV_KEYS: Record<string, keyof Config> = {
   GITVIEW_EXCLUDE_PATHS: 'excludePaths',
   GITVIEW_PORT: 'port',
   GITVIEW_TIMEZONE: 'timezone',
+  GITVIEW_PRODUCTION_REF: 'productionRef',
+  GITVIEW_INTEGRATION_REFS: 'integrationRefs',
 }
 
 /**
@@ -207,6 +214,11 @@ export function loadConfig(): Config {
   const timezone = envValue('GITVIEW_TIMEZONE', file)
   if (timezone)
     config.timezone = timezone
+  const productionRef = envValue('GITVIEW_PRODUCTION_REF', file)
+  if (productionRef)
+    config.productionRef = productionRef
+  const integrationRefs = envValue('GITVIEW_INTEGRATION_REFS', file)
+  config.integrationRefs = integrationRefs ? parseCsv(integrationRefs) : [...DEFAULT_INTEGRATION_REFS]
 
   return { ...config, ...readTeamFile() }
 }

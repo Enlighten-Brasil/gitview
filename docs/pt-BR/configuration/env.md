@@ -25,10 +25,14 @@ O `.env` guarda a config da máquina: credenciais do GitHub, onde estão os clon
 |---|---|---|
 | `GITVIEW_REPOS_ROOT` | pasta com os clones dos repos | vazio → `data/repos` |
 | `GITVIEW_DEFAULT_REPOS` | repos pré-selecionados no setup | vazio → todos os não arquivados |
+| `GITVIEW_PRODUCTION_REF` | branch tratada como produção | vazio → auto por repo |
+| `GITVIEW_INTEGRATION_REFS` | branches de integração (CSV) | `develop,staging` |
 
 - Chaves de lista são CSV, separadas por vírgula e sem espaços nas bordas: `GITVIEW_DEFAULT_REPOS=repo-a, repo-b`.
 - `GITVIEW_REPOS_ROOT` aceita absoluto ou relativo à raiz do projeto. Em Windows use barras normais (`C:/dev/repos/api`).
 - O setup grava a chave ao terminar o clone. Para ler clones que você mantém, veja [Repositórios](../guide/repositories.md).
+- `GITVIEW_PRODUCTION_REF` é global com fallback por repo: quando o ref não existe num clone, aquele repo cai para a detecção automática (`origin/HEAD` → `HEAD` → `main` → `master`) e um aviso nomeia o repo. Repo com commits e sem ref de produção resolvível é erro, nunca vazio silencioso.
+- `GITVIEW_INTEGRATION_REFS` é filtrada por repo: branches ausentes do clone saem da lista daquele repo. Resultado vazio é legítimo e não imprime nada.
 
 ## Métricas e dados
 
