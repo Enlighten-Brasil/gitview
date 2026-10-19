@@ -51,9 +51,11 @@ Rules common to all five: top-level object with `generatedAt` (ISO timestamp of 
 | key | shape | meaning |
 |---|---|---|
 | `users` | `{ [login]: { name, bot } }` | every login seen (authors + reviewers) mapped to the canonical name |
-| `prs` | `[{ repo, number, title, url, state, draft, author, createdAt, mergedAt, additions, deletions, changedFiles, reviews }]` | all OPEN PRs + MERGED within the 400-day window |
+| `prs` | `[{ repo, number, title, url, state, draft, author, createdAt, mergedAt, additions, deletions, changedFiles, headRef?, baseRef?, headRefOid?, reviews }]` | all OPEN PRs + MERGED within the 400-day window |
 
 `state` is `OPEN` or `MERGED`; `mergedAt` is `null` on an open PR. `author` is the login mapped via `users` (a deleted account becomes `ghost`). `reviews` is `[{ author, state, submittedAt }]` with `state` in `APPROVED | CHANGES_REQUESTED | COMMENTED | DISMISSED | PENDING`.
+
+`headRef`/`baseRef` are the head and base branch names of the PR and `headRefOid` is the head SHA at collection time — the PR↔branch link, with `headRef` kept on merged PRs even after the branch is deleted. All three are **optional**: the incremental merge keeps propagating rows from caches older than the fields, so historical PRs stay without them until a single full rebuild (`pnpm clean && pnpm collect`) backfills everything. Consumers must treat a missing ref as an unknown link (partial coverage), never as a missing PR.
 
 ```json
 {
@@ -69,13 +71,16 @@ Rules common to all five: top-level object with `generatedAt` (ISO timestamp of 
   "additions": 140,
   "deletions": 32,
   "changedFiles": 3,
+  "headRef": "feat/new-export",
+  "baseRef": "main",
+  "headRefOid": "3f9a1c7e5b2d84061fa9c3e7b5d20481af6c9e3b",
   "reviews": [
     { "author": "bruno-dev", "state": "APPROVED", "submittedAt": "2026-01-24T10:00:00Z" }
   ]
 }
 ```
 
-**The gate requires**: `users` is an object of `{ name: string, bot: boolean }`; every `MERGED` has a valid `mergedAt`; no `repo#number` duplicates; review `state` inside the union; no `MERGED` older than the window (the gate tolerates 1 day of slack over `generatedAt` so a PR collected at the cutoff is not flagged).
+**The gate requires**: `users` is an object of `{ name: string, bot: boolean }`; every `MERGED` has a valid `mergedAt`; no `repo#number` duplicates; review `state` inside the union; no `MERGED` older than the window (the gate tolerates 1 day of slack over `generatedAt` so a PR collected at the cutoff is not flagged). The gate does **not** require `headRef`/`baseRef`/`headRefOid`: rows preserved from caches older than the fields legitimately lack them.
 
 ## releases.json
 

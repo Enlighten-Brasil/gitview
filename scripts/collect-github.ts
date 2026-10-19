@@ -78,6 +78,7 @@ query($owner: String!, $name: String!, $cursor: String) {
       nodes {
         number title url state isDraft createdAt updatedAt mergedAt
         additions deletions changedFiles
+        headRefName baseRefName headRefOid
         author { login }
         reviews(first: 100) {
           totalCount
@@ -117,6 +118,10 @@ interface GhPr {
   additions: number
   deletions: number
   changedFiles: number
+  /** vínculo PR↔branch — NON_NULL na API; headRefName sobrevive ao auto-delete da branch (issue #122) */
+  headRefName: string
+  baseRefName: string
+  headRefOid: string
   author: { login: string } | null
   reviews: {
     totalCount?: number
@@ -213,6 +218,10 @@ interface PrRow {
   state: string
   author: string
   reviews: { author: string }[]
+  /** vínculo PR↔branch — opcionais: o merge incremental preserva linhas de caches anteriores a ele sem os campos (até um clean+full) */
+  headRef?: string | null
+  baseRef?: string | null
+  headRefOid?: string | null
   [k: string]: unknown
 }
 
@@ -301,6 +310,9 @@ await mapPool(repos, 4, async (repo) => {
         additions: pr.additions,
         deletions: pr.deletions,
         changedFiles: pr.changedFiles,
+        headRef: pr.headRefName,
+        baseRef: pr.baseRefName,
+        headRefOid: pr.headRefOid,
         reviews: pr.reviews.nodes.map(r => ({
           author: r.author?.login ?? 'ghost',
           state: r.state,
@@ -325,6 +337,7 @@ await mapPool(repos, 4, async (repo) => {
         continue
       if (p.state === 'MERGED' && (typeof p.mergedAt !== 'string' || Number.isNaN(Date.parse(p.mergedAt)) || new Date(p.mergedAt) < windowCutoff))
         continue
+      // pass-through da linha inteira do cache: quem tem headRef/baseRef/headRefOid mantém; linhas antigas seguem sem (nunca inventar)
       fresh.set(`${p.repo}#${p.number}`, p)
       restored++
     }
@@ -347,6 +360,7 @@ if (prev) {
     const mergedAt = p.mergedAt as string | null
     if (!mergedAt || Number.isNaN(Date.parse(mergedAt)) || new Date(mergedAt) < windowCutoff)
       continue
+    // pass-through da linha inteira: o preserve mantém headRef/baseRef/headRefOid de quem tem e não inventa para quem não tem
     fresh.set(key, p)
     kept++
   }

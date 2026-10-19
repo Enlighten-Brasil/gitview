@@ -51,9 +51,11 @@ Regras comuns aos cinco: objeto no topo com `generatedAt` (timestamp ISO da exec
 | chave | shape | significado |
 |---|---|---|
 | `users` | `{ [login]: { name, bot } }` | todo login visto (autores + reviewers) mapeado para o nome canônico |
-| `prs` | `[{ repo, number, title, url, state, draft, author, createdAt, mergedAt, additions, deletions, changedFiles, reviews }]` | todos os PRs OPEN + MERGED dentro da janela de 400 dias |
+| `prs` | `[{ repo, number, title, url, state, draft, author, createdAt, mergedAt, additions, deletions, changedFiles, headRef?, baseRef?, headRefOid?, reviews }]` | todos os PRs OPEN + MERGED dentro da janela de 400 dias |
 
 `state` é `OPEN` ou `MERGED`; `mergedAt` é `null` em PR aberto. `author` é o login mapeado via `users` (conta apagada vira `ghost`). `reviews` é `[{ author, state, submittedAt }]` com `state` em `APPROVED | CHANGES_REQUESTED | COMMENTED | DISMISSED | PENDING`.
+
+`headRef`/`baseRef` são os nomes das branches head e base do PR e `headRefOid` é o SHA do head no momento da coleta — o vínculo PR↔branch, e `headRef` permanece nos PRs mergeados mesmo após a branch ser apagada. Os três são **opcionais**: o merge incremental continua propagando linhas de caches anteriores aos campos, então PRs históricos ficam sem eles até um único rebuild completo (`pnpm clean && pnpm collect`) preencher tudo. Consumidores devem tratar ref ausente como vínculo desconhecido (cobertura parcial), nunca como PR inexistente.
 
 ```json
 {
@@ -69,13 +71,16 @@ Regras comuns aos cinco: objeto no topo com `generatedAt` (timestamp ISO da exec
   "additions": 140,
   "deletions": 32,
   "changedFiles": 3,
+  "headRef": "feat/new-export",
+  "baseRef": "main",
+  "headRefOid": "3f9a1c7e5b2d84061fa9c3e7b5d20481af6c9e3b",
   "reviews": [
     { "author": "bruno-dev", "state": "APPROVED", "submittedAt": "2026-01-24T10:00:00Z" }
   ]
 }
 ```
 
-**O gate exige**: `users` é objeto de `{ name: string, bot: boolean }`; todo `MERGED` tem `mergedAt` válido; sem duplicados `repo#number`; `state` de review dentro da union; nenhum `MERGED` mais velho que a janela (o gate tolera 1 dia de folga sobre `generatedAt` para não marcar PR coletado no corte).
+**O gate exige**: `users` é objeto de `{ name: string, bot: boolean }`; todo `MERGED` tem `mergedAt` válido; sem duplicados `repo#number`; `state` de review dentro da union; nenhum `MERGED` mais velho que a janela (o gate tolera 1 dia de folga sobre `generatedAt` para não marcar PR coletado no corte). O gate **não** exige `headRef`/`baseRef`/`headRefOid`: linhas preservadas de caches anteriores aos campos ficam legitimamente sem eles.
 
 ## releases.json
 
