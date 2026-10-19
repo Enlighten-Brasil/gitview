@@ -26,25 +26,27 @@ Regras comuns aos cinco: objeto no topo com `generatedAt` (timestamp ISO da exec
 | `repos` | `string[]` | nomes dos repos incluídos na coleta |
 | `repoUrls` | `{ [repo]: string }` | URL web por repo (só remotes do GitHub) |
 | `authors` | `[{ name, emails, bot }]` | autores canônicos e os e-mails vistos de cada |
-| `totals` | `{ commits, additions, deletions, activeDays, repos, authors }` | rollup global |
-| `perRepo` | `[{ repo, commits, additions, deletions, authors, lastCommit }]` | por repo, ordenado por commits desc |
+| `totals` | `{ commits, prodCommits, progressCommits, additions, deletions, activeDays, repos, authors }` | rollup global; `prodCommits` + `progressCommits` = `commits` |
+| `perRepo` | `[{ repo, commits, prodCommits, progressCommits, additions, deletions, authors, lastCommit }]` | por repo, ordenado por commits desc |
 | `perAuthor` | `[{ author, commits, additions, deletions, repos, activeDays, lastCommit, streak, longestStreak }]` | por dev, ordenado por commits desc; `streak` conta dias ativos consecutivos terminando no último dia ativo |
-| `weekly` | `[{ week, repo, author, commits, weekend, night }]` | semana ISO `YYYY-Www`; `weekend`/`night` são subconjuntos (night = 22:00–05:59 no fuso canônico) |
-| `monthly` | `[{ month, repo, author, commits, additions, deletions }]` | chave de mês `YYYY-MM` |
-| `heatmap` | `[{ author, repo, month, weekday, hour, commits }]` | `weekday` 0–6, `hour` 0–23; só os últimos 24 meses |
-| `monthlyTypes` | `[{ month, repo, author, type, commits }]` | tipo de conventional commit (`feat`, `fix`, …) ou `outros` |
+| `weekly` | `[{ week, repo, author, scope?, commits, weekend, night }]` | semana ISO `YYYY-Www`; `weekend`/`night` são subconjuntos (night = 22:00–05:59 no fuso canônico) |
+| `monthly` | `[{ month, repo, author, scope?, commits, additions, deletions }]` | chave de mês `YYYY-MM` |
+| `heatmap` | `[{ author, repo, month, weekday, hour, scope?, commits }]` | `weekday` 0–6, `hour` 0–23; só os últimos 24 meses |
+| `monthlyTypes` | `[{ month, repo, author, scope?, type, commits }]` | tipo de conventional commit (`feat`, `fix`, …) ou `outros` |
 
-**O gate exige**: Σ`perAuthor.commits` = Σ`perRepo.commits` = Σ`monthly.commits` = `totals.commits` (invariante central); `totals.additions`/`deletions` ≥ 0 e contagens por autor ≥ 0; `heatmap.weekday` em 0–6 e `hour` em 0–23; `monthly.month` casa `YYYY-MM`; `authors[].bot` é booleano; `perRepo[].lastCommit` parseia como data.
+**Escopo de ref** (issue #119): todo commit carrega um `scope` no banco — `'prod'` (alcançável da ref de produção), `'integration'` (alcançável de alguma ref de integração e não de prod) ou `'branch'` (demais). As linhas do JSON usam a codificação *omit-prod*: o campo opcional `scope` só viaja quando o valor é `'integration'` ou `'branch'` — **ausente significa produção**. As chaves de agregação de `weekly`/`monthly`/`heatmap`/`monthlyTypes` incluem o escopo, então o mesmo autor/repo/período pode aparecer em até duas linhas (uma por escopo); as somas (Σ) são preservadas e as projeções do frontend que agrupam-e-somam não veem diferença. `progressCommits` = integration + branch (trabalho em progresso); os três valores explícitos vivem só no banco. Linhas com scope ainda `NULL` (classificação nunca rodou ou falhou no repo) ficam fora de todo bucket e o coletor loga um aviso — `--reaggregate` não roda git, logo não classifica.
+
+**O gate exige**: Σ`perAuthor.commits` = Σ`perRepo.commits` = Σ`monthly.commits` = `totals.commits` (invariante central); `totals.prodCommits` + `totals.progressCommits` = `totals.commits`; Σ`monthly.commits` das linhas *sem* `scope` = `totals.prodCommits` e das linhas *com* `scope` = `totals.progressCommits` (o heatmap não ganha invariante de soma: o corte de 24 meses quebra Σ por design); `scope`, quando presente, dentro da union fechada `'integration' | 'branch'` (todas as listas); `totals.additions`/`deletions` ≥ 0 e contagens por autor ≥ 0; `heatmap.weekday` em 0–6 e `hour` em 0–23; `monthly.month` casa `YYYY-MM`; `authors[].bot` é booleano; `perRepo[].lastCommit` parseia como data. **Aviso não bloqueante**: repo com `commits > 0` e `prodCommits = 0` (configuração suspeita da ref de produção).
 
 ## commits.json
 
 | chave | shape | significado |
 |---|---|---|
-| `commits` | `[{ hash, repo, author, date, message, additions, deletions }]` | 100 últimos commits por autor, mais recente primeiro |
+| `commits` | `[{ hash, repo, author, date, message, additions, deletions, scope? }]` | 100 últimos commits por autor, mais recente primeiro |
 
-`hash` é a forma abreviada 7-hex; `message` é o assunto do commit, limitado a 500 chars no banco.
+`hash` é a forma abreviada 7-hex; `message` é o assunto do commit, limitado a 500 chars no banco. `scope` usa a mesma codificação *omit-prod* do stats.json (ausente = produção); a amostra pula commits com escopo não classificado (`NULL` no banco).
 
-**O gate exige**: datas uniformemente UTC (terminando em `Z`) e parseáveis; ordem decrescente estrita por timestamp real (a página de perfil do dev assume isso); `hash` casa `^[0-9a-f]{7}$`.
+**O gate exige**: datas uniformemente UTC (terminando em `Z`) e parseáveis; ordem decrescente estrita por timestamp real (a página de perfil do dev assume isso); `hash` casa `^[0-9a-f]{7}$`; `scope`, quando presente, dentro da union fechada `'integration' | 'branch'`.
 
 ## github.json
 

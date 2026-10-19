@@ -82,6 +82,8 @@ interface Commit {
   type: string
   weekend: number
   night: number
+  /** escopo de ref (issue #119) — no JSON viaja omit-prod (campo só quando ≠ 'prod') */
+  scope: 'prod' | 'integration' | 'branch'
 }
 
 const commits: Commit[] = []
@@ -100,6 +102,15 @@ for (let back = 89; back >= 0; back--) {
     const author = rnd() < 0.6 ? 'Ana' : 'Beto'
     const repo = rnd() < 0.55 ? 'demo-api' : 'demo-web'
     const hour = d.getUTCHours()
+    // escopo de ref (issue #119): só trabalho RECENTE está em progresso — ~12%
+    // dos últimos 21 dias são integration/branch (PRNG determinístico); o resto
+    // é prod (campo omitido no JSON, encoding omit-prod)
+    const scopeRoll = rnd()
+    const scope: Commit['scope'] = back <= 20 && scopeRoll < 0.07
+      ? 'integration'
+      : back <= 20 && scopeRoll < 0.12
+        ? 'branch'
+        : 'prod'
     commits.push({
       hash,
       repo,
@@ -111,6 +122,7 @@ for (let back = 89; back >= 0; back--) {
       type,
       weekend: (d.getUTCDay() === 0 || d.getUTCDay() === 6) ? 1 : 0,
       night: (hour >= 22 || hour < 5) ? 1 : 0,
+      scope,
     })
   }
 }
@@ -119,6 +131,8 @@ commits.sort((a, b) => (a.date === b.date ? (a.hash < b.hash ? 1 : -1) : (a.date
 // agregados derivados da MESMA lista — invariantes valem por construção
 const totals = {
   commits: commits.length,
+  prodCommits: commits.filter(c => c.scope === 'prod').length,
+  progressCommits: commits.filter(c => c.scope !== 'prod').length,
   additions: commits.reduce((a, c) => a + c.additions, 0),
   deletions: commits.reduce((a, c) => a + c.deletions, 0),
   activeDays: new Set(commits.map(c => dayKey(new Date(c.date)))).size,
@@ -153,6 +167,8 @@ const perRepo = REPOS.map(({ repo }) => {
   return {
     repo,
     commits: rows.length,
+    prodCommits: rows.filter(c => c.scope === 'prod').length,
+    progressCommits: rows.filter(c => c.scope !== 'prod').length,
     additions: rows.reduce((a, c) => a + c.additions, 0),
     deletions: rows.reduce((a, c) => a + c.deletions, 0),
     authors: new Set(rows.map(c => c.author)).size,
@@ -185,37 +201,41 @@ function groupBy<T>(rows: Commit[], keyFn: (c: Commit) => string, mapFn: (c: Com
   return [...map.entries()].map(([, rs]) => mapFn(rs[0], rs))
 }
 
-const weekly = groupBy(commits, c => `${isoWeekKey(new Date(c.date))}|${c.repo}|${c.author}`, (c, rs) => ({
+const weekly = groupBy(commits, c => `${isoWeekKey(new Date(c.date))}|${c.repo}|${c.author}|${c.scope}`, (c, rs) => ({
   week: isoWeekKey(new Date(c.date)),
   repo: c.repo,
   author: c.author,
+  ...(c.scope === 'prod' ? {} : { scope: c.scope }),
   commits: rs.length,
   weekend: rs.reduce((a, r) => a + r.weekend, 0),
   night: rs.reduce((a, r) => a + r.night, 0),
 }))
 
-const monthly = groupBy(commits, c => `${monthKey(new Date(c.date))}|${c.repo}|${c.author}`, (c, rs) => ({
+const monthly = groupBy(commits, c => `${monthKey(new Date(c.date))}|${c.repo}|${c.author}|${c.scope}`, (c, rs) => ({
   month: monthKey(new Date(c.date)),
   repo: c.repo,
   author: c.author,
+  ...(c.scope === 'prod' ? {} : { scope: c.scope }),
   commits: rs.length,
   additions: rs.reduce((a, r) => a + r.additions, 0),
   deletions: rs.reduce((a, r) => a + r.deletions, 0),
 }))
 
-const heatmap = groupBy(commits, c => `${c.author}|${c.repo}|${monthKey(new Date(c.date))}|${new Date(c.date).getUTCDay()}|${new Date(c.date).getUTCHours()}`, (c, rs) => ({
+const heatmap = groupBy(commits, c => `${c.author}|${c.repo}|${monthKey(new Date(c.date))}|${new Date(c.date).getUTCDay()}|${new Date(c.date).getUTCHours()}|${c.scope}`, (c, rs) => ({
   author: c.author,
   repo: c.repo,
   month: monthKey(new Date(c.date)),
   weekday: new Date(c.date).getUTCDay(),
   hour: new Date(c.date).getUTCHours(),
+  ...(c.scope === 'prod' ? {} : { scope: c.scope }),
   commits: rs.length,
 }))
 
-const monthlyTypes = groupBy(commits, c => `${monthKey(new Date(c.date))}|${c.repo}|${c.author}|${c.type}`, (c, rs) => ({
+const monthlyTypes = groupBy(commits, c => `${monthKey(new Date(c.date))}|${c.repo}|${c.author}|${c.scope}|${c.type}`, (c, rs) => ({
   month: monthKey(new Date(c.date)),
   repo: c.repo,
   author: c.author,
+  ...(c.scope === 'prod' ? {} : { scope: c.scope }),
   type: c.type,
   commits: rs.length,
 }))
@@ -238,7 +258,8 @@ const stats = {
 
 const commitsJson = {
   generatedAt,
-  commits: commits.slice(0, 100).map(({ hash, repo, author, date, message, additions, deletions }) => ({ hash, repo, author, date, message, additions, deletions })),
+  // amostra com a mesma codificação omit-prod do coletor real (issue #119)
+  commits: commits.slice(0, 100).map(({ hash, repo, author, date, message, additions, deletions, scope }) => ({ hash, repo, author, date, message, additions, deletions, ...(scope === 'prod' ? {} : { scope }) })),
 }
 
 // PRs fictícios — invariantes: MERGED tem mergedAt, sem repo#number duplicado

@@ -1,7 +1,24 @@
-export interface WeeklyRow { week: string, repo: string, author: string, commits: number, weekend: number, night: number }
-export interface MonthlyRow { month: string, repo: string, author: string, commits: number, additions: number, deletions: number }
-export interface HeatmapRow { author: string, repo: string, month: string, weekday: number, hour: number, commits: number }
-export interface MonthlyTypeRow { month: string, repo: string, author: string, type: string, commits: number }
+/**
+ * Escopos de ref que VIAJAM nos JSONs (issues #118/#119) — encoding omit-prod:
+ * campo `scope` ausente na linha = 'prod'; o banco (data/gitview.db) é o único
+ * lugar com os três valores explícitos ('prod' | 'integration' | 'branch').
+ * Union fechada no padrão PR_REVIEW_STATES: campo presente ⇒ 'integration' ou
+ * 'branch' (typo de valor não compila; validação condicional no check-data
+ * porque o 1º item de uma lista pode ser prod, sem o campo).
+ */
+export const PROGRESS_SCOPES = ['integration', 'branch'] as const
+
+export type ProgressScope = typeof PROGRESS_SCOPES[number]
+
+/** valida o `scope` opcional das linhas de agregados/commits.json (ausente = prod) */
+export function isProgressScope(value: unknown): value is ProgressScope {
+  return typeof value === 'string' && (PROGRESS_SCOPES as readonly string[]).includes(value)
+}
+
+export interface WeeklyRow { week: string, repo: string, author: string, scope?: ProgressScope, commits: number, weekend: number, night: number }
+export interface MonthlyRow { month: string, repo: string, author: string, scope?: ProgressScope, commits: number, additions: number, deletions: number }
+export interface HeatmapRow { author: string, repo: string, month: string, weekday: number, hour: number, scope?: ProgressScope, commits: number }
+export interface MonthlyTypeRow { month: string, repo: string, author: string, scope?: ProgressScope, type: string, commits: number }
 
 export interface Stats {
   generatedAt: string
@@ -11,13 +28,17 @@ export interface Stats {
   authors: { name: string, emails: string[], bot: boolean }[]
   totals: {
     commits: number
+    /** commits alcançáveis da ref de produção (linhas sem `scope`); soma com progressCommits == commits */
+    prodCommits: number
+    /** commits em progresso: linhas com `scope` 'integration' + 'branch' */
+    progressCommits: number
     additions: number
     deletions: number
     activeDays: number
     repos: number
     authors: number
   }
-  perRepo: { repo: string, commits: number, additions: number, deletions: number, authors: number, lastCommit: string }[]
+  perRepo: { repo: string, commits: number, prodCommits: number, progressCommits: number, additions: number, deletions: number, authors: number, lastCommit: string }[]
   perAuthor: { author: string, commits: number, additions: number, deletions: number, repos: number, activeDays: number, lastCommit: string, streak: number, longestStreak: number }[]
   weekly: WeeklyRow[]
   monthly: MonthlyRow[]
@@ -33,6 +54,8 @@ export interface CommitRow {
   message: string
   additions: number
   deletions: number
+  /** escopo de ref (omit-prod: ausente = 'prod') — mesma codificação das linhas de agregados */
+  scope?: ProgressScope
 }
 
 /**

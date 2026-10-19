@@ -519,17 +519,17 @@ async function main() {
   // -------------------------------------------------------------------------
   console.log('\nAgregando...')
   const rows = db.prepare(`
-    SELECT repo, author, email, date, subject, additions, deletions FROM commits ORDER BY date ASC
-  `).all() as { repo: string, author: string, email: string, date: string, subject: string, additions: number, deletions: number }[]
+    SELECT repo, author, email, date, subject, additions, deletions, scope FROM commits ORDER BY date ASC
+  `).all() as { repo: string, author: string, email: string, date: string, subject: string, additions: number, deletions: number, scope: string | null }[]
 
   const emailsByAuthor = new Map<string, Set<string>>()
   // separador das chaves de agregação: \u0001 — nome de autor/repo com '|'
   // colidia e deslocava campos no split (follow-up #11)
   const KEY_SEP = '\u0001'
-  const weekly = new Map<string, { commits: number, weekend: number, night: number }>() // week/repo/author
-  const monthly = new Map<string, { commits: number, additions: number, deletions: number }>() // month/repo/author
-  const monthlyTypes = new Map<string, number>() // month/repo/author/type
-  const heatmap = new Map<string, number>() // author/repo/month/weekday/hour
+  const weekly = new Map<string, { commits: number, weekend: number, night: number }>() // week/repo/author/scope
+  const monthly = new Map<string, { commits: number, additions: number, deletions: number }>() // month/repo/author/scope
+  const monthlyTypes = new Map<string, number>() // month/repo/author/scope/type
+  const heatmap = new Map<string, number>() // author/repo/month/weekday/hour/scope
   // heatmap ganha dimensão de mês pro filtro de período funcionar no frontend;
   // limita aos últimos 24 meses (cobre o maior range do filtro) pra não inflar o JSON
   const heatmapCutoff = new Date()
@@ -538,15 +538,21 @@ async function main() {
   heatmapCutoff.setUTCMonth(heatmapCutoff.getUTCMonth() - 24)
   const heatmapCutoffKey = monthKey(heatmapCutoff)
   const perAuthor = new Map<string, { commits: number, additions: number, deletions: number, repos: Set<string>, days: Set<string>, last: string }>()
-  const perRepo = new Map<string, { commits: number, additions: number, deletions: number, authors: Set<string>, last: string }>()
+  const perRepo = new Map<string, { commits: number, prodCommits: number, progressCommits: number, additions: number, deletions: number, authors: Set<string>, last: string }>()
   let totalAdd = 0
   let totalDel = 0
+  // escopo (issue #119): as chaves de agregação incluem o scope do banco
+  // ('prod'|'integration'|'branch'); no JSON a codificação é omit-prod (campo
+  // só quando ≠ prod). NULL jamais vira prod — a linha fica fora de tudo.
+  let totalProd = 0
+  let totalProgress = 0
   const allDays = new Set<string>()
   // linhas com data quebrada ficam fora de TODO bucket — os totals derivam das
   // linhas agregadas (senão o invariante Σmonthly == totals do check-data aponta
   // a diferença sem dizer a origem — follow-up #11)
   let aggregated = 0
   let skippedBadDate = 0
+  let skippedNoScope = 0
 
   for (const r of rows) {
     const d = new Date(r.date)
@@ -554,13 +560,20 @@ async function main() {
       skippedBadDate++
       continue
     }
+    // scope não classificado (NULL — repo com falha na classificação ou banco
+    // legado sem collect com git) fica fora de TODO bucket, no padrão da data
+    // quebrada acima: rotular como prod rotularia errado o trabalho em progresso
+    const scope = r.scope === 'prod' || r.scope === 'integration' || r.scope === 'branch' ? r.scope : null
+    if (scope === null) {
+      skippedNoScope++
+      continue
+    }
     aggregated++
     const cp = canonParts(d) // uma única vez por linha — todos os buckets vêm dela
     const month = monthKeyOf(cp)
-
     getOrCreate(emailsByAuthor, r.author, () => new Set<string>()).add(r.email)
 
-    const wk = `${isoWeekKeyOf(cp)}${KEY_SEP}${r.repo}${KEY_SEP}${r.author}`
+    const wk = `${isoWeekKeyOf(cp)}${KEY_SEP}${r.repo}${KEY_SEP}${r.author}${KEY_SEP}${scope}`
     const wkCur = weekly.get(wk) ?? { commits: 0, weekend: 0, night: 0 }
     wkCur.commits++
     if (cp.weekday === 0 || cp.weekday === 6)
@@ -569,7 +582,7 @@ async function main() {
       wkCur.night++
     weekly.set(wk, wkCur)
 
-    const mk = `${month}${KEY_SEP}${r.repo}${KEY_SEP}${r.author}`
+    const mk = `${month}${KEY_SEP}${r.repo}${KEY_SEP}${r.author}${KEY_SEP}${scope}`
     const mCur = monthly.get(mk) ?? { commits: 0, additions: 0, deletions: 0 }
     mCur.commits++
     mCur.additions += r.additions
@@ -580,7 +593,7 @@ async function main() {
     monthlyTypes.set(tk, (monthlyTypes.get(tk) ?? 0) + 1)
 
     if (month >= heatmapCutoffKey) {
-      const hk = `${r.author}${KEY_SEP}${r.repo}${KEY_SEP}${month}${KEY_SEP}${cp.weekday}${KEY_SEP}${cp.h}`
+      const hk = `${r.author}${KEY_SEP}${r.repo}${KEY_SEP}${month}${KEY_SEP}${cp.weekday}${KEY_SEP}${cp.h}${KEY_SEP}${scope}`
       heatmap.set(hk, (heatmap.get(hk) ?? 0) + 1)
     }
 
@@ -596,13 +609,22 @@ async function main() {
     if (r.date > pa.last)
       pa.last = r.date
 
-    const pr = getOrCreate(perRepo, r.repo, () => ({ commits: 0, additions: 0, deletions: 0, authors: new Set<string>(), last: '' }))
+    const pr = getOrCreate(perRepo, r.repo, () => ({ commits: 0, prodCommits: 0, progressCommits: 0, additions: 0, deletions: 0, authors: new Set<string>(), last: '' }))
     pr.commits++
     pr.additions += r.additions
     pr.deletions += r.deletions
     pr.authors.add(r.author)
     if (r.date > pr.last)
       pr.last = r.date
+
+    if (scope === 'prod') {
+      totalProd++
+      pr.prodCommits++
+    }
+    else {
+      totalProgress++
+      pr.progressCommits++
+    }
 
     totalAdd += r.additions
     totalDel += r.deletions
@@ -619,6 +641,8 @@ async function main() {
       .sort((a, b) => a.name.localeCompare(b.name)),
     totals: {
       commits: aggregated,
+      prodCommits: totalProd,
+      progressCommits: totalProgress,
       additions: totalAdd,
       deletions: totalDel,
       activeDays: allDays.size,
@@ -626,43 +650,58 @@ async function main() {
       authors: perAuthor.size,
     },
     perRepo: [...perRepo.entries()]
-      .map(([repo, v]) => ({ repo, commits: v.commits, additions: v.additions, deletions: v.deletions, authors: v.authors.size, lastCommit: v.last }))
+      .map(([repo, v]) => ({ repo, commits: v.commits, prodCommits: v.prodCommits, progressCommits: v.progressCommits, additions: v.additions, deletions: v.deletions, authors: v.authors.size, lastCommit: v.last }))
       .sort((a, b) => b.commits - a.commits),
     perAuthor: [...perAuthor.entries()]
       .map(([author, v]) => ({ author, commits: v.commits, additions: v.additions, deletions: v.deletions, repos: v.repos.size, activeDays: v.days.size, lastCommit: v.last, ...calcStreaks(v.days) }))
       .sort((a, b) => b.commits - a.commits),
+    // encoding omit-prod (issue #119): o campo scope só viaja quando ≠ 'prod'
+    // (ausente = prod) — os três valores explícitos vivem só no banco
     weekly: [...weekly.entries()].map(([k, v]) => {
-      const [week, repo, author] = k.split(KEY_SEP)
-      return { week, repo, author, commits: v.commits, weekend: v.weekend, night: v.night }
+      const [week, repo, author, scope] = k.split(KEY_SEP)
+      return { week, repo, author, ...(scope === 'prod' ? {} : { scope }), commits: v.commits, weekend: v.weekend, night: v.night }
     }),
     monthly: [...monthly.entries()].map(([k, v]) => {
-      const [month, repo, author] = k.split(KEY_SEP)
-      return { month, repo, author, commits: v.commits, additions: v.additions, deletions: v.deletions }
+      const [month, repo, author, scope] = k.split(KEY_SEP)
+      return { month, repo, author, ...(scope === 'prod' ? {} : { scope }), commits: v.commits, additions: v.additions, deletions: v.deletions }
     }),
     heatmap: [...heatmap.entries()].map(([k, commits]) => {
-      const [author, repo, month, weekday, hour] = k.split(KEY_SEP)
-      return { author, repo, month, weekday: Number(weekday), hour: Number(hour), commits }
+      const [author, repo, month, weekday, hour, scope] = k.split(KEY_SEP)
+      return { author, repo, month, weekday: Number(weekday), hour: Number(hour), ...(scope === 'prod' ? {} : { scope }), commits }
     }),
     monthlyTypes: [...monthlyTypes.entries()].map(([k, commits]) => {
-      const [month, repo, author, type] = k.split(KEY_SEP)
-      return { month, repo, author, type, commits }
+      const [month, repo, author, scope, type] = k.split(KEY_SEP)
+      return { month, repo, author, ...(scope === 'prod' ? {} : { scope }), type, commits }
     }),
   }
 
   const out = join(root, 'public', 'data', 'stats.json')
   writeFileSync(out, JSON.stringify(stats))
   const kb = (JSON.stringify(stats).length / 1024).toFixed(0)
-  console.log(`\nstats.json gerado (${kb} KB) com ${stats.totals.commits} commits de ${stats.totals.authors} autores em ${repos.length} repos.`)
+  console.log(`\nstats.json gerado (${kb} KB) com ${stats.totals.commits} commits (prod ${totalProd} + progresso ${totalProgress}) de ${stats.totals.authors} autores em ${repos.length} repos.`)
   if (skippedBadDate > 0)
     console.warn(`⚠ ${skippedBadDate}/${rows.length} linhas no banco têm data inválida e ficaram fora de TODAS as métricas — rode pnpm clean && pnpm collect se o número parecer errado`)
+  if (skippedNoScope > 0)
+    console.warn(`⚠ ${skippedNoScope}/${rows.length} linhas no banco têm scope NULL (não classificado) e ficaram fora de TODAS as métricas — rode pnpm collect com git para classificar (a reagregação não roda git)`)
+  // avisos de escopo que só o banco enxerga (ref_hint não viaja no JSON —
+  // decisão da issue #119: check-data valida só o que os JSONs mostram):
+  // branch commits alcançáveis só por tag têm ref_hint NULL por construção
+  const branchNoHint = db.prepare(`SELECT COUNT(*) AS n FROM commits WHERE scope = 'branch' AND ref_hint IS NULL`).get() as { n: number }
+  if (branchNoHint.n > 0)
+    console.warn(`⚠ ${branchNoHint.n} commits 'branch' sem ref_hint no banco (alcançáveis só por tag) — contagens de escopo ok; só o hint da ref está ausente`)
 
   // commits recentes por autor (página de perfil do dev) — últimos 100 de cada
   const recent = db.prepare(`
-    SELECT repo, hash, author, date, subject, additions, deletions FROM commits ORDER BY date DESC
-  `).all() as { repo: string, hash: string, author: string, date: string, subject: string, additions: number, deletions: number }[]
+    SELECT repo, hash, author, date, subject, additions, deletions, scope FROM commits ORDER BY date DESC
+  `).all() as { repo: string, hash: string, author: string, date: string, subject: string, additions: number, deletions: number, scope: string | null }[]
   const perAuthorCount = new Map<string, number>()
   const recentCommits = []
   for (const c of recent) {
+    // mesma codificação omit-prod dos agregados (issue #119); linha não
+    // classificada (scope NULL) fica fora da amostra — sem o campo ela seria
+    // lida como prod, rotulando errado trabalho em progresso
+    if (c.scope !== 'prod' && c.scope !== 'integration' && c.scope !== 'branch')
+      continue
     const n = perAuthorCount.get(c.author) ?? 0
     if (n >= 100)
       continue
@@ -675,6 +714,7 @@ async function main() {
       message: c.subject,
       additions: c.additions,
       deletions: c.deletions,
+      ...(c.scope === 'prod' ? {} : { scope: c.scope }),
     })
   }
   writeFileSync(join(root, 'public', 'data', 'commits.json'), JSON.stringify({
