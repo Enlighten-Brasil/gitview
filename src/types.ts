@@ -86,6 +86,16 @@ export interface PullRequest {
   additions: number
   deletions: number
   changedFiles: number
+  /**
+   * Vínculo PR↔branch: nomes das branches head/base e SHA do head no momento
+   * da coleta. Opcionais porque o merge incremental preserva PRs de caches
+   * anteriores aos campos até um clean+full (`pnpm clean && pnpm collect`).
+   * `headRef` sobrevive ao auto-delete da branch em PRs mergeados. UI trata
+   * ausência como "sem vínculo" (cobertura parcial), nunca como "sem PR".
+   */
+  headRef?: string | null
+  baseRef?: string | null
+  headRefOid?: string | null
   reviews: PrReview[]
 }
 
