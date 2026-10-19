@@ -23,6 +23,7 @@ Only the missing repos are cloned, in parallel. In manage mode, unchecking a cur
 The setup clones each repo as a bare clone (no working tree) in `data/repos/` and writes `GITVIEW_REPOS_ROOT=data/repos` to `.env`. After that:
 
 - every collection starts with `git fetch --all --prune --tags` on each managed clone; a failed fetch falls back to the local cache with a warning;
+- after the fetch (and the scope classification), the collector deletes from the database every commit no longer reachable from any ref of the repo (`git rev-list --all`) — the original commits of a squash-merged branch that was auto-deleted on the remote would otherwise inflate the totals forever. The effect is retroactive: historical totals can decrease without any new fact, and the collector log (`🧹 N commits inalcançáveis removidos (branches apagadas)`) is the only trace;
 - the token is injected only into the git process environment, never on the command line or in the clone's config;
 - each clone gets `remote.origin.pushurl=no-push`: pushing is impossible at the git level.
 
@@ -30,4 +31,4 @@ The setup clones each repo as a bare clone (no working tree) in `data/repos/` an
 
 Set `GITVIEW_REPOS_ROOT` to the folder that holds the repos, one per subfolder. Normal checkouts and bare clones both work. Value precedence and path formats are in [The `.env` file](../configuration/env.md).
 
-In this mode the numbers reflect the state of your local clones: run `git pull` in the repos before collecting to get fresh data. The freshness badge in the navbar shows when the collection ran.
+In this mode the numbers reflect the state of your local clones: run `git pull` in the repos before collecting to get fresh data. The unreachable-commit purge never applies here — only managed clones, which the collector has just fetched, are purged, since a normal checkout may have stale refs. The freshness badge in the navbar shows when the collection ran.
