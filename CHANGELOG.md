@@ -1,5 +1,12 @@
 # gitview
 
+## 0.52.0
+
+### Minor Changes
+
+- 99e01ca: PRs coletados agora trazem o vínculo PR↔branch: `headRef`, `baseRef` e `headRefOid` no `github.json` (nomes das branches head/base e SHA do head no momento da coleta). O vínculo sobrevive ao auto-delete da branch em PRs mergeados. Os campos são opcionais: linhas preservadas de caches anteriores continuam sem eles até um `pnpm clean && pnpm collect` completo, que preenche os refs dos PRs históricos. UI trata ref ausente como vínculo desconhecido (cobertura parcial), nunca como PR inexistente.
+- d521b24: Escopo de ref (prod/integration/branch) nos dados exportados: as chaves de agregação de weekly/monthly/heatmap/monthlyTypes incluem o scope do banco e o JSON usa codificação omit-prod (campo `scope` só quando 'integration' ou 'branch'; ausente = produção). `totals` e `perRepo` ganham `prodCommits`/`progressCommits` e a amostra de commits.json viaja com o mesmo encoding. O check-data valida a union fechada do campo e novos invariantes de erro (prod + progresso = total; partição do monthly por presença de scope), com aviso não bloqueante de repo com commits e nenhum em produção; o collect avisa sobre linhas não classificadas (scope NULL, fora de todas as métricas) e commits branch sem ref_hint. A demo sintetiza linhas de progresso coerentes.
+
 ## 0.51.0
 
 ### Minor Changes
