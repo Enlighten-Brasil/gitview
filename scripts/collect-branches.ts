@@ -6,7 +6,8 @@
  * ahead/behind vs produção e vs a PRIMEIRA ref de integração resolvida
  * (ordem da config), autores à frente e linhas +/− — tudo SEM merges
  * (decisão #7: a produção do merge já está contada no PR; medido nos repos
- * reais: 1370 de ahead somado COM merges vs 763 dedup sem).
+ * reais: Σ ahead 972 sem merges vs 1370 com; commits únicos dedup: 516 sem
+ * merges vs 763 com).
  *
  * DESVIO CONSCIENTE do padrão stats.json: `authorsAhead` leva E-MAIL CRU
  * (%ae), não o nome canônico — branches.json é fato puramente git: edição de
