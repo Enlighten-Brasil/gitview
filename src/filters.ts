@@ -6,10 +6,12 @@
  * de semana ISO em ./date. O data.ts reexporta tudo — consumidores continuam
  * importando de lá.
  */
-import type { CommitRow, Stats } from './types'
+import type { WorkScope } from './filters-core'
+import type { CommitRow, ProgressScope, Stats } from './types'
 import { computed } from 'vue'
 import { authorSelected, filters, inPeriodMonth, isCustomRange, repoSelected } from './filters-core'
 import { defineLoader } from './loader'
+import { isProgressScope } from './types'
 
 // loader do stats.json — a mensagem do HTTP não-OK carrega a instrução de coleta
 const statsLoader = defineLoader<Stats>('stats.json', {
@@ -70,6 +72,11 @@ export function setShowBots(show: boolean): void {
   filters.showBots = show
 }
 
+/** escopo de trabalho das métricas (issue #128): 'all' | 'prod' | 'progress' */
+export function setWorkScope(scope: WorkScope): void {
+  filters.workScope = scope
+}
+
 /** (des)marca um repo na seleção */
 export function toggleRepo(repo: string): void {
   filters.repos = toggleList(filters.repos, repo)
@@ -114,26 +121,40 @@ export function isBot(author: string) {
   return botNames.value.has(author)
 }
 
+/**
+ * linha pertence ao escopo de trabalho atual? (issue #128) — predicado único
+ * das 4 projeções abaixo e dos iteradores diretos de ./aggregations
+ * (previousTotals/pace/burnout). Codificação omit-prod dos dados: `scope`
+ * ausente = linha de produção; 'progress' = 'integration' + 'branch'.
+ */
+export function scopeMatches(row: { scope?: ProgressScope }): boolean {
+  if (filters.workScope === 'all')
+    return true
+  if (filters.workScope === 'prod')
+    return !row.scope
+  return isProgressScope(row.scope)
+}
+
 // ---------------------------------------------------------------------------
-// projeções já filtradas (seleção de repo/autor + período) — os componentes
-// consomem direto em vez de refiltrar o stats por conta própria
+// projeções já filtradas (seleção de repo/autor + período + escopo) — os
+// componentes consomem direto em vez de refiltrar o stats por conta própria
 // ---------------------------------------------------------------------------
 export const filteredWeekly = computed(() =>
-  (stats.value?.weekly ?? []).filter(r => repoSelected(r.repo) && authorSelected(r.author, isBot(r.author)) && inPeriodMonth(r.week)),
+  (stats.value?.weekly ?? []).filter(r => repoSelected(r.repo) && authorSelected(r.author, isBot(r.author)) && inPeriodMonth(r.week) && scopeMatches(r)),
 )
 
 export const filteredMonthly = computed(() =>
-  (stats.value?.monthly ?? []).filter(r => repoSelected(r.repo) && authorSelected(r.author, isBot(r.author)) && inPeriodMonth(r.month)),
+  (stats.value?.monthly ?? []).filter(r => repoSelected(r.repo) && authorSelected(r.author, isBot(r.author)) && inPeriodMonth(r.month) && scopeMatches(r)),
 )
 
 export const filteredHeatmap = computed(() =>
-  (stats.value?.heatmap ?? []).filter(r => repoSelected(r.repo) && authorSelected(r.author, isBot(r.author)) && inPeriodMonth(r.month)),
+  (stats.value?.heatmap ?? []).filter(r => repoSelected(r.repo) && authorSelected(r.author, isBot(r.author)) && inPeriodMonth(r.month) && scopeMatches(r)),
 )
 
 /** tipos de commit (feat/fix/...) no filtro atual — aba Repositórios */
 export const filteredTypes = computed(() =>
   (stats.value?.monthlyTypes ?? []).filter(r =>
-    repoSelected(r.repo) && authorSelected(r.author, isBot(r.author)) && inPeriodMonth(r.month),
+    repoSelected(r.repo) && authorSelected(r.author, isBot(r.author)) && inPeriodMonth(r.month) && scopeMatches(r),
   ),
 )
 
