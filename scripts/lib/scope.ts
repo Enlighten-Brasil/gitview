@@ -20,7 +20,7 @@
  * que o alcança na ordem da caminhada; ref_hint é "primeiro ref alcançável"
  * (melhor esforço), NÃO "a branch onde o trabalho aconteceu".
  *
- * Custos medidos nos 14 repos reais (Windows, clones bare): 23 rev-lists
+ * Custos medidos nos 14 repos reais (Windows, clones bare): 26 rev-lists
  * ≈ 1,7 s + 14 walks ≈ 0,8 s = ~2,5 s sequencial (pior repo ~0,4 s).
  * O walk escoteado cobre 100% dos branch commits (215/215 e 121/121 nos
  * dois maiores repos) e nunca retorna tag (parte de `--branches`).
@@ -89,7 +89,8 @@ function shortSource(source: string): string {
  * O walk escoteado usa UM único `--not` seguido de todos os refs — a flag
  * `--not` alterna a polaridade dos refs seguintes, então `--not prod --not
  * develop` devolve develop ao lado positivo e contamina o walk com commits de
- * integração (medido: en-docs 50 linhas vs 9 na forma correta).
+ * integração (medido num repo real: 50 entradas na forma repetida — 40 com
+ * source da própria ref de integração — vs 9 na forma correta).
  */
 export async function collectScopeSets(
   repoPath: string,
