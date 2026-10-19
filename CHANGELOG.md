@@ -1,5 +1,11 @@
 # gitview
 
+## 0.49.16
+
+### Patch Changes
+
+- 2ee31fa: Nav das docs em 4 itens: tour do dashboard entra no Guia; Configuração vira Referência (config + regras de filtro + glossário).
+
 ## 0.49.15
 
 ### Patch Changes
