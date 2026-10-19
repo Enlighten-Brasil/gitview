@@ -3,13 +3,19 @@ import type { FilterScope } from './router/meta'
 import { watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { filters, stats } from './data'
+import { isWorkScope } from './filters-core'
 
 /**
  * Sincroniza os filtros com a query string da URL — links ficam
  * compartilháveis/bookmarkáveis.
  *
- * Formato: ?range=6&from=2026-01-01&to=2026-06-30&bots=1&repos=api&devs=Ana
+ * Formato: ?range=6&from=2026-01-01&to=2026-06-30&bots=1&repos=api&devs=Ana&scope=prod
  * Valores default são omitidos para manter a URL limpa.
+ *
+ * ?scope= é o workScope (issue #128): 'all' (default, omitido) | 'prod' |
+ * 'progress' — enum fechado, valor inválido cai em 'all'; vale em todo escopo
+ * de dados, como o período. Não confundir com o FilterScope de rota abaixo
+ * (o `scope` local deste módulo continua sendo o escopo de ROTA).
  * Usa replaceState (não polui o histórico a cada clique em filtro).
  *
  * Escopo por rota = route.meta.filters (definido por página em src/pages):
@@ -59,6 +65,7 @@ function parseUrl(scope: FilterScope, reset = false) {
     filters.dateFrom = null
     filters.dateTo = null
     filters.showBots = false
+    filters.workScope = 'all'
     if (scope === 'full' || scope === 'team')
       filters.repos = []
     if (scope === 'full')
@@ -76,6 +83,14 @@ function parseUrl(scope: FilterScope, reset = false) {
       filters.rangeMonths = Number(savedRange)
   }
 
+  // sem param de escopo na URL → cai no último workScope usado (persistido,
+  // idem ao range — é o que preserva o contexto em links sem query via afterEach)
+  if (!reset && !q.has('scope')) {
+    const savedWorkScope = localStorage.getItem('gitview:scope')
+    if (savedWorkScope && isWorkScope(savedWorkScope))
+      filters.workScope = savedWorkScope
+  }
+
   if (scope === 'full' || scope === 'team') {
     const repos = q.get('repos')
     if (repos)
@@ -89,6 +104,12 @@ function parseUrl(scope: FilterScope, reset = false) {
   }
 
   applyRangeParams(q, scope)
+
+  // ?scope= (workScope, issue #128) — variável nomeada para não sombrear o
+  // `scope` de rota (FilterScope); enum fechado, valor inválido → 'all'
+  const workScope = q.get('scope')
+  if (workScope !== null)
+    filters.workScope = isWorkScope(workScope) ? workScope : 'all'
 }
 
 function buildUrl(scope: FilterScope): string {
@@ -110,6 +131,8 @@ function buildUrl(scope: FilterScope): string {
   }
   if (filters.showBots && (scope === 'full' || scope === 'period-bots'))
     q.set('bots', '1')
+  if (filters.workScope !== 'all')
+    q.set('scope', filters.workScope)
   const s = q.toString()
   return s ? `${location.pathname}?${s}` : location.pathname
 }
@@ -123,6 +146,10 @@ function sanitize() {
   const authors = new Set(s.authors.map(a => a.name))
   filters.repos = filters.repos.filter(r => repos.has(r))
   filters.authors = filters.authors.filter(a => authors.has(a))
+  // feature-detect de dados pré-#119 (totais sem a divisão prod/progress):
+  // o filtro de escopo não tem o que filtrar — força o default 'all'
+  if (!('prodCommits' in s.totals))
+    filters.workScope = 'all'
 }
 
 let initialized = false
@@ -150,6 +177,7 @@ export function initUrlState() {
     // restoration etc.) — trocar por null dispara o aviso VUE_ROUTER_R0121
     history.replaceState(history.state, '', buildUrl(scope))
     localStorage.setItem('gitview:range', filters.rangeMonths == null ? 'all' : String(filters.rangeMonths))
+    localStorage.setItem('gitview:scope', filters.workScope)
   }, { deep: true })
 
   // navegação por link (ex.: clicar num dev/repo): aplica os params presentes na

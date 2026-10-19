@@ -9,7 +9,7 @@ import type { MonthlyRow, MonthlyTypeRow, WeeklyRow } from './types'
 import { computed } from 'vue'
 import { getOrCreate } from './collections'
 import { lastNWeekKeys } from './date'
-import { filteredCommitCount, filteredMonthly, filteredWeekly, isBot, stats } from './filters'
+import { filteredCommitCount, filteredMonthly, filteredWeekly, isBot, scopeMatches, stats } from './filters'
 import { authorSelected, cutoff, filters, isCustomRange, repoSelected } from './filters-core'
 import { OFF_HOURS_MIN_COMMITS } from './thresholds'
 
@@ -127,7 +127,7 @@ export const previousTotals = computed(() => {
   for (const r of stats.value.monthly) {
     if (r.month < prevKey || r.month >= cutKey)
       continue
-    if (!repoSelected(r.repo) || !authorSelected(r.author, isBot(r.author)))
+    if (!repoSelected(r.repo) || !authorSelected(r.author, isBot(r.author)) || !scopeMatches(r))
       continue
     commits += r.commits
     additions += r.additions
@@ -139,7 +139,8 @@ export const previousTotals = computed(() => {
 })
 
 // ---------------------------------------------------------------------------
-// ritmo (últimas 4 semanas vs média das 8 anteriores) — ignora o filtro de período
+// ritmo (últimas 4 semanas vs média das 8 anteriores) — ignora o filtro de período,
+// mas aplica repo/autor/escopo de trabalho (issue #128)
 // ---------------------------------------------------------------------------
 export interface PaceRow {
   author: string
@@ -149,7 +150,7 @@ export interface PaceRow {
 }
 
 export const pace = computed<PaceRow[]>(() => {
-  const rows = (stats.value?.weekly ?? []).filter(r => repoSelected(r.repo) && authorSelected(r.author, isBot(r.author)))
+  const rows = (stats.value?.weekly ?? []).filter(r => repoSelected(r.repo) && authorSelected(r.author, isBot(r.author)) && scopeMatches(r))
   const byAuthor = commitsByAuthorWeek(rows)
 
   const weeks = lastNWeekKeys(12)
@@ -180,7 +181,7 @@ export interface BurnoutRow {
 }
 
 export const burnout = computed<BurnoutRow[]>(() => {
-  const rows = (stats.value?.weekly ?? []).filter(r => repoSelected(r.repo) && authorSelected(r.author, isBot(r.author)))
+  const rows = (stats.value?.weekly ?? []).filter(r => repoSelected(r.repo) && authorSelected(r.author, isBot(r.author)) && scopeMatches(r))
   const weeks = lastNWeekKeys(8)
   const last4 = new Set(weeks.slice(-4))
   const byAuthor = new Map<string, { weekend: number, night: number, total: number, weekendsActive: number }>()

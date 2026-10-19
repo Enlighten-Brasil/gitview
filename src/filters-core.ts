@@ -10,6 +10,23 @@
 import { reactive } from 'vue'
 import { isoWeekMonday } from './date'
 
+/**
+ * Escopos de trabalho das métricas (issue #128) — união fechada no padrão
+ * PROGRESS_SCOPES (types.ts), casando com a codificação omit-prod dos dados
+ * (issues #118/#119): linha sem `scope` = 'prod'; 'progress' agrupa
+ * 'integration' + 'branch'; 'all' desliga o filtro. O campo de estado se
+ * chama workScope para não colidir com FilterScope (escopo de ROTA,
+ * router/meta.ts) — o param público de URL continua ?scope=.
+ */
+export const WORK_SCOPES = ['all', 'prod', 'progress'] as const
+
+export type WorkScope = typeof WORK_SCOPES[number]
+
+/** valida valor de ?scope=/localStorage — fora da união fechada → false */
+export function isWorkScope(value: unknown): value is WorkScope {
+  return typeof value === 'string' && (WORK_SCOPES as readonly string[]).includes(value)
+}
+
 export interface FiltersState {
   repos: string[] // vazio = todos
   authors: string[] // vazio = todos
@@ -18,6 +35,11 @@ export interface FiltersState {
   dateFrom: string | null
   dateTo: string | null
   showBots: boolean
+  /**
+   * escopo de trabalho (issue #128): 'all' = todas as linhas; 'prod' = só as
+   * sem `scope` (ref de produção); 'progress' = só 'integration'/'branch'
+   */
+  workScope: WorkScope
 }
 
 export const filters = reactive<FiltersState>({
@@ -27,6 +49,7 @@ export const filters = reactive<FiltersState>({
   dateFrom: null,
   dateTo: null,
   showBots: false,
+  workScope: 'all',
 })
 
 /** range customizado ativo? */
