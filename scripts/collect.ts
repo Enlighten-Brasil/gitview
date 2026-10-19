@@ -20,6 +20,7 @@ import { getOrCreate } from '../src/collections'
 import { loadConfig, resolveReposRoot } from './lib/config'
 import { getToken, NO_TOKEN_HINT } from './lib/github'
 import { denyPush, discoverRepos, fetchRepo, isManagedRepo, mapPool, parseGitHub, remoteOf, scrubPersistedToken } from './lib/repos'
+import { collectScopeSets } from './lib/scope'
 import { resolveAliases } from './lib/team'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -191,6 +192,12 @@ db.exec(`
     subject TEXT NOT NULL,
     additions INTEGER NOT NULL DEFAULT 0,
     deletions INTEGER NOT NULL DEFAULT 0,
+    -- escopo de ref (issue #118) — 'prod' | 'integration' | 'branch';
+    -- NULL = não classificado (nunca tratar NULL como prod)
+    scope TEXT,
+    -- nome curto do primeiro ref alcançável, melhor esforço (lib/scope.ts);
+    -- NULL para commit alcançável só por tag
+    ref_hint TEXT,
     PRIMARY KEY (repo, hash)
   );
   CREATE INDEX IF NOT EXISTS idx_commits_date ON commits(date);
@@ -211,6 +218,17 @@ const migratedDates = db.prepare(`
 `).run()
 if (migratedDates.changes)
   console.log(`🔧 ${migratedDates.changes} datas normalizadas para UTC (formato antigo com offset)`)
+
+// migração (issue #118): bancos criados antes da dimensão de escopo não têm as
+// colunas scope/ref_hint — ALTER TABLE in-place idempotente (PRAGMA table_info
+// detecta as colunas existentes), no padrão da migração de datas acima. Não
+// exige clean && collect: a classificação abaixo cobre TODO o histórico via
+// sets de rev-list, não o watermark.
+const commitCols = (db.prepare('PRAGMA table_info(commits)').all() as { name: string }[]).map(c => c.name)
+if (!commitCols.includes('scope'))
+  db.exec('ALTER TABLE commits ADD COLUMN scope TEXT')
+if (!commitCols.includes('ref_hint'))
+  db.exec('ALTER TABLE commits ADD COLUMN ref_hint TEXT')
 
 // ---------------------------------------------------------------------------
 // incremental: --since por repo a partir do watermark no banco (max date - margem).
@@ -419,6 +437,75 @@ async function main() {
         console.error(`✗ ${repo.name}: ${(err as Error).message}`)
       }
     })
+
+    // -----------------------------------------------------------------------
+    // classificação por escopo de ref (issue #118) — roda em TODO collect com
+    // git, não só nos inserts: sets completos por repo via lib/scope.ts
+    // (prod = alcançável da ref de produção; integration = alcançável das refs
+    // de integração e não de prod; branch = demais, por eliminação). UPDATE só
+    // nas linhas que mudaram — commit de branch mergeada vira 'prod' na
+    // coleta incremental seguinte, sem --full. Falha num repo não derruba a
+    // coleta: as linhas dele mantêm o scope anterior (ou NULL), no padrão de
+    // tolerância do passo de inserts.
+    // -----------------------------------------------------------------------
+    console.log('\nClassificando commits por escopo de ref (prod/integration/branch)...')
+    const scopeT0 = Date.now()
+    const selectScoped = db.prepare('SELECT hash, scope, ref_hint FROM commits WHERE repo = ?')
+    const updateScope = db.prepare('UPDATE commits SET scope = ?, ref_hint = ? WHERE repo = ? AND hash = ?')
+    let scopeUpdated = 0
+    let scopeFailed = 0
+    await mapPool(repos, 4, async (repo) => {
+      const t0 = Date.now()
+      try {
+        const rows = selectScoped.all(repo.name) as { hash: string, scope: string | null, ref_hint: string | null }[]
+        if (!rows.length)
+          return
+        const sets = await collectScopeSets(repo.path, config.productionRef, config.integrationRefs)
+        const counts = { branch: 0, integration: 0, prod: 0 }
+        let updated = 0
+        db.exec('BEGIN')
+        try {
+          for (const row of rows) {
+            const scope = sets.prod.has(row.hash)
+              ? 'prod'
+              : sets.integ.has(row.hash)
+                ? 'integration'
+                : 'branch'
+            const hint = scope === 'prod'
+              ? sets.prodRef
+              : scope === 'integration'
+                ? (sets.integ.get(row.hash) ?? null)
+                : (sets.hints.get(row.hash) ?? null)
+            counts[scope]++
+            if (row.scope !== scope || row.ref_hint !== hint) {
+              updateScope.run(scope, hint, repo.name, row.hash)
+              updated++
+            }
+          }
+          db.exec('COMMIT')
+        }
+        catch (err) {
+          db.exec('ROLLBACK')
+          throw err
+        }
+        scopeUpdated += updated
+        console.log(`✓ ${repo.name}: escopo prod ${counts.prod} · integration ${counts.integration} · branch ${counts.branch} — ${updated} linhas atualizadas (${((Date.now() - t0) / 1000).toFixed(1)}s)`)
+      }
+      catch (err) {
+        scopeFailed++
+        console.error(`✗ ${repo.name}: classificação de escopo falhou — linhas mantêm scope anterior/NULL (${(err as Error).message})`)
+      }
+    })
+    console.log(`🏷 Escopo classificado em ${((Date.now() - scopeT0) / 1000).toFixed(1)}s (pool de 4, ${repos.length} repos) — ${scopeUpdated} linhas atualizadas${scopeFailed ? ` · ${scopeFailed} repos com falha` : ''}`)
+  }
+  else {
+    // --reaggregate não roda git: a classificação pula inteira e linhas com
+    // scope NULL continuam NULL. NULL jamais é tratado como prod (rotularia
+    // errado o trabalho em progresso) — por isso o aviso e a ausência de
+    // contagens por escopo neste modo.
+    const nullScope = db.prepare('SELECT COUNT(*) AS n FROM commits WHERE scope IS NULL').get() as { n: number }
+    if (nullScope.n > 0)
+      console.warn(`⚠ ${nullScope.n} commits com scope NULL no banco — rode pnpm collect para classificar (a reagregação não roda git; contagens por escopo suprimidas)`)
   }
 
   // re-normaliza autores já gravados caso os aliases tenham mudado no config
