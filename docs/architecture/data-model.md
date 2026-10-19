@@ -26,25 +26,27 @@ Rules common to all five: top-level object with `generatedAt` (ISO timestamp of 
 | `repos` | `string[]` | names of the repos included in the collection |
 | `repoUrls` | `{ [repo]: string }` | web URL per repo (GitHub remotes only) |
 | `authors` | `[{ name, emails, bot }]` | canonical authors and the e-mails seen for each |
-| `totals` | `{ commits, additions, deletions, activeDays, repos, authors }` | global rollup |
-| `perRepo` | `[{ repo, commits, additions, deletions, authors, lastCommit }]` | per repo, sorted by commits desc |
+| `totals` | `{ commits, prodCommits, progressCommits, additions, deletions, activeDays, repos, authors }` | global rollup; `prodCommits` + `progressCommits` = `commits` |
+| `perRepo` | `[{ repo, commits, prodCommits, progressCommits, additions, deletions, authors, lastCommit }]` | per repo, sorted by commits desc |
 | `perAuthor` | `[{ author, commits, additions, deletions, repos, activeDays, lastCommit, streak, longestStreak }]` | per dev, sorted by commits desc; `streak` counts consecutive active days ending at the last active day |
-| `weekly` | `[{ week, repo, author, commits, weekend, night }]` | ISO week `YYYY-Www`; `weekend`/`night` are subsets (night = 22:00–05:59 in the canonical timezone) |
-| `monthly` | `[{ month, repo, author, commits, additions, deletions }]` | month key `YYYY-MM` |
-| `heatmap` | `[{ author, repo, month, weekday, hour, commits }]` | `weekday` 0–6, `hour` 0–23; only the last 24 months |
-| `monthlyTypes` | `[{ month, repo, author, type, commits }]` | conventional commit type (`feat`, `fix`, …) or `outros` |
+| `weekly` | `[{ week, repo, author, scope?, commits, weekend, night }]` | ISO week `YYYY-Www`; `weekend`/`night` are subsets (night = 22:00–05:59 in the canonical timezone) |
+| `monthly` | `[{ month, repo, author, scope?, commits, additions, deletions }]` | month key `YYYY-MM` |
+| `heatmap` | `[{ author, repo, month, weekday, hour, scope?, commits }]` | `weekday` 0–6, `hour` 0–23; only the last 24 months |
+| `monthlyTypes` | `[{ month, repo, author, scope?, type, commits }]` | conventional commit type (`feat`, `fix`, …) or `outros` |
 
-**The gate requires**: Σ`perAuthor.commits` = Σ`perRepo.commits` = Σ`monthly.commits` = `totals.commits` (core invariant); `totals.additions`/`deletions` ≥ 0 and per-author counts ≥ 0; `heatmap.weekday` in 0–6 and `hour` in 0–23; `monthly.month` matches `YYYY-MM`; `authors[].bot` is boolean; `perRepo[].lastCommit` parses as a date.
+**Ref scope** (issue #119): every commit carries a `scope` in the database — `'prod'` (reachable from the production ref), `'integration'` (reachable from an integration ref but not from prod) or `'branch'` (the rest). The JSON rows use the *omit-prod* encoding: the optional `scope` field only travels when the value is `'integration'` or `'branch'` — **absent means production**. The aggregation keys of `weekly`/`monthly`/`heatmap`/`monthlyTypes` include the scope, so the same author/repo/period may appear in up to two rows (one per scope); sums (Σ) are preserved and frontend projections that group-and-sum see no difference. `progressCommits` = integration + branch (work in progress); the three explicit values live only in the database. Rows whose scope is still `NULL` (classification never ran or failed for the repo) stay out of every bucket and the collector logs a warning — `--reaggregate` does not run git, so it cannot classify.
+
+**The gate requires**: Σ`perAuthor.commits` = Σ`perRepo.commits` = Σ`monthly.commits` = `totals.commits` (core invariant); `totals.prodCommits` + `totals.progressCommits` = `totals.commits`; Σ`monthly.commits` over rows *without* `scope` = `totals.prodCommits` and over rows *with* `scope` = `totals.progressCommits` (the heatmap gets no sum invariant: the 24-month cutoff breaks Σ by design); `scope`, when present, inside the closed union `'integration' | 'branch'` (every list); `totals.additions`/`deletions` ≥ 0 and per-author counts ≥ 0; `heatmap.weekday` in 0–6 and `hour` in 0–23; `monthly.month` matches `YYYY-MM`; `authors[].bot` is boolean; `perRepo[].lastCommit` parses as a date. **Non-blocking warning**: a repo with `commits > 0` and `prodCommits = 0` (suspicious production-ref configuration).
 
 ## commits.json
 
 | key | shape | meaning |
 |---|---|---|
-| `commits` | `[{ hash, repo, author, date, message, additions, deletions }]` | last 100 commits per author, newest first |
+| `commits` | `[{ hash, repo, author, date, message, additions, deletions, scope? }]` | last 100 commits per author, newest first |
 
-`hash` is the abbreviated 7-hex form; `message` is the commit subject, limited to 500 chars in the database.
+`hash` is the abbreviated 7-hex form; `message` is the commit subject, limited to 500 chars in the database. `scope` uses the same *omit-prod* encoding as stats.json (absent = production); the sample skips commits with unclassified scope (`NULL` in the database).
 
-**The gate requires**: dates uniformly UTC (ending in `Z`) and parseable; strict descending order by real timestamp (the dev profile page assumes this); `hash` matches `^[0-9a-f]{7}$`.
+**The gate requires**: dates uniformly UTC (ending in `Z`) and parseable; strict descending order by real timestamp (the dev profile page assumes this); `hash` matches `^[0-9a-f]{7}$`; `scope`, when present, inside the closed union `'integration' | 'branch'`.
 
 ## github.json
 

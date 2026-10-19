@@ -10,7 +10,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
-import { isPrReviewState } from '../src/types'
+import { isProgressScope, isPrReviewState } from '../src/types'
 
 const DATA_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'data')
 
@@ -88,6 +88,21 @@ function stringList(data: Record<string, unknown>, key: string, where: string): 
     errors.push(`${where}.${key}: esperado lista de strings`)
 }
 
+/**
+ * `scope` opcional das linhas (omit-prod, issue #119): campo PRESENTE implica
+ * pertencer à union fechada ('integration','branch') — ausente = prod.
+ * Validação condicional (padrão PR_REVIEW_STATES) porque o listShape olha só o
+ * 1º item e ele pode ser prod, sem o campo.
+ */
+function scopeUnion(list: unknown, where: string): void {
+  for (const r of (isArr(list) ? list : []) as Record<string, unknown>[]) {
+    if ('scope' in r && !isProgressScope(r.scope)) {
+      errors.push(`${where}: scope inesperado "${String(r.scope)}" — union fechada ('integration','branch'); prod não viaja no JSON (campo ausente)`)
+      break
+    }
+  }
+}
+
 // ── stats.json ────────────────────────────────────────────────────────────
 const stats = load('stats.json')
 const perRepoCommits = new Map<string, number>()
@@ -95,12 +110,16 @@ if (stats) {
   genAt(stats, 'stats.json')
   stringList(stats, 'repos', 'stats.json')
   listShape(stats, 'authors', ['name', 'emails', 'bot'], 'stats.json')
-  listShape(stats, 'perRepo', ['repo', 'commits'], 'stats.json')
+  listShape(stats, 'perRepo', ['repo', 'commits', 'prodCommits', 'progressCommits'], 'stats.json')
   listShape(stats, 'perAuthor', ['author', 'commits'], 'stats.json')
   listShape(stats, 'weekly', ['week', 'commits'], 'stats.json')
   listShape(stats, 'monthly', ['month', 'commits'], 'stats.json')
   listShape(stats, 'heatmap', ['author', 'weekday', 'hour', 'commits'], 'stats.json')
   listShape(stats, 'monthlyTypes', ['month', 'type', 'commits'], 'stats.json')
+  scopeUnion(stats.weekly, 'stats.weekly')
+  scopeUnion(stats.monthly, 'stats.monthly')
+  scopeUnion(stats.heatmap, 'stats.heatmap')
+  scopeUnion(stats.monthlyTypes, 'stats.monthlyTypes')
   if (!stats.repoUrls || typeof stats.repoUrls !== 'object')
     errors.push('stats.json.repoUrls: esperado objeto')
   // commits por autor somam >= 0 e authors tem flag bot booleana
@@ -121,10 +140,33 @@ if (stats) {
     check(sum(stats.perRepo, 'commits') === totals.commits, `stats.json: ΣperRepo.commits (${sum(stats.perRepo, 'commits')}) != totals.commits (${totals.commits})`)
     check(sum(stats.monthly, 'commits') === totals.commits, `stats.json: Σmonthly.commits (${sum(stats.monthly, 'commits')}) != totals.commits (${totals.commits})`)
     check(typeof totals.additions === 'number' && totals.additions >= 0 && typeof totals.deletions === 'number' && totals.deletions >= 0, 'stats.json.totals: additions/deletions negativos')
+    // split de escopo (issue #119): prod + progresso recompõem o total e a
+    // partição do monthly (linha sem scope = prod; com scope = progresso)
+    // reproduz as contagens do totals. Heatmap fica FORA de invariante de soma:
+    // o corte de 24M quebra Σ por design.
+    if (typeof totals.prodCommits !== 'number' || typeof totals.progressCommits !== 'number') {
+      errors.push('stats.json.totals: prodCommits/progressCommits ausentes ou não numéricos — rode a coleta de novo')
+    }
+    else {
+      check(totals.prodCommits + totals.progressCommits === totals.commits, `stats.json: totals.prodCommits (${totals.prodCommits}) + totals.progressCommits (${totals.progressCommits}) != totals.commits (${totals.commits})`)
+      let monthProd = 0
+      let monthProgress = 0
+      for (const m of (isArr(stats.monthly) ? stats.monthly : []) as Record<string, unknown>[]) {
+        if ('scope' in m)
+          monthProgress += Number(m.commits) || 0
+        else
+          monthProd += Number(m.commits) || 0
+      }
+      check(monthProd === totals.prodCommits, `stats.json: Σmonthly.commits sem scope (${monthProd}) != totals.prodCommits (${totals.prodCommits})`)
+      check(monthProgress === totals.progressCommits, `stats.json: Σmonthly.commits com scope (${monthProgress}) != totals.progressCommits (${totals.progressCommits})`)
+    }
   }
   const now = Date.now()
   for (const r of (isArr(stats.perRepo) ? stats.perRepo : []) as Record<string, unknown>[]) {
     perRepoCommits.set(String(r.repo), Number(r.commits) || 0)
+    // config suspeita (aviso, não bloqueia): repo com commits mas nada alcançável
+    // da ref de produção — productionRef provavelmente não casa com nenhuma ref
+    warn(!(Number(r.commits) > 0 && Number(r.prodCommits) === 0), `stats.perRepo["${r.repo}"]: ${Number(r.commits)} commits e nenhum em produção (prodCommits=0) — configuração da ref de produção suspeita`)
     const t = Date.parse(String(r.lastCommit ?? ''))
     if (Number.isNaN(t)) {
       errors.push(`stats.perRepo["${r.repo}"].lastCommit: data inválida`)
@@ -155,6 +197,7 @@ const commits = load('commits.json')
 if (commits) {
   genAt(commits, 'commits.json')
   listShape(commits, 'commits', ['hash', 'repo', 'author', 'date', 'message'], 'commits.json')
+  scopeUnion(commits.commits, 'commits.json.commits')
   // datas em UTC uniforme (o coletor normaliza; offset misto quebra a ordenação)
   // e ordem desc por timestamp real — a página de perfil assume isso
   const list = (isArr(commits.commits) ? commits.commits : []) as Record<string, unknown>[]
