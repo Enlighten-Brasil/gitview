@@ -48,11 +48,13 @@ export {
   rangeLabel,
   recentCommits,
   resetSelection,
+  scopeMatches,
   setAuthors,
   setCustomRange,
   setRange,
   setRepos,
   setShowBots,
+  setWorkScope,
   stats,
   toggleAuthor,
   toggleCustomRange,
@@ -67,5 +69,8 @@ export {
   inPeriodDay,
   inPeriodMonth,
   isCustomRange,
+  isWorkScope,
   repoSelected,
+  WORK_SCOPES,
 } from './filters-core'
+export type { WorkScope } from './filters-core'

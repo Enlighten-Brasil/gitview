@@ -107,7 +107,7 @@ function exportCsv() {
 </script>
 
 <template>
-  <TablePanel title="Ranking do time (histórico completo)">
+  <TablePanel title="Ranking do time (histórico completo — ignora período e escopo)">
     <template #actions>
       <UButton
         icon="i-lucide-download"

@@ -610,7 +610,7 @@ function showMore() {
 
       <p class="text-dimmed text-xs px-4 pb-3 leading-relaxed">
         últimos {{ commits.length }} commits · ~{{ windowDays }} dias · merges são conectores do desenho (métricas seguem sem merges)
-        · janela fixa: não segue os filtros de período/bots
+        · janela fixa: não segue os filtros de período/bots/escopo
         <template v-if="view.clippedCount">
           · {{ view.clippedCount }} arestas tracejadas com seta: pais fora da janela — a história continua mais antigo
         </template>

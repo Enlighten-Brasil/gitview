@@ -29,7 +29,7 @@ const rows = computed(() =>
       <div class="flex items-center gap-2">
         <UIcon name="i-lucide-tag" class="size-4 text-primary" />
         <span class="text-sm font-semibold text-highlighted">Releases por repositório</span>
-        <span class="text-xs text-dimmed ml-auto">marcos — ignoram o filtro de período · clique no repo pra ver a cadência completa</span>
+        <span class="text-xs text-dimmed ml-auto">marcos — ignoram o filtro de período e o escopo · clique no repo pra ver a cadência completa</span>
       </div>
     </template>
 

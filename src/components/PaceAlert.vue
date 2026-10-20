@@ -77,5 +77,10 @@ function pct(ratio: number): string {
         </tbody>
       </table>
     </template>
+
+    <!-- janela fixa (categoria do AGENTS.md) — o recorte de escopo vale, o de período não -->
+    <p class="text-dimmed text-xs mt-2.5">
+      segue o escopo, ignora o período
+    </p>
   </UCard>
 </template>

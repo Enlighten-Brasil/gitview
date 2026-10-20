@@ -71,7 +71,7 @@ function onRowClick(e: MouseEvent, repo: string) {
 </script>
 
 <template>
-  <TablePanel title="Repositórios" icon="i-lucide-git-branch" :count="rows.length">
+  <TablePanel title="Repositórios" icon="i-lucide-folder-git-2" :count="rows.length">
     <div class="overflow-x-auto">
       <table class="data-table">
         <thead>
