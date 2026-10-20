@@ -89,11 +89,31 @@ export function gitAuthEnv(token?: string | null): NodeJS.ProcessEnv {
 }
 
 /**
+ * Refspec de fetch dos clones gerenciados (issue #140): `git clone --bare` NÃO
+ * grava `remote.origin.fetch` (o git só grava refspec em clone normal), e num
+ * bare sem refspec o `git fetch --all --prune --tags` só escreve o FETCH_HEAD —
+ * `refs/heads/*` não avança nem é podado, e o clone congela na data de criação.
+ * Idempotente: grava `+refs/heads/*:refs/heads/*` só quando a chave está
+ * ausente — clones antigos se auto-curam no primeiro fetch pós-fix.
+ */
+export function ensureFetchRefspec(path: string): void {
+  const atual = spawnSync('git', ['-C', path, 'config', '--get', 'remote.origin.fetch'], { encoding: 'utf-8' })
+  if (atual.status === 0 && atual.stdout.trim())
+    return
+  spawnSync('git', ['-C', path, 'config', 'remote.origin.fetch', '+refs/heads/*:refs/heads/*'], { stdio: 'ignore' })
+}
+
+/**
  * git fetch autenticado (token via gitAuthEnv) e tolerante a falha: repo sem
  * acesso ou rede fora não derruba a coleta — usa o cache local e avisa.
  * GIT_TERMINAL_PROMPT=0 evita prompt interativo de credencial travando o processo.
  */
 export function fetchRepo(path: string, token?: string | null): Promise<string | null> {
+  // Backfill idempotente (issue #140): clones gerenciados criados antes do fix
+  // não têm remote.origin.fetch — sem ele, o fetch abaixo só grava FETCH_HEAD e
+  // os refs congelam. Este é o ponto central (o collect chama fetchRepo só nos
+  // clones gerenciados); clone novo já nasce com o refspec via cloneBare.
+  ensureFetchRefspec(path)
   return new Promise((resolvePromise) => {
     const child = spawn('git', ['-C', path, 'fetch', '--all', '--prune', '--tags', '--quiet'], {
       env: gitAuthEnv(token),
@@ -128,7 +148,9 @@ export function denyPush(path: string): void {
  * Clone bare autenticado pelo token (via gitAuthEnv — nada de token no argv
  * nem no config do clone). Sem token, falha com mensagem clara: a auth vem do
  * setup da UI (device flow/PAT) ou do bridge do `gh` no getToken(). Todo clone
- * sai com push travado (denyPush) — o gitview nunca escreve nos remotes.
+ * sai com o refspec de fetch gravado (ensureFetchRefspec — sem ele o
+ * `fetch --prune` congela os refs, issue #140) e push travado (denyPush) — o
+ * gitview nunca escreve nos remotes.
  */
 export function cloneBare(fullName: string, dest: string, token?: string | null): Promise<string | null> {
   return new Promise((resolvePromise) => {
@@ -147,6 +169,12 @@ export function cloneBare(fullName: string, dest: string, token?: string | null)
         resolvePromise(Buffer.concat(errChunks).toString('utf-8').trim())
         return
       }
+      // Refspec na criação (issue #140): `clone --bare` não grava
+      // remote.origin.fetch. Pós-clone via git config (mesmo helper do backfill
+      // no fetchRepo) — `--config` no próprio comando clone foi medido e NÃO é
+      // equivalente: duplica o mapeamento do fetch inicial e o clone morre com
+      // "multiple updates for ref not allowed" (git 2.53.0.windows.3).
+      ensureFetchRefspec(dest)
       denyPush(dest)
       resolvePromise(null)
     })
