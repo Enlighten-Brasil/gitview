@@ -27,7 +27,7 @@
  */
 import { Buffer } from 'node:buffer'
 import { spawn } from 'node:child_process'
-import { displayRefName, resolveIntegRefs, resolveProdRef } from './refs'
+import { displayRefName, resolveIntegRefsAsync, resolveProdRefAsync } from './refs'
 
 export interface RepoScopeSets {
   /** nome curto da ref de produção (vira ref_hint das linhas prod) */
@@ -104,8 +104,8 @@ export async function collectScopeSets(
   // vazar forma longa: o lado positivo é só `--branches` (refs/heads/*), e
   // %S emite o ref do lado positivo — as refs longas entram apenas no
   // `--not` (shortSource ainda dá strip defensivo de refs/heads/).
-  const prodRef = resolveProdRef(repoPath, productionRef)
-  const integRefs = resolveIntegRefs(repoPath, integrationRefs)
+  const prodRef = await resolveProdRefAsync(repoPath, productionRef)
+  const integRefs = await resolveIntegRefsAsync(repoPath, integrationRefs)
 
   const [prodOut, integOuts, walkOut] = await Promise.all([
     runGit(repoPath, ['rev-list', prodRef]),
