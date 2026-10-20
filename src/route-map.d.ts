@@ -52,6 +52,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/branches': RouteRecordInfo<
+      '/branches',
+      '/branches',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/devs/[name]': RouteRecordInfo<
       '/devs/[name]',
       '/devs/:name',
@@ -173,6 +180,7 @@ declare module 'vue-router/auto-routes' {
     'src/pages/(app)/_parent.vue': {
       routes:
         | '/'
+        | '/branches'
         | '/devs'
         | '/devs/[name]'
         | '/health'
@@ -215,6 +223,14 @@ declare module 'vue-router/auto-routes' {
     'src/pages/(app)/(dashboard)/health.vue': {
       routes:
         | '/health'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/(app)/branches.vue': {
+      routes:
+        | '/branches'
       views:
         | never
       pathParamNames:

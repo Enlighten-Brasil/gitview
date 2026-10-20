@@ -59,9 +59,22 @@ export const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    key: 'branches',
+    label: 'Branches',
+    // ícone herdado de Repos (issue #124): a rail não pode repetir ícone de seção
+    icon: 'i-lucide-git-branch',
+    to: '/branches',
+    subs: [
+      { label: 'Pousadas', icon: 'i-lucide-plane-landing', hash: 'pousadas' },
+      { label: 'Abandonadas', icon: 'i-lucide-life-buoy', hash: 'abandonadas' },
+      { label: 'develop × produção', icon: 'i-lucide-git-compare-arrows', hash: 'develop-producao' },
+      { label: 'Tabela', icon: 'i-lucide-table', hash: 'tabela' },
+    ],
+  },
+  {
     key: 'repos',
     label: 'Repos',
-    icon: 'i-lucide-git-branch',
+    icon: 'i-lucide-folder-git-2',
     to: '/repos',
     subs: [
       // leva de volta ao índice quando dentro de /repos/:name
