@@ -28,7 +28,7 @@ const PORT = Number(process.env.GITVIEW_SHOTS_PORT ?? '4321')
 const HOST = `http://localhost:${PORT}`
 const SERVER_TIMEOUT_MS = 20_000
 
-/** As quatro capturas da doc: arquivo, rota, largura, altura. */
+/** As capturas da doc: arquivo, rota, largura, altura. */
 interface Shot {
   file: string
   route: string
@@ -41,6 +41,11 @@ const SHOTS: Shot[] = [
   { file: 'prs.png', route: '/prs', width: 1440, height: 900 },
   { file: 'health.png', route: '/health', width: 1440, height: 1250 },
   { file: 'dev.png', route: '/devs/Ana', width: 1440, height: 1400 },
+  { file: 'branches.png', route: '/branches', width: 1440, height: 1250 },
+  // a seção #grafo fica no fim de /repos/:name e o --screenshot do Chrome
+  // captura do topo do documento (ignora o scroll da âncora) — altura cobre
+  // a página até o fim da seção
+  { file: 'graph.png', route: '/repos/demo-api#grafo', width: 1440, height: 2200 },
 ]
 
 /** shape mínimo do que a checagem de fixture lê dos JSONs coletados */

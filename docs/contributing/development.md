@@ -75,6 +75,8 @@ The CI (`.github/workflows/ci.yml`) runs scrub, lint, typecheck and build in the
 
 - `data.ts`: global filters, filtered aggregations (monthly, weekly, heatmap, types), totals, delta, pace, off-hours.
 - `github.ts`: filtered PRs, aging, cycle time, reviews per dev, merge without review.
+- `branches.ts`: `branches.json` loader + branch↔PR join, derived statuses (viva-sem-PR, pousada via squash) and the /branches cards and table.
+- `graphData.ts` + `graph/`: the commit graph (`#grafo` of `/repos/:name`) — per-repo `graph-REPO.json` loader, pure lane algorithm (`graph/lanes.ts`), lane/ref colors (`graph/palette.ts`) and the tolerant refs reader (`graph/refs.ts`).
 - `releases.ts`: `releases.json` loader and cadence metrics.
 - `urlState.ts`: filters in the query string (`?range=&from=&to=&repos=&devs=&bots=`), scoped by `route.meta.filters`.
 - `summary.ts`: weekly summary in markdown, ignoring the sidebar filters.

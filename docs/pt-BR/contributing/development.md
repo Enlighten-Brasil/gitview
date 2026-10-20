@@ -75,6 +75,8 @@ O CI (`.github/workflows/ci.yml`) roda scrub, lint, typecheck e build no job `ga
 
 - `data.ts`: filtros globais, agregações filtradas (monthly, weekly, heatmap, types), totais, delta, ritmo, fora do horário.
 - `github.ts`: PRs filtrados, aging, cycle time, reviews por dev, merge sem review.
+- `branches.ts`: loader do `branches.json` + join branch↔PR, status derivados (viva-sem-PR, pousada via squash) e os cards e a tabela de `/branches`.
+- `graphData.ts` + `graph/`: o grafo de commits (`#grafo` de `/repos/:name`) — loader do `graph-REPO.json` por repo, algoritmo puro de lanes (`graph/lanes.ts`), cores de lane/ref (`graph/palette.ts`) e o reader tolerante de refs (`graph/refs.ts`).
 - `releases.ts`: loader do `releases.json` e métricas de cadência.
 - `urlState.ts`: filtros na query string (`?range=&from=&to=&repos=&devs=&bots=`), com escopo por `route.meta.filters`.
 - `summary.ts`: resumo semanal em markdown, ignorando os filtros da sidebar.
