@@ -184,23 +184,29 @@ export const burnout = computed<BurnoutRow[]>(() => {
   const rows = (stats.value?.weekly ?? []).filter(r => repoSelected(r.repo) && authorSelected(r.author, isBot(r.author)) && scopeMatches(r))
   const weeks = lastNWeekKeys(8)
   const last4 = new Set(weeks.slice(-4))
-  const byAuthor = new Map<string, { weekend: number, night: number, total: number, weekendsActive: number }>()
+  // issue #150: Set de weekKey por autor — stats.weekly tem uma linha por
+  // (semana × repo); contar linhas duplica o mesmo fim de semana do dev que
+  // commitou em mais de um repo na semana
+  const byAuthor = new Map<string, { weekend: number, night: number, total: number, weekendKeys: Set<string> }>()
 
   for (const r of rows) {
     if (!weeks.includes(r.week))
       continue
-    const b = getOrCreate(byAuthor, r.author, () => ({ weekend: 0, night: 0, total: 0, weekendsActive: 0 }))
+    const b = getOrCreate(byAuthor, r.author, () => ({ weekend: 0, night: 0, total: 0, weekendKeys: new Set<string>() }))
     b.weekend += r.weekend
     b.night += r.night
     b.total += r.commits
     if (last4.has(r.week) && r.weekend > 0)
-      b.weekendsActive++
+      b.weekendKeys.add(r.week)
   }
 
   return [...byAuthor.entries()]
     .map(([author, b]) => ({
       author,
-      ...b,
+      weekend: b.weekend,
+      night: b.night,
+      total: b.total,
+      weekendsActive: b.weekendKeys.size,
       offHoursPct: b.total > 0 ? (b.weekend + b.night) / b.total : 0,
     }))
     .filter(b => b.total > 0 && (b.weekend > 0 || b.night > 0))
