@@ -135,7 +135,7 @@ export interface BranchRowView {
   status: BranchStatus
   /** derivado: ahead > 0 mas liberado via squash-merge (join com PR MERGED) */
   squashPousada: boolean
-  /** derivado: ahead > 0, sem PR aberto, não-bot — trabalho vivo sem PR */
+  /** derivado: feature com ahead > 0 e sem PR aberto — trabalho vivo sem PR (refs de integração com desvio: card develop×produção) */
   vivaSemPr: boolean
   aheadProd: number
   behindProd: number

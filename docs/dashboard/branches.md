@@ -24,7 +24,7 @@ Collector statuses (closed union in `branches.json`): `production` (the producti
 
 Two derived statuses are computed in the frontend from the branch↔PR join:
 
-- **viva sem PR** — `aheadProd` > 0, no open PR for the branch, not a bot: live work without a pull request.
+- **viva sem PR** — `feature` branch with `aheadProd` > 0 and no open PR: live work without a pull request. Integration refs with pending work show up in the *develop × produção* card instead; bot branches follow the sidebar switch.
 - **pousada via squash** — squash-merges rewrite history, so the branch keeps `aheadProd` > 0 forever even though the work is released. It is only detectable by a MERGED PR with the same repo and `headRef`, plus `headRefOid` equal to the branch tip **or** a `mergedAt` at/after the tip's last activity. The `headRefOid` test avoids false positives when a branch is reused with new commits after the merge.
 
 ## Branch↔PR join and partial coverage

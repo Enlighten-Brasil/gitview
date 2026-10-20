@@ -24,7 +24,7 @@ Status do coletor (union fechada no `branches.json`): `production` (a ref de pro
 
 Dois status derivados são calculados no frontend a partir do join branch↔PR:
 
-- **viva sem PR** — `aheadProd` > 0, sem PR aberto para a branch, não-bot: trabalho vivo sem pull request.
+- **viva sem PR** — branch `feature` com `aheadProd` > 0 e sem PR aberto: trabalho vivo sem pull request. Refs de integração com trabalho parado aparecem no card *develop × produção*; branches de bot seguem o switch da sidebar.
 - **pousada via squash** — squash-merge reescreve a história, então a branch mantém `aheadProd` > 0 para sempre mesmo com o trabalho liberado. Só é detectável por um PR MERGED com o mesmo repo e `headRef`, mais `headRefOid` igual ao tip da branch **ou** `mergedAt` maior/igual à última atividade do tip. O teste do `headRefOid` evita falso positivo quando a branch é reutilizada com commits novos após o merge.
 
 ## Join branch↔PR e cobertura parcial
