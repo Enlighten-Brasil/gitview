@@ -9,7 +9,7 @@ description: Generate the dist with pnpm build, serve it with an SPA fallback, a
 
 ## What goes into the build
 
-The dashboard reads only the JSONs in `public/data/`: the 6 fixed ones — `stats.json`, `commits.json`, `github.json`, `branches.json`, `releases.json`, `team.json` — plus one `graph-<repo>.json` per repository for the commit graph. Nothing is recalculated from git in the browser. New data means a new build: run `pnpm collect` before publishing.
+The dashboard reads only the JSONs in `public/data/`: the 7 fixed ones — `stats.json`, `daily.json`, `commits.json`, `github.json`, `branches.json`, `releases.json`, `team.json` — plus one `graph-<repo>.json` per repository for the commit graph. Nothing is recalculated from git in the browser. New data means a new build: run `pnpm collect` before publishing.
 
 ## What doesn't exist in the static build
 
@@ -60,7 +60,7 @@ Commands and gates are in [Development setup](../contributing/development.md); t
 The demo at https://enlighten-brasil.github.io/gitview/ comes from `.github/workflows/pages.yml`, triggered on push to `main`, on `workflow_dispatch` and on the monthly cron `0 6 1 * *`:
 
 ```bash
-pnpm exec tsx scripts/make-demo-data.ts   # synthetic fixture for the eight JSONs (six fixed + two demo graphs)
+pnpm exec tsx scripts/make-demo-data.ts   # synthetic fixture for the nine JSONs (seven fixed + two demo graphs)
 pnpm check:data                           # validates the fixture before the build
 pnpm exec vite build --base "<base_path>/"
 cp dist/index.html dist/404.html          # SPA fallback

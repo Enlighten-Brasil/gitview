@@ -12,7 +12,7 @@ Everything the dashboard shows is generated data: the database and the JSONs reb
 | path | regenerable | note |
 |---|---|---|
 | `data/gitview.db` (+ `-wal`/`-shm`) | yes | database recreated by the collectors |
-| `public/data/*.json` | yes | the 6 fixed JSONs + the per-repo `graph-*.json` the frontend reads |
+| `public/data/*.json` | yes | the 7 fixed JSONs + the per-repo `graph-*.json` the frontend reads |
 | `data/repos/` | yes, but slow | bare clones; re-cloning is the expensive part |
 | `.env` | **no** | machine config and the token |
 | `team.local.json` | **no** | the team roster |

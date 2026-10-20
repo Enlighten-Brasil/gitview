@@ -9,7 +9,7 @@ description: Como gerar o dist com pnpm build, servir com fallback de SPA e mant
 
 ## O que entra no build
 
-O dashboard lê só os JSONs de `public/data/`: os 6 fixos — `stats.json`, `commits.json`, `github.json`, `branches.json`, `releases.json`, `team.json` — mais um `graph-<repo>.json` por repositório para o grafo de commits. Nada é recalculado do git no navegador. Dados novos pedem build novo: rode `pnpm collect` antes de publicar.
+O dashboard lê só os JSONs de `public/data/`: os 7 fixos — `stats.json`, `daily.json`, `commits.json`, `github.json`, `branches.json`, `releases.json`, `team.json` — mais um `graph-<repo>.json` por repositório para o grafo de commits. Nada é recalculado do git no navegador. Dados novos pedem build novo: rode `pnpm collect` antes de publicar.
 
 ## O que não existe no build estático
 
@@ -60,7 +60,7 @@ Comandos e gates estão em [Ambiente de desenvolvimento](../contributing/develop
 A demo em https://enlighten-brasil.github.io/gitview/ vem do `.github/workflows/pages.yml`, disparado em push para `main`, em `workflow_dispatch` e no cron mensal `0 6 1 * *`:
 
 ```bash
-pnpm exec tsx scripts/make-demo-data.ts   # fixture sintético nos oito JSONs (seis fixos + dois grafos demo)
+pnpm exec tsx scripts/make-demo-data.ts   # fixture sintético nos nove JSONs (sete fixos + dois grafos demo)
 pnpm check:data                           # valida o fixture antes do build
 pnpm exec vite build --base "<base_path>/"
 cp dist/index.html dist/404.html          # fallback de SPA

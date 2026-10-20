@@ -40,5 +40,5 @@ Com as fixtures da demo (`demo-api` com a ref de integração `develop`, `demo-w
 ## Relacionado
 
 - [Coletores](../architecture/collectors.md) — como o `branches.json` é produzido (só coletas completas).
-- [Modelo de dados](../architecture/data-model.md) — os seis arquivos JSON.
+- [Modelo de dados](../architecture/data-model.md) — os sete arquivos JSON.
 - [Regras dos filtros](./filters.md) — escopo de filtro por rota.

@@ -5,7 +5,7 @@ description: What each collector in scripts/ reads, what it writes, and how to c
 
 # Collectors
 
-The collectors in `scripts/` read the git repos and the GitHub API and write the six JSONs in `public/data/` plus one `graph-<repo>.json` per repo (commit topology for the graph view). `pnpm collect` runs the six in sequence and ends with `check-data.ts`; collectors that walk repos use a pool of 4. Identity mapping is explicit: logins and e-mails resolve to canonical names via `devProfiles` in `team.local.json` (`scripts/lib/team.ts`), never by fuzzy matching.
+The collectors in `scripts/` read the git repos and the GitHub API and write the seven JSONs in `public/data/` plus one `graph-<repo>.json` per repo (commit topology for the graph view). `pnpm collect` runs the six in sequence and ends with `check-data.ts`; collectors that walk repos use a pool of 4. Identity mapping is explicit: logins and e-mails resolve to canonical names via `devProfiles` in `team.local.json` (`scripts/lib/team.ts`), never by fuzzy matching.
 
 ## Summary
 
@@ -17,7 +17,7 @@ The collectors in `scripts/` read the git repos and the GitHub API and write the
 | `collect-graph.ts` | `graph-<repo>.json` (commit topology WITH merges, one file per repo: 40-hex hash/parents, canonical author, UTC ISO ms date, subject, ref/tag decoration) | `git log --all --date-order` on the local clones (window `GITVIEW_GRAPH_WINDOW`, default 1000) |
 | `collect-releases.ts` | `releases.json` (tags, commits per tag, unreleased, notes) | `git tag` + GitHub REST API |
 | `collect-team.ts` | `team.json` (devs, teams, unmapped candidates) | `team.local.json` + `stats.json`/`github.json` |
-| `check-data.ts` | — (validation only; exit 1 on error) | the JSONs in `public/data/` (the 6 fixed + the `graph-*.json` present) |
+| `check-data.ts` | — (validation only; exit 1 on error) | the JSONs in `public/data/` (the 7 fixed + the `graph-*.json` present) |
 
 ## Incremental collection
 

@@ -12,7 +12,7 @@ O que o dashboard mostra é dado gerado: banco e JSONs se refazem a partir dos r
 | caminho | regenerável | observação |
 |---|---|---|
 | `data/gitview.db` (+ `-wal`/`-shm`) | sim | banco recriado pelos coletores |
-| `public/data/*.json` | sim | os 6 JSONs fixos + os `graph-*.json` por repo que o frontend lê |
+| `public/data/*.json` | sim | os 7 JSONs fixos + os `graph-*.json` por repo que o frontend lê |
 | `data/repos/` | sim, mas lento | clones bare; re-clonar é a parte cara |
 | `.env` | **não** | config da máquina e o token |
 | `team.local.json` | **não** | cadastro do time |

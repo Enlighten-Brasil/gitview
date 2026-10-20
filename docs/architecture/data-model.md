@@ -1,11 +1,11 @@
 ---
 title: Data model
-description: The shapes of the six JSONs in public/data/ and the invariants the check-data gate requires of each.
+description: The shapes of the seven JSONs in public/data/ and the invariants the check-data gate requires of each.
 ---
 
 # Data model
 
-The frontend consumes exactly six JSONs in `public/data/`, plus one `graph-<repo>.json` per repo (commit topology for the graph view — the static frontend loads only the file of the repo being visited). The shape is a contract: when a field the UI reads disappears, `check-data.ts` fails the collection. The gate's general behavior is in [Collectors](./collectors.md); here are the keys and the checks of each file.
+The frontend consumes exactly six of the seven JSONs in `public/data/` (`daily.json` is collected and validated for the reports engine — issue #176 — but not read by the frontend yet), plus one `graph-<repo>.json` per repo (commit topology for the graph view — the static frontend loads only the file of the repo being visited). The shape is a contract: when a field the UI reads disappears, `check-data.ts` fails the collection. The gate's general behavior is in [Collectors](./collectors.md); here are the keys and the checks of each file.
 
 ## Summary
 
@@ -13,13 +13,14 @@ The frontend consumes exactly six JSONs in `public/data/`, plus one `graph-<repo
 |---|---|---|
 | `stats.json` | aggregates: weekly/monthly/heatmap/monthlyTypes/perAuthor/perRepo/repoUrls/totals | `collect.ts` |
 | `commits.json` | last 100 commits per author | `collect.ts` |
+| `daily.json` | day-precise aggregate: day × repo × author (+ scope), commits, lines, weekend/night flags | `collect.ts` |
 | `github.json` | PRs (OPEN + MERGED from the 400-day window) with reviews | `collect-github.ts` |
 | `releases.json` | tags, commits per tag, unreleased, notes | `collect-releases.ts` |
 | `team.json` | devs, teams, unmapped candidates | `collect-team.ts` |
 | `branches.json` | branch inventory per repo: status, ahead/behind without merges, authors ahead | `collect-branches.ts` |
 | `graph-<repo>.json` | commit topology WITH merges (one file per repo, window of `GITVIEW_GRAPH_WINDOW` commits) | `collect-graph.ts` |
 
-Rules common to all six: top-level object with `generatedAt` (ISO timestamp of the run), commit dates in UTC ISO with milliseconds. Authors are already canonical (aliases applied at collection) in every file **except `branches.json`**, which carries raw git e-mails (`%ae`) by design — pure git fact; the frontend maps e-mail→dev via `team.json#devs[].emails`. Lists are sparse: zero rows do not exist (no `commits: 0` filler).
+Rules common to all seven: top-level object with `generatedAt` (ISO timestamp of the run), commit dates in UTC ISO with milliseconds. Authors are already canonical (aliases applied at collection) in every file **except `branches.json`**, which carries raw git e-mails (`%ae`) by design — pure git fact; the frontend maps e-mail→dev via `team.json#devs[].emails`. Lists are sparse: zero rows do not exist (no `commits: 0` filler).
 
 ## stats.json
 
@@ -49,6 +50,16 @@ Rules common to all six: top-level object with `generatedAt` (ISO timestamp of t
 `hash` is the abbreviated 7-hex form; `message` is the commit subject, limited to 500 chars in the database. `scope` uses the same *omit-prod* encoding as stats.json (absent = production); the sample skips commits with unclassified scope (`NULL` in the database).
 
 **The gate requires**: dates uniformly UTC (ending in `Z`) and parseable; strict descending order by real timestamp (the dev profile page assumes this); `hash` matches `^[0-9a-f]{7}$`; `scope`, when present, inside the closed union `'integration' | 'branch'`.
+
+## daily.json
+
+| key | shape | meaning |
+|---|---|---|
+| `daily` | `[{ day, repo, author, scope?, commits, additions, deletions, weekend, night }]` | one row per day × repo × author (× scope); full history, no cutoff |
+
+`day` is the canonical-timezone date `YYYY-MM-DD` (`dayKeyOf` — never a UTC `slice`, which would shift day boundaries and diverge from `totals.activeDays`). `weekend`/`night` are the same subsets as `stats.json#weekly` (night = 22:00–05:59 in the canonical timezone), so off-hours stay day-precise in any rolling window. The file is lazy like `commits.json` (outside the initial load) and carries the whole history (~19 KB/year of rows; re-evaluate near 2 MB). It exists for the reports engine (issue #176), whose 7/30-day rolling windows must cut by day instead of approximating week/month (median error over 100%).
+
+**The gate requires**: `day` matches `YYYY-MM-DD`; Σ`daily.commits` = `totals.commits`; Σ over rows without `scope` = `totals.prodCommits` and over rows with `scope` = `totals.progressCommits`; Σ`additions`/Σ`deletions` = the totals; Σ`weekend` = Σ`weekly.weekend` and Σ`night` = Σ`weekly.night` (same predicates over the same lines); `scope`, when present, inside the closed union `'integration' | 'branch'`. **Non-blocking warning**: number of distinct `day` values ≠ `totals.activeDays` (canonical timezone drifted at collection).
 
 ## github.json
 

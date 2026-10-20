@@ -1,8 +1,8 @@
 // scripts/make-demo-data.ts — fixture sintético da demo pública (GitHub Pages)
 //
-// Gera os 8 JSONs de public/data/ com dados 100% FICTÍCIOS (devs "Ana"/"Beto",
+// Gera os 9 JSONs de public/data/ com dados 100% FICTÍCIOS (devs "Ana"/"Beto",
 // repos demo-*, commits fake) para a demo servir sem nenhum dado real do time:
-// os 6 fixos + graph-demo-api/demo-web (topologia do grafo de commits, #146).
+// os 7 fixos + graph-demo-api/demo-web (topologia do grafo de commits, #146).
 // As linhas perAuthor levam byScope derivado dos mesmos commits (#164) e os
 // graph-*.json órfãos de public/data são apagados antes da escrita (#164).
 // As datas se ancoram em "hoje" (UTC) de propósito: a demo sempre cobre o
@@ -17,7 +17,7 @@ import { getOrCreate } from '../src/collections'
 const OUT = join(process.cwd(), 'public', 'data')
 const FORCE = process.argv.includes('--force')
 
-const TARGETS = ['stats.json', 'commits.json', 'github.json', 'branches.json', 'releases.json', 'team.json', 'graph-demo-api.json', 'graph-demo-web.json']
+const TARGETS = ['stats.json', 'daily.json', 'commits.json', 'github.json', 'branches.json', 'releases.json', 'team.json', 'graph-demo-api.json', 'graph-demo-web.json']
 if (!FORCE) {
   const existing = TARGETS.filter(f => existsSync(join(OUT, f)))
   if (existing.length) {
@@ -259,6 +259,23 @@ const monthlyTypes = groupBy(commits, c => `${monthKey(new Date(c.date))}|${c.re
   commits: rs.length,
 }))
 
+// daily.json (issue #175): agregado dia-preciso derivado dos MESMOS commits —
+// chave dia|repo|autor|scope e predicados de weekend/night idênticos aos do
+// weekly (campo pré-computado em Commit), então os invariantes contra o
+// stats.json (Σcommits/prod/progress/additions/deletions e Σweekend/Σnight vs
+// weekly) valem por construção
+const daily = groupBy(commits, c => `${dayKey(new Date(c.date))}|${c.repo}|${c.author}|${c.scope}`, (c, rs) => ({
+  day: dayKey(new Date(c.date)),
+  repo: c.repo,
+  author: c.author,
+  ...(c.scope === 'prod' ? {} : { scope: c.scope }),
+  commits: rs.length,
+  additions: rs.reduce((a, r) => a + r.additions, 0),
+  deletions: rs.reduce((a, r) => a + r.deletions, 0),
+  weekend: rs.reduce((a, r) => a + r.weekend, 0),
+  night: rs.reduce((a, r) => a + r.night, 0),
+}))
+
 const generatedAt = iso(new Date())
 
 const stats = {
@@ -280,6 +297,8 @@ const commitsJson = {
   // amostra com a mesma codificação omit-prod do coletor real (issue #119)
   commits: commits.slice(0, 100).map(({ hash, repo, author, date, message, additions, deletions, scope }) => ({ hash, repo, author, date, message, additions, deletions, ...(scope === 'prod' ? {} : { scope }) })),
 }
+
+const dailyJson = { generatedAt, daily }
 
 // PRs fictícios — invariantes: MERGED tem mergedAt, sem repo#number duplicado
 const day = (back: number, hour: number) => isoNoMs(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - back, hour, 12)))
@@ -505,9 +524,9 @@ mkdirSync(OUT, { recursive: true })
 // stats.json#repos". Apaga TODOS antes de gravar: os demo são regravados abaixo
 for (const f of readdirSync(OUT).filter(f => /^graph-.+\.json$/.test(f)))
   rmSync(join(OUT, f))
-for (const [name, data] of Object.entries({ 'stats.json': stats, 'commits.json': commitsJson, 'github.json': github, 'branches.json': branches, 'releases.json': releases, 'team.json': team, 'graph-demo-api.json': graphDemoApi, 'graph-demo-web.json': graphDemoWeb }))
+for (const [name, data] of Object.entries({ 'stats.json': stats, 'daily.json': dailyJson, 'commits.json': commitsJson, 'github.json': github, 'branches.json': branches, 'releases.json': releases, 'team.json': team, 'graph-demo-api.json': graphDemoApi, 'graph-demo-web.json': graphDemoWeb }))
   writeFileSync(join(OUT, name), `${JSON.stringify(data, null, 2)}\n`)
 
 const demoBranches = branches.repos.reduce((n, r) => n + r.branches.length, 0)
 const demoGraphCommits = graphDemoApi.commits.length + graphDemoWeb.commits.length
-console.log(`make-demo-data: 8 arquivos gerados em ${OUT} (${commits.length} commits fictícios, ${prs.length} PRs, ${demoBranches} branches, ${demoGraphCommits} commits de grafo)`)
+console.log(`make-demo-data: 9 arquivos gerados em ${OUT} (${commits.length} commits fictícios, ${daily.length} linhas dia×repo×autor, ${prs.length} PRs, ${demoBranches} branches, ${demoGraphCommits} commits de grafo)`)

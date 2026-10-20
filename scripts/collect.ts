@@ -646,6 +646,11 @@ async function main() {
   const KEY_SEP = '\u0001'
   const weekly = new Map<string, { commits: number, weekend: number, night: number }>() // week/repo/author/scope
   const monthly = new Map<string, { commits: number, additions: number, deletions: number }>() // month/repo/author/scope
+  // agregado dia-preciso (issue #175): os mesmos predicados de weekend/night do
+  // weekly + as linhas do monthly numa chave só (day/repo/author/scope) — alimenta
+  // relatórios de períodos rolantes (7d/30d) dia-precisos, sem aproximar por
+  // semana/mês. Sai em public/data/daily.json (lazy, fora do boot como commits.json)
+  const daily = new Map<string, { commits: number, additions: number, deletions: number, weekend: number, night: number }>() // day/repo/author/scope
   const monthlyTypes = new Map<string, number>() // month/repo/author/scope/type
   const heatmap = new Map<string, number>() // author/repo/month/weekday/hour/scope
   // heatmap ganha dimensão de mês pro filtro de período funcionar no frontend;
@@ -717,6 +722,21 @@ async function main() {
 
     const dk = dayKeyOf(cp)
     allDays.add(dk)
+
+    // linha dia-preciso (issue #175): MESMAS regras de skip da data quebrada e do
+    // scope NULL acima; dia é o canônico (dayKeyOf) — r.date.slice(0,10) é UTC e
+    // deslocaria o corte de dias (divergiria de totals.activeDays). Predicados de
+    // weekend/night idênticos aos do weekly (relatórios off-hours em qualquer janela)
+    const dKey = `${dk}${KEY_SEP}${r.repo}${KEY_SEP}${r.author}${KEY_SEP}${scope}`
+    const dCur = daily.get(dKey) ?? { commits: 0, additions: 0, deletions: 0, weekend: 0, night: 0 }
+    dCur.commits++
+    dCur.additions += r.additions
+    dCur.deletions += r.deletions
+    if (cp.weekday === 0 || cp.weekday === 6)
+      dCur.weekend++
+    if (cp.h >= 22 || cp.h < 6)
+      dCur.night++
+    daily.set(dKey, dCur)
 
     const pa = getOrCreate(perAuthor, r.author, () => ({ commits: 0, additions: 0, deletions: 0, repos: new Set<string>(), days: new Set<string>(), last: '', axes: { prod: newAxisAcc(), progress: newAxisAcc() } }))
     pa.commits++
@@ -812,6 +832,20 @@ async function main() {
   writeFileSync(out, JSON.stringify(stats))
   const kb = (JSON.stringify(stats).length / 1024).toFixed(0)
   console.log(`\nstats.json gerado (${kb} KB) com ${stats.totals.commits} commits (prod ${totalProd} + progresso ${totalProgress}) de ${stats.totals.authors} autores em ${repos.length} repos.`)
+
+  // daily.json (issue #175): MESMO padrão do commits.json — arquivo próprio, lazy,
+  // fora do boot (embutir em stats.json custaria ~+61% no carregamento). SEM cutoff:
+  // histórico completo (~145 linhas/mês ≈ +19 KB/ano; reavaliar perto de ~2 MB) — o
+  // delta da onda 2 (relatórios) depende literalmente do histórico inteiro.
+  // Sem sort: a ordem de inserção vem do ORDER BY date ASC do banco (determinística)
+  writeFileSync(join(root, 'public', 'data', 'daily.json'), JSON.stringify({
+    generatedAt: new Date().toISOString(),
+    daily: [...daily.entries()].map(([k, v]) => {
+      const [day, repo, author, scope] = k.split(KEY_SEP)
+      return { day, repo, author, ...(scope === 'prod' ? {} : { scope }), commits: v.commits, additions: v.additions, deletions: v.deletions, weekend: v.weekend, night: v.night }
+    }),
+  }))
+  console.log(`daily.json gerado com ${daily.size} linhas dia×repo×autor (histórico completo, lazy).`)
   if (skippedBadDate > 0)
     console.warn(`⚠ ${skippedBadDate}/${rows.length} linhas no banco têm data inválida e ficaram fora de TODAS as métricas — rode pnpm clean && pnpm collect se o número parecer errado`)
   if (skippedNoScope > 0)
