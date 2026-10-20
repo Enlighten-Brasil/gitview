@@ -22,8 +22,8 @@ The collectors in `scripts/` read the git repos and the GitHub API and write the
 ## Incremental collection
 
 - **`collect.ts` (default)**: `git log` gets `--since=<watermark>` per repo: `MAX(date)` in the database minus 7 days, a margin that covers commits with an old committer date. `INSERT OR IGNORE` on `(repo, hash)` makes the overlap harmless.
-- **`--full`**: rescans the whole history, ignoring the watermark.
-- **`--reaggregate`**: skips the fetch and `git log`; re-applies aliases to stored rows and re-exports the JSONs. The `byScope` axes derive from the stored `scope` column, so this mode repopulates them without git.
+- **`--full`**: rescans the whole history, ignoring the watermark. `pnpm collect:full` runs the whole chain with this flag on `collect.ts` and `collect-github.ts` (the only two that read it).
+- **`--reaggregate`**: skips the fetch and `git log`; re-applies aliases to stored rows and re-exports the JSONs. The `byScope` axes derive from the stored `scope` column, so this mode repopulates them without git. `pnpm collect:reaggregate` runs it from the CLI.
 - **`collect-github.ts`**: refetches only PRs updated since the last collection (1-day margin) and merges with the previous file; stored MERGED PRs are preserved, the fresh OPEN list is the truth, and PRs whose `mergedAt` fell outside the window expire. `--full` ignores the cache in the fetch, and the previous file remains as a safety net: a repo that fails does not show up empty on the dashboard.
 - **`collect-branches.ts`**: no incremental mode — every run re-enumerates `refs/heads` in full (pool of 4 with async spawns; ~25s for ~200 branches on 14 repos). It never fetches: freshness is tied to the `collect.ts` fetch at the start of the chain, like `stats.json`.
 - **`collect-graph.ts`**: no incremental mode — every run re-walks the last `GITVIEW_GRAPH_WINDOW` commits per repo (default 1000; pool of 4 with async spawns, ~1s for 14 repos) and rewrites its `graph-<repo>.json`. It never fetches and never touches the database or `stats.json`: freshness is tied to the `collect.ts` fetch at the start of the chain.
@@ -32,7 +32,7 @@ On every `collect.ts` run: repos outside the selection are pruned from the datab
 
 ## Light re-collection
 
-`GET /__collect?light=1` (the **salvar + recoletar** (save + re-collect) button in `/teams`) runs `collect.ts --reaggregate`, incremental `collect-github.ts`, `collect-team.ts` and `check-data.ts`. It skips the git scan, releases, branches and graph: team edits change identity, not history — and without a fetch, re-enumerating branches or re-walking the topology would return exactly what the last full collection produced, at a cost. Existing `graph-*.json` files survive the light re-collection untouched (nothing rewrites or deletes them); the gate validates the files present, and a repo of `stats.json` without its graph file is a warning, not an error — only a full collection generates it.
+`GET /__collect?light=1` (the **salvar + recoletar** (save + re-collect) button in `/teams`) runs `collect.ts --reaggregate`, incremental `collect-github.ts`, `collect-team.ts` and `check-data.ts` — the same steps as `pnpm collect:reaggregate` on the CLI. It skips the git scan, releases, branches and graph: team edits change identity, not history — and without a fetch, re-enumerating branches or re-walking the topology would return exactly what the last full collection produced, at a cost. Existing `graph-*.json` files survive the light re-collection untouched (nothing rewrites or deletes them); the gate validates the files present, and a repo of `stats.json` without its graph file is a warning, not an error — only a full collection generates it.
 
 ## Managed clones: fetch and read-only
 
@@ -69,6 +69,8 @@ Insert rules do not reach rows already stored, and removed aliases do not revert
 
 ```bash
 pnpm collect            # the 6 collectors in sequence + check-data at the end
+pnpm collect:full       # the same chain with --full (full rescan + refetch)
+pnpm collect:reaggregate # light: re-aggregation + PRs + team + check-data
 pnpm collect:github     # PRs only
 pnpm collect:branches   # branches only
 pnpm collect:graph      # commit topology only (graph-*.json, with merges)

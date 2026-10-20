@@ -33,8 +33,10 @@ All the scripts in `package.json`:
 | `pnpm setup` | terminal wizard: choose and clone the org's repos |
 | `pnpm collect` | the 6 collectors in sequence, plus `check:data` (incremental) |
 | `pnpm collect:branches` | the branch inventory only (`branches.json`) |
+| `pnpm collect:full` | the same chain with `--full` (full rescan + refetch) |
 | `pnpm collect:github` | PRs and reviews only |
 | `pnpm collect:graph` | the commit-graph topology only (`graph-*.json`) |
+| `pnpm collect:reaggregate` | light: re-aggregation + PRs + team + `check:data` |
 | `pnpm collect:releases` | releases only |
 | `pnpm collect:team` | the team roster only (`team.json`) |
 | `pnpm check:data` | shape and invariants of the JSONs; local data gate |

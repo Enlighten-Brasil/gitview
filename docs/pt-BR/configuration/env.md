@@ -55,7 +55,7 @@ O `.env` guarda a config da máquina: credenciais do GitHub, onde estão os clon
 - O `collect-graph.ts` grava um arquivo por repo com os últimos `GITVIEW_GRAPH_WINDOW` commits de todos os refs (`git log --all --date-order`), incluindo merges — eles são os conectores do desenho do grafo. O arquivo não alimenta o banco nem as métricas: a decisão `--no-merges` segue intacta.
 - A janela é CONTAGEM de commits, não dias: o período coberto varia com a velocidade de cada repo (1000 commits ≈ 87 dias no ritmo atual do time).
 - Aceita inteiro > 0; vazio conta como não definido. Valor inválido (0, negativo, não numérico) imprime aviso e cai no default 1000.
-- Só a coleta completa gera os arquivos (`pnpm collect` / **recoletar tudo**); a recoleta leve deixa os `graph-*.json` existentes intocados, e repo sem o seu arquivo é aviso não bloqueante no `check-data` (a UI mostra empty-state).
+- Só a coleta completa gera os arquivos (`pnpm collect`, `pnpm collect:full` / **recoletar tudo**); a recoleta leve deixa os `graph-*.json` existentes intocados, e repo sem o seu arquivo é aviso não bloqueante no `check-data` (a UI mostra empty-state).
 
 ## Métricas e dados
 

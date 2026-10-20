@@ -50,6 +50,8 @@ Fluxo completo de publicação, inclusive o deploy da demo: [Publicando o build 
 pnpm dev / start        # dashboard em http://localhost:5173
 pnpm setup              # assistente no terminal: escolher e clonar os repos da org
 pnpm collect            # os 6 coletores em sequência + validação (incremental)
+pnpm collect:full       # a mesma cadeia com --full (re-scan completo + refetch)
+pnpm collect:reaggregate # leve: re-agregação + PRs + time + validação
 pnpm collect:branches   # só o inventário de branches
 pnpm collect:github     # só PRs e reviews
 pnpm collect:graph      # só a topologia do grafo de commits

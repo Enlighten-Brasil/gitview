@@ -37,6 +37,8 @@ O que o dashboard mostra é dado gerado: banco e JSONs se refazem a partir dos r
 pnpm clean              # apaga data/gitview.db* + public/data/*.json
 pnpm clean -- --repos   # apaga também os clones de data/repos
 pnpm collect            # os 6 coletores em sequência + validação
+pnpm collect:full       # a mesma cadeia com --full (re-scan completo + refetch)
+pnpm collect:reaggregate # leve: re-agregação + PRs + time + validação
 ```
 
 O `--` antes de `--repos` é obrigatório: sem ele o pnpm não repassa a flag. Depois de `pnpm clean` rode `pnpm collect` (ou ↻) para regenerar os JSONs.
