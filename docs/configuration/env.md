@@ -46,6 +46,17 @@ The `.env` holds the machine config: GitHub credentials, where the clones live, 
 - `GITVIEW_BRANCH_STALE_DAYS` accepts an integer ≥ 0; empty or invalid falls back to the default 30, which matches a monthly release cycle. `pousada` also requires `aheadProd = 0` — an old branch with commits ahead of production stays `feature`.
 - `branches.json` is pure git fact: `authorsAhead` carries raw commit e-mails (`%ae`), never canonical names, and the line counts sum the raw numstat. Alias/team edits reflect without re-collecting — the frontend maps e-mail→dev via `team.json#devs[].emails`.
 
+## Graph
+
+| key | what it does | default |
+|---|---|---|
+| `GITVIEW_GRAPH_WINDOW` | commits per repo in the topology file `graph-<repo>.json` (commit graph, with merges) | `1000` |
+
+- `collect-graph.ts` writes one file per repo with the last `GITVIEW_GRAPH_WINDOW` commits of all refs (`git log --all --date-order`), including merges — they are the connectors of the graph drawing. The file feeds neither the database nor the metrics: the `--no-merges` decision is untouched.
+- The window is a COUNT of commits, not days: the period covered varies with each repo's velocity (1000 commits ≈ 87 days at the team's current pace).
+- Accepts an integer > 0; empty counts as not set. An invalid value (0, negative, non-numeric) prints a warning and falls back to the default 1000.
+- Only the full collection generates the files (`pnpm collect` / **recoletar tudo**); the light re-collection leaves existing `graph-*.json` untouched, and a repo without its file is a non-blocking warning in `check-data` (the UI shows an empty state).
+
 ## Metrics and data
 
 | key | what it does | default |

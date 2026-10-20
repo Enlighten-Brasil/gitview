@@ -5,7 +5,7 @@ description: Os shapes dos seis JSONs de public/data/ e os invariantes que o gat
 
 # Modelo de dados
 
-O frontend consome exatamente seis JSONs em `public/data/`. O shape é contrato: quando um campo que a UI lê some, o `check-data.ts` derruba a coleta. O comportamento geral do gate está em [Coletores](./collectors.md); aqui estão as chaves e as checagens de cada arquivo.
+O frontend consome exatamente seis JSONs em `public/data/`, mais um `graph-<repo>.json` por repo (topologia de commits para a vista de grafo — o frontend estático carrega só o arquivo do repo visitado). O shape é contrato: quando um campo que a UI lê some, o `check-data.ts` derruba a coleta. O comportamento geral do gate está em [Coletores](./collectors.md); aqui estão as chaves e as checagens de cada arquivo.
 
 ## Resumo
 
@@ -17,6 +17,7 @@ O frontend consome exatamente seis JSONs em `public/data/`. O shape é contrato:
 | `releases.json` | tags, commits por tag, não liberados, notas | `collect-releases.ts` |
 | `team.json` | devs, times, candidatos sem mapeamento | `collect-team.ts` |
 | `branches.json` | inventário de branches por repo: status, ahead/behind sem merges, autores à frente | `collect-branches.ts` |
+| `graph-<repo>.json` | topologia de commits COM merges (um arquivo por repo, janela de `GITVIEW_GRAPH_WINDOW` commits) | `collect-graph.ts` |
 
 Regras comuns aos seis: objeto no topo com `generatedAt` (timestamp ISO da execução), datas de commit em UTC ISO com milissegundos. Autores já canônicos (aliases aplicados na coleta) em todo arquivo **exceto `branches.json`**, que leva e-mails crus do git (`%ae`) por design — fato puramente git; o frontend mapeia e-mail→dev via `team.json#devs[].emails`. As listas são esparsas: linhas zeradas não existem (nada de `commits: 0` de preenchimento).
 
@@ -158,3 +159,51 @@ Regras comuns aos seis: objeto no topo com `generatedAt` (timestamp ISO da execu
 ```
 
 **O gate exige**: `generatedAt` válido; todo `repo` presente no `stats.json#repos`; exatamente 1 branch com status `production` por repo, com nome igual ao `productionRef` daquela entrada; nomes de branch únicos por repo; `tip` casando `^[0-9a-f]{7,40}$`; `aheadProd`/`behindProd`/`additions`/`deletions` inteiros ≥ 0; `aheadInt`/`behindInt` inteiros ≥ 0 ou `null`; `status` dentro da union fechada; `authorsAhead` lista de strings com `@`; `lastActivity` parseável como data. **Avisos não bloqueantes**: `lastActivity` no futuro (mais de 1 dia de folga); repo sem nenhuma ref de integração.
+
+## graph-\<repo\>.json
+
+Um arquivo por repo (`graph-<repo>.json`, `<repo>` = nome da pasta do clone, o mesmo nome usado em `stats.json#repos`): a topologia de commits para a vista de grafo, COM merges — eles são os conectores do desenho. O coletor lê o git diretamente (`git log --all --date-order`); não alimenta o banco nem o `stats.json`, então a decisão `--no-merges` das métricas segue intacta.
+
+| chave | shape | significado |
+|---|---|---|
+| `generatedAt` | string ISO | timestamp da execução que gravou este arquivo |
+| `repo` | string | nome do repo (igual ao nome do arquivo sem extensão) |
+| `window` | number | `GITVIEW_GRAPH_WINDOW` usado na execução (default 1000) — CONTAGEM de commits, não dias |
+| `commits` | `[{ hash, parents, author, date, subject, refs }]` | os últimos `window` commits de todos os refs, em ordem descendente por timestamp |
+
+| chave de commit | shape | significado |
+|---|---|---|
+| `hash` | string | SHA completo 40-hex |
+| `parents` | `string[]` | SHAs completos 40-hex dos pais: `[]` na raiz, 2+ em merge. Pais fora da janela NÃO são resolvidos — o renderer indexa hash→linha e os clipa |
+| `author` | string | autor canônico (aliases aplicados na coleta) |
+| `date` | string ISO | author date em UTC com milissegundos (`2026-02-01T12:00:00.000Z`) |
+| `subject` | string | assunto do commit (`%s`, linha única) |
+| `refs` | `string[]` | itens da decoration (`%D`), um por entrada: `HEAD -> main`, `tag: v1.0.0`, `develop`…; `[]` sem refs. Clones gerenciados são BARE com refs locais (`refs/heads/*`, sem prefixo `origin/`): branches saem com nome curto |
+
+```json
+{
+  "generatedAt": "2026-02-01T12:34:56.000Z",
+  "repo": "<repo>",
+  "window": 1000,
+  "commits": [
+    {
+      "hash": "3f9a1c7e5b2d84061fa9c3e7b5d20481af6c9e3b",
+      "parents": ["9c8f6e2a1d4b70358fa9c3e7b5d20481af6c9e11", "1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d"],
+      "author": "ana-dev",
+      "date": "2026-02-01T12:00:00.000Z",
+      "subject": "Merge branch 'feat/new-export' into main",
+      "refs": ["HEAD -> main"]
+    },
+    {
+      "hash": "9c8f6e2a1d4b70358fa9c3e7b5d20481af6c9e11",
+      "parents": ["7d6c5b4a39281706f5e4d3c2b1a0988776655443"],
+      "author": "bruno-dev",
+      "date": "2026-01-31T18:05:13.000Z",
+      "subject": "feat: new export",
+      "refs": []
+    }
+  ]
+}
+```
+
+**O gate exige** (por arquivo presente): `generatedAt` válido; `repo` igual ao nome do arquivo sem extensão; `window` inteiro > 0 e `commits` com no máximo `window` itens; todo `hash` e `parents[]` casando `^[0-9a-f]{40}$`; `author` string não vazia; `date` em UTC ISO com milissegundos; `subject`/`refs` presentes (`refs` lista de strings); ordem descendente por timestamp real; sem hash duplicado. **Avisos não bloqueantes**: repo do `stats.json#repos` sem o seu `graph-<repo>.json` (só a coleta completa gera — a recoleta leve deixa os arquivos existentes intocados e a UI mostra empty-state); arquivo de grafo cujo repo não está no `stats.json#repos` (órfão — o repo saiu da seleção; `pnpm clean` remove).
