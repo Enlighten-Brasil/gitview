@@ -96,6 +96,8 @@ pnpm collect:releases   # só releases
 pnpm check:data         # só a validação de shape + invariantes dos JSONs
 pnpm check:scrub        # gate anti-regressão do scrub de identidade (roda no CI)
 pnpm snapshot:metrics   # matriz determinística das agregações p/ regressão (18 cenários, docs/contributing/development)
+pnpm demo               # fixtures sintéticas demo-api/demo-web (8 JSONs, incl. graph-demo-*.json)
+pnpm demo:shots         # capturas das docs — SOMENTE sobre a fixture sintética (guard no script)
 pnpm lint               # eslint (@antfu/eslint-config — padrão da org; config em eslint.config.js)
 pnpm typecheck          # tsc --noEmit (scripts + src; templates .vue fora)
 pnpm dev                # http://localhost:5173 (Vite)

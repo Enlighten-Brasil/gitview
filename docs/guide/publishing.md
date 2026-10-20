@@ -60,7 +60,7 @@ Commands and gates are in [Development setup](../contributing/development.md); t
 The demo at https://enlighten-brasil.github.io/gitview/ comes from `.github/workflows/pages.yml`, triggered on push to `main`, on `workflow_dispatch` and on the monthly cron `0 6 1 * *`:
 
 ```bash
-pnpm exec tsx scripts/make-demo-data.ts   # synthetic fixture for the six JSONs
+pnpm exec tsx scripts/make-demo-data.ts   # synthetic fixture for the eight JSONs (six fixed + two demo graphs)
 pnpm check:data                           # validates the fixture before the build
 pnpm exec vite build --base "<base_path>/"
 cp dist/index.html dist/404.html          # SPA fallback

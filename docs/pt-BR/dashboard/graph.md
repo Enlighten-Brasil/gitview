@@ -23,7 +23,7 @@ Commits de merge são desenhados como **círculos vazados**: no grafo eles são 
 
 ## Empty state
 
-Sem um `graph-REPO.json` para o repo, a seção mostra *"Sem grafo de commits para esse repo — rode `pnpm collect`"* e o resto da página renderiza normalmente. As fixtures da demo (`demo-api`/`demo-web`) mostram esse estado enquanto a coleta do grafo não estiver disponível para elas.
+Sem um `graph-REPO.json` para o repo, a seção mostra *"Sem grafo de commits para esse repo — rode `pnpm collect`"* e o resto da página renderiza normalmente. As fixtures da demo trazem grafos próprios: o `pnpm demo` (`make-demo-data.ts`) emite `graph-demo-api.json`/`graph-demo-web.json` no shape do contrato, com junções de merge visíveis, exatamente uma aresta clipada por repo (um pai fora da janela — a aresta tracejada "continua") e chips de refs nos tips das branches e tags demo. A demo pública renderiza a seção completa, não o empty state.
 
 ## Contrato de dados (`graph-REPO.json`)
 
