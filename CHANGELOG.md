@@ -1,5 +1,16 @@
 # gitview
 
+## 0.56.1
+
+### Patch Changes
+
+- ebf90b9: O comentário de cabeçalho do `.github/workflows/ci.yml` passa a espelhar os gates na ordem real de execução dos steps (`pnpm check:scrub` → `pnpm lint` → `pnpm typecheck` → `pnpm build`), corrigindo a lista defasada que omitia o `check:scrub`, o primeiro gate do job `gates`. Apenas as linhas de comentário do topo foram reescritas — a explicação do job `docs` e a do `check:data` deliberadamente fora do CI foram preservadas, e nenhum step do workflow foi alterado.
+- f80f85b: As comparações de percentual fora do `statusOf` passam a usar o `displayPct`, o mesmo helper já aplicado dentro dele (#99/#106): a cor do % de fixes no RepoTable, a contagem de devs em padrão fora do horário no AlertStrip e o filtro do bloco "Atenção" do resumo semanal comparam agora o valor quantizado na precisão do número exibido, então cor e contagens voltam a bater com o que está impresso (ex.: `fixPct` 0,345 imprimia "35%" em âmbar, contradizendo o rodapé "quente = ≥35%"; `offHoursPct` 0,247 aparecia como "25%" `padrão` no painel mas ficava de fora do alerta e do resumo). Nenhum número visível muda.
+- 1dbdacc: Labels de contagem nos cards e no resumo semanal agora concordam no singular quando o valor é exatamente 1 ("1 PR aberto", "1 PR parado há 14+ dias", "1 mergeado no período", "1 dev ativo", "1 repo ativo", "1 dia ativo", "1 repositório", "1 aberto agora"), com ternário inline no padrão da casa (decisão da issue #97) em vez de plural fixo.
+- b2526ed: Guarda de parse no `defineLoader` compartilhado: sob fallback SPA (dev e preview), um `public/data/*.json` ausente devolve `index.html` com status 200, e o `res.json()` sem guarda vazava um erro críptico de parse JSON para a UI. Agora content-type `text/html` ou falha de parse lança o mesmo erro de um 404 real (`opts.httpError(404)` ou `HTTP 404`), preservando a mensagem fixa que cada loader (stats/github/team/commits/releases/branches) já concatena — arquivo não coletado volta a ser reportado como "arquivo ausente", indistinguível do 404 verdadeiro.
+- bba5c92: Corrige as citações restantes da rota antiga `/team` para a canônica `/teams` nos comentários e avisos dos coletores: o cabeçalho do `collect-github.ts`, o aviso de logins sem mapeamento no fim da coleta, o cabeçalho da migração em `lib/legacy.ts` e o cabeçalho do `lib/team.ts`. Mudança apenas de texto, sem efeito de comportamento — o alias `/team` continua existindo para preservar links antigos, e as menções que explicam o alias de propósito (página de times e docs de configuração) ficam como estão.
+- 0b86e03: Corrige double-count no burnout.weekendsActive: o campo incrementava +1 por linha de stats.weekly com weekend > 0 na janela das últimas 4 semanas e, como stats.weekly tem uma linha por (semana × repo), o mesmo fim de semana contava várias vezes para o dev que commitou em mais de um repo na semana. A computed burnout agora agrega as semanas ISO únicas por autor com um Set de weekKey e weekendsActive é o tamanho do Set; as somas weekend/night/total continuam aditivas por linha e o número exibido só diminui ou fica igual.
+
 ## 0.56.0
 
 ### Minor Changes
