@@ -3,11 +3,13 @@
 // Gera os 8 JSONs de public/data/ com dados 100% FICTÍCIOS (devs "Ana"/"Beto",
 // repos demo-*, commits fake) para a demo servir sem nenhum dado real do time:
 // os 6 fixos + graph-demo-api/demo-web (topologia do grafo de commits, #146).
+// As linhas perAuthor levam byScope derivado dos mesmos commits (#164) e os
+// graph-*.json órfãos de public/data são apagados antes da escrita (#164).
 // As datas se ancoram em "hoje" (UTC) de propósito: a demo sempre cobre o
 // período default de 12M — o custo é o fixture não ser byte-idêntico entre dias.
 // Segurança: recusa-se a sobrescrever dados existentes sem --force.
 import type { GraphCommit, GraphData } from '../src/types'
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
 import { getOrCreate } from '../src/collections'
@@ -142,8 +144,8 @@ const totals = {
   authors: DEVS.length,
 }
 
-function streaksFor(author: string) {
-  const days = [...new Set(commits.filter(c => c.author === author).map(c => dayKey(new Date(c.date))))].sort()
+function streaksFor(rows: Commit[]) {
+  const days = [...new Set(rows.map(c => dayKey(new Date(c.date))))].sort()
   let longest = 0
   let cur = 0
   let prev: number | null = null
@@ -179,11 +181,10 @@ const perRepo = REPOS.map(({ repo }) => {
   }
 })
 
-const perAuthor = DEVS.map(({ name }) => {
-  const rows = commits.filter(c => c.author === name)
-  const { streak, longestStreak } = streaksFor(name)
+/** medidas de uma linha perAuthor (integral) ou de um eixo byScope (issue #164) */
+function measuresFor(rows: Commit[]) {
+  const { streak, longestStreak } = streaksFor(rows)
   return {
-    author: name,
     commits: rows.length,
     additions: rows.reduce((a, c) => a + c.additions, 0),
     deletions: rows.reduce((a, c) => a + c.deletions, 0),
@@ -192,6 +193,22 @@ const perAuthor = DEVS.map(({ name }) => {
     lastCommit: rows.map(c => c.date).sort().at(-1) ?? '',
     streak,
     longestStreak,
+  }
+}
+
+// byScope (issue #164): eixos prod/progress derivados dos MESMOS commits da
+// linha — os invariantes do check-data (#152) valem por construção: os
+// aditivos somam a linha (partição por scope), dias/repos do eixo são
+// subconjuntos dos da linha e o longestStreak do eixo é um run dos dias dela
+const perAuthor = DEVS.map(({ name }) => {
+  const rows = commits.filter(c => c.author === name)
+  return {
+    author: name,
+    ...measuresFor(rows),
+    byScope: {
+      prod: measuresFor(rows.filter(c => c.scope === 'prod')),
+      progress: measuresFor(rows.filter(c => c.scope !== 'prod')),
+    },
   }
 })
 
@@ -483,6 +500,11 @@ const graphDemoWeb = graphFor('demo-web', [
 ])
 
 mkdirSync(OUT, { recursive: true })
+// graph-*.json órfãos (issue #164): sob um public/data com graphs reais
+// pré-existentes, os não-demo sobravam e o check:data avisava "repo ausente do
+// stats.json#repos". Apaga TODOS antes de gravar: os demo são regravados abaixo
+for (const f of readdirSync(OUT).filter(f => /^graph-.+\.json$/.test(f)))
+  rmSync(join(OUT, f))
 for (const [name, data] of Object.entries({ 'stats.json': stats, 'commits.json': commitsJson, 'github.json': github, 'branches.json': branches, 'releases.json': releases, 'team.json': team, 'graph-demo-api.json': graphDemoApi, 'graph-demo-web.json': graphDemoWeb }))
   writeFileSync(join(OUT, name), `${JSON.stringify(data, null, 2)}\n`)
 
