@@ -1,13 +1,16 @@
 {
   "name": "gitview",
   "type": "module",
-  "version": "0.57.3",
+  "version": "0.58.0",
   "private": true,
   "packageManager": "pnpm@11.28.6",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Enlighten-Brasil/gitview.git"
+  },
+  "engines": {
+    "node": ">=22.13.0"
   },
   "scripts": {
     "setup": "tsx scripts/setup.ts",
@@ -22,6 +25,7 @@
     "collect:reaggregate": "tsx scripts/collect.ts --reaggregate && tsx scripts/collect-github.ts && tsx scripts/collect-team.ts && tsx scripts/check-data.ts",
     "collect:releases": "tsx scripts/collect-releases.ts",
     "collect:team": "tsx scripts/collect-team.ts",
+    "diagnose": "tsx scripts/doctor.ts",
     "demo": "tsx scripts/make-demo-data.ts",
     "demo:shots": "tsx scripts/make-doc-shots.ts",
     "snapshot:metrics": "tsx scripts/snapshot-metrics.ts",

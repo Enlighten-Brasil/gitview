@@ -37,6 +37,10 @@ Sim. No PowerShell 5.1 chame `pnpm.cmd`, porque o shim `pnpm.ps1` é bloqueado p
 
 Sim. `pnpm build` gera um `dist/` estático para qualquer host estático, com fallback de SPA para deep links. Nesse build o dashboard é somente leitura, sem `/setup`, `/settings` nem recoleta: ver [Publicando o build estático](./guide/publishing.md).
 
+## A coleta trava ou outra máquina dá erro. Como diagnosticar?
+
+Rode `pnpm diagnose`: ele checa Node (22.13+), `node:sqlite`, git, token, pasta de repositórios e permissões de escrita, e imprime exatamente o que falta. Toda execução de coleta também grava log com timestamp em `data/logs/` (um arquivo por passo) e imprime heartbeat após 30s de silêncio — se travar de novo, a última linha do log diz em qual passo parou. É só colar o arquivo na issue.
+
 ## Próximos passos
 
 - [Quick start](./guide/quickstart.md): do clone ao dashboard.

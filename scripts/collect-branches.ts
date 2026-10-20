@@ -42,6 +42,7 @@ import { mkdirSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DEFAULT_BRANCH_STALE_DAYS, loadConfig, resolveReposRoot } from './lib/config'
+import { initLog } from './lib/log'
 import { displayRefName, resolveIntegRefs, resolveProdRef } from './lib/refs'
 import { discoverRepos, mapPool } from './lib/repos'
 import { BOT_BRANCH_RE, botBranchSet } from './lib/team'
@@ -52,6 +53,7 @@ const root = resolve(__dirname, '..')
 /** separador de cabeçalho de commit no walk — o git emite o byte 0x1f (%x1f); numstat nunca começa com ele */
 const SEP = '\x1F'
 
+initLog('collect-branches')
 const config = loadConfig()
 const staleDays = config.branchStaleDays ?? DEFAULT_BRANCH_STALE_DAYS
 const botBranches = botBranchSet(config)

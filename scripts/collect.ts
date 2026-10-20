@@ -19,6 +19,7 @@ import { fileURLToPath } from 'node:url'
 import { getOrCreate } from '../src/collections'
 import { loadConfig, resolveReposRoot } from './lib/config'
 import { getToken, NO_TOKEN_HINT } from './lib/github'
+import { initLog } from './lib/log'
 import { denyPush, discoverRepos, fetchRepo, isManagedRepo, mapPool, parseGitHub, remoteOf, scrubPersistedToken } from './lib/repos'
 import { collectScopeSets } from './lib/scope'
 import { resolveAliases } from './lib/team'
@@ -26,6 +27,7 @@ import { resolveAliases } from './lib/team'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = resolve(__dirname, '..')
 
+initLog('collect')
 const config = loadConfig()
 
 // ---------------------------------------------------------------------------
@@ -238,6 +240,7 @@ const insert = db.prepare(`
 // migração: datas gravadas por versões antigas tinham o offset original do
 // autor (-03:00, Z…), o que quebra comparação/ordenação lexicográfica —
 // normaliza tudo para UTC ISO com milis (idempotente; instante preservado)
+console.log('Aplicando migrações do banco (rápido, mas pode levar segundos em bancos grandes)...')
 const migratedDates = db.prepare(`
   UPDATE commits SET date = strftime('%Y-%m-%dT%H:%M:%fZ', date)
   WHERE instr(date, '.') = 0 AND date GLOB '*T*'
@@ -448,6 +451,7 @@ async function main() {
   if (!REAGGREGATE) {
     await mapPool(repos, 4, async (repo) => {
       const t0 = Date.now()
+      console.log(`→ ${repo.name}: lendo histórico (git log --numstat)...`)
       let inTransaction = false
       try {
         const commits = await gitLog(repo.path, sinceArgs(repo.name))
@@ -497,6 +501,7 @@ async function main() {
     await mapPool(repos, 4, async (repo) => {
       const t0 = Date.now()
       try {
+        console.log(`→ ${repo.name}: classificando escopo de ref...`)
         const rows = selectScoped.all(repo.name) as { hash: string, scope: string | null, ref_hint: string | null }[]
         if (!rows.length)
           return

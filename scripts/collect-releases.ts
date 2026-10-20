@@ -15,6 +15,7 @@ import { DatabaseSync } from 'node:sqlite'
 import { fileURLToPath } from 'node:url'
 import { loadConfig, resolveReposRoot } from './lib/config'
 import { getToken, ghApiAll } from './lib/github'
+import { initLog } from './lib/log'
 import { discoverRepos, mapPool, parseGitHub, remoteOf } from './lib/repos'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -23,6 +24,7 @@ const root = resolve(__dirname, '..')
 /** notas de release truncadas nesse tamanho (o link pro GitHub tem o resto) */
 const NOTES_MAX = 3000
 
+initLog('collect-releases')
 const config = loadConfig()
 const auth = getToken()
 

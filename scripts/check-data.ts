@@ -11,8 +11,11 @@ import { dirname, join } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { BRANCH_STATUSES, isBranchStatus, isProgressScope, isPrReviewState } from '../src/types'
+import { initLog } from './lib/log'
 
 const DATA_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'data')
+
+initLog('check-data')
 
 const errors: string[] = []
 /** avisos de qualidade (não bloqueiam a coleta) — anomalias que valem revisão */
