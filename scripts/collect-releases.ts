@@ -87,7 +87,7 @@ async function ghReleases(ghRepo: { owner: string, repo: string }): Promise<Map<
 const db = new DatabaseSync(join(root, 'data', 'gitview.db'))
 const datesStmt = db.prepare('SELECT date FROM commits WHERE repo = ? ORDER BY date ASC')
 
-const repos = discoverRepos(resolveReposRoot(config), config.exclude ?? [])
+const repos = discoverRepos(resolveReposRoot(config))
 const out: unknown[] = []
 // ordem de saída estável mesmo com o processamento paralelo
 const byRepo = new Map<string, unknown>()

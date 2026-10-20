@@ -298,7 +298,7 @@ export function setupPlugin(): Plugin {
         try {
           const config = loadConfig()
           const reposRoot = resolveReposRootSafe(config)
-          const repos = reposRoot ? discoverRepos(reposRoot, config.exclude ?? []) : []
+          const repos = reposRoot ? discoverRepos(reposRoot) : []
           // o hint por repo spawna git (~0,5s/repo): só com ?refs=1, com cache por
           // processo — o status base (guard/wizard/poll de auth) continua barato
           const wantRefs = new URL(req.url ?? '', 'http://localhost').searchParams.get('refs') === '1'

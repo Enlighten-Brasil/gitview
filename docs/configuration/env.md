@@ -79,15 +79,10 @@ pubspec.lock  Package.resolved  go.sum
 ## How values are resolved
 
 - **shell → `.env` → default.** The shell variable wins. Empty or whitespace-only counts as not set; `GITVIEW_GITHUB_ORG=` means "the key exists, disabled".
-- `.env` is re-read on every collector run: a swapped token takes effect on the next collection, no restart. `GITVIEW_PORT` is the exception, read at boot.
+- `.env` is re-read on every collector run: a swapped token takes effect on the next collection, no restart.
 - A new `.env.example` key missing from your `.env` triggers a warning (once per process): `! .env sem chaves novas do .env.example: ...`. Copy the line, or delete `.env` and run any collector to recreate it from the template.
 - The UI writes line by line and preserves comments and order, with the value in single quotes (`GITVIEW_REPOS_ROOT='C:/dev/my repos'`). The parser does not expand escapes inside single quotes. A value containing a single quote or a line break is rejected.
 - Team data does not land here: it goes to [`team.local.json`](./team.md).
-
-## Advanced settings
-
-- `GITVIEW_EXCLUDE`: folders skipped during repo discovery. Matches the exact subfolder name, it is not a glob (`node_modules, tmp`). Empty by default.
-- `GITVIEW_PORT`: dev server port, default `5173`. Accepts an integer from 1 to 65535; anything outside is ignored. Changing it requires restarting `pnpm dev`.
 
 ## Next steps
 

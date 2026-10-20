@@ -411,7 +411,7 @@ function repoWebUrl(path: string): string | null {
 // main
 // ---------------------------------------------------------------------------
 async function main() {
-  const repos = discoverRepos(resolveReposRoot(config), config.exclude ?? [])
+  const repos = discoverRepos(resolveReposRoot(config))
   console.log(`Repos encontrados: ${repos.length}`)
   repos.forEach(r => console.log(`  - ${r.name}`))
 

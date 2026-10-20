@@ -28,15 +28,14 @@ export function isGitRepo(path: string): boolean {
     && existsSync(join(path, 'refs'))
 }
 
-export function discoverRepos(reposRoot: string, exclude: string[] = []): RepoInfo[] {
-  const excluded = new Set(exclude)
+export function discoverRepos(reposRoot: string): RepoInfo[] {
   const found: RepoInfo[] = []
   if (isGitRepo(reposRoot)) {
     // split nunca termina vazio — `?? ''` só pro tipo
     found.push({ name: reposRoot.split(/[\\/]/).pop() ?? '', path: reposRoot })
   }
   for (const entry of readdirSync(reposRoot, { withFileTypes: true })) {
-    if (!entry.isDirectory() || excluded.has(entry.name))
+    if (!entry.isDirectory())
       continue
     const p = join(reposRoot, entry.name)
     if (isGitRepo(p))

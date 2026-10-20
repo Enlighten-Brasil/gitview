@@ -2,12 +2,10 @@
  * Config do gitview: `.env` (máquina + segredos) + `team.local.json` (time).
  *
  * - `.env` (gitignored, criado do `.env.example` na 1ª execução): token e client
- *   id do GitHub, org, pasta dos repos, repos padrão/excluídos e porta do dev
- *   server. Variáveis de ambiente do shell têm prioridade sobre o arquivo.
+ *   id do GitHub, org, pasta dos repos e repos padrão. Variáveis de ambiente do
+ *   shell têm prioridade sobre o arquivo.
  * - `team.local.json` (gitignored): perfis de devs, times e bots extras —
  *   editados pela UI em /teams. Não é regenerável: `pnpm clean` não o toca.
- * - O formato antigo (config.json + config.local.json) migra uma vez via
- *   `scripts/lib/legacy.ts`, disparado por loadConfig().
  *
  * O `.env` NUNCA é carregado no process.env do processo (envDir: false no
  * Vite + parse próprio aqui): os coletores rodam como filhos do dev server e
@@ -18,7 +16,6 @@ import { dirname, join, resolve } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { parseEnv } from 'node:util'
-import { migrateLegacyConfig } from './legacy'
 import { DEFAULT_INTEGRATION_REFS } from './refs'
 
 export interface DevProfile {
@@ -54,8 +51,6 @@ export interface Config {
   reposRoot?: string
   /** repos pré-selecionados no setup */
   defaultRepos?: string[]
-  /** pastas ignoradas na descoberta de repos */
-  exclude?: string[]
   /** globs de arquivos gerados ignorados nas métricas de linhas (ACRESCENTA à lista padrão) */
   excludePaths?: string[]
   /** fuso canônico dos buckets de tempo (issue #8); default America/Sao_Paulo */
@@ -70,8 +65,6 @@ export interface Config {
   graphWindow?: number
   /** nomes exatos de branches de bot (extras ao BOT_BRANCH_RE de lib/team.ts); comparação lowercase */
   botBranches?: string[]
-  /** porta do dev server */
-  port?: number
   /** perfis de devs (aliases de e-mail/login, título, descrição) */
   devProfiles?: Record<string, DevProfile>
   /** times do dashboard */
@@ -87,7 +80,7 @@ export const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..', '.
 
 const envPath = join(rootDir, '.env')
 const envExamplePath = join(rootDir, '.env.example')
-/** arquivo de config do time (gitignored) — exportado p/ legacy.ts e limpeza */
+/** arquivo de config do time (gitignored) */
 export const teamConfigPath = join(rootDir, 'team.local.json')
 
 /** chave do .env -> campo do Config */
@@ -97,9 +90,7 @@ const ENV_KEYS: Record<string, keyof Config> = {
   GITVIEW_GITHUB_ORG: 'githubOrg',
   GITVIEW_REPOS_ROOT: 'reposRoot',
   GITVIEW_DEFAULT_REPOS: 'defaultRepos',
-  GITVIEW_EXCLUDE: 'exclude',
   GITVIEW_EXCLUDE_PATHS: 'excludePaths',
-  GITVIEW_PORT: 'port',
   GITVIEW_TIMEZONE: 'timezone',
   GITVIEW_PRODUCTION_REF: 'productionRef',
   GITVIEW_INTEGRATION_REFS: 'integrationRefs',
@@ -140,7 +131,7 @@ export const DEFAULT_EXCLUDE_PATHS = [
  * Dias sem atividade para uma branch sem commits à frente da produção
  * (aheadProd = 0) ser classificada como "pousada" no branches.json (issue
  * #123). 30 casa com o ciclo mensal de release; GITVIEW_BRANCH_STALE_DAYS
- * sobrescreve (inteiro >= 0 — inválido cai no default, como GITVIEW_PORT).
+ * sobrescreve (inteiro >= 0 — inválido cai no default).
  */
 export const DEFAULT_BRANCH_STALE_DAYS = 30
 
@@ -204,10 +195,9 @@ function readTeamFile(): Partial<Config> {
   }
 }
 
-/** carrega a config efetiva: .env (+ shell) + team.local.json, migrando o legado antes */
+/** carrega a config efetiva: .env (+ shell) + team.local.json */
 export function loadConfig(): Config {
   ensureEnvFile()
-  migrateLegacyConfig()
   const file = readParsedEnv(envPath)
   warnNewEnvKeys(file)
   const config: Config = {}
@@ -227,17 +217,8 @@ export function loadConfig(): Config {
   const defaults = envValue('GITVIEW_DEFAULT_REPOS', file)
   if (defaults)
     config.defaultRepos = parseCsv(defaults)
-  const exclude = envValue('GITVIEW_EXCLUDE', file)
-  if (exclude)
-    config.exclude = parseCsv(exclude)
   const excludePaths = envValue('GITVIEW_EXCLUDE_PATHS', file)
   config.excludePaths = [...DEFAULT_EXCLUDE_PATHS, ...(excludePaths ? parseCsv(excludePaths) : [])]
-  const port = envValue('GITVIEW_PORT', file)
-  if (port) {
-    const n = Number(port)
-    if (Number.isInteger(n) && n > 0 && n < 65536)
-      config.port = n
-  }
   const timezone = envValue('GITVIEW_TIMEZONE', file)
   if (timezone)
     config.timezone = timezone
@@ -258,8 +239,8 @@ export function loadConfig(): Config {
     config.botBranches = parseCsv(botBranches)
   const graphWindow = envValue('GITVIEW_GRAPH_WINDOW', file)
   if (graphWindow) {
-    // inteiro > 0; inválido cai no default COM aviso (diferente do GITVIEW_PORT,
-    // que ignora em silêncio — janela errada muda o desenho do grafo inteiro)
+    // inteiro > 0; inválido cai no default COM aviso (janela errada muda o
+    // desenho do grafo inteiro — silêncio aqui esconderia o estrago)
     const n = Number(graphWindow)
     if (Number.isInteger(n) && n > 0)
       config.graphWindow = n
