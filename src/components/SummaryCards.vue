@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { filteredMonthly, filteredTotals, filters, previousTotals, rangeLabel, stats } from '../data'
+import { filteredMonthly, filteredTotals, filters, isCustomRange, previousTotals, rangeLabel, stats } from '../data'
 import { fmtCompact } from '../format'
 import { DELTA_FLAT_PCT } from '../thresholds'
 import StatCard from './StatCard.vue'
@@ -70,11 +70,16 @@ function deltaClass(dir: 'up' | 'down' | 'flat', judge: boolean): string {
   return 'text-dimmed'
 }
 
-/** tooltip do delta — concordância por cardinalidade da janela (1M = singular) */
+/**
+ * tooltip do delta — só existe para janela comparável (mesma guarda do
+ * previousTotals: sem base de comparação não há delta, então o tooltip também
+ * fica omitido e nunca promete comparação inexistente). Concordância por
+ * cardinalidade da janela (1M = singular).
+ */
 const deltaTooltip = computed(() => {
   const n = filters.rangeMonths
-  if (n == null)
-    return 'vs a janela anterior equivalente'
+  if (n == null || isCustomRange())
+    return undefined
   return n === 1 ? 'vs o mês anterior' : `vs os ${n} meses anteriores`
 })
 
