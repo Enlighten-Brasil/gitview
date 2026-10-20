@@ -96,9 +96,10 @@ pnpm collect:branches   # só inventário de branches
 pnpm collect:graph      # só a topologia do grafo (graph-*.json, com merges)
 pnpm collect:releases   # só releases
 pnpm check:data         # só a validação de shape + invariantes dos JSONs
+pnpm check:report       # gate do motor de relatórios (fixture sintética inline; roda no CI)
 pnpm check:scrub        # gate anti-regressão do scrub de identidade (roda no CI)
 pnpm snapshot:metrics   # matriz determinística das agregações p/ regressão (18 cenários, docs/contributing/development)
-pnpm demo               # fixtures sintéticas demo-api/demo-web (8 JSONs, incl. graph-demo-*.json)
+pnpm demo               # fixtures sintéticas demo-api/demo-web (9 JSONs, incl. graph-demo-*.json)
 pnpm demo:shots         # capturas das docs — SOMENTE sobre a fixture sintética (guard no script)
 pnpm lint               # eslint (@antfu/eslint-config — padrão da org; config em eslint.config.js)
 pnpm typecheck          # tsc --noEmit (scripts + src; templates .vue fora)
@@ -126,7 +127,7 @@ pnpm version:packages   # aplicar changesets (bumps + CHANGELOG)
 - `branches.ts` — loader do branches.json + join branch↔PR (headRef/headRefOid do github.json, issue #122): status derivados no frontend (`viva-sem-PR`, `pousada-via-squash`), cards de pousadas/abandonadas, desvio develop×prod por repo, mapeamento e-mail→dev (team.json) e badge de frescor próprio (a coleta light não atualiza o inventário). Sem github.json completo o vínculo degrada para "sem vínculo", nunca "sem PR".
 - `releases.ts` — loader do releases.json + métricas (dias desde última release, cadência).
 - `urlState.ts` — filtros na query string (`?range=&from=&to=&repos=&devs=&bots=`), replaceState, popstate com reset, sanitização, fallback localStorage. **Escopo por rota** (`route.meta.filters`): `full` (abas do dashboard, `/prs`, `/branches`, `/repos` — tudo) | `team` (`/teams/:name` — período+repos na URL; os devs a página trava nos membros, não vão pra URL) | `period` (`/devs/:name` — só período) | `period-bots` (`/repos/:name`) | `none` (setup/settings/404 — não atua). As abas do dashboard são rotas próprias desde 0.33; o `?tab=` legado é resolvido pelo guard, não aqui. Navegação por link preserva o contexto (afterEach aplica os params presentes sem resetar e regrava a query da rota).
-- `summary.ts` — resumo semanal exportável (markdown da última semana ISO fechada vs anterior). **Ignora os filtros da sidebar e sempre exclui bots** — é relatório do time inteiro, pra reunião. UI: `components/WeeklySummary.vue` (slideover com copiar/baixar .md, botão no navbar).
+- `report.ts` — motor puro dos relatórios exportáveis (#176): `buildReport(assunto, de, até)` → `{ markdown, from, to, title }` lendo só payloads dos loaders (NUNCA o estado reativo `filters`); assunto org · time · dev, delta com rótulo por formato (janelas em curso omitem o comparativo), fallback sem `daily.json` somando `stats.weekly` que intersectam a janela; `presetWindow` é a função pura preset→janela. Gate `pnpm check:report` (fixture sintética inline, CI-safe). `summary.ts` virou o wrapper do preset "semana fechada × organização" (import unidirecional — report.ts nunca importa summary.ts) — **ignora os filtros da sidebar e sempre exclui bots**; UI: `components/WeeklySummary.vue` (slideover com copiar/baixar .md, botão no navbar).
 - `chartTheme.ts` — tema ECharts com conversão oklch→hex (proxy `ct`).
 - `echarts.ts` — registro central dos módulos ECharts usados (`echarts/core` + `use([...])`). Só `ChartPanel.vue` (o único componente com gráfico) importa isso + `VChart` — echarts entra apenas nos chunks das rotas que renderizam gráficos.
 - `main.ts` — cria o app, usa o `router` de `src/router/` e o plugin Vue do Nuxt UI; o code-split por rota vem do `importMode: async` do file-based routing (só `/` puxa echarts). `vite-env.d.ts` dá o shim `*.vue` pro `tsc` dos scripts.
