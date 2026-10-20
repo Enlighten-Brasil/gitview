@@ -1,11 +1,11 @@
 ---
 title: Pipeline
-description: Como o gitview transforma git e a API do GitHub nos seis JSONs de public/data que o frontend estático lê.
+description: Como o gitview transforma git e a API do GitHub nos sete JSONs de public/data que o frontend estático lê.
 ---
 
 # Pipeline
 
-O gitview produz seis JSONs em `public/data/`. O frontend lê só esses arquivos; nada do git é recalculado no navegador. `data/gitview.db` e `public/data/*` são gitignored, sempre regenerados pelos coletores.
+O gitview produz sete JSONs em `public/data/`. O frontend lê só esses arquivos; nada do git é recalculado no navegador. `data/gitview.db` e `public/data/*` são gitignored, sempre regenerados pelos coletores.
 
 ```text
 git log --all --no-merges --numstat        API GraphQL do GitHub          git tag + API REST do GitHub
@@ -60,7 +60,7 @@ O `collect-branches.ts` enumera `refs/heads` de cada clone (tip + data de commit
 
 ## check-data.ts: o gate
 
-Lê os seis JSONs e checa estrutura e invariantes entre arquivos. Erro derruba a coleta com exit 1; avisos nunca bloqueiam. A lista por arquivo está em [Modelo de dados](./data-model.md).
+Lê os sete JSONs e checa estrutura e invariantes entre arquivos. Erro derruba a coleta com exit 1; avisos nunca bloqueiam. A lista por arquivo está em [Modelo de dados](./data-model.md).
 
 ## O que é dev only
 

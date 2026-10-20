@@ -52,7 +52,7 @@ All the scripts in `package.json`:
 | `pnpm docs:dev` | docs site in dev (VitePress, `DOCS_BASE=/`) |
 | `pnpm docs:build` | docs site build; CI gate against dead links |
 | `pnpm docs:preview` | serves the built docs site |
-| `pnpm demo` | generates the synthetic fixture of the public demo (eight JSONs, fictional devs/repos) |
+| `pnpm demo` | generates the synthetic fixture of the public demo (nine JSONs, fictional devs/repos) |
 | `pnpm demo:shots` | regenerates the doc screenshots from the synthetic fixture |
 | `pnpm snapshot:metrics` | regression harness for the aggregations: deterministic JSON of a matrix of filter scenarios (below) |
 | `pnpm changeset` | record a change; required in PRs |

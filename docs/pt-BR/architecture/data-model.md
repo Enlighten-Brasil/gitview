@@ -1,11 +1,11 @@
 ---
 title: Modelo de dados
-description: Os shapes dos seis JSONs de public/data/ e os invariantes que o gate do check-data exige de cada um.
+description: Os shapes dos sete JSONs de public/data/ e os invariantes que o gate do check-data exige de cada um.
 ---
 
 # Modelo de dados
 
-O frontend consome exatamente seis JSONs em `public/data/`, mais um `graph-<repo>.json` por repo (topologia de commits para a vista de grafo — o frontend estático carrega só o arquivo do repo visitado). O shape é contrato: quando um campo que a UI lê some, o `check-data.ts` derruba a coleta. O comportamento geral do gate está em [Coletores](./collectors.md); aqui estão as chaves e as checagens de cada arquivo.
+O frontend consome exatamente seis dos sete JSONs em `public/data/` (o `daily.json` é coletado e validado para o motor de relatórios — issue #176 — mas ainda não é lido pelo frontend), mais um `graph-<repo>.json` por repo (topologia de commits para a vista de grafo — o frontend estático carrega só o arquivo do repo visitado). O shape é contrato: quando um campo que a UI lê some, o `check-data.ts` derruba a coleta. O comportamento geral do gate está em [Coletores](./collectors.md); aqui estão as chaves e as checagens de cada arquivo.
 
 ## Resumo
 
@@ -13,13 +13,14 @@ O frontend consome exatamente seis JSONs em `public/data/`, mais um `graph-<repo
 |---|---|---|
 | `stats.json` | agregados: weekly/monthly/heatmap/monthlyTypes/perAuthor/perRepo/repoUrls/totals | `collect.ts` |
 | `commits.json` | 100 últimos commits por autor | `collect.ts` |
+| `daily.json` | agregado dia-preciso: dia × repo × autor (+ escopo), commits, linhas, flags de fim de semana/madrugada | `collect.ts` |
 | `github.json` | PRs (OPEN + MERGED da janela de 400 dias) com reviews | `collect-github.ts` |
 | `releases.json` | tags, commits por tag, não liberados, notas | `collect-releases.ts` |
 | `team.json` | devs, times, candidatos sem mapeamento | `collect-team.ts` |
 | `branches.json` | inventário de branches por repo: status, ahead/behind sem merges, autores à frente | `collect-branches.ts` |
 | `graph-<repo>.json` | topologia de commits COM merges (um arquivo por repo, janela de `GITVIEW_GRAPH_WINDOW` commits) | `collect-graph.ts` |
 
-Regras comuns aos seis: objeto no topo com `generatedAt` (timestamp ISO da execução), datas de commit em UTC ISO com milissegundos. Autores já canônicos (aliases aplicados na coleta) em todo arquivo **exceto `branches.json`**, que leva e-mails crus do git (`%ae`) por design — fato puramente git; o frontend mapeia e-mail→dev via `team.json#devs[].emails`. As listas são esparsas: linhas zeradas não existem (nada de `commits: 0` de preenchimento).
+Regras comuns aos sete: objeto no topo com `generatedAt` (timestamp ISO da execução), datas de commit em UTC ISO com milissegundos. Autores já canônicos (aliases aplicados na coleta) em todo arquivo **exceto `branches.json`**, que leva e-mails crus do git (`%ae`) por design — fato puramente git; o frontend mapeia e-mail→dev via `team.json#devs[].emails`. As listas são esparsas: linhas zeradas não existem (nada de `commits: 0` de preenchimento).
 
 ## stats.json
 
@@ -49,6 +50,16 @@ Regras comuns aos seis: objeto no topo com `generatedAt` (timestamp ISO da execu
 `hash` é a forma abreviada 7-hex; `message` é o assunto do commit, limitado a 500 chars no banco. `scope` usa a mesma codificação *omit-prod* do stats.json (ausente = produção); a amostra pula commits com escopo não classificado (`NULL` no banco).
 
 **O gate exige**: datas uniformemente UTC (terminando em `Z`) e parseáveis; ordem decrescente estrita por timestamp real (a página de perfil do dev assume isso); `hash` casa `^[0-9a-f]{7}$`; `scope`, quando presente, dentro da union fechada `'integration' | 'branch'`.
+
+## daily.json
+
+| chave | shape | significado |
+|---|---|---|
+| `daily` | `[{ day, repo, author, scope?, commits, additions, deletions, weekend, night }]` | uma linha por dia × repo × autor (× escopo); histórico completo, sem corte |
+
+`day` é a data no fuso canônico `YYYY-MM-DD` (`dayKeyOf` — nunca um `slice` UTC, que deslocaria o limite dos dias e divergiria de `totals.activeDays`). `weekend`/`night` são os mesmos subconjuntos do `stats.json#weekly` (night = 22:00–05:59 no fuso canônico), então o off-hours fica dia-preciso em qualquer janela rolante. O arquivo é lazy como o `commits.json` (fora do carregamento inicial) e carrega o histórico inteiro (~19 KB/ano de linhas; reavaliar perto de 2 MB). Existe para o motor de relatórios (issue #176), cujas janelas rolantes de 7/30 dias precisam cortar por dia em vez de aproximar semana/mês (erro mediano acima de 100%).
+
+**O gate exige**: `day` casa `YYYY-MM-DD`; Σ`daily.commits` = `totals.commits`; Σ das linhas sem `scope` = `totals.prodCommits` e das linhas com `scope` = `totals.progressCommits`; Σ`additions`/Σ`deletions` = os totals; Σ`weekend` = Σ`weekly.weekend` e Σ`night` = Σ`weekly.night` (mesmos predicados sobre as mesmas linhas); `scope`, quando presente, dentro da union fechada `'integration' | 'branch'`. **Aviso não bloqueante**: número de `day` distintos ≠ `totals.activeDays` (fuso canônico deslocado na coleta).
 
 ## github.json
 

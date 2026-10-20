@@ -5,7 +5,7 @@ description: O que cada coletor de scripts/ lê, o que grava e como controlar os
 
 # Coletores
 
-Os coletores de `scripts/` leem os repos git e a API do GitHub e gravam os seis JSONs de `public/data/` mais um `graph-<repo>.json` por repo (topologia de commits para a vista de grafo). O `pnpm collect` roda os seis em sequência e fecha com o `check-data.ts`; coletores que percorrem repos usam pool de 4. O mapeamento de identidade é explícito: logins e e-mails resolvem para nomes canônicos via `devProfiles` no `team.local.json` (`scripts/lib/team.ts`), nunca por matching aproximado.
+Os coletores de `scripts/` leem os repos git e a API do GitHub e gravam os sete JSONs de `public/data/` mais um `graph-<repo>.json` por repo (topologia de commits para a vista de grafo). O `pnpm collect` roda os seis em sequência e fecha com o `check-data.ts`; coletores que percorrem repos usam pool de 4. O mapeamento de identidade é explícito: logins e e-mails resolvem para nomes canônicos via `devProfiles` no `team.local.json` (`scripts/lib/team.ts`), nunca por matching aproximado.
 
 ## Resumo
 
@@ -17,7 +17,7 @@ Os coletores de `scripts/` leem os repos git e a API do GitHub e gravam os seis 
 | `collect-graph.ts` | `graph-<repo>.json` (topologia de commits COM merges, um arquivo por repo: hash/parents 40-hex, autor canônico, data UTC ISO ms, subject, decoration de refs/tags) | `git log --all --date-order` nos clones locais (janela `GITVIEW_GRAPH_WINDOW`, default 1000) |
 | `collect-releases.ts` | `releases.json` (tags, commits por tag, não liberados, notas) | `git tag` + API REST do GitHub |
 | `collect-team.ts` | `team.json` (devs, times, candidatos sem mapeamento) | `team.local.json` + `stats.json`/`github.json` |
-| `check-data.ts` | — (só valida; exit 1 em erro) | os JSONs de `public/data/` (os 6 fixos + os `graph-*.json` presentes) |
+| `check-data.ts` | — (só valida; exit 1 em erro) | os JSONs de `public/data/` (os 7 fixos + os `graph-*.json` presentes) |
 
 ## Coleta incremental
 
