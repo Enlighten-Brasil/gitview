@@ -7,7 +7,7 @@
  * 3. Grava tudo em public/data/github.json — o frontend continua 100% estático
  *
  * Auth: token do .env (GITVIEW_GITHUB_TOKEN) com fallback pro `gh auth token`.
- * Logins do GitHub são mapeados para os nomes canônicos via devProfiles (/team).
+ * Logins do GitHub são mapeados para os nomes canônicos via devProfiles (/teams).
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -398,5 +398,5 @@ console.log(`\n✓ github.json: ${allPrs.length} PRs (${fetchedCount} buscados, 
 if (outOfWindow)
   console.log(`⚑ ${outOfWindow} PRs mergeados fora da janela de ${MERGED_CUTOFF_DAYS} dias descartados`)
 if (unmapped.length) {
-  console.log(`⚠ logins sem mapeamento (associe em /team): ${unmapped.join(', ')}`)
+  console.log(`⚠ logins sem mapeamento (associe em /teams): ${unmapped.join(', ')}`)
 }

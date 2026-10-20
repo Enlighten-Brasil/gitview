@@ -1,6 +1,6 @@
 /**
  * Merge de aliases do time: devProfiles do team.local.json (editados na UI
- * /team). Os coletores usam daqui pra que os aliases cadastrados já valham
+ * /teams). Os coletores usam daqui pra que os aliases cadastrados já valham
  * na coleta seguinte.
  */
 import type { Config } from './config'
