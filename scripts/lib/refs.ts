@@ -17,6 +17,17 @@
  * normalmente não existe; em checkout normal o HEAD é a branch correntemente
  * checada (pode ser uma feature!), então a resolução correta começa em
  * `refs/remotes/origin/HEAD`.
+ *
+ * FORMA DO RETORNO (issue #141): os resolvedores devolvem o CANDIDATO QUE
+ * CASOU — nome curto quando a forma curta/local existe (clones bare e
+ * checkouts normais com branch local: byte-idêntico ao histórico), forma
+ * longa `refs/remotes/origin/NOME` quando só a remota existe (checkout
+ * normal sem branch local de produção — o nome curto não seria resolvível
+ * pelos consumidores git: rev-list de scope.ts, ahead/behind de
+ * collect-branches). O contrato é "retorna um ref que o git resolve". Para
+ * EXIBIÇÃO (ref_hint, branches.json, hint de /settings) use
+ * `displayRefName` no valor retornado — os JSONs e o banco seguem com nome
+ * curto.
  */
 import { spawnSync } from 'node:child_process'
 import { basename } from 'node:path'
@@ -24,8 +35,13 @@ import { basename } from 'node:path'
 /** refs de integração quando GITVIEW_INTEGRATION_REFS está vazio */
 export const DEFAULT_INTEGRATION_REFS = ['develop', 'staging']
 
-/** `main` de `refs/heads/main`; `main` de `refs/remotes/origin/main` e `origin/main` */
-function shortName(ref: string): string {
+/**
+ * Nome de EXIBIÇÃO de um ref: `main` de `refs/heads/main`; `main` de
+ * `refs/remotes/origin/main` e `origin/main`. Os pontos de exibição
+ * (ref_hint, campos do branches.json, hint de /settings) aplicam este helper
+ * ao valor dos resolvedores, que pode vir na forma longa (#141).
+ */
+export function displayRefName(ref: string): string {
   return ref
     .replace(/^refs\/remotes\/origin\//, '')
     .replace(/^refs\/heads\//, '')
@@ -57,20 +73,23 @@ function symbolicRef(repoPath: string, ref: string): string | null {
   return r.status === 0 ? r.stdout.trim() || null : null
 }
 
-/** o nome (curto) quando existe no repo apontando para commit — senão null */
+/** o CANDIDATO QUE CASOU (forma resolvível, ordem de refCandidates) — senão null */
 function findExisting(repoPath: string, name: string): string | null {
-  return refCandidates(name).some(c => hasCommit(repoPath, c)) ? shortName(name) : null
+  return refCandidates(name).find(c => hasCommit(repoPath, c)) ?? null
 }
 
 /** warn de produção inválida: 1× por processo/repo/valor (a coleta resolve o repo várias vezes) */
 const warnedProd = new Set<string>()
 
 /**
- * Resolve a ref de produção de um repo. Retorna sempre um ref existente
- * (nome curto de branch, ex.: `main`). Ordem: valor explícito da config SE
- * existir no repo → `refs/remotes/origin/HEAD` → `HEAD` → `main` → `master`.
- * Valor explícito inexistente: `console.warn` nomeando o repo + fallback.
- * Nada resolvível: lança erro (guard do prod=∅ silencioso).
+ * Resolve a ref de produção de um repo. Retorna sempre um ref EXISTENTE e
+ * RESOLVÍVEL pelo git (#141): nome curto quando a forma curta casa (bare e
+ * checkout com branch local), forma longa `refs/remotes/origin/NOME` quando
+ * só a remota existe. Ordem: valor explícito da config SE existir no repo →
+ * `refs/remotes/origin/HEAD` → `HEAD` → `main` → `master`. Para exibição,
+ * aplicar `displayRefName`. Valor explícito inexistente: `console.warn`
+ * nomeando o repo + fallback. Nada resolvível: lança erro (guard do prod=∅
+ * silencioso).
  */
 export function resolveProdRef(repoPath: string, configValue?: string): string {
   const repo = basename(repoPath)
@@ -86,10 +105,10 @@ export function resolveProdRef(repoPath: string, configValue?: string): string {
   const auto: string[] = []
   const originHead = symbolicRef(repoPath, 'refs/remotes/origin/HEAD')
   if (originHead)
-    auto.push(shortName(originHead))
+    auto.push(displayRefName(originHead))
   const head = symbolicRef(repoPath, 'HEAD')
   if (head)
-    auto.push(shortName(head))
+    auto.push(displayRefName(head))
   auto.push('main', 'master')
 
   for (const candidate of [...new Set(auto)]) {
@@ -99,7 +118,7 @@ export function resolveProdRef(repoPath: string, configValue?: string): string {
         const key = `${repoPath}\0${explicit}`
         if (!warnedProd.has(key)) {
           warnedProd.add(key)
-          console.warn(`! ${repo}: GITVIEW_PRODUCTION_REF "${explicit}" não existe no repo — produção cai para a detecção automática (${found})`)
+          console.warn(`! ${repo}: GITVIEW_PRODUCTION_REF "${explicit}" não existe no repo — produção cai para a detecção automática (${displayRefName(found)})`)
         }
       }
       return found
@@ -115,7 +134,10 @@ export function resolveProdRef(repoPath: string, configValue?: string): string {
  * Resolve as refs de integração de um repo: a lista da config (default
  * `develop,staging`) filtrada por existência no repo. `configValue` omitido
  * usa o default; lista explícita (mesmo vazia) é respeitada como dada.
- * Retorna nomes curtos na ordem da lista. Vazio é legítimo: sem aviso/erro.
+ * Retorna os CANDIDATOS QUE CASARAM na ordem da lista (forma resolvível —
+ * nome curto quando a forma curta casa, forma longa quando só a remota
+ * existe; #141). Para exibição, aplicar `displayRefName`. Vazio é legítimo:
+ * sem aviso/erro.
  */
 export function resolveIntegRefs(repoPath: string, configValue?: string[]): string[] {
   const names = configValue ?? DEFAULT_INTEGRATION_REFS
@@ -124,8 +146,8 @@ export function resolveIntegRefs(repoPath: string, configValue?: string[]): stri
     const name = raw.trim()
     if (!name)
       continue
-    const short = shortName(name)
-    if (found.includes(short))
+    const short = displayRefName(name)
+    if (found.some(f => displayRefName(f) === short))
       continue
     const hit = findExisting(repoPath, name)
     if (hit)
