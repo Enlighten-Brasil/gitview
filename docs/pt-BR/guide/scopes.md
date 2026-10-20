@@ -23,12 +23,14 @@ Painéis alimentados por linhas de commit contam só as linhas do escopo selecio
 
 Janelas *fixas de período* continuam aplicando o escopo: **Ritmo** e **Fora do horário** no modo **8 semanas** ignoram o filtro de período, mas contam só as linhas do escopo selecionado.
 
+No perfil do dev (`/devs/<nome>`), os cards históricos — **dias ativos**, **commits/dia ativo**, **streak** e **repositórios** — leem o eixo do escopo selecionado quando o dado porta os eixos `byScope` por autor (coletas a partir da issue #152): com **Produção**/**Em progresso** e o eixo presente, o sufixo `(total)` deixa de vir do recorte de escopo (continua marcando o recorte de período). Linha sem os eixos degrada para os contadores históricos com `(total)` — feature-detect na presença de `byScope`.
+
 ## O que ignora o escopo (e por quê)
 
 - **PRs, cycle time, reviews** (`/prs`): dados de processo do GitHub não carregam classificação de ref git — um PR é um evento, não uma linha de commit.
 - **Releases**: marcos.
 - **Inatividade — repos e devs parados**: medida até hoje sobre o histórico completo, de propósito. Se seguisse o escopo **Produção**, um dev que passou o mês inteiro na branch de integração da minor apareceria como inativo justamente por estar fazendo o que foi pedido.
-- **Ranking do time (histórico completo)**, streaks e dias ativos: contadores históricos.
+- **Ranking do time (histórico completo)**: contador histórico — a tabela do `/devs` lê a linha integral de `perAuthor`. Streaks e dias ativos são contadores históricos em todo lugar, exceto nos cards históricos do perfil do dev acima, que leem o eixo `byScope` quando o dado o porta.
 - **Resumo semanal**: o relatório do time inteiro para a reunião, que ignora todos os filtros da sidebar.
 - **Grafo de commits** (`/repos/<name>#grafo`): janela fixa dos últimos N commits — remover commits quebraria as cadeias de merge.
 - A página **/branches**: a vista do progresso por natureza — os chips de escopo ficam ocultos nela.

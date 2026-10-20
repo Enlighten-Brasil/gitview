@@ -20,6 +20,37 @@ export interface MonthlyRow { month: string, repo: string, author: string, scope
 export interface HeatmapRow { author: string, repo: string, month: string, weekday: number, hour: number, scope?: ProgressScope, commits: number }
 export interface MonthlyTypeRow { month: string, repo: string, author: string, scope?: ProgressScope, type: string, commits: number }
 
+/**
+ * Eixo de escopo do autor dentro de perAuthor (issue #152): os MESMOS campos
+ * medidos da linha integral, calculados só sobre as linhas do eixo —
+ * prod = scope 'prod'; progress = 'integration' + 'branch'. `lastCommit` é
+ * `''` quando o eixo não tem commits (autor só de um escopo tem o outro eixo
+ * zerado — as duas chaves sempre existem quando byScope está presente).
+ */
+export interface PerAuthorScopeAxis {
+  commits: number
+  additions: number
+  deletions: number
+  repos: number
+  activeDays: number
+  lastCommit: string
+  streak: number
+  longestStreak: number
+}
+
+export interface PerAuthorRow extends PerAuthorScopeAxis {
+  author: string
+  /**
+   * Eixos por escopo (issue #152) — AUSENTE em dados coletados antes da
+   * feature (feature-detect no frontend: presença de `byScope`; a degradação
+   * mantém a linha integral com "(total)"). Quando presente, AMBOS os eixos
+   * existem: a filosofia omit-prod vale para o campo `scope` das linhas de
+   * agregados, não para as chaves do byScope. Linhas com scope NULL no banco
+   * ficam fora dos eixos (mesma convenção/aviso dos totals).
+   */
+  byScope?: { prod: PerAuthorScopeAxis, progress: PerAuthorScopeAxis }
+}
+
 export interface Stats {
   generatedAt: string
   repos: string[]
@@ -39,7 +70,7 @@ export interface Stats {
     authors: number
   }
   perRepo: { repo: string, commits: number, prodCommits: number, progressCommits: number, additions: number, deletions: number, authors: number, lastCommit: string }[]
-  perAuthor: { author: string, commits: number, additions: number, deletions: number, repos: number, activeDays: number, lastCommit: string, streak: number, longestStreak: number }[]
+  perAuthor: PerAuthorRow[]
   weekly: WeeklyRow[]
   monthly: MonthlyRow[]
   heatmap: HeatmapRow[]

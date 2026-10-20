@@ -374,6 +374,20 @@ function calcStreaks(days: Set<string>): { streak: number, longestStreak: number
 }
 
 // ---------------------------------------------------------------------------
+// eixos de escopo do autor (issue #152): prod = scope 'prod'; progress =
+// 'integration' + 'branch'. Acumulados na MESMA passada do banco que a linha
+// integral de perAuthor — os streaks rodam no Set de dias de cada eixo.
+// ---------------------------------------------------------------------------
+interface AxisAcc { commits: number, additions: number, deletions: number, repos: Set<string>, days: Set<string>, last: string }
+function newAxisAcc(): AxisAcc {
+  return { commits: 0, additions: 0, deletions: 0, repos: new Set<string>(), days: new Set<string>(), last: '' }
+}
+/** eixo pronto pro JSON: os mesmos campos medidos da linha perAuthor integral */
+function axisOut(ax: AxisAcc) {
+  return { commits: ax.commits, additions: ax.additions, deletions: ax.deletions, repos: ax.repos.size, activeDays: ax.days.size, lastCommit: ax.last, ...calcStreaks(ax.days) }
+}
+
+// ---------------------------------------------------------------------------
 // tipo do commit pelo prefixo conventional commits (feat/fix/chore/...)
 // ---------------------------------------------------------------------------
 const KNOWN_TYPES = new Set(['feat', 'fix', 'chore', 'refactor', 'docs', 'test', 'perf', 'style', 'build', 'ci'])
@@ -635,7 +649,7 @@ async function main() {
   // fuso no limiar (o monthKey do resultado continua canônico)
   heatmapCutoff.setUTCMonth(heatmapCutoff.getUTCMonth() - 24)
   const heatmapCutoffKey = monthKey(heatmapCutoff)
-  const perAuthor = new Map<string, { commits: number, additions: number, deletions: number, repos: Set<string>, days: Set<string>, last: string }>()
+  const perAuthor = new Map<string, { commits: number, additions: number, deletions: number, repos: Set<string>, days: Set<string>, last: string, axes: { prod: AxisAcc, progress: AxisAcc } }>()
   const perRepo = new Map<string, { commits: number, prodCommits: number, progressCommits: number, additions: number, deletions: number, authors: Set<string>, last: string }>()
   let totalAdd = 0
   let totalDel = 0
@@ -698,7 +712,7 @@ async function main() {
     const dk = dayKeyOf(cp)
     allDays.add(dk)
 
-    const pa = getOrCreate(perAuthor, r.author, () => ({ commits: 0, additions: 0, deletions: 0, repos: new Set<string>(), days: new Set<string>(), last: '' }))
+    const pa = getOrCreate(perAuthor, r.author, () => ({ commits: 0, additions: 0, deletions: 0, repos: new Set<string>(), days: new Set<string>(), last: '', axes: { prod: newAxisAcc(), progress: newAxisAcc() } }))
     pa.commits++
     pa.additions += r.additions
     pa.deletions += r.deletions
@@ -706,6 +720,17 @@ async function main() {
     pa.days.add(dk)
     if (r.date > pa.last)
       pa.last = r.date
+    // eixos por escopo (issue #152): a mesma passada alimenta o eixo da linha —
+    // o scope aqui nunca é NULL (linhas não classificadas ficaram fora de TODO
+    // bucket acima, mesma convenção/aviso dos totals)
+    const ax = scope === 'prod' ? pa.axes.prod : pa.axes.progress
+    ax.commits++
+    ax.additions += r.additions
+    ax.deletions += r.deletions
+    ax.repos.add(r.repo)
+    ax.days.add(dk)
+    if (r.date > ax.last)
+      ax.last = r.date
 
     const pr = getOrCreate(perRepo, r.repo, () => ({ commits: 0, prodCommits: 0, progressCommits: 0, additions: 0, deletions: 0, authors: new Set<string>(), last: '' }))
     pr.commits++
@@ -750,8 +775,12 @@ async function main() {
     perRepo: [...perRepo.entries()]
       .map(([repo, v]) => ({ repo, commits: v.commits, prodCommits: v.prodCommits, progressCommits: v.progressCommits, additions: v.additions, deletions: v.deletions, authors: v.authors.size, lastCommit: v.last }))
       .sort((a, b) => b.commits - a.commits),
+    // byScope (issue #152): os dois eixos SEMPRE presentes quando o campo
+    // existe (autor só-progress tem o eixo prod zerado) — a filosofia
+    // omit-prod rege o campo `scope` das linhas, não as chaves do byScope.
+    // Ausente só em stats.json gerado por versão anterior (feature-detect).
     perAuthor: [...perAuthor.entries()]
-      .map(([author, v]) => ({ author, commits: v.commits, additions: v.additions, deletions: v.deletions, repos: v.repos.size, activeDays: v.days.size, lastCommit: v.last, ...calcStreaks(v.days) }))
+      .map(([author, v]) => ({ author, commits: v.commits, additions: v.additions, deletions: v.deletions, repos: v.repos.size, activeDays: v.days.size, lastCommit: v.last, ...calcStreaks(v.days), byScope: { prod: axisOut(v.axes.prod), progress: axisOut(v.axes.progress) } }))
       .sort((a, b) => b.commits - a.commits),
     // encoding omit-prod (issue #119): o campo scope só viaja quando ≠ 'prod'
     // (ausente = prod) — os três valores explícitos vivem só no banco

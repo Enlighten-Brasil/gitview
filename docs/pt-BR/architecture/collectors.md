@@ -11,7 +11,7 @@ Os coletores de `scripts/` leem os repos git e a API do GitHub e gravam os seis 
 
 | script | saída | fonte |
 |---|---|---|
-| `collect.ts` | `stats.json` (agregados) + `commits.json` (100 últimos/autor) | `git log --all --no-renames --no-merges --numstat` → SQLite incremental |
+| `collect.ts` | `stats.json` (agregados, com os eixos `byScope` prod/progress por autor) + `commits.json` (100 últimos/autor) | `git log --all --no-renames --no-merges --numstat` → SQLite incremental |
 | `collect-github.ts` | `github.json` (PRs + reviews, mapa login→dev) | API GraphQL do GitHub (token no `.env` ou `gh`) |
 | `collect-branches.ts` | `branches.json` (inventário de branches: status em union fechada, ahead/behind sem merges, e-mails crus dos autores à frente, linhas +/−) | `git for-each-ref` + `git log`/`rev-list` nos clones locais |
 | `collect-graph.ts` | `graph-<repo>.json` (topologia de commits COM merges, um arquivo por repo: hash/parents 40-hex, autor canônico, data UTC ISO ms, subject, decoration de refs/tags) | `git log --all --date-order` nos clones locais (janela `GITVIEW_GRAPH_WINDOW`, default 1000) |
@@ -23,7 +23,7 @@ Os coletores de `scripts/` leem os repos git e a API do GitHub e gravam os seis 
 
 - **`collect.ts` (padrão)**: o `git log` recebe `--since=<watermark>` por repo: `MAX(date)` do banco menos 7 dias, margem que cobre commits com committer date antiga. `INSERT OR IGNORE` em `(repo, hash)` torna a sobreposição inócua.
 - **`--full`**: re-escaneia todo o histórico, ignorando o watermark.
-- **`--reaggregate`**: pula fetch e `git log`; re-aplica aliases às linhas gravadas e re-exporta os JSONs.
+- **`--reaggregate`**: pula fetch e `git log`; re-aplica aliases às linhas gravadas e re-exporta os JSONs. Os eixos `byScope` derivam da coluna `scope` gravada, então este modo os repopula sem git.
 - **`collect-github.ts`**: refaz o fetch só dos PRs atualizados desde a última coleta (margem de 1 dia) e mescla com o arquivo anterior; MERGED já gravados são preservados, a lista fresca de OPEN é a verdade, e PRs cujo `mergedAt` ficou fora da janela expiram. `--full` ignora o cache no fetch, e o arquivo anterior segue como rede de segurança: repo que falha não sai zerado do painel.
 - **`collect-branches.ts`**: sem modo incremental — toda execução re-enumeria `refs/heads` por completo (pool de 4 com spawns assíncronos; ~25s para ~200 branches em 14 repos). Nunca faz fetch: o frescor fica atrelado ao fetch do `collect.ts` no início da cadeia, como o `stats.json`.
 - **`collect-graph.ts`**: sem modo incremental — toda execução re-percorre os últimos `GITVIEW_GRAPH_WINDOW` commits por repo (default 1000; pool de 4 com spawns assíncronos, ~1s para 14 repos) e reescreve o seu `graph-<repo>.json`. Nunca faz fetch nem toca o banco ou o `stats.json`: o frescor fica atrelado ao fetch do `collect.ts` no início da cadeia.
@@ -47,7 +47,7 @@ Falha de fetch é tolerada: o coletor avisa e usa o cache local.
 ## Datas e fuso horário
 
 - **Gravação**: UTC ISO com milissegundos (`2026-10-08T18:05:13.000Z`); comparação lexicográfica e ordenação dependem desse formato.
-- **Agregação**: todo bucket (mês, dia, semana ISO, fim de semana, madrugada, heatmap) é calculado em `GITVIEW_TIMEZONE` (default `America/Sao_Paulo`) via `Intl`, nunca no relógio da máquina; nome IANA inválido cai no default com aviso. O mesmo banco produz agregados byte-idênticos em qualquer máquina, e os buckets refletem a madrugada e o fim de semana reais do time. Streaks usam aritmética calendária sobre chaves de dia, imunes a DST.
+- **Agregação**: todo bucket (mês, dia, semana ISO, fim de semana, madrugada, heatmap) é calculado em `GITVIEW_TIMEZONE` (default `America/Sao_Paulo`) via `Intl`, nunca no relógio da máquina; nome IANA inválido cai no default com aviso. O mesmo banco produz agregados byte-idênticos em qualquer máquina, e os buckets refletem a madrugada e o fim de semana reais do time. Streaks usam aritmética calendária sobre chaves de dia, imunes a DST; desde a issue #152 a mesma aritmética também roda por eixo de escopo — `perAuthor[].byScope.{prod,progress}` porta os campos medidos da linha recalculados sobre as linhas do próprio eixo (conjuntos de dias e repos, somas, último commit).
 - **Ordem**: decidem timestamps, não strings: o `collect-releases.ts` conta commits por release comparando epochs, e o gate confere a ordem decrescente real do `commits.json`.
 
 ## O que nunca entra nas métricas

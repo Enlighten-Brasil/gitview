@@ -32,7 +32,7 @@ Toda linha de commit carrega uma classificação feita na coleta: produção (al
 
 - Como o período, o escopo vale em toda rota de dados (`full`, `team`, `period`, `period-bots`); rotas `none` não o carregam e `/branches` não o consome (a página é por natureza a vista do progresso — os chips ficam ocultos nela).
 - A última escolha persiste no `localStorage` (`gitview:scope`) e uma URL sem `scope` cai nela; valor inválido volta para **Todos**. Dados coletados antes da divisão prod/progresso forçam **Todos** (feature-detect em `totals.prodCommits`).
-- Painéis alimentados por linhas de commit seguem o escopo — inclusive as janelas fixas **Ritmo** e **Fora do horário** no modo **8 semanas**, que ignoram o período mas aplicam o escopo. PRs, cycle time, reviews, releases, inatividade, o ranking de histórico completo, streaks, o resumo semanal, o grafo de commits e `/branches` leem dados sem classificação de escopo.
+- Painéis alimentados por linhas de commit seguem o escopo — inclusive as janelas fixas **Ritmo** e **Fora do horário** no modo **8 semanas**, que ignoram o período mas aplicam o escopo. PRs, cycle time, reviews, releases, inatividade, o ranking de histórico completo, o resumo semanal, o grafo de commits e `/branches` leem dados sem classificação de escopo. Os cards históricos de `/devs/:name` (dias ativos, streak, repositórios) são a exceção entre os contadores históricos: desde a issue #152 leem o eixo `byScope` do escopo selecionado quando o dado o porta (detalhes abaixo, na seção de `/devs/:name`).
 - O que cada escopo significa para a gestão e as limitações conhecidas (dupla contagem do squash, ref hint melhor-esforço): [Produção vs progresso](../guide/scopes.md).
 
 ## Parâmetros de URL
@@ -104,7 +104,7 @@ Cada painel fixo declara a própria janela no título ou no rodapé porque a per
 
 Cards de commits, linhas e devs, gráficos, PRs mergeados, cycle time, reviews e listas de commits ficam recortados à janela; **Tudo** significa histórico completo. Ficam fora, cada um rotulado:
 
-- **dias ativos (total)**, **commits/dia ativo (total)**, **streak (total)** e **repositórios (total)**: contadores históricos com sufixo `(total)` quando há período ativo.
+- **dias ativos (total)**, **commits/dia ativo (total)**, **streak (total)** e **repositórios (total)**: contadores históricos com sufixo `(total)` quando há período ativo. Com recorte de escopo (`?scope=prod`/`progress`) e dado portando os eixos `byScope` por autor (coletas a partir da issue #152), esses cards leem o eixo do escopo selecionado e o sufixo deixa de vir do escopo — só do período; sem os eixos (dado antigo), continuam integrais e o escopo também adiciona `(total)` (feature-detect na presença de `byScope`).
 - **PRs abertos**: estado atual. **Releases**: marcos.
 - Em **Tudo**, o heatmap de horas cobre no máximo 24 meses (**Horários de atividade — últimos 24 meses**), o limite da agregação.
 - Nessas rotas a sidebar mostra só o seletor de período, mais **incluir bots** em `/repos/:name`, onde a chave vale para os commits, os tipos de commit e os PRs do repo.
