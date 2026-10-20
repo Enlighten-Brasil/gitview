@@ -32,7 +32,7 @@ Every commit line carries a collection-time classification: production (reachabl
 
 - Like the period, the scope applies on every data route (`full`, `team`, `period`, `period-bots`); `none` routes do not load it, and `/branches` does not consume it (the page is by nature the progress view — the chips stay hidden there).
 - The last choice persists in `localStorage` (`gitview:scope`) and a URL without `scope` falls back to it; an invalid value drops to **Todos**. Data collected before the prod/progress split forces **Todos** (feature-detect on `totals.prodCommits`).
-- Panels backed by commit lines follow the scope — including the fixed-window **Ritmo** and **Fora do horário** in **8 semanas** mode, which ignore the period but apply the scope. PRs, cycle time, reviews, releases, inactivity, the full-history ranking, streaks, the weekly summary, the commit graph and `/branches` read data with no scope classification.
+- Panels backed by commit lines follow the scope — including the fixed-window **Ritmo** and **Fora do horário** in **8 semanas** mode, which ignore the period but apply the scope. PRs, cycle time, reviews, releases, inactivity, the full-history ranking, the weekly summary, the commit graph and `/branches` read data with no scope classification. The historical cards of `/devs/:name` (active days, streak, repositories) are the exception among the lifetime counters: since issue #152 they read the per-author `byScope` axis of the selected scope when the data carries it (details below, in the `/devs/:name` section).
 - What each scope means for management, and the known limitations (squash double counting, best-effort ref hints): [Production vs progress](../guide/scopes.md).
 
 ## URL parameters
@@ -104,7 +104,7 @@ Each fixed panel declares its own window in the title or the footer, because the
 
 Commits, lines and devs cards, charts, merged PRs, cycle time, reviews and commit lists stay scoped to the window; **Tudo** means full history. These stay out, each one labeled:
 
-- **dias ativos (total)**, **commits/dia ativo (total)**, **streak (total)** and **repositórios (total)**: lifetime counters with the `(total)` suffix when a period is active.
+- **dias ativos (total)**, **commits/dia ativo (total)**, **streak (total)** and **repositórios (total)**: lifetime counters with the `(total)` suffix when a period is active. With a scope cut (`?scope=prod`/`progress`) and data carrying the per-author `byScope` axes (collections since issue #152), these cards read the axis of the selected scope and the suffix no longer comes from the scope — only from the period; without the axes (older data) they stay integral and the scope also adds `(total)` (feature-detect on the presence of `byScope`).
 - **PRs abertos**: current state. **Releases**: milestones.
 - Under **Tudo**, the hours heatmap covers at most 24 months (**Horários de atividade — últimos 24 meses**), the aggregation limit.
 - On these routes the sidebar shows only the period selector, plus **incluir bots** on `/repos/:name`, where the switch applies to the repo's commits, commit types and PRs.

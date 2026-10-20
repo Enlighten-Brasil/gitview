@@ -46,9 +46,9 @@ Every number on the dashboard has a formula, a window and a reading. The per-rou
 
 **Lines added and removed**: sums of `--numstat` per commit. Lockfiles and generated files are filtered line by line in the parse, never via pathspec: the commit counts, its generated lines do not. `GITVIEW_EXCLUDE_PATHS` (CSV of globs) adds your own patterns, with `/` matching the whole path and without `/` matching only the file name. The default list is in [Collectors](../architecture/collectors.md).
 
-**Active days**: count of distinct calendar days with at least one commit. **Commits/active day**: `commits / max(diasAtivos, 1)`. Both are lifetime totals and appear with the `(total)` suffix on dev pages.
+**Active days**: count of distinct calendar days with at least one commit. **Commits/active day**: `commits / max(diasAtivos, 1)`. Both are lifetime totals and appear with the `(total)` suffix on dev pages. On `/devs/<name>` with the work scope cut (`?scope=prod`/`progress`) and data carrying the per-author `byScope` axes (collections since issue #152), both read the axis of the selected scope and the `(total)` suffix marks only the period; without the axes the lifetime behavior stands (feature-detect on the presence of `byScope`).
 
-**Streak**: pure calendar arithmetic over day keys in the canonical timezone, no local `Date` math, so DST and machine timezone cannot break the run. **streak** is the consecutive days ending on the last active day (a dev idle for 3 days still shows the run that ended there); **record** is the longest run ever, shown as `máx`.
+**Streak**: pure calendar arithmetic over day keys in the canonical timezone, no local `Date` math, so DST and machine timezone cannot break the run. **streak** is the consecutive days ending on the last active day (a dev idle for 3 days still shows the run that ended there); **record** is the longest run ever, shown as `máx`. Since issue #152 the collector runs the same arithmetic per scope axis: with the scope cut and `byScope` present, the `/devs/<name>` card shows the run and the record of the axis.
 
 **Hour heatmap** (**Frequência — dia da semana × hora**): commits per (author, repo, month, weekday, hour), with `0 = dom … 6 = sáb` and hour `0–23`. The aggregation keeps at most 24 months, so **Tudo** has that cap, and the period cuts by month.
 

@@ -26,7 +26,11 @@ import type { Stats } from '../src/types'
  *   resultado da identidade `prod + progress == all` por base (violação →
  *   exit 1). A identidade vale para todo campo ADITIVO do snapshot (somas e
  *   contagens das projeções, totais de commits/linhas) — `authors`/`repos`
- *   dos totais são contagens distintas e não somam.
+ *   dos totais são contagens distintas e não somam. Desde a issue #152 o
+ *   snapshot inclui a seção `perAuthor` por cenário (contagem de linhas +
+ *   somas aditivas da linha integral e dos eixos byScope) e a identidade
+ *   ganha a versão POR LINHA de perAuthor (prod + progress == linha integral
+ *   em commits/additions/deletions; violação → exit 1).
  * - A saída contém nomes reais de autores/repos dos SEUS dados locais: nunca
  *   commite um baseline gerado sobre dados reais. Para um baseline
  *   compartilhável, gere o fixture sintético (`pnpm exec tsx
@@ -183,6 +187,40 @@ function sums<T extends object>(rows: readonly T[], fields: (keyof T & string)[]
   return out
 }
 
+/**
+ * perAuthor entra na matriz (issue #152): contagem de linhas + somas aditivas
+ * (commits/additions/deletions) da linha integral E dos dois eixos byScope.
+ * perAuthor ignora os filtros da sidebar (histórico completo), então a seção é
+ * idêntica entre os cenários — entra no baseline para o byte-compare pegar
+ * regressão na agregação do coletor. Linha sem byScope (dado anterior à
+ * feature) contribui só para a parte integral.
+ */
+function perAuthorSums(rows: Stats['perAuthor']): Record<string, unknown> {
+  const out = {
+    count: rows.length,
+    byScopeRows: 0,
+    commits: 0,
+    additions: 0,
+    deletions: 0,
+    prod: { commits: 0, additions: 0, deletions: 0 },
+    progress: { commits: 0, additions: 0, deletions: 0 },
+  }
+  for (const row of rows) {
+    out.commits += row.commits
+    out.additions += row.additions
+    out.deletions += row.deletions
+    if (!row.byScope)
+      continue
+    out.byScopeRows++
+    for (const axis of ['prod', 'progress'] as const) {
+      out[axis].commits += row.byScope[axis].commits
+      out[axis].additions += row.byScope[axis].additions
+      out[axis].deletions += row.byScope[axis].deletions
+    }
+  }
+  return out
+}
+
 /** o snapshot de um cenário: tudo o que os componentes leem do store filtrado */
 function snapshotMetrics(): Record<string, unknown> {
   return {
@@ -198,6 +236,7 @@ function snapshotMetrics(): Record<string, unknown> {
       filteredHeatmap: sums(filteredHeatmap.value, ['commits']),
       filteredTypes: sums(filteredTypes.value, ['commits']),
     },
+    perAuthor: perAuthorSums(stats.value?.perAuthor ?? []),
   }
 }
 
@@ -305,6 +344,25 @@ for (const base of bases) {
   }
 }
 
+// identidade POR LINHA de perAuthor (issue #152): perAuthor ignora os filtros
+// (histórico completo), então o prod+progress==all dele não é por cenário — é
+// os eixos byScope fechando com a linha integral nos campos aditivos. Linha
+// sem byScope (dado anterior à feature) fica fora. Violação → exit 1 abaixo.
+let checkedPerAuthorFields = 0
+let perAuthorByScopeRows = 0
+for (const row of data.perAuthor) {
+  if (!row.byScope)
+    continue
+  perAuthorByScopeRows++
+  for (const field of ['commits', 'additions', 'deletions'] as const) {
+    checkedPerAuthorFields++
+    const p = row.byScope.prod[field]
+    const g = row.byScope.progress[field]
+    if (p + g !== row[field])
+      violations.push(`perAuthor["${row.author}"].${field}: prod(${p}) + progress(${g}) != linha(${row[field]})`)
+  }
+}
+
 // saída: stdout = baseline JSON (chaves ordenadas, sem timestamp)
 function sortKeys(value: unknown): unknown {
   if (Array.isArray(value))
@@ -334,10 +392,11 @@ console.log(JSON.stringify(sortKeys({
 const clock = pinned === null ? 'atual' : `pinado --now (${new Date(pinned).toISOString().slice(0, 10)})`
 console.error(`snapshot-metrics: ${scenarios.length} cenários (${bases.length} bases × ${WORK_SCOPE_AXIS.length} workScopes) · relógio: ${clock}`)
 console.error(`stats.json: ${data.totals.commits} commits (${data.totals.prodCommits} prod + ${data.totals.progressCommits} progress), ${data.repos.length} repos, ${data.authors.length} autores`)
+console.error(`perAuthor: ${data.perAuthor.length} linhas, ${perAuthorByScopeRows} com byScope (linhas sem byScope = dado coletado antes da issue #152)`)
 if (violations.length > 0) {
-  console.error(`✗ identidade prod+progress==all: ${violations.length} violação(ões) em ${checkedFields} comparações:`)
+  console.error(`✗ identidade prod+progress==all: ${violations.length} violação(ões) em ${checkedFields} comparações de cenário + ${checkedPerAuthorFields} por linha de perAuthor:`)
   for (const v of violations)
     console.error(`  - ${v}`)
   process.exit(1)
 }
-console.error(`✓ identidade prod+progress==all: ${bases.length} bases × campos aditivos (${checkedFields} comparações), 0 violações`)
+console.error(`✓ identidade prod+progress==all: ${bases.length} bases × campos aditivos (${checkedFields} comparações) + ${checkedPerAuthorFields} por linha de perAuthor, 0 violações`)

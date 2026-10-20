@@ -177,6 +177,73 @@ if (stats) {
   for (const a of (isArr(stats.perAuthor) ? stats.perAuthor : []) as Record<string, unknown>[]) {
     if (Number(a.commits) < 0 || Number(a.additions) < 0 || Number(a.deletions) < 0)
       errors.push(`stats.perAuthor["${a.author}"]: contagem negativa`)
+    // -----------------------------------------------------------------------
+    // byScope (issue #152): eixos prod/progress com os mesmos campos medidos
+    // da linha. Ausente = dado coletado antes da feature (feature-detect no
+    // frontend — não é erro). Presente ⇒ union fechada: EXATAMENTE as chaves
+    // 'prod' e 'progress' (a filosofia omit-prod rege o campo `scope` das
+    // linhas, não as chaves do byScope — autor só-progress tem eixo prod
+    // zerado). Invariantes: os aditivos (commits/additions/deletions) dos
+    // dois eixos somam a linha; os não-aditivos têm teto na linha — dias
+    // ativos/repos/longestStreak do eixo ≤ da linha (conjunto de dias/repos
+    // do eixo é subconjunto dos da linha), streak do eixo ≤ longestStreak do
+    // eixo (run é caso particular de recorde). ATENÇÃO: streak do eixo ≤
+    // streak da linha NÃO vale em geral — o streak da linha é o run que
+    // TERMINA no último dia ativo dela, que pode ser do outro eixo (dev cujo
+    // commit mais recente é progress tem streak da linha 1 enquanto o eixo
+    // prod guarda um run de 3 encerrado antes); o teto correto do streak do
+    // eixo é o longestStreak da linha, coberto pela cadeia acima. lastCommit
+    // do eixo ≤ da linha (comparação lexicográfica de ISO; eixo zerado = '').
+    // -----------------------------------------------------------------------
+    if (!('byScope' in a))
+      continue
+    const bs = a.byScope
+    if (bs === null || typeof bs !== 'object' || Array.isArray(bs)) {
+      errors.push(`stats.perAuthor["${a.author}"].byScope: esperado objeto, veio ${Array.isArray(bs) ? 'lista' : typeof bs}`)
+      continue
+    }
+    const axisKeys = Object.keys(bs as Record<string, unknown>).sort().join(',')
+    if (axisKeys !== 'prod,progress') {
+      errors.push(`stats.perAuthor["${a.author}"].byScope: chaves inesperadas (${Object.keys(bs as Record<string, unknown>).map(k => `"${k}"`).join(', ')}) — union fechada, exatamente 'prod' e 'progress'`)
+      continue
+    }
+    for (const axisName of ['prod', 'progress'] as const) {
+      const ax = (bs as Record<string, Record<string, unknown>>)[axisName]
+      const where = `stats.perAuthor["${a.author}"].byScope.${axisName}`
+      if (ax === null || typeof ax !== 'object' || Array.isArray(ax)) {
+        errors.push(`${where}: esperado objeto, veio ${Array.isArray(ax) ? 'lista' : typeof ax}`)
+        continue
+      }
+      for (const f of ['commits', 'additions', 'deletions', 'repos', 'activeDays', 'streak', 'longestStreak'] as const) {
+        if (typeof ax[f] !== 'number' || !Number.isFinite(ax[f] as number))
+          errors.push(`${where}.${f}: esperado número, veio ${JSON.stringify(ax[f])}`)
+        else if ((ax[f] as number) < 0)
+          errors.push(`${where}: contagem negativa (${f} = ${ax[f]})`)
+      }
+      if (typeof ax.lastCommit !== 'string')
+        errors.push(`${where}.lastCommit: esperado string ISO ('' no eixo zerado), veio ${JSON.stringify(ax.lastCommit)}`)
+      else if (ax.lastCommit !== '' && Number.isNaN(Date.parse(ax.lastCommit)))
+        errors.push(`${where}.lastCommit: data inválida ("${ax.lastCommit}")`)
+    }
+    const prodAx = (bs as Record<string, Record<string, number>>).prod
+    const progAx = (bs as Record<string, Record<string, number>>).progress
+    if (typeof prodAx !== 'object' || prodAx === null || typeof progAx !== 'object' || progAx === null)
+      continue // shape já reportado acima
+    for (const f of ['commits', 'additions', 'deletions'] as const) {
+      check(
+        Number(prodAx[f]) + Number(progAx[f]) === Number(a[f]),
+        `stats.perAuthor["${a.author}"]: byScope.prod.${f} (${prodAx[f]}) + byScope.progress.${f} (${progAx[f]}) != ${f} da linha (${a[f]})`,
+      )
+    }
+    for (const axisName of ['prod', 'progress'] as const) {
+      const ax = (bs as Record<string, Record<string, unknown>>)[axisName]
+      const where = `stats.perAuthor["${a.author}"].byScope.${axisName}`
+      check(Number(ax.activeDays) <= Number(a.activeDays), `${where}.activeDays (${ax.activeDays}) > activeDays da linha (${a.activeDays}) — eixo não pode exceder o todo`)
+      check(Number(ax.repos) <= Number(a.repos), `${where}.repos (${ax.repos}) > repos da linha (${a.repos}) — eixo não pode exceder o todo`)
+      check(Number(ax.longestStreak) <= Number(a.longestStreak), `${where}.longestStreak (${ax.longestStreak}) > longestStreak da linha (${a.longestStreak}) — eixo não pode exceder o todo`)
+      check(Number(ax.streak) <= Number(ax.longestStreak), `${where}.streak (${ax.streak}) > longestStreak do eixo (${ax.longestStreak}) — run atual excede o próprio recorde`)
+      check(String(ax.lastCommit) <= String(a.lastCommit), `${where}.lastCommit ("${ax.lastCommit}") > lastCommit da linha ("${a.lastCommit}") — eixo não pode exceder o todo`)
+    }
   }
   for (const h of (isArr(stats.heatmap) ? stats.heatmap : []) as Record<string, unknown>[]) {
     if (Number(h.weekday) < 0 || Number(h.weekday) > 6 || Number(h.hour) < 0 || Number(h.hour) > 23) {

@@ -23,12 +23,14 @@ Panels backed by commit lines count only the lines of the selected scope: the su
 
 Fixed *period* windows still apply the scope: **Ritmo** and **Fora do horário** in **8 semanas** mode ignore the period filter, but they count only the lines of the selected scope.
 
+On the dev profile (`/devs/<name>`), the historical cards — **dias ativos**, **commits/dia ativo**, **streak** and **repositórios** — read the axis of the selected scope when the data carries the per-author `byScope` axes (collections since issue #152): with **Produção**/**Em progresso** and the axis present, the `(total)` suffix no longer comes from the scope cut (it still marks the period cut). A row without the axes degrades to the lifetime counters with `(total)` — feature-detect on the presence of `byScope`.
+
 ## What ignores the scope (and why)
 
 - **PRs, cycle time, reviews** (`/prs`): GitHub process data carries no git-ref classification — a PR is an event, not a commit line.
 - **Releases**: milestones.
 - **Inatividade — repos e devs parados**: measured up to today over the full history, on purpose. If it followed the **Produção** scope, a dev who spent the whole month on the minor's integration branch would show up as inactive while doing exactly what was asked of them.
-- **Ranking do time (histórico completo)**, streaks and active days: lifetime counters.
+- **Ranking do time (histórico completo)**: a lifetime counter — the `/devs` table reads the integral `perAuthor` row. Streaks and active days are lifetime counters everywhere except the dev-profile historical cards above, which read the `byScope` axis when the data carries one.
 - **Weekly summary**: the whole-team meeting report, which ignores every sidebar filter.
 - **Commit graph** (`/repos/<name>#grafo`): a fixed window of the last N commits — removing commits would break the merge chains.
 - The **/branches** page: the progress view by nature — the scope chips stay hidden there.

@@ -2,7 +2,9 @@
 /**
  * Cards de métrica do perfil do dev (issue #41) — commits/linhas no período +
  * totais históricos (sufixo "(total)") + PRs/reviews quando o GitHub foi
- * coletado. O grid é o `StatCards` compartilhado com repos/[name].
+ * coletado. Com workScope ≠ all E byScope na linha (issue #152), os cards
+ * históricos leem o eixo do escopo em vez da linha integral. O grid é o
+ * `StatCards` compartilhado com repos/[name].
  */
 import type { MergedPr } from '@/types'
 import { computed } from 'vue'
@@ -14,16 +16,28 @@ import { isMergedPr } from '@/types'
 
 const props = defineProps<{ dev: string }>()
 
-// com período ativo OU escopo recortado (issue #129), os cards históricos
-// ganham o sufixo " (total)": perAuthor (streaks/activeDays/lastCommit) exige
-// granularidade de dia que só existe no coletor — impossível recalcular no
-// frontend a partir do monthly, então ficam integrais quando workScope ≠ all
-const histSuffix = computed(() =>
-  (filters.rangeMonths !== null || isCustomRange() || filters.workScope !== 'all' ? ' (total)' : ''),
-)
-
 const authorStats = computed(() =>
   stats.value?.perAuthor.find(a => a.author === props.dev) ?? null,
+)
+
+// eixo de escopo do autor (issue #152): com workScope ≠ 'all' E a linha
+// portando byScope (feature-detect — dado coletado antes da feature não tem),
+// os cards históricos passam a ler o eixo correspondente (prod ou progress),
+// que o coletor pré-calculou com a granularidade de dia que só existe lá
+const scopeAxis = computed(() => {
+  const a = authorStats.value
+  if (!a?.byScope || filters.workScope === 'all')
+    return null
+  return a.byScope[filters.workScope]
+})
+
+// sufixo " (total)" dos cards históricos: período ativo OU escopo recortado
+// SEM eixo disponível (dado antigo — impossível recortar no frontend, exige
+// granularidade de dia que só o coletor tem). Com o eixo ativo o card já
+// mostra o valor do escopo selecionado — o recorte de escopo não adiciona
+// "(total)", só o de período (rangeMonths/custom range)
+const histSuffix = computed(() =>
+  (filters.rangeMonths !== null || isCustomRange() || (filters.workScope !== 'all' && !scopeAxis.value) ? ' (total)' : ''),
 )
 
 // linhas mensais do dev dentro do período e do escopo de trabalho — base dos
@@ -71,14 +85,17 @@ const cards = computed<{ value: string, label: string, icon?: string, color?: st
     additions += r.additions
     deletions += r.deletions
   }
+  // fonte dos cards históricos: o eixo do escopo selecionado quando existe,
+  // senão a linha integral (workScope 'all' ou dado antigo sem byScope)
+  const h = scopeAxis.value ?? a
   const base = [
     { value: fmtCompact(commits), label: 'commits', icon: 'i-lucide-git-commit-horizontal' },
     { value: fmtCompact(additions), label: 'linhas +', icon: 'i-lucide-plus', color: 'text-success' },
     { value: fmtCompact(deletions), label: 'linhas −', icon: 'i-lucide-minus', color: 'text-error' },
-    { value: String(a.activeDays), label: `${a.activeDays === 1 ? 'dia ativo' : 'dias ativos'}${histSuffix.value}`, icon: 'i-lucide-calendar-check' },
-    { value: fmtRatio(a.commits / Math.max(a.activeDays, 1)), label: `commits/dia ativo${histSuffix.value}`, icon: 'i-lucide-zap' },
-    { value: `${a.streak} (máx ${a.longestStreak})`, label: `streak${histSuffix.value}`, icon: 'i-lucide-flame' },
-    { value: String(a.repos), label: `${a.repos === 1 ? 'repositório' : 'repositórios'}${histSuffix.value}`, icon: 'i-lucide-git-branch' },
+    { value: String(h.activeDays), label: `${h.activeDays === 1 ? 'dia ativo' : 'dias ativos'}${histSuffix.value}`, icon: 'i-lucide-calendar-check' },
+    { value: fmtRatio(h.commits / Math.max(h.activeDays, 1)), label: `commits/dia ativo${histSuffix.value}`, icon: 'i-lucide-zap' },
+    { value: `${h.streak} (máx ${h.longestStreak})`, label: `streak${histSuffix.value}`, icon: 'i-lucide-flame' },
+    { value: String(h.repos), label: `${h.repos === 1 ? 'repositório' : 'repositórios'}${histSuffix.value}`, icon: 'i-lucide-git-branch' },
   ]
   if (github.value) {
     base.push(

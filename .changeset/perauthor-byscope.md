@@ -1,0 +1,5 @@
+---
+'gitview': minor
+---
+
+As linhas de `stats.perAuthor` ganham o campo opcional `byScope` com os eixos prod/progress (commits, additions, deletions, repos, activeDays, lastCommit, streak e longestStreak do eixo), acumulados pelo coletor na mesma passada do banco e validados por invariantes novos no check-data (soma dos eixos fecha com a linha nos aditivos, teto do eixo nos não-aditivos, union fechada de chaves); o `snapshot:metrics` inclui perAuthor na matriz com a identidade prod+progress==linha por registro. Em `/devs/:name`, com o escopo de trabalho recortado (Produção/Em progresso), os cards históricos — dias ativos, commits/dia ativo, streak e repositórios — passam a ler o eixo correspondente e o sufixo "(total)" deixa de marcar o recorte de escopo (continua marcando o de período). Instalações existentes precisam re-coletar para popular o eixo (`pnpm collect`; a recoleta leve `--reaggregate` também popula, herdando o `scope` gravado no banco); dado antigo sem `byScope` degrada via feature-detect para o comportamento atual (linha integral com "(total)").
