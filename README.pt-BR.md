@@ -59,6 +59,7 @@ pnpm collect:releases   # só releases
 pnpm collect:team       # só o cadastro do time
 pnpm check:data         # valida shape e invariantes dos JSONs coletados
 pnpm check:scrub        # gate de identidade dos arquivos tracked (também no CI)
+pnpm diagnose           # pré-flight: Node/git/token/repos — rode quando uma máquina der problema
 pnpm lint / lint:fix    # ESLint @antfu/eslint-config
 pnpm typecheck          # tsc --noEmit (scripts + src)
 pnpm build              # build estático em dist/

@@ -37,6 +37,10 @@ Yes. On PowerShell 5.1 call `pnpm.cmd`, because the `pnpm.ps1` shim is blocked b
 
 Yes. `pnpm build` produces a static `dist/` for any static host, with SPA fallback for deep links. In that build the dashboard is read-only, with no `/setup`, `/settings` or re-collection: see [Publishing the static build](./guide/publishing.md).
 
+## Collection hangs or another machine errors out. How do I diagnose?
+
+Run `pnpm diagnose`: it checks Node (22.13+), `node:sqlite`, git, the token, the repositories folder and write permissions, and prints exactly what is missing. Every collection run also writes a timestamped log to `data/logs/` (one file per step) and prints a heartbeat after 30s of silence — if it hangs again, the last log line shows which step stopped. Paste that file into the issue.
+
 ## Next steps
 
 - [Quick start](./guide/quickstart.md): from clone to dashboard.

@@ -1,5 +1,11 @@
 # gitview
 
+## 0.58.0
+
+### Minor Changes
+
+- Diagnóstico multiplataforma: novo `pnpm diagnose` (pré-flight de máquina — Node 22.13+/node:sqlite, dependências, git, token, pasta de repositórios, permissões de escrita, fuso e GitHub API) e log de execução dos 7 scripts de coleta com timestamp relativo + espelho em `data/logs/` (um arquivo por passo, últimos 30 mantidos) + heartbeat de 30s de silêncio — uma coleta travada agora mostra em qual passo parou. `gitAuthEnv` passa a ser nunca interativo (credential helper do sistema resetado + GCM/askpass desligados): fetch sem credencial falha rápido e o coletor segue com o cache local, em vez de abrir diálogo e travar a coleta sem erro aparente. Coleta ganha linha de progresso por repo nas fases longas (git log --numstat e classificação de escopo) e anúncio antes das migrações do banco. `package.json` declara `engines.node >= 22.13.0` (linha mínima do node:sqlite sem flag). FAQ (EN + pt-BR) e READMEs documentam o fluxo de diagnóstico remoto.
+
 ## 0.57.3
 
 ### Patch Changes

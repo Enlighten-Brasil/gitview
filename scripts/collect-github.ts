@@ -15,6 +15,7 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { loadConfig, resolveReposRoot } from './lib/config'
 import { getToken, ghGraphql, GhHttpError } from './lib/github'
+import { initLog } from './lib/log'
 import { discoverRepos, mapPool, parseGitHub, remoteOf } from './lib/repos'
 import { BOT_LOGIN_RE, botLoginSet, resolveAliases } from './lib/team'
 
@@ -24,6 +25,7 @@ const root = resolve(__dirname, '..')
 /** mergeados mais antigos que isso ficam de fora (cobre a visão de 12M com folga) */
 const MERGED_CUTOFF_DAYS = 400
 
+initLog('collect-github')
 const config = loadConfig()
 
 // ---------------------------------------------------------------------------

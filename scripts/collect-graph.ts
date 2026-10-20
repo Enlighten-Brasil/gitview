@@ -57,6 +57,7 @@ import { mkdirSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DEFAULT_GRAPH_WINDOW, loadConfig, resolveReposRoot } from './lib/config'
+import { initLog } from './lib/log'
 import { discoverRepos, mapPool } from './lib/repos'
 import { resolveAliases } from './lib/team'
 
@@ -91,6 +92,7 @@ interface GraphFile {
   commits: GraphCommit[]
 }
 
+initLog('collect-graph')
 const config = loadConfig()
 const graphWindow = config.graphWindow ?? DEFAULT_GRAPH_WINDOW
 const { emailToCanonical } = resolveAliases(config)

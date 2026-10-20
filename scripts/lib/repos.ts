@@ -77,7 +77,19 @@ export function parseGitHub(remote: string): { owner: string, repo: string } | n
  * vale só para o comando — o token nunca fica gravado em config do clone.
  */
 export function gitAuthEnv(token?: string | null): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = { ...process.env, GIT_TERMINAL_PROMPT: '0' }
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    GIT_TERMINAL_PROMPT: '0',
+    // nunca interativo: GCM/askpass abrem diálogo no Windows e travam a
+    // coleta sem erro aparente — sem credencial o comando falha rápido e o
+    // coletor segue com o cache local (comportamento documentado do fetch)
+    GCM_INTERACTIVE: 'never',
+    GIT_ASKPASS: 'echo',
+    // helper vazio reseta a lista de credential helpers do sistema
+    GIT_CONFIG_COUNT: '1',
+    GIT_CONFIG_KEY_0: 'credential.helper',
+    GIT_CONFIG_VALUE_0: '',
+  }
   if (token) {
     const basic = Buffer.from(`x-access-token:${token}`).toString('base64')
     env.GIT_CONFIG_COUNT = '1'

@@ -18,11 +18,13 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getOrCreate } from '../src/collections'
 import { loadConfig } from './lib/config'
+import { initLog } from './lib/log'
 import { BOT_LOGIN_RE, botAuthorNames, botLoginSet, resolveAliases } from './lib/team'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = resolve(__dirname, '..')
 
+initLog('collect-team')
 const config = loadConfig()
 const { emailToCanonical, loginToCanonical } = resolveAliases(config)
 const botLogins = botLoginSet(config)
