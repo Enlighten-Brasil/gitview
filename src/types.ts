@@ -17,6 +17,8 @@ export function isProgressScope(value: unknown): value is ProgressScope {
 
 export interface WeeklyRow { week: string, repo: string, author: string, scope?: ProgressScope, commits: number, weekend: number, night: number }
 export interface MonthlyRow { month: string, repo: string, author: string, scope?: ProgressScope, commits: number, additions: number, deletions: number }
+/** linha do agregado dia-preciso (daily.json, issue #175) — dia no fuso canônico, SEM cutoff (histórico completo) */
+export interface DailyRow { day: string, repo: string, author: string, scope?: ProgressScope, commits: number, additions: number, deletions: number, weekend: number, night: number }
 export interface HeatmapRow { author: string, repo: string, month: string, weekday: number, hour: number, scope?: ProgressScope, commits: number }
 export interface MonthlyTypeRow { month: string, repo: string, author: string, scope?: ProgressScope, type: string, commits: number }
 

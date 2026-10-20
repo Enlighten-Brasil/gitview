@@ -306,6 +306,47 @@ if (commits) {
     warn(false, `commits.json: ${mergeLike} commits com assunto de merge e diff zero na amostra — single-parent (squash/pull regravado), candidate a excluir (decisão #7)`)
 }
 
+// ── daily.json (7º fixo — agregado dia-preciso, issue #175) ───────────────
+const daily = load('daily.json')
+if (daily) {
+  genAt(daily, 'daily.json')
+  listShape(daily, 'daily', ['day', 'repo', 'author', 'commits', 'additions', 'deletions', 'weekend', 'night'], 'daily.json')
+  scopeUnion(daily.daily, 'daily.json.daily')
+  const drows = (isArr(daily.daily) ? daily.daily : []) as Record<string, unknown>[]
+  for (const dr of drows) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dr.day))) {
+      errors.push(`daily.json: day fora do formato YYYY-MM-DD ("${String(dr.day)}")`)
+      break
+    }
+  }
+  // invariantes contra stats.json (as duas listas já foram carregadas): o corte
+  // dia-preciso reproduz as contagens do totals por construção (mesmas linhas,
+  // mesmos skips) e os predicados de weekend/night são os do weekly — a soma
+  // cross-file fecha. Ausente/quebrado no stats o erro já sai do próprio stats.
+  const dsum = (f: (r: Record<string, unknown>) => boolean, key: string) => drows.filter(f).reduce((s, r) => s + (Number(r[key]) || 0), 0)
+  const st = (stats?.totals ?? {}) as Record<string, unknown>
+  if (typeof st.commits === 'number') {
+    const dCommits = dsum(() => true, 'commits')
+    check(dCommits === st.commits, `daily.json: Σdaily.commits (${dCommits}) != totals.commits (${st.commits})`)
+    const dProd = dsum(r => !('scope' in r), 'commits')
+    check(dProd === st.prodCommits, `daily.json: Σdaily.commits sem scope (${dProd}) != totals.prodCommits (${st.prodCommits})`)
+    const dProgress = dsum(r => 'scope' in r, 'commits')
+    check(dProgress === st.progressCommits, `daily.json: Σdaily.commits com scope (${dProgress}) != totals.progressCommits (${st.progressCommits})`)
+    const dAdd = dsum(() => true, 'additions')
+    check(dAdd === st.additions, `daily.json: Σadditions (${dAdd}) != totals.additions (${st.additions})`)
+    const dDel = dsum(() => true, 'deletions')
+    check(dDel === st.deletions, `daily.json: Σdeletions (${dDel}) != totals.deletions (${st.deletions})`)
+    const wsum = (key: string) => (isArr(stats?.weekly) ? (stats!.weekly as Record<string, unknown>[]) : []).reduce((s, r) => s + (Number(r[key]) || 0), 0)
+    const dWeekend = dsum(() => true, 'weekend')
+    check(dWeekend === wsum('weekend'), `daily.json: Σdaily.weekend (${dWeekend}) != Σweekly.weekend (${wsum('weekend')})`)
+    const dNight = dsum(() => true, 'night')
+    check(dNight === wsum('night'), `daily.json: Σdaily.night (${dNight}) != Σweekly.night (${wsum('night')})`)
+    // aviso (não bloqueante): dia canônico do daily == dias ativos do totals
+    const dDays = new Set(drows.map(r => String(r.day))).size
+    warn(dDays === st.activeDays, `daily.json: ${dDays} dias distintos != totals.activeDays (${st.activeDays}) — o dia do agregado divergiu do fuso canônico (slice de data em UTC? dayKeyOf ausente na coleta)`)
+  }
+}
+
 // ── github.json ───────────────────────────────────────────────────────────
 const github = load('github.json')
 if (github) {
@@ -654,4 +695,4 @@ if (errors.length) {
   process.exit(1)
 }
 
-console.log('✓ check-data: stats/commits/github/releases/team/branches + graph-*.json com shape e invariantes ok')
+console.log('✓ check-data: stats/daily/commits/github/releases/team/branches + graph-*.json com shape e invariantes ok')
