@@ -5,7 +5,7 @@
  */
 import { computed } from 'vue'
 import TablePanel from '@/components/TablePanel.vue'
-import { inPeriodMonth, recentCommits, stats } from '@/data'
+import { inPeriodMonth, recentCommits, scopeMatches, stats } from '@/data'
 import { fmtDateTime, fmtInt } from '@/format'
 
 const props = defineProps<{ dev: string }>()
@@ -18,11 +18,13 @@ function commitUrl(repo: string, hash: string): string | null {
 
 /**
  * linhas da tabela com o link pré-composto (issue #42) — o template consome
- * `url: string | null` direto, sem non-null assertion (fora do typecheck)
+ * `url: string | null` direto, sem non-null assertion (fora do typecheck).
+ * O escopo de trabalho (issue #129) usa o campo `scope` das linhas do
+ * commits.json (omit-prod: ausente = produção).
  */
 const commits = computed(() =>
   (recentCommits.value ?? [])
-    .filter(c => c.author === props.dev && inPeriodMonth(c.date.slice(0, 7)))
+    .filter(c => c.author === props.dev && inPeriodMonth(c.date.slice(0, 7)) && scopeMatches(c))
     .slice(0, 50)
     .map(c => ({ ...c, url: commitUrl(c.repo, c.hash) })),
 )

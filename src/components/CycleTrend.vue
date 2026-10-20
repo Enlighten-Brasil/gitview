@@ -94,7 +94,7 @@ const grid = computed(() => {
         </tbody>
       </table>
       <p class="text-dimmed text-xs mt-2.5">
-        mediana do cycle time (criação → merge) por mês, com (n PRs) · subindo = 3 meses seguidos de alta · ignora o filtro de período
+        mediana do cycle time (criação → merge) por mês, com (n PRs) · subindo = 3 meses seguidos de alta · ignora o filtro de período e o escopo (github.json não tem o eixo)
       </p>
     </template>
   </UCard>

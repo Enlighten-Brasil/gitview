@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { WorkScope } from '@/data'
 import type { FilterScope } from '@/router/meta'
 import { computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -11,6 +12,7 @@ import {
   setRange,
   setRepos,
   setShowBots,
+  setWorkScope,
   stats,
   toggleAuthor,
   toggleCustomRange,
@@ -28,6 +30,22 @@ const scope = computed<FilterScope>(() => route.meta.filters ?? 'none')
 const showRepos = computed(() => scope.value === 'full' || scope.value === 'team')
 const showDevs = computed(() => scope.value === 'full')
 const showBots = computed(() => scope.value === 'full' || scope.value === 'period-bots')
+
+// chips de Escopo (issue #129): valem em toda rota de dados, como o período —
+// com duas condições: feature-detect de dados pós-#119 (totals.prodCommits;
+// sem o split não há o que recortar, mesma guarda do sanitize do urlState) e a
+// exclusão de /branches (a página É a vista do progresso e não consome
+// filters.workScope — registro da #124). Fora do resetSelection: escopo é
+// contexto, como o período.
+const showWorkScope = computed(() =>
+  !!stats.value && 'prodCommits' in stats.value.totals && route.meta.section !== 'branches',
+)
+
+const workScopes = [
+  { label: 'Todos', value: 'all' },
+  { label: 'Produção', value: 'prod' },
+  { label: 'Em progresso', value: 'progress' },
+] as const satisfies { label: string, value: WorkScope }[]
 
 // times como atalho de filtro: carrega o team.json sob demanda (só no escopo full)
 watch(showDevs, (v) => {
@@ -131,6 +149,35 @@ function clearList(list: ListKey) {
       </div>
       <USwitch v-if="showBots" :model-value="filters.showBots" label="incluir bots" size="sm" class="mt-1" @update:model-value="setShowBots" />
     </section>
+
+    <!-- chips de escopo de trabalho (issue #129) — ver showWorkScope no script:
+         feature-detect + exclusão de /branches; fora do "limpar filtros" -->
+    <template v-if="showWorkScope">
+      <USeparator />
+
+      <section class="flex flex-col gap-2">
+        <span class="filter-label flex items-center gap-1.5">
+          <UIcon name="i-lucide-layers" class="size-3.5" />
+          Escopo
+          <UTooltip :ui="{ content: 'max-w-64' }" text="produção = commits alcançáveis da ref de produção · em progresso = branches de integração/feature. Squash/cherry-pick pode contar o mesmo trabalho duas vezes (hash novo em produção + hash original em progresso). Linhas +/− e commits seguem o recorte; streaks, PRs, releases e inatividade não têm o eixo e ficam integrais.">
+            <UIcon name="i-lucide-info" class="size-3 text-dimmed cursor-help" />
+          </UTooltip>
+        </span>
+        <div class="flex flex-wrap gap-1.5">
+          <UButton
+            v-for="s in workScopes"
+            :key="s.value"
+            size="xs"
+            :color="filters.workScope === s.value ? 'primary' : 'neutral'"
+            :variant="filters.workScope === s.value ? 'soft' : 'outline'"
+            :aria-pressed="filters.workScope === s.value"
+            @click="setWorkScope(s.value)"
+          >
+            {{ s.label }}
+          </UButton>
+        </div>
+      </section>
+    </template>
 
     <!-- repos no escopo 'full' e no 'team'; devs/chips de time só no 'full'
          (no 'team' os devs são travados pela página /teams/:name) -->

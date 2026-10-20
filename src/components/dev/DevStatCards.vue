@@ -7,24 +7,30 @@
 import type { MergedPr } from '@/types'
 import { computed } from 'vue'
 import StatCards from '@/components/StatCards.vue'
-import { filters, inPeriodMonth, isCustomRange, stats } from '@/data'
+import { filters, inPeriodMonth, isCustomRange, scopeMatches, stats } from '@/data'
 import { fmtCompact, fmtDuration, fmtRatio, median } from '@/format'
 import { ghName, github } from '@/github'
 import { isMergedPr } from '@/types'
 
 const props = defineProps<{ dev: string }>()
 
-// com período ativo, os cards históricos ganham o sufixo " (total)"
-const histSuffix = computed(() => (filters.rangeMonths !== null || isCustomRange() ? ' (total)' : ''))
+// com período ativo OU escopo recortado (issue #129), os cards históricos
+// ganham o sufixo " (total)": perAuthor (streaks/activeDays/lastCommit) exige
+// granularidade de dia que só existe no coletor — impossível recalcular no
+// frontend a partir do monthly, então ficam integrais quando workScope ≠ all
+const histSuffix = computed(() =>
+  (filters.rangeMonths !== null || isCustomRange() || filters.workScope !== 'all' ? ' (total)' : ''),
+)
 
 const authorStats = computed(() =>
   stats.value?.perAuthor.find(a => a.author === props.dev) ?? null,
 )
 
-// linhas mensais do dev dentro do período — base dos cards de commits/linhas
-// (com "Tudo", inPeriodMonth aceita todos os meses e a soma equivale ao total histórico)
+// linhas mensais do dev dentro do período e do escopo de trabalho — base dos
+// cards de commits/linhas (com "Tudo" + escopo all, inPeriodMonth aceita todos
+// os meses, scopeMatches aceita todas as linhas e a soma equivale ao total histórico)
 const myMonthly = computed(() =>
-  (stats.value?.monthly ?? []).filter(r => r.author === props.dev && inPeriodMonth(r.month)),
+  (stats.value?.monthly ?? []).filter(r => r.author === props.dev && inPeriodMonth(r.month) && scopeMatches(r)),
 )
 
 // PRs do dev (dados do GitHub, se coletados)

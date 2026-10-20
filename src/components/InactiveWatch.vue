@@ -74,7 +74,7 @@ const staleDevs = computed(() =>
     </div>
 
     <p class="text-dimmed text-xs px-4 pb-3 pt-2.5">
-      ignora os filtros da sidebar (inatividade é medida até hoje, sobre todos os repos/devs) · dev inativo pode estar de férias ou travado — vale um 1:1
+      ignora os filtros da sidebar, inclusive o escopo (inatividade é medida até hoje, sobre todos os repos/devs) · dev inativo pode estar de férias ou travado — vale um 1:1
     </p>
   </TablePanel>
 </template>

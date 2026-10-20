@@ -10,7 +10,7 @@ import CommitGraph from '@/components/CommitGraph.vue'
 import DetailHeader from '@/components/DetailHeader.vue'
 import StatCards from '@/components/StatCards.vue'
 import TablePanel from '@/components/TablePanel.vue'
-import { commitsByAuthorPeriod, filters, groupBySum, inPeriodMonth, isBot, isCustomRange, stats } from '@/data'
+import { commitsByAuthorPeriod, filters, groupBySum, inPeriodMonth, isBot, isCustomRange, scopeMatches, stats } from '@/data'
 import { fmtCompact, fmtDate, fmtDuration, median } from '@/format'
 import { ghIsBot, github } from '@/github'
 import { daysSinceLastRelease, lastTagLabel, loadReleases, releases, repoRelease } from '@/releases'
@@ -41,16 +41,21 @@ const rel = computed(() => repoRelease(repo.value))
 // PRs mergeados ficam restritos ao período; "Tudo" = histórico completo.
 // releases e PRs abertos são marcos/estado atual e ficam de fora do período.
 const periodFiltered = computed(() => filters.rangeMonths !== null || isCustomRange())
-// sufixo dos cards que seguem históricos mesmo com período ativo
-const histSuffix = computed(() => (periodFiltered.value ? ' (total)' : ''))
+// escopo de trabalho ativo (issue #129): os cards de período seguem o recorte;
+// os históricos (perRepo/streaks) não têm como seguir e ganham o sufixo
+const scopeFiltered = computed(() => filters.workScope !== 'all')
+// sufixo dos cards que seguem históricos mesmo com período/escopo ativos
+const histSuffix = computed(() => (periodFiltered.value || scopeFiltered.value ? ' (total)' : ''))
 
-// linhas mensais do repo dentro do período, respeitando o switch de bots
-// (com "Tudo", inPeriodMonth aceita todos os meses e a soma equivale ao total histórico)
+// linhas mensais do repo dentro do período, respeitando o switch de bots e o
+// escopo de trabalho (com "Tudo", inPeriodMonth aceita todos os meses e a soma
+// equivale ao total histórico)
 const periodMonthly = computed(() =>
   (stats.value?.monthly ?? []).filter(r =>
     r.repo === repo.value
     && (filters.showBots || !isBot(r.author))
-    && inPeriodMonth(r.month),
+    && inPeriodMonth(r.month)
+    && scopeMatches(r),
   ),
 )
 const periodCommits = computed(() => periodMonthly.value.reduce((s, r) => s + r.commits, 0))
@@ -93,8 +98,8 @@ const cards = computed<{ value: string, label: string, icon?: string, color?: st
     { value: fmtCompact(periodDels.value), label: 'linhas −', icon: 'i-lucide-minus', color: 'text-error' },
     { value: String(periodAuthors.value), label: 'devs', icon: 'i-lucide-users' },
   ]
-  // com período ativo, mostra também o total histórico pra referência
-  if (periodFiltered.value) {
+  // com período/escopo ativos, mostra também o total histórico pra referência
+  if (periodFiltered.value || scopeFiltered.value) {
     base.push({ value: fmtCompact(r.commits), label: `commits${histSuffix.value}`, icon: 'i-lucide-infinity' })
   }
   if (rel.value) {
@@ -133,10 +138,11 @@ const cards = computed<{ value: string, label: string, icon?: string, color?: st
 // gráficos: tipos de commit + commits por dev
 // ---------------------------------------------------------------------------
 const typesOption = computed<EChartsOption>(() => {
-  // tipo agrupado → commits no período (agregação compartilhada — issue #41)
+  // tipo agrupado → commits no período (agregação compartilhada — issue #41);
+  // segue o switch de bots e o escopo de trabalho (issue #129)
   const map = groupBySum(
     (stats.value?.monthlyTypes ?? []).filter(r =>
-      r.repo === repo.value && inPeriodMonth(r.month) && (filters.showBots || !isBot(r.author)),
+      r.repo === repo.value && inPeriodMonth(r.month) && (filters.showBots || !isBot(r.author)) && scopeMatches(r),
     ),
     r => commitTypeGroup(r.type),
   )

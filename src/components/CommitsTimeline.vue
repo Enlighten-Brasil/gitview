@@ -3,28 +3,30 @@ import type { EChartsOption } from 'echarts'
 import { computed, ref } from 'vue'
 import { nestBySum } from '../aggregations'
 import { axisLabel, legendText, PALETTE, splitLine, tooltipBase } from '../chartTheme'
-import { filteredMonthly, filteredWeekly, inPeriodMonth, stats } from '../data'
+import { filteredMonthly, filteredWeekly, inPeriodMonth, scopeMatches, stats } from '../data'
 import ChartPanel from './ChartPanel.vue'
 
 /**
  * Timeline de commits por dev. Sem `author`, é o painel do dashboard (linhas já
  * filtradas pelo store, série por dev); com `author` (perfil do dev, issue #41)
- * corta só as linhas desse autor por período — a mesma regra dos cards.
+ * corta só as linhas desse autor por período — a mesma regra dos cards. O
+ * escopo de trabalho (issue #129) vale nos dois branches: o do dashboard herda
+ * das projeções filtradas; o do perfil aplica scopeMatches direto.
  */
 const props = defineProps<{ author?: string }>()
 
 const granularity = ref<'week' | 'month'>('week')
 
 // linhas normalizadas para o eixo — o perfil ignora a seleção de repo/autores
-// do dashboard (a rota /devs/:name só tem filtro de período)
+// do dashboard (a rota /devs/:name só tem filtro de período + escopo)
 const rows = computed(() => {
   if (props.author) {
     return granularity.value === 'week'
       ? (stats.value?.weekly ?? [])
-          .filter(r => r.author === props.author && inPeriodMonth(r.week))
+          .filter(r => r.author === props.author && inPeriodMonth(r.week) && scopeMatches(r))
           .map(r => ({ author: r.author, period: r.week, commits: r.commits }))
       : (stats.value?.monthly ?? [])
-          .filter(r => r.author === props.author && inPeriodMonth(r.month))
+          .filter(r => r.author === props.author && inPeriodMonth(r.month) && scopeMatches(r))
           .map(r => ({ author: r.author, period: r.month, commits: r.commits }))
   }
   return granularity.value === 'week'

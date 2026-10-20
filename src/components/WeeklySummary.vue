@@ -115,22 +115,29 @@ function download() {
     </template>
 
     <template #footer>
-      <div class="flex gap-2">
-        <UButton
-          :icon="copied ? 'i-lucide-check' : 'i-lucide-clipboard'"
-          :label="copied ? 'copiado!' : 'copiar markdown'"
-          :color="copied ? 'success' : 'primary'"
-          :disabled="!summary || !hasCopyPath"
-          @click="copy"
-        />
-        <UButton
-          icon="i-lucide-download"
-          label="baixar .md"
-          color="neutral"
-          variant="outline"
-          :disabled="!summary"
-          @click="download"
-        />
+      <div class="flex flex-col gap-1.5 w-full">
+        <div class="flex gap-2">
+          <UButton
+            :icon="copied ? 'i-lucide-check' : 'i-lucide-clipboard'"
+            :label="copied ? 'copiado!' : 'copiar markdown'"
+            :color="copied ? 'success' : 'primary'"
+            :disabled="!summary || !hasCopyPath"
+            @click="copy"
+          />
+          <UButton
+            icon="i-lucide-download"
+            label="baixar .md"
+            color="neutral"
+            variant="outline"
+            :disabled="!summary"
+            @click="download"
+          />
+        </div>
+        <!-- decisão da issue #129: o resumo é relatório do time inteiro — mantém
+             a natureza completa e NÃO segue o workScope (como os demais filtros) -->
+        <p class="text-xs text-dimmed">
+          relatório do time inteiro — ignora os filtros da sidebar, inclusive o escopo (e sempre exclui bots)
+        </p>
       </div>
     </template>
   </USlideover>

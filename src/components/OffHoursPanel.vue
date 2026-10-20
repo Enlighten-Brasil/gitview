@@ -144,7 +144,7 @@ function riskStatus(b: Row): RiskStatus {
       </table>
       <p class="text-dimmed text-xs mt-2.5">
         fds = sáb/dom · madrugada = 22h–6h · padrão = ≥{{ Math.round(OFF_HOURS_PCT * 100) }}% fora do horário<template v-if="mode === '8sem'">
-          ou {{ OFF_HOURS_WEEKENDS }}+ dos últimos 4 fins de semana ativos (janela fixa de 8 semanas, ignora o filtro de período)
+          ou {{ OFF_HOURS_WEEKENDS }}+ dos últimos 4 fins de semana ativos (janela fixa de 8 semanas — segue o escopo, ignora o período)
         </template><template v-else>
           no período · devs com &lt;{{ OFF_HOURS_MIN_COMMITS }} commits no período são ignorados
         </template>

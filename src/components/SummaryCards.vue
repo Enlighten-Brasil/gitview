@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { filteredTotals, filters, previousTotals, rangeLabel, stats } from '../data'
+import { filteredMonthly, filteredTotals, filters, previousTotals, rangeLabel, stats } from '../data'
 import { fmtCompact } from '../format'
 import { DELTA_FLAT_PCT } from '../thresholds'
 import StatCard from './StatCard.vue'
@@ -13,11 +13,45 @@ function delta(cur: number, prev: number | undefined) {
   return { pct: Math.abs(pct), dir: pct > DELTA_FLAT_PCT ? 'up' : pct < -DELTA_FLAT_PCT ? 'down' : 'flat' } as const
 }
 
+/**
+ * Split produção/progresso do card de commits (issue #129) — só com
+ * workScope 'all' (nos recortes o valor já é de um escopo só) e dados pós-#119
+ * (feature-detect do totals.prodCommits, o mesmo dos chips da FilterBar).
+ * Derivado do filteredMonthly (janela do período, não o histórico) agrupando
+ * pela presença do `scope` da linha (codificação omit-prod): sem scope =
+ * produção. Soma fecha com o total do card (prod + progress == commits).
+ * Limitação conhecida: squash/cherry-pick pode contar o mesmo trabalho duas
+ * vezes (hash novo em produção + hash original em progresso).
+ */
+const scopeSplit = computed(() => {
+  if (filters.workScope !== 'all' || !stats.value || !('prodCommits' in stats.value.totals))
+    return null
+  let prod = 0
+  let progress = 0
+  for (const r of filteredMonthly.value) {
+    if (r.scope)
+      progress += r.commits
+    else
+      prod += r.commits
+  }
+  return { prod, progress }
+})
+
 const periodCards = computed(() => {
   const t = filteredTotals.value
   const p = previousTotals.value
+  const s = scopeSplit.value
   return [
-    { value: fmtCompact(t.commits), label: 'commits', icon: 'i-lucide-git-commit-horizontal', color: undefined, delta: cardDelta(t.commits, p?.commits, true) },
+    {
+      // workScope 'all': valor composto "X • Y" (produção • progresso); com
+      // recorte ativo, o valor é do escopo. O delta usa SEMPRE o mesmo escopo
+      // no numerador e no denominador (previousTotals já aplica scopeMatches).
+      value: s ? `${fmtCompact(s.prod)} • ${fmtCompact(s.progress)}` : fmtCompact(t.commits),
+      label: s ? 'em produção • em progresso' : 'commits',
+      icon: 'i-lucide-git-commit-horizontal',
+      color: undefined,
+      delta: cardDelta(t.commits, p?.commits, true),
+    },
     { value: fmtCompact(t.additions), label: 'linhas +', icon: 'i-lucide-plus', color: 'text-success', delta: cardDelta(t.additions, p?.additions, false) },
     { value: fmtCompact(t.deletions), label: 'linhas −', icon: 'i-lucide-minus', color: 'text-error', delta: cardDelta(t.deletions, p?.deletions, false) },
     { value: String(t.authors), label: 'devs ativos', icon: 'i-lucide-users', color: undefined, delta: cardDelta(t.authors, p?.authors, true) },
@@ -57,7 +91,11 @@ const historyLine = computed(() => {
   const t = stats.value?.totals
   if (!t)
     return ''
-  return `histórico total: ${fmtCompact(t.commits)} commits · ${fmtCompact(t.additions)} linhas + · ${fmtCompact(t.deletions)} linhas − · ${t.authors} devs · ${t.repos} repos`
+  // split histórico produção/progresso (issue #129) — só com dados pós-#119
+  const commits = 'prodCommits' in t
+    ? `${fmtCompact(t.commits)} commits (${fmtCompact(t.prodCommits)} em produção · ${fmtCompact(t.progressCommits)} em progresso)`
+    : `${fmtCompact(t.commits)} commits`
+  return `histórico total: ${commits} · ${fmtCompact(t.additions)} linhas + · ${fmtCompact(t.deletions)} linhas − · ${t.authors} devs · ${t.repos} repos`
 })
 </script>
 
