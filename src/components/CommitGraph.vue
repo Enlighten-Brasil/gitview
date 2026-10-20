@@ -509,7 +509,7 @@ function showMore() {
         :height="view.height"
         :viewBox="`0 0 ${layout.totalW} ${view.height}`"
         role="img"
-        :aria-label="`Grafo dos últimos ${commits.length} commits de ${props.repo}`"
+        :aria-label="`Grafo dos últimos ${commits.length} ${commits.length === 1 ? 'commit' : 'commits'} de ${props.repo}`"
       >
         <defs>
           <!-- marcador "continua" das arestas clipadas (pais fora da janela) -->
@@ -604,15 +604,15 @@ function showMore() {
           Mostrar mais antigos
         </UButton>
         <span class="text-dimmed text-xs">
-          mostrando {{ shownCount }} de {{ commits.length }} commits da janela
+          mostrando {{ shownCount }} de {{ commits.length }} {{ commits.length === 1 ? 'commit' : 'commits' }} da janela
         </span>
       </div>
 
       <p class="text-dimmed text-xs px-4 pb-3 leading-relaxed">
-        últimos {{ commits.length }} commits · ~{{ windowDays }} dias · merges são conectores do desenho (métricas seguem sem merges)
+        últimos {{ commits.length }} {{ commits.length === 1 ? 'commit' : 'commits' }} · ~{{ windowDays }} dias · merges são conectores do desenho (métricas seguem sem merges)
         · janela fixa: não segue os filtros de período/bots/escopo
         <template v-if="view.clippedCount">
-          · {{ view.clippedCount }} arestas tracejadas com seta: pais fora da janela — a história continua mais antigo
+          · {{ view.clippedCount }} {{ view.clippedCount === 1 ? 'aresta tracejada com seta: pai fora da janela' : 'arestas tracejadas com seta: pais fora da janela' }} — a história continua mais antigo
         </template>
       </p>
 
