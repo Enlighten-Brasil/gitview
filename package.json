@@ -20,6 +20,7 @@
     "collect:graph": "tsx scripts/collect-graph.ts",
     "collect:releases": "tsx scripts/collect-releases.ts",
     "collect:team": "tsx scripts/collect-team.ts",
+    "demo": "tsx scripts/make-demo-data.ts",
     "demo:shots": "tsx scripts/make-doc-shots.ts",
     "snapshot:metrics": "tsx scripts/snapshot-metrics.ts",
     "clean": "tsx scripts/clean.ts",

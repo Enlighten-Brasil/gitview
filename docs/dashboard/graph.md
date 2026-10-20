@@ -23,7 +23,7 @@ Merge commits are drawn as **hollow circles**: in the graph they are connectors 
 
 ## Empty state
 
-Without a `graph-REPO.json` for the repo, the section shows *"Sem grafo de commits para esse repo — rode `pnpm collect`"* and the rest of the page renders normally. The demo fixtures (`demo-api`/`demo-web`) show this state until the graph collection is available for them.
+Without a `graph-REPO.json` for the repo, the section shows *"Sem grafo de commits para esse repo — rode `pnpm collect`"* and the rest of the page renders normally. The demo fixtures ship their own graphs: `pnpm demo` (`make-demo-data.ts`) emits `graph-demo-api.json`/`graph-demo-web.json` in the contract shape, with visible merge junctions, exactly one clipped edge per repo (a parent outside the window — the dashed "continua" edge) and ref chips on the tips of the demo branches and tags. The public demo renders the full section, not the empty state.
 
 ## Data contract (`graph-REPO.json`)
 

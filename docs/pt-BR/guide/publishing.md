@@ -60,7 +60,7 @@ Comandos e gates estão em [Ambiente de desenvolvimento](../contributing/develop
 A demo em https://enlighten-brasil.github.io/gitview/ vem do `.github/workflows/pages.yml`, disparado em push para `main`, em `workflow_dispatch` e no cron mensal `0 6 1 * *`:
 
 ```bash
-pnpm exec tsx scripts/make-demo-data.ts   # fixture sintético nos seis JSONs
+pnpm exec tsx scripts/make-demo-data.ts   # fixture sintético nos oito JSONs (seis fixos + dois grafos demo)
 pnpm check:data                           # valida o fixture antes do build
 pnpm exec vite build --base "<base_path>/"
 cp dist/index.html dist/404.html          # fallback de SPA

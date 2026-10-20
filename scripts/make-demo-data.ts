@@ -1,10 +1,12 @@
 // scripts/make-demo-data.ts — fixture sintético da demo pública (GitHub Pages)
 //
-// Gera os 6 JSONs de public/data/ com dados 100% FICTÍCIOS (devs "Ana"/"Beto",
-// repos demo-*, commits fake) para a demo servir sem nenhum dado real do time.
+// Gera os 8 JSONs de public/data/ com dados 100% FICTÍCIOS (devs "Ana"/"Beto",
+// repos demo-*, commits fake) para a demo servir sem nenhum dado real do time:
+// os 6 fixos + graph-demo-api/demo-web (topologia do grafo de commits, #146).
 // As datas se ancoram em "hoje" (UTC) de propósito: a demo sempre cobre o
 // período default de 12M — o custo é o fixture não ser byte-idêntico entre dias.
 // Segurança: recusa-se a sobrescrever dados existentes sem --force.
+import type { GraphCommit, GraphData } from '../src/types'
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
@@ -13,7 +15,7 @@ import { getOrCreate } from '../src/collections'
 const OUT = join(process.cwd(), 'public', 'data')
 const FORCE = process.argv.includes('--force')
 
-const TARGETS = ['stats.json', 'commits.json', 'github.json', 'branches.json', 'releases.json', 'team.json']
+const TARGETS = ['stats.json', 'commits.json', 'github.json', 'branches.json', 'releases.json', 'team.json', 'graph-demo-api.json', 'graph-demo-web.json']
 if (!FORCE) {
   const existing = TARGETS.filter(f => existsSync(join(OUT, f)))
   if (existing.length) {
@@ -348,9 +350,142 @@ const branches = {
   ],
 }
 
+// ---------------------------------------------------------------------------
+// graph-demo-*.json (issue #146): topologia de commits por repo demo, no shape
+// do contrato do coletor (#126 — GraphData em src/types.ts). A seção #grafo de
+// /repos/:name sai do empty-state com um desenho que demonstra: lanes com
+// junções de merge (2-3 por repo, ambos os pais dentro da janela), EXATAMENTE
+// 1 aresta clipada por repo (parent fora da janela — o renderer desenha
+// tracejada com o marcador "continua") e chips de refs (decoration %D nos tips
+// das branches do branches.json acima + tags do releases.json).
+//
+// Hashes 40-hex consistentes (esquema fakeTip): tips de branches/PRs usam
+// fakeTip(nome) — o MESMO valor já emitido em branches.json (tip) e nos PRs
+// (headRefOid); commits internos usam fakeTip("<repo>:<id>"). O parent fora da
+// janela referencia um id que NÃO está entre os seeds: o hash sintético não
+// aparece no array commits — exatamente o que o renderer detecta como aresta
+// clipada. `window` = contagem de commits: o corte é autoconsistente (o walk
+// "esgotou a janela" no commit mais antigo, cuja mãe ficou de fora).
+// ---------------------------------------------------------------------------
+
+/** seed de um commit do grafo demo — `parents` referenciam ids de outros seeds */
+interface GraphSeed {
+  id: string
+  /** 40-hex pronto p/ tips que devem bater com branches.json/PRs (fakeTip do ref) */
+  hash?: string
+  /** dias atrás de hoje (UTC); hora/minuto UTC */
+  back: number
+  hour: number
+  min?: number
+  author: string
+  subject: string
+  /** itens de decoration no formato %D ('HEAD -> main', 'tag: v1.0.0'); sem refs = omitir */
+  refs?: string[]
+  /** ids dos pais na ordem do git (1º = primeira mãe); id desconhecido = fora da janela */
+  parents: string[]
+}
+
+function graphFor(repo: string, seeds: GraphSeed[]): GraphData {
+  const hashOf = new Map<string, string>()
+  for (const s of seeds)
+    hashOf.set(s.id, s.hash ?? fakeTip(`${repo}:${s.id}`))
+  // id ausente dos seeds (o 'pre' da commit mais antigo) = parent fora da janela
+  const h = (id: string): string => hashOf.get(id) ?? fakeTip(`${repo}:${id}`)
+  const rows: GraphCommit[] = seeds.map(s => ({
+    hash: h(s.id),
+    parents: s.parents.map(h),
+    author: s.author,
+    date: iso(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - s.back, s.hour, s.min ?? 0))),
+    subject: s.subject,
+    refs: s.refs ?? [],
+  }))
+  // contrato: ordem descendente por timestamp, sort estável (padrão collect-graph.ts)
+  rows.sort((a, b) => Date.parse(b.date) - Date.parse(a.date))
+  return { generatedAt, repo, window: rows.length, commits: rows }
+}
+
+// demo-api: espinha main com 3 merges (develop + PRs #12/#15), o squash do
+// PR #18 (branch apagada — só o commit no main), tags nas datas do releases,
+// branch ativa do PR #21 (draft), branch do dependabot e as 2 pousadas.
+const graphDemoApi = graphFor('demo-api', [
+  // — espinha do main (cadeia de primeira mãe), mais recente → mais antiga —
+  { id: 'a0', hash: fakeTip('main'), back: 1, hour: 12, author: 'Ana', subject: 'feat: tela de relatórios', refs: ['HEAD -> main'], parents: ['a1'] },
+  { id: 'a1', back: 3, hour: 15, author: 'Beto', subject: 'fix: corrige paginação da listagem', parents: ['a2'] },
+  { id: 'a2', back: 9, hour: 10, author: 'Ana', subject: 'docs: documenta a API pública', parents: ['a3'] },
+  { id: 'a3', back: 17, hour: 9, author: 'Beto', subject: 'refactor: extrai serviço de autenticação', parents: ['t11'] },
+  { id: 't11', back: 25, hour: 12, author: 'Ana', subject: 'chore: release v1.1.0', refs: ['tag: v1.1.0'], parents: ['a4'] },
+  { id: 'a4', back: 28, hour: 10, author: 'Ana', subject: 'feat: novo endpoint de pedidos', parents: ['mdev'] },
+  { id: 'mdev', back: 29, hour: 17, author: 'Beto', subject: 'Merge branch develop', parents: ['sq18', 'd4'] },
+  { id: 'sq18', back: 30, hour: 16, author: 'Ana', subject: 'chore: atualiza dependências', parents: ['a5'] },
+  { id: 'a5', back: 38, hour: 14, author: 'Beto', subject: 'fix: timezone do agrupamento semanal', parents: ['mpr15'] },
+  { id: 'mpr15', back: 49, hour: 11, author: 'Ana', subject: 'Merge pull request #15 from fix/list-pagination', parents: ['a6', 'p0'] },
+  { id: 'a6', back: 56, hour: 10, author: 'Beto', subject: 'feat: novo endpoint de pedidos', parents: ['t10'] },
+  { id: 't10', back: 60, hour: 12, author: 'Ana', subject: 'chore: release v1.0.0', refs: ['tag: v1.0.0'], parents: ['mpr12'] },
+  { id: 'mpr12', back: 68, hour: 15, author: 'Ana', subject: 'Merge pull request #12 from feat/order-endpoint', parents: ['a7', 'o0'] },
+  { id: 'a7', back: 76, hour: 11, author: 'Beto', subject: 'docs: documenta a API pública', parents: ['slast'] },
+  { id: 'slast', back: 85, hour: 9, author: 'Ana', subject: 'feat: novo endpoint de pedidos', parents: ['pre'] },
+  // — develop (4 commits à frente do main, como no branches.json): junta no 'mdev' —
+  { id: 'd0', hash: fakeTip('develop'), back: 1, hour: 10, author: 'Beto', subject: 'fix: corrige paginação da listagem', refs: ['develop'], parents: ['d1'] },
+  { id: 'd1', back: 9, hour: 15, author: 'Ana', subject: 'feat: novo endpoint de pedidos', parents: ['d2'] },
+  { id: 'd2', back: 16, hour: 11, author: 'Beto', subject: 'docs: documenta a API pública', parents: ['d3'] },
+  { id: 'd3', back: 24, hour: 9, author: 'Ana', subject: 'fix: timezone do agrupamento semanal', parents: ['d4'] },
+  { id: 'd4', back: 33, hour: 10, author: 'Beto', subject: 'feat: tela de relatórios', parents: ['a5'] },
+  // — feat/billing-report (PR #21, draft aberto): 6 à frente / 3 atrás —
+  { id: 'f0', hash: fakeTip('feat/billing-report'), back: 3, hour: 17, author: 'Beto', subject: 'feat: relatório de faturamento', refs: ['feat/billing-report'], parents: ['f1'] },
+  { id: 'f1', back: 6, hour: 10, author: 'Beto', subject: 'feat: tela de relatórios', parents: ['f2'] },
+  { id: 'f2', back: 10, hour: 15, author: 'Beto', subject: 'fix: corrige paginação da listagem', parents: ['f3'] },
+  { id: 'f3', back: 12, hour: 11, author: 'Ana', subject: 'feat: novo endpoint de pedidos', parents: ['f4'] },
+  { id: 'f4', back: 14, hour: 9, author: 'Beto', subject: 'docs: documenta a API pública', parents: ['f5'] },
+  { id: 'f5', back: 16, hour: 13, author: 'Beto', subject: 'feat: novo endpoint de pedidos', parents: ['a3'] },
+  // — dependabot (1 à frente): curva para a espinha no 'a3' —
+  { id: 'b0', hash: fakeTip('dependabot/npm_and_yarn/axios'), back: 10, hour: 6, author: 'Beto', subject: 'chore: atualiza dependências', refs: ['dependabot/npm_and_yarn/axios'], parents: ['a3'] },
+  // — pousadas (PRs #12/#15 mergeados): tips com refs, como no branches.json —
+  { id: 'o0', hash: fakeTip('feat/order-endpoint'), back: 69, hour: 14, author: 'Ana', subject: 'feat: novo endpoint de pedidos', refs: ['feat/order-endpoint'], parents: ['o1'] },
+  { id: 'o1', back: 71, hour: 10, author: 'Ana', subject: 'fix: corrige paginação da listagem', parents: ['a7'] },
+  { id: 'p0', hash: fakeTip('fix/list-pagination'), back: 50, hour: 8, author: 'Beto', subject: 'fix: corrige paginação da listagem', refs: ['fix/list-pagination'], parents: ['p1'] },
+  { id: 'p1', back: 53, hour: 14, author: 'Beto', subject: 'feat: tela de relatórios', parents: ['a6'] },
+])
+
+// demo-web: espinha main com 2 merges (PRs #7/#9), tags, a branch longa do
+// PR #11 (aberto, 9 à frente / 2 atrás), renovate (1 à frente) e as pousadas.
+const graphDemoWeb = graphFor('demo-web', [
+  // — espinha do main —
+  { id: 'w0', hash: fakeTip('main-web'), back: 2, hour: 9, author: 'Ana', subject: 'fix: timezone do agrupamento semanal', refs: ['HEAD -> main'], parents: ['w1'] },
+  { id: 'w1', back: 8, hour: 14, author: 'Beto', subject: 'feat: tela de relatórios', parents: ['w2'] },
+  { id: 'w2', back: 14, hour: 10, author: 'Ana', subject: 'docs: documenta a API pública', parents: ['mw9'] },
+  { id: 'mw9', back: 19, hour: 12, author: 'Ana', subject: 'Merge pull request #9 from fix/weekly-grouping-tz', parents: ['wt11', 'tz0'] },
+  { id: 'wt11', back: 25, hour: 12, author: 'Beto', subject: 'chore: release v1.1.0', refs: ['tag: v1.1.0'], parents: ['w3'] },
+  { id: 'w3', back: 28, hour: 11, author: 'Ana', subject: 'refactor: extrai serviço de autenticação', parents: ['mw7'] },
+  { id: 'mw7', back: 37, hour: 17, author: 'Beto', subject: 'Merge pull request #7 from feat/reports-screen', parents: ['w4', 'rs0'] },
+  { id: 'w4', back: 48, hour: 9, author: 'Ana', subject: 'feat: novo endpoint de pedidos', parents: ['wt10'] },
+  { id: 'wt10', back: 60, hour: 12, author: 'Beto', subject: 'chore: release v1.0.0', refs: ['tag: v1.0.0'], parents: ['w5'] },
+  { id: 'w5', back: 66, hour: 13, author: 'Ana', subject: 'fix: corrige paginação da listagem', parents: ['wlast'] },
+  { id: 'wlast', back: 71, hour: 10, author: 'Beto', subject: 'chore: atualiza dependências', parents: ['pre'] },
+  // — fix/weekly-grouping-tz (PR #9, mergeado): junta no 'mw9' —
+  { id: 'tz0', hash: fakeTip('fix/weekly-grouping-tz'), back: 20, hour: 8, author: 'Ana', subject: 'fix: timezone do agrupamento semanal', refs: ['fix/weekly-grouping-tz'], parents: ['tz1'] },
+  { id: 'tz1', back: 24, hour: 9, author: 'Ana', subject: 'feat: tela de relatórios', parents: ['w3'] },
+  // — feat/reports-screen (PR #7, mergeado): junta no 'mw7' —
+  { id: 'rs0', hash: fakeTip('feat/reports-screen'), back: 38, hour: 11, author: 'Beto', subject: 'feat: tela de relatórios', refs: ['feat/reports-screen'], parents: ['rs1'] },
+  { id: 'rs1', back: 43, hour: 15, author: 'Beto', subject: 'docs: documenta a API pública', parents: ['rs2'] },
+  { id: 'rs2', back: 46, hour: 10, author: 'Ana', subject: 'feat: novo endpoint de pedidos', parents: ['w4'] },
+  // — refactor/auth-service (PR #11 aberto): 9 à frente / 2 atrás do main —
+  { id: 'r0', hash: fakeTip('refactor/auth-service'), back: 2, hour: 15, author: 'Ana', subject: 'refactor: extrai serviço de autenticação', refs: ['refactor/auth-service'], parents: ['r1'] },
+  { id: 'r1', back: 3, hour: 11, author: 'Ana', subject: 'fix: corrige paginação da listagem', parents: ['r2'] },
+  { id: 'r2', back: 5, hour: 9, author: 'Ana', subject: 'feat: novo endpoint de pedidos', parents: ['r3'] },
+  { id: 'r3', back: 6, hour: 15, author: 'Ana', subject: 'docs: documenta a API pública', parents: ['r4'] },
+  { id: 'r4', back: 8, hour: 10, author: 'Ana', subject: 'feat: tela de relatórios', parents: ['r5'] },
+  { id: 'r5', back: 9, hour: 16, author: 'Ana', subject: 'fix: timezone do agrupamento semanal', parents: ['r6'] },
+  { id: 'r6', back: 11, hour: 9, author: 'Ana', subject: 'refactor: extrai serviço de autenticação', parents: ['r7'] },
+  { id: 'r7', back: 12, hour: 14, author: 'Ana', subject: 'chore: atualiza dependências', parents: ['r8'] },
+  { id: 'r8', back: 13, hour: 10, author: 'Ana', subject: 'feat: novo endpoint de pedidos', parents: ['w2'] },
+  // — renovate (1 à frente): colapsa na espinha no merge 'mw9' —
+  { id: 'v0', hash: fakeTip('renovate/vue'), back: 5, hour: 3, author: 'Beto', subject: 'chore: atualiza dependências', refs: ['renovate/vue'], parents: ['mw9'] },
+])
+
 mkdirSync(OUT, { recursive: true })
-for (const [name, data] of Object.entries({ 'stats.json': stats, 'commits.json': commitsJson, 'github.json': github, 'branches.json': branches, 'releases.json': releases, 'team.json': team }))
+for (const [name, data] of Object.entries({ 'stats.json': stats, 'commits.json': commitsJson, 'github.json': github, 'branches.json': branches, 'releases.json': releases, 'team.json': team, 'graph-demo-api.json': graphDemoApi, 'graph-demo-web.json': graphDemoWeb }))
   writeFileSync(join(OUT, name), `${JSON.stringify(data, null, 2)}\n`)
 
 const demoBranches = branches.repos.reduce((n, r) => n + r.branches.length, 0)
-console.log(`make-demo-data: 6 arquivos gerados em ${OUT} (${commits.length} commits fictícios, ${prs.length} PRs, ${demoBranches} branches)`)
+const demoGraphCommits = graphDemoApi.commits.length + graphDemoWeb.commits.length
+console.log(`make-demo-data: 8 arquivos gerados em ${OUT} (${commits.length} commits fictícios, ${prs.length} PRs, ${demoBranches} branches, ${demoGraphCommits} commits de grafo)`)
