@@ -1,5 +1,16 @@
 # gitview
 
+## 0.57.0
+
+### Minor Changes
+
+- be2e46d: Os dados sintéticos da demo pública passam a incluir o grafo de commits: o `make-demo-data.ts` gera `graph-demo-api.json` e `graph-demo-web.json` no shape do contrato do coletor, com hashes 40-hex determinísticos consistentes com os tips do `branches.json` e os `headRefOid` dos PRs demo, 2-3 merges por repo (junções de lanes visíveis), exatamente uma aresta clipada por repo (pai fora da janela, desenhada com o marcador "continua") e refs nos tips das branches e em tags. O novo script `pnpm demo` gera o fixture completo (8 JSONs) e as docs do grafo deixam de documentar o empty-state como limitação da demo.
+- da85d23: As linhas de `stats.perAuthor` ganham o campo opcional `byScope` com os eixos prod/progress (commits, additions, deletions, repos, activeDays, lastCommit, streak e longestStreak do eixo), acumulados pelo coletor na mesma passada do banco e validados por invariantes novos no check-data (soma dos eixos fecha com a linha nos aditivos, teto do eixo nos não-aditivos, union fechada de chaves); o `snapshot:metrics` inclui perAuthor na matriz com a identidade prod+progress==linha por registro. Em `/devs/:name`, com o escopo de trabalho recortado (Produção/Em progresso), os cards históricos — dias ativos, commits/dia ativo, streak e repositórios — passam a ler o eixo correspondente e o sufixo "(total)" deixa de marcar o recorte de escopo (continua marcando o de período). Instalações existentes precisam re-coletar para popular o eixo (`pnpm collect`; a recoleta leve `--reaggregate` também popula, herdando o `scope` gravado no banco); dado antigo sem `byScope` degrada via feature-detect para o comportamento atual (linha integral com "(total)").
+
+### Patch Changes
+
+- bd3f709: `resolveProdRef`/`resolveIntegRefs` agora retornam o candidato que casou (forma resolvível pelo git): em checkout normal onde a ref de produção só existe como `origin/NOME` (sem branch local), o retorno vem na forma longa `refs/remotes/origin/NOME` em vez do nome curto não-resolvível, que fazia os consumidores git falharem (`rev-list` da classificação de escopo e o ahead/behind do inventário de branches). Em clones bare gerenciados (padrão do produto) o nome curto casa primeiro e o retorno segue byte-idêntico. A exibição não muda: `ref_hint` no banco, `productionRef`/`integrationRefs` do branches.json e o hint de /settings continuam com nome curto via helper exportado `displayRefName`.
+
 ## 0.56.1
 
 ### Patch Changes
