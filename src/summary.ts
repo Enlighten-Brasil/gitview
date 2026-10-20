@@ -8,6 +8,7 @@ import { isBot, isoWeekKey, stats } from './data'
 import { daysSince, fmtDate, fmtDateTime, fmtDay, fmtDuration, median } from './format'
 import { ghName, github } from './github'
 import { releases } from './releases'
+import { displayPct } from './risk'
 import {
   DEV_STALE_DAYS,
   OFF_HOURS_PCT,
@@ -171,7 +172,7 @@ export function buildWeeklySummary(): WeeklySummary | null {
   // -------------------------------------------------------------------------
   const offHours = topDevs
     .map(([author, a]) => ({ author, ...a, pct: a.commits >= OFF_HOURS_WEEK_MIN_COMMITS ? (a.weekend + a.night) / a.commits : 0 }))
-    .filter(a => a.pct >= OFF_HOURS_PCT)
+    .filter(a => displayPct(a.pct) >= OFF_HOURS_PCT)
     .sort((a, b) => b.pct - a.pct)
   const inactiveDevs = s.perAuthor.filter(a =>
     !isBot(a.author) && daysSince(a.lastCommit) >= DEV_STALE_DAYS,

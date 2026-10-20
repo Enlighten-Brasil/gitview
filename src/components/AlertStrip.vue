@@ -9,6 +9,7 @@ import { burnout, isBot, pace, stats } from '../data'
 import { daysSince } from '../format'
 import { mergedWithoutReview, stalePrs } from '../github'
 import { releases } from '../releases'
+import { displayPct } from '../risk'
 import {
   DEV_STALE_DAYS,
   MERGE_NO_REVIEW_AMBER,
@@ -48,7 +49,7 @@ const alerts = computed<Alert[]>(() => {
     out.push({ icon: 'i-lucide-trending-down', value: falling, label: falling === 1 ? 'dev abaixo do ritmo' : 'devs abaixo do ritmo', to: '/devs', severity: 'warning' })
 
   // fora do horário em padrão preocupante (3+ dos últimos 4 fins de semana ativos ou ≥25% — idem BurnoutWatch)
-  const offHours = burnout.value.filter(b => b.weekendsActive >= OFF_HOURS_WEEKENDS || b.offHoursPct >= OFF_HOURS_PCT).length
+  const offHours = burnout.value.filter(b => b.weekendsActive >= OFF_HOURS_WEEKENDS || displayPct(b.offHoursPct) >= OFF_HOURS_PCT).length
   if (offHours > 0)
     out.push({ icon: 'i-lucide-moon', value: offHours, label: offHours === 1 ? 'dev em padrão fora do horário' : 'devs em padrão fora do horário', to: '/health', severity: 'error' })
 
