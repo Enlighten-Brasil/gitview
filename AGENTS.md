@@ -157,4 +157,4 @@ pnpm version:packages   # aplicar changesets (bumps + CHANGELOG)
 
 - Validar no Chrome via chrome-devtools MCP em `http://localhost:5173`. O modelo não lê imagens — validar por DOM/`evaluate_script` (textos, tabelas, valores) e checar console.
 - Tabs do Reka UI **não respondem a `.click()` sintético** — usar o `click` real do MCP com o uid do snapshot, ou navegar pela URL (`/devs`, `/health`…).
-- Não há suite de testes; `pnpm build` (vite) é o check de compilação, `pnpm typecheck` o de tipos (templates `.vue` ficam fora — shim manual em `src/vite-env.d.ts`), `pnpm check:data` o de shape + invariantes dos dados gerados (já roda no fim do `pnpm collect` e como passo final do `/__collect`).
+- Não há suite de testes; `pnpm check:scrub` é o gate anti-regressão do scrub de identidade (roda no CI, primeiro da lista), `pnpm build` (vite) é o check de compilação, `pnpm typecheck` o de tipos (templates `.vue` ficam fora — shim manual em `src/vite-env.d.ts`), `pnpm check:data` o de shape + invariantes dos dados gerados (já roda no fim do `pnpm collect` e como passo final do `/__collect`).
