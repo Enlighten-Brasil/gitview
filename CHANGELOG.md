@@ -1,5 +1,12 @@
 # gitview
 
+## 0.57.3
+
+### Patch Changes
+
+- cbfeb25: Remove o código morto de migração única do formato antigo de config (config.json/config.local.json): o scripts/lib/legacy.ts, a chamada em loadConfig e os rastros no .gitignore e no server.fs.deny do vite.config.ts saem — sem usuários externos, o caminho nunca mais roda. Também saem as chaves GITVIEW_EXCLUDE (default vazio, sem efeito na descoberta de repos) e GITVIEW_PORT (o Vite já tem --port e seu próprio default 5173), com os campos Config correspondentes e o argumento órfão de discoverRepos. GITVIEW_EXCLUDE_PATHS e GITVIEW_DEFAULT_REPOS seguem intactos. As páginas configuration/env.md (EN e pt-BR) perdem a seção de ajustes avançados, que só documentava as duas chaves removidas.
+- 0af45e3: Capturas das telas da doc regeneradas sobre a fixture sintetica depois da correcao de plurais (#159): o rodape do grafo de commits e os cards de /repos/:name passam a mostrar a forma singular quando a contagem e 1 (a demo emite exatamente 1 aresta clipada e 1 PR aberto).
+
 ## 0.57.2
 
 ### Patch Changes
