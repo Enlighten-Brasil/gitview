@@ -1,5 +1,0 @@
----
-'gitview': minor
----
-
-Nova seção **Grafo de commits** (`#grafo`) em `/repos/:name`: renderer SVG puro (sem ECharts — o chunk de gráficos não cresce) da janela de commits do `graph-REPO.json`, com lanes calculadas no frontend (`src/graph/lanes.ts`, modo freedp validado no spike #125: junções como o git desenha, sem lanes zumbis, ≤ 19 colunas no pior window real). Windowing vertical (render inicial ~40 linhas medido < 100 ms no build real + "Mostrar mais antigos" de 300 em 300), arestas verticais fundidas em runs, parent fora da janela como aresta tracejada com marcador "continua", cores de lane por matiz (PALETTE reordenada no dark / tons 600 no light, contraste ≥ 3,09:1), tooltip com assunto/autor canônico/data/refs/hash, linha inteira linkada ao commit no GitHub via `repoUrls`, chips de refs da janela com destaque de lane (hover/fixar) e empty-state "rode pnpm collect". Janela fixa intencional: o grafo NÃO segue os filtros de período/bots (remover commits quebraria as cadeias de merge) — o rodapé rotula a janela e a exceção; sub "Grafo" na navegação de Repos; tipos `GraphData`/`GraphCommit` em `types.ts`; docs EN + pt-BR em `dashboard/graph.md`.
