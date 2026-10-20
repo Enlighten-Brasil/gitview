@@ -2,7 +2,7 @@
  * Estado da coleta disparada pela UI (apenas dev — o endpoint /__collect
  * é um middleware do Vite, não existe no build estático).
  */
-import { loadCommits, loadStats, recentCommits } from './data'
+import { loadCommits, loadDaily, loadStats, recentCommits } from './data'
 import { loadGithub } from './github'
 import { loadReleases } from './releases'
 import { useSseProgress } from './sse'
@@ -15,6 +15,7 @@ async function reloadData() {
     loadGithub(true),
     loadReleases(true),
     loadCommits(true),
+    loadDaily(true),
     loadTeam(true),
   ])
 }
