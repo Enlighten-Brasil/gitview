@@ -33,7 +33,7 @@ declare module 'vue-router' {
     /** passo mínimo do wizard (2 repos, 3 coletar, 4 time opcional) — 2/3 exigem auth; 4 exige dados coletados */
     setupStep?: number
     /** seção ativa na rail (nav.ts) — substitui o match por prefixo */
-    section?: 'dashboards' | 'teams' | 'prs' | 'repos' | 'settings' | null
+    section?: 'dashboards' | 'teams' | 'prs' | 'branches' | 'repos' | 'settings' | null
     /**
      * quais filtros a sidebar e a URL carregam nesta rota
      * ('team' = período + repos; os devs são travados pela página em filters.authors)
