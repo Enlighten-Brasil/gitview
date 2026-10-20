@@ -7,7 +7,7 @@ import type { DevProfile, TeamConfig } from './config'
  * (máquina); depois de migrado ele é renomeado para .migrated e a função
  * vira no-op. O config.json versionado é removido do git no mesmo release —
  * quem for puxar depois e ainda o usa deve rodar a migração antes do pull
- * (ver README) ou remapear os aliases na tela /team.
+ * (ver README) ou remapear os aliases na tela /teams.
  */
 import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
