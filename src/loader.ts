@@ -47,7 +47,21 @@ export function defineLoader<T>(path: string, opts: LoaderOptions<T> = {}): Load
       const res = await fetch(force ? `${url}?t=${Date.now()}` : url)
       if (!res.ok)
         throw new Error(opts.httpError ? opts.httpError(res.status) : `HTTP ${res.status}`)
-      data.value = markRawPayload((opts.pick ?? ((json: unknown) => json as T))(await res.json()))
+      // SPA fallback (dev/preview): um JSON ausente devolve index.html com
+      // status 200 — content-type text/html ou parse quebrado = arquivo não
+      // coletado, reportado como o MESMO erro do 404 real (issue #147): a
+      // mensagem fixa que a UI concatena (opts.errorMessage) fica preservada
+      const notFound = () => new Error(opts.httpError ? opts.httpError(404) : 'HTTP 404')
+      if (res.headers.get('content-type')?.includes('text/html'))
+        throw notFound()
+      let json: unknown
+      try {
+        json = await res.json()
+      }
+      catch {
+        throw notFound()
+      }
+      data.value = markRawPayload((opts.pick ?? ((raw: unknown) => raw as T))(json))
       error.value = null
     }
     catch (err) {
