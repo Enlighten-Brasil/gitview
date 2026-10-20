@@ -42,7 +42,7 @@ import { mkdirSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DEFAULT_BRANCH_STALE_DAYS, loadConfig, resolveReposRoot } from './lib/config'
-import { resolveIntegRefs, resolveProdRef } from './lib/refs'
+import { displayRefName, resolveIntegRefs, resolveProdRef } from './lib/refs'
 import { discoverRepos, mapPool } from './lib/repos'
 import { BOT_BRANCH_RE, botBranchSet } from './lib/team'
 
@@ -200,6 +200,12 @@ await mapPool(repos, 4, async (repo) => {
   if (!refs)
     return
   const { prodRef, integRefs } = refs
+  // #141: as refs resolvidas podem vir na forma longa (refs/remotes/origin/NOME,
+  // a forma resolvível pelos comandos git); os campos do JSON e a comparação de
+  // status usam o nome curto — heads são sempre nome curto e o check-data exige
+  // branch com nome == productionRef. Em bare clones os dois coincidem.
+  const prodName = displayRefName(prodRef)
+  const integNames = integRefs.map(displayRefName)
   // aheadInt/behindInt vs a PRIMEIRA ref de integração da ordem da config que
   // existe no repo; sem nenhuma, os dois campos viajam null (shape da issue)
   const integRef = integRefs[0] ?? null
@@ -255,13 +261,13 @@ await mapPool(repos, 4, async (repo) => {
         authorsAhead: aheadWalk.emails,
         additions: aheadWalk.additions,
         deletions: aheadWalk.deletions,
-        status: statusOf(head.name, prodRef, integRefs, aheadWalk.ahead, lastActivityMs, nowMs),
+        status: statusOf(head.name, prodName, integNames, aheadWalk.ahead, lastActivityMs, nowMs),
       })
     }
     const counts: Record<BranchStatus, number> = { production: 0, integration: 0, feature: 0, bot: 0, pousada: 0 }
     for (const b of branches)
       counts[b.status]++
-    byRepo.set(repo.name, { repo: repo.name, productionRef: prodRef, integrationRefs: integRefs, branches })
+    byRepo.set(repo.name, { repo: repo.name, productionRef: prodName, integrationRefs: integNames, branches })
     totalBranches += branches.length
     const ms = Date.now() - t0
     perRepoMs.set(repo.name, ms)

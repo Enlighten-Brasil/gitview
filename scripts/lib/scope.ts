@@ -27,14 +27,14 @@
  */
 import { Buffer } from 'node:buffer'
 import { spawn } from 'node:child_process'
-import { resolveIntegRefs, resolveProdRef } from './refs'
+import { displayRefName, resolveIntegRefs, resolveProdRef } from './refs'
 
 export interface RepoScopeSets {
   /** nome curto da ref de produção (vira ref_hint das linhas prod) */
   prodRef: string
   /** todo commit alcançável da ref de produção (merges inclusos) */
   prod: Set<string>
-  /** hash → nome da ref de integração (1ª da ordem da config que o contém) */
+  /** hash → nome curto da ref de integração (1ª da ordem da config que o contém) */
   integ: Map<string, string>
   /** hash → source do walk escoteado (ref_hint das linhas branch) */
   hints: Map<string, string>
@@ -97,6 +97,13 @@ export async function collectScopeSets(
   productionRef?: string,
   integrationRefs?: string[],
 ): Promise<RepoScopeSets> {
+  // #141: os resolvedores devolvem a forma RESOLVÍVEL (pode ser longa,
+  // refs/remotes/origin/NOME, quando só a remota existe) — os comandos git
+  // usam ela direto; o que vira ref_hint (prodRef/integ do retorno) passa
+  // pelo displayRefName e segue com nome curto. O walk escoteado não pode
+  // vazar forma longa: o lado positivo é só `--branches` (refs/heads/*), e
+  // %S emite o ref do lado positivo — as refs longas entram apenas no
+  // `--not` (shortSource ainda dá strip defensivo de refs/heads/).
   const prodRef = resolveProdRef(repoPath, productionRef)
   const integRefs = resolveIntegRefs(repoPath, integrationRefs)
 
@@ -123,12 +130,12 @@ export async function collectScopeSets(
     for (const hash of integOuts[i].split('\n').filter(Boolean)) {
       // primeira ref da ordem da config vence (determinístico por execução)
       if (!integ.has(hash))
-        integ.set(hash, ref)
+        integ.set(hash, displayRefName(ref))
     }
   })
   const hints = new Map<string, string>()
   for (const [hash, source] of parseHashRefPairs(walkOut))
     hints.set(hash, shortSource(source))
 
-  return { prodRef, prod, integ, hints }
+  return { prodRef: displayRefName(prodRef), prod, integ, hints }
 }

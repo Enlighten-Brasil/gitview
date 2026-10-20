@@ -33,7 +33,7 @@ import process from 'node:process'
 import { cleanLocalData } from './lib/clean'
 import { loadConfig, rootDir, saveConfig } from './lib/config'
 import { currentUser, devicePoll, deviceStart, getToken, listOrgMembers, listOrgRepos, listOrgs, listOrgTeams, listUserRepos } from './lib/github'
-import { resolveIntegRefs, resolveProdRef } from './lib/refs'
+import { displayRefName, resolveIntegRefs, resolveProdRef } from './lib/refs'
 import { cloneBare, discoverRepos, MANAGED_REPOS_DIR, mapPool, resolveReposRootSafe } from './lib/repos'
 
 const tsxCli = join(rootDir, 'node_modules', 'tsx', 'dist', 'cli.mjs')
@@ -225,26 +225,20 @@ interface RepoRefs {
  */
 let refsCache: { key: string, resolved: RepoRefs[] } | null = null
 
-/** mesma normalização do shortName de scripts/lib/refs.ts (não exportado lá) */
-function shortRefName(ref: string): string {
-  return ref
-    .replace(/^refs\/remotes\/origin\//, '')
-    .replace(/^refs\/heads\//, '')
-    .replace(/^origin\//, '')
-}
-
 function resolveAllRefs(config: Config, reposRoot: string, repos: RepoInfo[]): RepoRefs[] {
   const key = JSON.stringify([reposRoot, repos.map(r => r.name), config.productionRef ?? '', config.integrationRefs ?? []])
   if (refsCache?.key === key)
     return refsCache.resolved
-  const explicit = shortRefName(config.productionRef?.trim() || '')
+  const explicit = displayRefName(config.productionRef?.trim() || '')
   const resolved: RepoRefs[] = repos.map((r) => {
     try {
-      const production = resolveProdRef(r.path, config.productionRef)
+      // #141: o resolvedor devolve a forma resolvível (pode ser longa); o hint
+      // de /settings é exibição — segue com nome curto via displayRefName
+      const production = displayRefName(resolveProdRef(r.path, config.productionRef))
       return {
         name: r.name,
         production,
-        integration: resolveIntegRefs(r.path, config.integrationRefs),
+        integration: resolveIntegRefs(r.path, config.integrationRefs).map(displayRefName),
         productionFallback: !!explicit && explicit !== production,
       }
     }
