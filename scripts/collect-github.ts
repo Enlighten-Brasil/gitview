@@ -254,7 +254,7 @@ else {
 const windowCutoff = new Date()
 windowCutoff.setDate(windowCutoff.getDate() - MERGED_CUTOFF_DAYS)
 
-const repos = discoverRepos(resolveReposRoot(config), config.exclude ?? [])
+const repos = discoverRepos(resolveReposRoot(config))
 const fresh = new Map<string, PrRow>() // repo#number -> PR
 let fetchedCount = 0
 let skipped = 0

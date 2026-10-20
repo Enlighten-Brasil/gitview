@@ -79,15 +79,10 @@ pubspec.lock  Package.resolved  go.sum
 ## Como os valores são resolvidos
 
 - **shell → `.env` → default.** A variável do shell vence. Vazio ou só espaços contam como não definido; `GITVIEW_GITHUB_ORG=` é "a chave existe, desligada".
-- O `.env` é relido a cada execução de coletor: token trocado vale na próxima coleta, sem reiniciar. `GITVIEW_PORT` é a exceção, lida no boot.
+- O `.env` é relido a cada execução de coletor: token trocado vale na próxima coleta, sem reiniciar.
 - Chave nova do `.env.example` que falta no seu `.env` gera um aviso (1× por processo): `! .env sem chaves novas do .env.example: ...`. Copie a linha, ou apague o `.env` e rode qualquer coletor para recriá-lo do template.
 - A UI grava linha a linha e preserva comentários e ordem, com o valor entre aspas simples (`GITVIEW_REPOS_ROOT='C:/dev/my repos'`). O parser não expande escapes dentro de aspas simples. Valor com aspa simples ou quebra de linha é recusado.
 - Dados de time não caem aqui: vão para o [`team.local.json`](./team.md).
-
-## Ajustes avançados
-
-- `GITVIEW_EXCLUDE`: pastas ignoradas na descoberta de repos. Casa o nome exato da subpasta, não é glob (`node_modules, tmp`). Default vazio.
-- `GITVIEW_PORT`: porta do dev server, default `5173`. Aceita inteiro de 1 a 65535; fora disso é ignorado. Mudar exige reiniciar o `pnpm dev`.
 
 ## Próximos passos
 

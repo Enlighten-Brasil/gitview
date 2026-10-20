@@ -161,7 +161,7 @@ function statusOf(name: string, prodRef: string, integRefs: string[], aheadProd:
 // ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
-const repos = discoverRepos(resolveReposRoot(config), config.exclude ?? [])
+const repos = discoverRepos(resolveReposRoot(config))
 console.log(`Inventariando branches de ${repos.length} repos (pool de 4; pousada = aheadProd 0 e ≥ ${staleDays}d sem atividade)...`)
 
 // Pré-passo sequencial: o seam lib/refs.ts usa spawnSync — resolvido ANTES do

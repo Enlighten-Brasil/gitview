@@ -8,10 +8,10 @@ import { collectPlugin } from './scripts/collect-plugin'
 import { loadConfig } from './scripts/lib/config'
 import { setupPlugin } from './scripts/setup-plugin'
 
-// porta do dev server vem do .env (GITVIEW_PORT) — lida no boot, sem restart
-// por config de máquina: envDir: false desliga o load/restart automático do
-// Vite no .env (o setup grava token/reposRoot COM o servidor rodando)
-const config = loadConfig()
+// envDir: false desliga o load/restart automático do Vite no .env (o setup
+// grava token/reposRoot COM o servidor rodando); loadConfig() também garante o
+// .env criado do .env.example já no boot do dev server
+loadConfig()
 
 export default defineConfig({
   // base absoluto: history mode + SPA fallback — deep links (/devs/x) só funcionam
@@ -63,7 +63,6 @@ export default defineConfig({
     },
   },
   server: {
-    port: config.port ?? 5173,
     fs: {
       // o dev server serve qualquer arquivo da raiz por padrão — nega os que
       // têm dado pessoal/segredo (os defaults do Vite já cobrem .env/*.pem)
@@ -73,7 +72,6 @@ export default defineConfig({
         '*.{crt,pem}',
         '**/.git/**',
         'team.local.json',
-        'config.local.json*',
         '**/data/**',
       ],
     },

@@ -163,7 +163,7 @@ function parseGraphLog(raw: string, repoName: string): GraphCommit[] {
 // ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
-const repos = discoverRepos(resolveReposRoot(config), config.exclude ?? [])
+const repos = discoverRepos(resolveReposRoot(config))
 console.log(`Coletando topologia de ${repos.length} repos (pool de 4; janela ${graphWindow} commits/repo, COM merges — a decisão #7 vale só para as métricas)...`)
 
 const outDir = join(root, 'public', 'data')
