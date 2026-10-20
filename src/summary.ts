@@ -93,7 +93,7 @@ export function buildWeeklySummary(): WeeklySummary | null {
   out.push(`_dados do gitview gerados em ${fmtDateTime(s.generatedAt)}_`)
   out.push('')
   out.push('## Commits')
-  out.push(`- **${totalCommits} commits**${delta(totalCommits, prevCommits)}, ${byAuthor.size} devs ativos, ${byRepo.size} repos ativos`)
+  out.push(`- **${totalCommits} ${totalCommits === 1 ? 'commit' : 'commits'}**${delta(totalCommits, prevCommits)}, ${byAuthor.size} ${byAuthor.size === 1 ? 'dev ativo' : 'devs ativos'}, ${byRepo.size} ${byRepo.size === 1 ? 'repo ativo' : 'repos ativos'}`)
   if (topDevs.length) {
     out.push(`- top devs: ${topDevs.slice(0, 5).map(([name, a]) => `${name} (${a.commits})`).join(', ')}`)
   }
@@ -155,7 +155,7 @@ export function buildWeeklySummary(): WeeklySummary | null {
     out.push('## Releases')
     if (weekTags.length) {
       for (const t of weekTags.sort((a, b) => a.date.localeCompare(b.date))) {
-        out.push(`- ${t.repo} **${t.tag}** (${fmtDay(new Date(t.date))}, ${t.commits} commits)`)
+        out.push(`- ${t.repo} **${t.tag}** (${fmtDay(new Date(t.date))}, ${t.commits} ${t.commits === 1 ? 'commit' : 'commits'})`)
       }
     }
     else {

@@ -96,7 +96,7 @@ const cards = computed<{ value: string, label: string, icon?: string, color?: st
     { value: fmtCompact(periodCommits.value), label: 'commits', icon: 'i-lucide-git-commit-horizontal' },
     { value: fmtCompact(periodAdds.value), label: 'linhas +', icon: 'i-lucide-plus', color: 'text-success' },
     { value: fmtCompact(periodDels.value), label: 'linhas −', icon: 'i-lucide-minus', color: 'text-error' },
-    { value: String(periodAuthors.value), label: 'devs', icon: 'i-lucide-users' },
+    { value: String(periodAuthors.value), label: periodAuthors.value === 1 ? 'dev' : 'devs', icon: 'i-lucide-users' },
   ]
   // com período/escopo ativos, mostra também o total histórico pra referência
   if (periodFiltered.value || scopeFiltered.value) {
@@ -111,7 +111,7 @@ const cards = computed<{ value: string, label: string, icon?: string, color?: st
       },
       {
         value: String(rel.value.unreleased),
-        label: 'commits não liberados',
+        label: rel.value.unreleased === 1 ? 'commit não liberado' : 'commits não liberados',
         icon: 'i-lucide-package-open',
         color: rel.value.unreleased >= UNRELEASED_RED ? 'text-error' : rel.value.unreleased >= UNRELEASED_AMBER ? 'text-warning' : undefined,
       },
@@ -127,7 +127,7 @@ const cards = computed<{ value: string, label: string, icon?: string, color?: st
   }
   if (github.value) {
     base.push(
-      { value: String(openPrs.value.length), label: 'PRs abertos', icon: 'i-lucide-git-pull-request' },
+      { value: String(openPrs.value.length), label: openPrs.value.length === 1 ? 'PR aberto' : 'PRs abertos', icon: 'i-lucide-git-pull-request' },
       { value: fmtDuration(cycleHours.value), label: 'cycle time mediano', icon: 'i-lucide-timer' },
     )
   }
