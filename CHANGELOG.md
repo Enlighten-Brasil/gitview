@@ -1,5 +1,17 @@
 # gitview
 
+## 0.53.0
+
+### Minor Changes
+
+- 5c894c6: Novo coletor `collect-branches`: inventário de branches por repo no 6º JSON (`branches.json`) — status (production, integration, feature, bot, pousada), ahead/behind SEM merges vs produção e vs a primeira ref de integração, autores à frente com e-mail cru do git (%ae) e linhas +/−. Novas chaves `GITVIEW_BRANCH_STALE_DAYS` (default 30) e `GITVIEW_BOT_BRANCHES`; o `check-data` valida o novo JSON (invariantes + avisos); a recoleta light não toca o `branches.json` (frescor atrelado ao fetch do full); a demo sintetiza branches coerentes com os PRs fictícios.
+- 2eb9876: Expurgo de commits inalcançáveis em clones gerenciados: após o fetch --prune e a classificação de escopo, o coletor apaga do banco os commits que não estão mais alcançáveis por nenhuma ref do repo (`git rev-list --all`) — os fantasmas de branches squash-mergeadas e apagadas no remote, que o `INSERT OR IGNORE` nunca expurgava e inflavam o 'Tudo' para sempre. Aplica somente aos clones gerenciados (`data/repos`), recém-atualizados pelo fetch; checkouts normais nunca são expurgados. Efeito retroativo: totais históricos podem diminuir sem fato novo, e o log do coletor é o único rastro.
+- d541dc5: Novo filtro de escopo de trabalho no núcleo dos filtros — `filters.workScope` (`all` | `prod` | `progress`, default `all`), com a ação nomeada `setWorkScope` (porta única de escrita) e o predicado único `scopeMatches(row)` na codificação omit-prod dos dados (linha sem `scope` = produção; `progress` agrupa integration + branch). O predicado vale nas 4 projeções filtradas (weekly/monthly/heatmap/types) e nos 3 iteradores diretos de `previousTotals`, `pace` e `burnout` — as derivadas (totais, contagens, commits por autor/repo, fora do horário) herdam das projeções. O estado sincroniza com a URL via `?scope=` (enum fechado; valor inválido cai em `all`; default omitido), persiste em localStorage (`gitview:scope`), reseta no voltar/avançar sem arrastar contexto de outra entrada e é forçado a `all` em dados anteriores à divisão prod/progress (feature-detect de `totals.prodCommits`). Os iteradores de página e a UI (chips/cards/rodapés) vêm na próxima issue.
+
+### Patch Changes
+
+- 25f1439: P0: clones gerenciados congelados no tempo. `git clone --bare` não grava `remote.origin.fetch` (o git só grava refspec em clone normal), então o `git fetch --all --prune --tags` de cada coleta só escrevia `FETCH_HEAD`: `refs/heads/*` não avançava nem era podado — commits novos nunca entravam no banco (o dashboard apodrecia em silêncio) e o expurgo de refs mortos jamais disparava. O `cloneBare` agora grava o refspec `+refs/heads/*:refs/heads/*` na criação (`git config` pós-clone — `--config` no comando clone foi medido e falha com "multiple updates for ref not allowed" num bare) e o `fetchRepo` faz backfill idempotente nos clones existentes antes do fetch: o primeiro collect pós-fix se auto-cura (para um buraco longo de congelamento, um `--full` único fecha qualquer edge de committer-date antiga). `denyPush` (pushurl=no-push) preservado e o token segue só via env do processo.
+
 ## 0.52.0
 
 ### Minor Changes
