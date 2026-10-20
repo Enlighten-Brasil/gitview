@@ -1,5 +1,12 @@
 # gitview
 
+## 0.57.1
+
+### Patch Changes
+
+- 5eec88b: Cache de memoização por processo e API async opcional no seam de resolução de refs (`scripts/lib/refs.ts`): a resolução repetida do mesmo repo/valor de config passa a custar ~0 (antes cada chamada re-spawnava git por candidato), e `resolveProdRefAsync`/`resolveIntegRefsAsync` liberam o event loop no `GET /__setup/status?refs=1` do dev server e no passe de classificação de escopo do collect — sem mudança de semântica: mesma ordem de resolução, mesmos warns com dedupe por processo, mesmo guard e o mesmo formato de retorno resolvível/display do contrato de refs.
+- fc3af4f: O passeio pelo dashboard passa a cobrir a página /branches (cards Pousadas/Abandonadas/develop × produção e a tabela ordenável), a seção Branches da rail e o grafo de commits da seção #grafo de /repos/:name, cada um com labels conferidos nos componentes e capturas novas da demo sintética das duas telas; o texto dos cards históricos do perfil do dev descreve o sufixo (total) como ele passou a ser desde o recorte de escopo por byScope, e o development.md lista os módulos branches.ts, graphData.ts e graph/.
+
 ## 0.57.0
 
 ### Minor Changes
