@@ -7,7 +7,7 @@ description: "Each gitview dashboard page: the question it answers, the panels o
 
 Pages follow navigation order. For each one: the question it answers, the panels with their real on-screen labels and the link exits. Filter behavior lives in [Filter rules](../dashboard/filters.md); the data pipeline in [Pipeline](../architecture/pipeline.md). The screenshots use the public demo's synthetic data, never real team data.
 
-The left rail groups **Dashboards** (**Visão geral** `/`, **Devs** `/devs`, **Saúde** `/health`), **Times** `/teams`, **PRs** `/prs`, **Repos** `/repos` and, dev server only, **Config** `/settings`. The navbar carries the data freshness badge, the weekly summary button and, in dev, the collection controls. Every chart panel exports a PNG through the download icon (toast **Imagem exportada**) and the tooltips show the numbers behind each point.
+The left rail groups **Dashboards** (**Visão geral** `/`, **Devs** `/devs`, **Saúde** `/health`), **Times** `/teams`, **PRs** `/prs`, **Branches** `/branches`, **Repos** `/repos` and, dev server only, **Config** `/settings`. The navbar carries the data freshness badge, the weekly summary button and, in dev, the collection controls. Every chart panel exports a PNG through the download icon (toast **Imagem exportada**) and the tooltips show the numbers behind each point.
 
 ## Visão geral (`/`): what is the team shipping right now?
 
@@ -32,7 +32,7 @@ Each dev name opens the profile `/devs/:name`.
 
 Answers what the person did in the selected period. `/dev/:name` stays as an alias; a name with no match in the data shows **Dev não encontrado** with **Quis dizer:** (did you mean) suggestions.
 
-- Cards for **commits**, **linhas +**, **linhas −** in the period, plus **dias ativos (total)**, **commits/dia ativo (total)**, **streak (total)**, **repositórios (total)**; with GitHub data, also **PRs abertos**, **cycle time mediano**, **reviews feitas**.
+- Cards for **commits**, **linhas +**, **linhas −** in the period, plus the historical cards **dias ativos**, **commits/dia ativo**, **streak** and **repositórios**: with a period active they carry the **(total)** suffix, and under a work-scope cut they read the selected scope (prod/progress) when the data carries `byScope`, degrading to the historical total with **(total)** on older data; with GitHub data, also **PRs abertos**, **cycle time mediano**, **reviews feitas**.
 - **Commits por semana** / **Commits por mês** for this dev only.
 - **Distribuição por repositório** (donut) and **Horários de atividade —** *\<window\>*, which under **Tudo** becomes **Horários de atividade — últimos 24 meses** (the aggregation limit).
 - **PRs abertos de** *\<first name\>*: current state, not scoped to the period.
@@ -69,6 +69,18 @@ PR rows open GitHub.
 
 ![PRs page: summary cards, stale and open PR tables, cycle time per repository (demo)](/screenshots/prs.png)
 
+## Branches (`/branches`): what can be cleaned up and what has not shipped?
+
+The branch inventory of the full collect (`branches.json`); the page ignores the period filter (the inventory is "now") and the scope chips — it *is* the progress view. The contextual sub-nav covers the anchors **Pousadas**, **Abandonadas**, **develop × produção** and **Tabela**. **Sem dados de branches** points at the full collect (the light one does not refresh the inventory); without GitHub data the page shows **Sem dados do GitHub** and the branch↔PR link degrades to **sem vínculo**.
+
+- Freshness line: the **inventário** *\<age\>* badge, the **N branches em M repos** count and, when PRs lack `headRef`, the **vínculo PR↔branch: cobertura parcial (N%)** badge.
+- `#pousadas` **Pousadas — podem ser limpas**: already merged (ahead 0) or landed via squash and idle for 30+ days — cleanable. First five listed (with the **squash** badge where it applies) and **ver todas na tabela**.
+- `#abandonadas` **Abandonadas — trabalho não liberado parado**: ahead > 0 with no open PR, idle for 30+ days — the work never reached production.
+- `#develop-producao` **develop × produção**: integration ref vs production per repo — **+N** ahead (unreleased work), **−N** behind (with ahead 0, an abandoned integration).
+- `#tabela` **Branches**, sortable by branch / repo / status / **à frente** / **atrás** / **vs integração** / **última atividade** / **autores à frente** / **PR**: status badges **produção**, **integração**, **feature**, **bot**, **pousada** plus the derived **pousada via squash** and **viva sem PR**; the PR cell links the PR (**aberto**/**mergeado**) or shows **sem vínculo** — which is not "no PR", since old GitHub cache may lack `headRef`.
+
+![Branches page: the pousadas / abandonadas / develop × produção cards and the sortable table (demo)](/screenshots/branches.png)
+
 ## Repos (`/repos`): which repos are active and shipping?
 
 Repository index, with an anchor sub-nav (**Tabela**, **Linhas +/−**, **Distribuição**, **Por mês**, **Tipos de commit**, **Releases**). The unreleased commits alert from Visão geral lands on `#tabela`.
@@ -84,11 +96,14 @@ Repository index, with an anchor sub-nav (**Tabela**, **Linhas +/−**, **Distri
 
 `/repo/:name` stays as an alias; an unknown name shows **Repo não encontrado**. The period applies to commits, charts, merged PRs and cycle time; releases and open PRs are milestones or current state, as [Filter rules](../dashboard/filters.md) describes.
 
-- Cards for **commits**, **linhas +**, **linhas −**, **devs** in the period, **commits (total)** when a period is active, **última release (há Nd)**, **commits não liberados** (color by threshold), **dev principal** with the top share (colored above 50% and 70%) and, with GitHub data, **PRs abertos** and **cycle time mediano**.
+- Cards for **commits**, **linhas +**, **linhas −**, **devs** in the period, **commits (total)** when a period or a scope cut is active, **última release (há Nd)**, **commits não liberados** (color by threshold), **dev principal** with the top share (colored above 50% and 70%) and, with GitHub data, **PRs abertos** and **cycle time mediano**.
 - **Tipos de commit** (donut) and **Commits por dev** (bars, top 10).
 - **Releases**: tag / data / commits / notas, the **pré** badge for prereleases and inline-expandable **notas**; the 30 most recent tags, with a notice. The commit counts *between* tags follow the period where they appear.
+- `#grafo` **Grafo de commits**: the repo's commit window drawn as a pure-SVG lane graph — one colored lane per branch, merge commits as hollow circles, ref chips that highlight the lane on hover (click to pin), rows linking to the commit on GitHub and a tooltip with the full subject, author, date and refs. The window is fixed (the last *N* commits, labeled in the footer) and ignores the period/bots/scope filters: parents outside the window end in dashed **continua** edges and **Mostrar mais antigos** grows the drawing 300 rows at a time. Full description in [Commit graph](../dashboard/graph.md).
 
 Tag rows open GitHub when a URL exists; the **repos** button goes back to `/repos` and **GitHub ↗** opens the repository when the release data carries the URL.
+
+![Repo page: the #grafo commit-graph section at the bottom of /repos/demo-api (demo)](/screenshots/graph.png)
 
 ## Times (`/teams`): the team editor
 
