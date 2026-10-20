@@ -6,6 +6,7 @@ import { useRoute } from 'vue-router'
 import { axisLabel, ct, donutBase, splitLine, tooltipBase } from '@/chartTheme'
 import { commitTypeColor, commitTypeGroup } from '@/commitTypes'
 import ChartPanel from '@/components/ChartPanel.vue'
+import CommitGraph from '@/components/CommitGraph.vue'
 import DetailHeader from '@/components/DetailHeader.vue'
 import StatCards from '@/components/StatCards.vue'
 import TablePanel from '@/components/TablePanel.vue'
@@ -255,6 +256,13 @@ const shownTags = computed(() => tags.value.slice(0, 30))
           mostrando as {{ shownTags.length }} mais recentes de {{ tags.length }} tags
         </p>
       </TablePanel>
+
+      <!-- grafo de commits (issue #127) — janela fixa intencional: NÃO segue
+           período/bots (remover commits quebraria as cadeias de merge); o
+           rodapé do painel rotula a janela -->
+      <section id="grafo" class="scroll-mt-16">
+        <CommitGraph :repo="repo" />
+      </section>
     </template>
   </div>
 </template>

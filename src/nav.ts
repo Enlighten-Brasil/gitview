@@ -85,6 +85,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: 'Por mês', icon: 'i-lucide-calendar-days', hash: 'por-mes' },
       { label: 'Tipos de commit', icon: 'i-lucide-tag', hash: 'tipos' },
       { label: 'Releases', icon: 'i-lucide-rocket', hash: 'releases' },
+      { label: 'Grafo', icon: 'i-lucide-git-graph', hash: 'grafo' },
     ],
   },
 ]

@@ -244,3 +244,37 @@ export interface BranchesData {
   generatedAt: string
   repos: RepoBranches[]
 }
+
+// ---------------------------------------------------------------------------
+// graph-REPO.json — janela de commits p/ o grafo de lanes (issue #127;
+// coletor da issue #126). Lanes NÃO viajam no JSON: o coletor emite só
+// topologia + metadados e o frontend calcula (src/graph/lanes.ts, ~7 ms p/
+// N=1000) — permite iterar geometria/cores sem recoletar.
+// ---------------------------------------------------------------------------
+export interface GraphCommit {
+  /** sha completo (40 hex) — as URLs de commit do GitHub usam ele */
+  hash: string
+  /** shas completos dos pais na ordem do git (1º = primeira mãe); vazio = root */
+  parents: string[]
+  /** autor canônico (mapeado via team.json na coleta; fallback = nome cru do git) */
+  author: string
+  /** data do autor em UTC ISO com milissegundos */
+  date: string
+  /** assunto cru (%s) — a truncagem é da UI */
+  subject: string
+  /**
+   * refs que apontam para o commit: `%d` cru do git ("(HEAD -> main,
+   * tag: v1.0)") OU array já parseado (strings/objetos { name, type }) — o
+   * reader (src/graph/refs.ts) tipa os dois; ausente/vazio = nenhuma.
+   */
+  refs?: string | string[] | { name: string, type?: string }[]
+}
+
+export interface GraphData {
+  generatedAt: string
+  repo: string
+  /** tamanho da janela coletada (`git log --all --date-order -n <window>`) */
+  window: number
+  /** ordem de exibição = saída do `git log --all --date-order` preservada (descendente) */
+  commits: GraphCommit[]
+}
