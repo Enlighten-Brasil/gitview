@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { filteredMonthly, filteredTypes, fixByRepo, nestBySum, stats } from '../data'
 import { fmtDate, fmtInt } from '../format'
 import { daysSinceLastRelease, lastTagLabel, releaseByRepo } from '../releases'
+import { displayPct } from '../risk'
 import { FIX_HOTSPOT_AMBER, FIX_HOTSPOT_RED, UNRELEASED_AMBER, UNRELEASED_RED } from '../thresholds'
 import TablePanel from './TablePanel.vue'
 
@@ -111,7 +112,7 @@ function onRowClick(e: MouseEvent, repo: string) {
               {{ r.devs }}
             </td>
             <td class="num">
-              <span :class="r.fixPct >= FIX_HOTSPOT_RED ? 'text-error' : r.fixPct >= FIX_HOTSPOT_AMBER ? 'text-warning' : ''">
+              <span :class="displayPct(r.fixPct) >= FIX_HOTSPOT_RED ? 'text-error' : displayPct(r.fixPct) >= FIX_HOTSPOT_AMBER ? 'text-warning' : ''">
                 {{ Math.round(r.fixPct * 100) }}%
               </span>
             </td>
