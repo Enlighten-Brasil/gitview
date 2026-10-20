@@ -81,7 +81,7 @@ O CI (`.github/workflows/ci.yml`) roda scrub, lint, typecheck e build no job `ga
 - `graphData.ts` + `graph/`: o grafo de commits (`#grafo` de `/repos/:name`) — loader do `graph-REPO.json` por repo, algoritmo puro de lanes (`graph/lanes.ts`), cores de lane/ref (`graph/palette.ts`) e o reader tolerante de refs (`graph/refs.ts`).
 - `releases.ts`: loader do `releases.json` e métricas de cadência.
 - `urlState.ts`: filtros na query string (`?range=&from=&to=&repos=&devs=&bots=`), com escopo por `route.meta.filters`.
-- `summary.ts`: resumo semanal em markdown, ignorando os filtros da sidebar.
+- `report.ts` + `daily.ts`: motor de relatórios (`buildReport(assunto, de, até)`, janelas preset, delta, fallback do resumo semanal) e o loader opcional do `daily.json` dia-preciso (issue #176); `summary.ts` é agora o wrapper do preset semana fechada × organização do motor.
 - `router/`: `guards.ts` aplica o contrato de `route.meta` (`requiresData`, `onboarding`, `requiresServer`, `setupStep`, `section`, `filters`, `title`).
 - `pages/`: uma rota por arquivo: shell `(app)/`, abas `(dashboard)/`, `devs/[name]`, `repos/`, `prs`, `teams`, `settings/` e `setup/` (dev only), `[...path].vue` para 404.
 - `components/`: um componente por painel; tabelas usam a classe `.data-table`.

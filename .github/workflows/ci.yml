@@ -32,6 +32,9 @@ jobs:
       # gate anti-regressão do scrub de identidade (issue #17)
       - run: pnpm check:scrub
       - run: pnpm lint
+      # gate do motor de relatórios (issue #176) — fixture sintética inline,
+      # CI-safe: não lê public/data/ (diferente do check:data)
+      - run: pnpm check:report
       - run: pnpm typecheck
       - run: pnpm build
 

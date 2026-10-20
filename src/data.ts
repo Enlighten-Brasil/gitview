@@ -30,6 +30,10 @@ export {
 
 export type { BurnoutRow, OffHoursRow, PaceRow } from './aggregations'
 
+// agregado dia-preciso (issue #175) — OPCIONAL p/ relatórios (issue #176):
+// ausência/falha => null e os consumidores caem no fallback de stats.weekly
+export { daily, loadDaily } from './daily'
+
 // aritmética de semana ISO — usada pelo resumo semanal e pelas janelas fixas
 export { isoWeekKey, isoWeekKeyBefore, isoWeekMonday, lastNWeekKeys } from './date'
 
