@@ -33,7 +33,7 @@ import process from 'node:process'
 import { cleanLocalData } from './lib/clean'
 import { loadConfig, rootDir, saveConfig } from './lib/config'
 import { currentUser, devicePoll, deviceStart, getToken, listOrgMembers, listOrgRepos, listOrgs, listOrgTeams, listUserRepos } from './lib/github'
-import { displayRefName, resolveIntegRefs, resolveProdRef } from './lib/refs'
+import { displayRefName, resolveIntegRefsAsync, resolveProdRefAsync } from './lib/refs'
 import { cloneBare, discoverRepos, MANAGED_REPOS_DIR, mapPool, resolveReposRootSafe } from './lib/repos'
 
 const tsxCli = join(rootDir, 'node_modules', 'tsx', 'dist', 'cli.mjs')
@@ -225,28 +225,34 @@ interface RepoRefs {
  */
 let refsCache: { key: string, resolved: RepoRefs[] } | null = null
 
-function resolveAllRefs(config: Config, reposRoot: string, repos: RepoInfo[]): RepoRefs[] {
+/**
+ * Resolução async (#134): spawn streaming por repo — o event loop do dev
+ * server fica livre durante a 1ª resolução (antes o spawnSync bloqueava ~6s).
+ * Sequencial de propósito: preserva a ordem dos warns entre repos.
+ */
+async function resolveAllRefs(config: Config, reposRoot: string, repos: RepoInfo[]): Promise<RepoRefs[]> {
   const key = JSON.stringify([reposRoot, repos.map(r => r.name), config.productionRef ?? '', config.integrationRefs ?? []])
   if (refsCache?.key === key)
     return refsCache.resolved
   const explicit = displayRefName(config.productionRef?.trim() || '')
-  const resolved: RepoRefs[] = repos.map((r) => {
+  const resolved: RepoRefs[] = []
+  for (const r of repos) {
     try {
       // #141: o resolvedor devolve a forma resolvível (pode ser longa); o hint
       // de /settings é exibição — segue com nome curto via displayRefName
-      const production = displayRefName(resolveProdRef(r.path, config.productionRef))
-      return {
+      const production = displayRefName(await resolveProdRefAsync(r.path, config.productionRef))
+      resolved.push({
         name: r.name,
         production,
-        integration: resolveIntegRefs(r.path, config.integrationRefs).map(displayRefName),
+        integration: (await resolveIntegRefsAsync(r.path, config.integrationRefs)).map(displayRefName),
         productionFallback: !!explicit && explicit !== production,
-      }
+      })
     }
     catch (err) {
       // repo sem ref de produção resolvível é erro no seam — vira linha com error, não 500
-      return { name: r.name, production: null, integration: [], productionFallback: false, error: String((err as Error).message ?? err) }
+      resolved.push({ name: r.name, production: null, integration: [], productionFallback: false, error: String((err as Error).message ?? err) })
     }
-  })
+  }
   refsCache = { key, resolved }
   return resolved
 }
@@ -316,7 +322,7 @@ export function setupPlugin(): Plugin {
             defaultRepos: config.defaultRepos ?? [],
             productionRef: config.productionRef ?? null,
             integrationRefs: config.integrationRefs ?? [],
-            ...(wantRefs ? { resolvedRefs: reposRoot ? resolveAllRefs(config, reposRoot, repos) : [] } : {}),
+            ...(wantRefs ? { resolvedRefs: reposRoot ? await resolveAllRefs(config, reposRoot, repos) : [] } : {}),
           })
         }
         catch (err) {
