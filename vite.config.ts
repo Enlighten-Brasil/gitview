@@ -65,7 +65,9 @@ export default defineConfig({
   server: {
     fs: {
       // o dev server serve qualquer arquivo da raiz por padrão — nega os que
-      // têm dado pessoal/segredo (os defaults do Vite já cobrem .env/*.pem)
+      // têm dado pessoal/segredo (os defaults do Vite já cobrem .env/*.pem).
+      // '**/data/**' cobre o data/ do banco e dos clones; os JSONs de
+      // public/data/ são servidos pelo middleware do collect-plugin.ts
       deny: [
         '.env',
         '.env.*',
