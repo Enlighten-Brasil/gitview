@@ -12,13 +12,25 @@
  * `ref_hint` é o nome curto do primeiro ref que alcança o commit:
  * prod → ref de produção; integration → ref de integração (a primeira da
  * ordem da config que o contém); branch → `--source` do walk escoteado;
- * NULL quando nenhuma fonte existe (alcançável só por tag).
+ * NULL quando nenhuma fonte existe (alcançável só por tag ou só por
+ * remote-tracking ref — ver limitação #163 abaixo).
  *
  * LIMITAÇÃO medida (issue #118): branch longeva engole a atribuição — no
  * maior dos 14 repos reais, uma única branch legada é o source de 55% dos
  * branch commits (119/215). O `--source` atribui o commit ao primeiro ref
  * que o alcança na ordem da caminhada; ref_hint é "primeiro ref alcançável"
  * (melhor esforço), NÃO "a branch onde o trabalho aconteceu".
+ *
+ * LIMITAÇÃO medida (issue #163): em checkout normal, commit alcançável só
+ * por remote-tracking ref (sem head local correspondente — ex.: clone
+ * single-branch, worktree de CI) fica com ref_hint NULL — mesma classe do
+ * "alcançável só por tag". Acrescentar `--remotes` ao lado positivo do walk
+ * foi medido e REJEITADO pela regra de reversão: num checkout completo
+ * (heads locais + remote-tracking), 1 dos 4 ref_hint já atribuídos mudou de
+ * `x` para `origin/x` (o %S passa a alcançar o commit pela ref remota),
+ * reescrevendo atribuições já gravadas a cada coleta. Em clone bare
+ * gerenciado (padrão do produto) refs/remotes/* não existe e o problema
+ * não ocorre.
  *
  * Custos medidos nos 14 repos reais (Windows, clones bare): 26 rev-lists
  * ≈ 1,7 s + 14 walks ≈ 0,8 s = ~2,5 s sequencial (pior repo ~0,4 s).
