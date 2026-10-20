@@ -221,7 +221,8 @@ db.exec(`
     -- NULL = não classificado (nunca tratar NULL como prod)
     scope TEXT,
     -- nome curto do primeiro ref alcançável, melhor esforço (lib/scope.ts);
-    -- NULL para commit alcançável só por tag
+    -- NULL para commit alcançável só por tag ou só por remote-tracking ref
+    -- em checkout normal (limitação #163)
     ref_hint TEXT,
     PRIMARY KEY (repo, hash)
   );
