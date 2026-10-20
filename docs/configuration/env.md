@@ -55,7 +55,7 @@ The `.env` holds the machine config: GitHub credentials, where the clones live, 
 - `collect-graph.ts` writes one file per repo with the last `GITVIEW_GRAPH_WINDOW` commits of all refs (`git log --all --date-order`), including merges — they are the connectors of the graph drawing. The file feeds neither the database nor the metrics: the `--no-merges` decision is untouched.
 - The window is a COUNT of commits, not days: the period covered varies with each repo's velocity (1000 commits ≈ 87 days at the team's current pace).
 - Accepts an integer > 0; empty counts as not set. An invalid value (0, negative, non-numeric) prints a warning and falls back to the default 1000.
-- Only the full collection generates the files (`pnpm collect` / **recoletar tudo**); the light re-collection leaves existing `graph-*.json` untouched, and a repo without its file is a non-blocking warning in `check-data` (the UI shows an empty state).
+- Only the full collection generates the files (`pnpm collect`, `pnpm collect:full` / **recoletar tudo**); the light re-collection leaves existing `graph-*.json` untouched, and a repo without its file is a non-blocking warning in `check-data` (the UI shows an empty state).
 
 ## Metrics and data
 

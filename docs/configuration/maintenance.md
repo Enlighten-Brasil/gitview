@@ -37,6 +37,8 @@ Everything the dashboard shows is generated data: the database and the JSONs reb
 pnpm clean              # deletes data/gitview.db* + public/data/*.json
 pnpm clean -- --repos   # also deletes the clones in data/repos
 pnpm collect            # the 6 collectors in sequence + validation
+pnpm collect:full       # the same chain with --full (full rescan + refetch)
+pnpm collect:reaggregate # light: re-aggregation + PRs + team + validation
 ```
 
 The `--` before `--repos` is required: without it pnpm does not forward the flag. After `pnpm clean`, run `pnpm collect` (or ↻) to regenerate the JSONs.

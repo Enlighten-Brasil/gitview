@@ -50,6 +50,8 @@ Full publishing flow, including the demo deploy: [Publishing the static build](d
 pnpm dev / start        # dashboard at http://localhost:5173
 pnpm setup              # terminal wizard: choose and clone the org's repos
 pnpm collect            # the 6 collectors in sequence + validation (incremental)
+pnpm collect:full       # the same chain with --full (full rescan + refetch)
+pnpm collect:reaggregate # light: re-aggregation + PRs + team + validation
 pnpm collect:branches   # the branch inventory only
 pnpm collect:github     # PRs and reviews only
 pnpm collect:graph      # the commit-graph topology only

@@ -22,8 +22,8 @@ Os coletores de `scripts/` leem os repos git e a API do GitHub e gravam os seis 
 ## Coleta incremental
 
 - **`collect.ts` (padrão)**: o `git log` recebe `--since=<watermark>` por repo: `MAX(date)` do banco menos 7 dias, margem que cobre commits com committer date antiga. `INSERT OR IGNORE` em `(repo, hash)` torna a sobreposição inócua.
-- **`--full`**: re-escaneia todo o histórico, ignorando o watermark.
-- **`--reaggregate`**: pula fetch e `git log`; re-aplica aliases às linhas gravadas e re-exporta os JSONs. Os eixos `byScope` derivam da coluna `scope` gravada, então este modo os repopula sem git.
+- **`--full`**: re-escaneia todo o histórico, ignorando o watermark. O `pnpm collect:full` roda a cadeia inteira com esta flag em `collect.ts` e `collect-github.ts` (os únicos dois que a leem).
+- **`--reaggregate`**: pula fetch e `git log`; re-aplica aliases às linhas gravadas e re-exporta os JSONs. Os eixos `byScope` derivam da coluna `scope` gravada, então este modo os repopula sem git. O `pnpm collect:reaggregate` o roda pela CLI.
 - **`collect-github.ts`**: refaz o fetch só dos PRs atualizados desde a última coleta (margem de 1 dia) e mescla com o arquivo anterior; MERGED já gravados são preservados, a lista fresca de OPEN é a verdade, e PRs cujo `mergedAt` ficou fora da janela expiram. `--full` ignora o cache no fetch, e o arquivo anterior segue como rede de segurança: repo que falha não sai zerado do painel.
 - **`collect-branches.ts`**: sem modo incremental — toda execução re-enumeria `refs/heads` por completo (pool de 4 com spawns assíncronos; ~25s para ~200 branches em 14 repos). Nunca faz fetch: o frescor fica atrelado ao fetch do `collect.ts` no início da cadeia, como o `stats.json`.
 - **`collect-graph.ts`**: sem modo incremental — toda execução re-percorre os últimos `GITVIEW_GRAPH_WINDOW` commits por repo (default 1000; pool de 4 com spawns assíncronos, ~1s para 14 repos) e reescreve o seu `graph-<repo>.json`. Nunca faz fetch nem toca o banco ou o `stats.json`: o frescor fica atrelado ao fetch do `collect.ts` no início da cadeia.
@@ -32,7 +32,7 @@ Em toda execução do `collect.ts`: repos fora da seleção são podados do banc
 
 ## Recoleta leve
 
-`GET /__collect?light=1` (botão **salvar + recoletar** em `/teams`) roda `collect.ts --reaggregate`, `collect-github.ts` incremental, `collect-team.ts` e `check-data.ts`. Pula git scan, releases, branches e graph: edição de time muda identidade, não histórico — e sem fetch, re-enumerar as branches ou re-percorrer a topologia devolveria exatamente o resultado do último full, só com custo. Os `graph-*.json` existentes SOBREVIVEM à recoleta leve sem toque (nada os reescreve nem apaga); o gate valida os arquivos presentes e repo do `stats.json` sem o seu arquivo de grafo é aviso, não erro — só a coleta completa o gera.
+`GET /__collect?light=1` (botão **salvar + recoletar** em `/teams`) roda `collect.ts --reaggregate`, `collect-github.ts` incremental, `collect-team.ts` e `check-data.ts` — os mesmos passos do `pnpm collect:reaggregate` na CLI. Pula git scan, releases, branches e graph: edição de time muda identidade, não histórico — e sem fetch, re-enumerar as branches ou re-percorrer a topologia devolveria exatamente o resultado do último full, só com custo. Os `graph-*.json` existentes SOBREVIVEM à recoleta leve sem toque (nada os reescreve nem apaga); o gate valida os arquivos presentes e repo do `stats.json` sem o seu arquivo de grafo é aviso, não erro — só a coleta completa o gera.
 
 ## Clones gerenciados: fetch e read-only
 
@@ -69,6 +69,8 @@ O `pnpm check:data` roda sozinho e como último passo do `pnpm collect` e do `/_
 
 ```bash
 pnpm collect            # os 6 coletores em sequência + check-data no fim
+pnpm collect:full       # a mesma cadeia com --full (re-scan completo + refetch)
+pnpm collect:reaggregate # leve: re-agregação + PRs + time + check-data
 pnpm collect:github     # só PRs
 pnpm collect:branches   # só branches
 pnpm collect:graph      # só a topologia de commits (graph-*.json, com merges)
