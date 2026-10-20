@@ -12,7 +12,7 @@ O que o dashboard mostra é dado gerado: banco e JSONs se refazem a partir dos r
 | caminho | regenerável | observação |
 |---|---|---|
 | `data/gitview.db` (+ `-wal`/`-shm`) | sim | banco recriado pelos coletores |
-| `public/data/*.json` | sim | os 5 JSONs que o frontend lê |
+| `public/data/*.json` | sim | os 6 JSONs fixos + os `graph-*.json` por repo que o frontend lê |
 | `data/repos/` | sim, mas lento | clones bare; re-clonar é a parte cara |
 | `.env` | **não** | config da máquina e o token |
 | `team.local.json` | **não** | cadastro do time |
@@ -36,7 +36,7 @@ O que o dashboard mostra é dado gerado: banco e JSONs se refazem a partir dos r
 ```bash
 pnpm clean              # apaga data/gitview.db* + public/data/*.json
 pnpm clean -- --repos   # apaga também os clones de data/repos
-pnpm collect            # os 4 coletores em sequência + validação
+pnpm collect            # os 6 coletores em sequência + validação
 ```
 
 O `--` antes de `--repos` é obrigatório: sem ele o pnpm não repassa a flag. Depois de `pnpm clean` rode `pnpm collect` (ou ↻) para regenerar os JSONs.

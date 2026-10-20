@@ -30,7 +30,8 @@ Nada para copiar ou editar antes: o `.env` é criado a partir do `.env.example` 
 - **Visão geral** (`/`): commits, linhas e ritmo do período, com faixa de alertas que leva direto ao problema.
 - **Devs** (`/devs`, `/devs/<nome>`): ranking com commits, linhas, dias ativos e streak, heatmap de dia e hora, campeão semanal por evolução, CSV exportável.
 - **PRs** (`/prs`): envelhecimento dos abertos, cycle time, reviews por dev, merge sem review.
-- **Repos** (`/repos`, `/repos/<nome>`): atividade por repositório e releases com as notas do GitHub.
+- **Branches** (`/branches`): inventário de branches — alertas de pousadas e abandonadas, desvio develop × produção por repo e tabela ordenável com o join branch↔PR.
+- **Repos** (`/repos`, `/repos/<nome>`): atividade por repositório, releases com as notas do GitHub e o grafo de commits da janela recente (`#grafo`).
 - **Times** (`/teams`, `/teams/<nome>`): agrupe devs por time e abra o dashboard do time, com período e repos filtráveis.
 - **Saúde** (`/health`): trabalho fora do horário, fix hotspots, gargalo de review, inatividade e bus factor.
 - **Resumo semanal**: markdown da última semana ISO fechada contra a anterior, pronto para colar na reunião.
@@ -48,8 +49,10 @@ Fluxo completo de publicação, inclusive o deploy da demo: [Publicando o build 
 ```bash
 pnpm dev / start        # dashboard em http://localhost:5173
 pnpm setup              # assistente no terminal: escolher e clonar os repos da org
-pnpm collect            # os 4 coletores em sequência + validação (incremental)
+pnpm collect            # os 6 coletores em sequência + validação (incremental)
+pnpm collect:branches   # só o inventário de branches
 pnpm collect:github     # só PRs e reviews
+pnpm collect:graph      # só a topologia do grafo de commits
 pnpm collect:releases   # só releases
 pnpm collect:team       # só o cadastro do time
 pnpm check:data         # valida shape e invariantes dos JSONs coletados

@@ -1,11 +1,11 @@
 ---
 title: Regras dos filtros
-description: O comportamento de período, repos, devs e bots em cada rota, e as janelas fixas que ignoram o período.
+description: O comportamento de período, escopo de trabalho, repos, devs e bots em cada rota, e as janelas fixas que ignoram o período.
 ---
 
 # Regras dos filtros
 
-Estado global compartilhado por todas as páginas: período, repos, devs e bots. Cada rota declara o que a sidebar mostra e o que vai para a URL. Toda janela que ignora o período está rotulada na própria tela.
+Estado global compartilhado por todas as páginas: período, escopo de trabalho, repos, devs e bots. Cada rota declara o que a sidebar mostra e o que vai para a URL. Toda janela que ignora o período está rotulada na própria tela.
 
 ## Período
 
@@ -20,6 +20,21 @@ Estado global compartilhado por todas as páginas: período, repos, devs e bots.
 - Os deltas dos cards são omitidos em range custom e em **Tudo**: não existe janela de comparação equivalente.
 - O último preset usado persiste no `localStorage` (`gitview:range`) e uma URL sem parâmetros de período cai nele; estado zerado usa **12M**.
 
+## Escopo de trabalho (produção vs progresso)
+
+Toda linha de commit carrega uma classificação feita na coleta: produção (alcançável pela ref de produção) ou progresso (integração e demais branches). O filtro de escopo — os chips **Todos** / **Produção** / **Em progresso** — escolhe quais linhas os painéis alimentados por commits contam:
+
+| Chip | `?scope=` | Conta |
+|---|---|---|
+| **Todos** | (omitido) | todas as linhas de commit — o default |
+| **Produção** | `prod` | só as linhas alcançáveis pela ref de produção: trabalho liberado |
+| **Em progresso** | `progress` | linhas de integração + branch: trabalho ainda não liberado |
+
+- Como o período, o escopo vale em toda rota de dados (`full`, `team`, `period`, `period-bots`); rotas `none` não o carregam e `/branches` não o consome (a página é por natureza a vista do progresso — os chips ficam ocultos nela).
+- A última escolha persiste no `localStorage` (`gitview:scope`) e uma URL sem `scope` cai nela; valor inválido volta para **Todos**. Dados coletados antes da divisão prod/progresso forçam **Todos** (feature-detect em `totals.prodCommits`).
+- Painéis alimentados por linhas de commit seguem o escopo — inclusive as janelas fixas **Ritmo** e **Fora do horário** no modo **8 semanas**, que ignoram o período mas aplicam o escopo. PRs, cycle time, reviews, releases, inatividade, o ranking de histórico completo, streaks, o resumo semanal, o grafo de commits e `/branches` leem dados sem classificação de escopo.
+- O que cada escopo significa para a gestão e as limitações conhecidas (dupla contagem do squash, ref hint melhor-esforço): [Produção vs progresso](../guide/scopes.md).
+
 ## Parâmetros de URL
 
 A sidebar grava os filtros na query string, então links e favoritos reproduzem a visão exata. Defaults são omitidos: `range` só aparece quando não é **12M**.
@@ -31,6 +46,7 @@ A sidebar grava os filtros na query string, então links e favoritos reproduzem 
 | `repos` | repos selecionados, separados por vírgula | `?repos=api,web` |
 | `devs` | devs selecionados, separados por vírgula | `?devs=Ana,Bruno` |
 | `bots` | `1` mostra bots | `?bots=1` |
+| `scope` | escopo de trabalho: `prod` ou `progress` (default `all`, omitido) | `?scope=prod` |
 
 - As escritas usam `replaceState`, então filtrar não polui o histórico do navegador.
 - Voltar e avançar tomam a URL como verdade: o estado volta aos defaults e a URL é aplicada.
@@ -42,10 +58,10 @@ O escopo decide o que a sidebar mostra e o que a URL carrega. Todo filtro que mu
 
 | Escopo | Rotas | URL carrega | Sidebar mostra |
 |---|---|---|---|
-| `full` | `/`, `/devs`, `/health`, `/prs`, `/repos` | período, `repos`, `devs`, `bots` | **Período**, **Times**, **Repos**, **Devs** |
-| `team` | `/teams/:name` | período, `repos` | **Período**, **Repos** |
-| `period` | `/devs/:name` | período | **Período** |
-| `period-bots` | `/repos/:name` | período, `bots` | **Período** e **incluir bots** |
+| `full` | `/`, `/devs`, `/health`, `/prs`, `/branches`, `/repos` | período, escopo, `repos`, `devs`, `bots` | **Período**, **Times**, **Repos**, **Devs** |
+| `team` | `/teams/:name` | período, escopo, `repos` | **Período**, **Repos** |
+| `period` | `/devs/:name` | período, escopo | **Período** |
+| `period-bots` | `/repos/:name` | período, escopo, `bots` | **Período** e **incluir bots** |
 | `none` | `/teams`, `/setup`, `/settings`, 404 | nada | nada |
 
 As seções **Repos** e **Devs** trazem ações em massa (**selecionar todos**, **inverter seleção**, **limpar**) e o botão **limpar filtros** quando há seleção.
@@ -80,8 +96,9 @@ Seguir um link (nome de dev, linha de repo, chip de alerta) aplica os parâmetro
 | **Ranking do time (histórico completo)** | histórico completo | `/devs` |
 | **Inatividade — repos e devs parados** | até hoje, ignora todos os filtros | `/health` |
 | **Releases por repositório** | marcos, rodapé **marcos — ignoram o filtro de período** | `/repos` |
+| **Grafo de commits** (`#grafo`) | os últimos N commits do repo (`window` no JSON, rotulado no rodapé); também ignora bots e escopo | `/repos/:name` |
 
-Cada painel fixo declara a própria janela no título ou no rodapé porque a pergunta define a janela: o ritmo é, por definição, 4 semanas contra as 8 anteriores. As janelas fixas respeitam repos, devs e bots; só releases e inatividade ignoram a sidebar inteira. As fórmulas estão em [Glossário de métricas](./metrics.md).
+Cada painel fixo declara a própria janela no título ou no rodapé porque a pergunta define a janela: o ritmo é, por definição, 4 semanas contra as 8 anteriores. As janelas fixas respeitam repos, devs e bots, e as alimentadas por linhas de commit (ritmo, fora do horário no modo **8 semanas**) respeitam também o escopo de trabalho; só releases e inatividade ignoram a sidebar inteira. As fórmulas estão em [Glossário de métricas](./metrics.md).
 
 ## O que segue o período em `/devs/:name` e `/repos/:name`
 

@@ -12,7 +12,7 @@ Everything the dashboard shows is generated data: the database and the JSONs reb
 | path | regenerable | note |
 |---|---|---|
 | `data/gitview.db` (+ `-wal`/`-shm`) | yes | database recreated by the collectors |
-| `public/data/*.json` | yes | the 5 JSONs the frontend reads |
+| `public/data/*.json` | yes | the 6 fixed JSONs + the per-repo `graph-*.json` the frontend reads |
 | `data/repos/` | yes, but slow | bare clones; re-cloning is the expensive part |
 | `.env` | **no** | machine config and the token |
 | `team.local.json` | **no** | the team roster |
@@ -36,7 +36,7 @@ Everything the dashboard shows is generated data: the database and the JSONs reb
 ```bash
 pnpm clean              # deletes data/gitview.db* + public/data/*.json
 pnpm clean -- --repos   # also deletes the clones in data/repos
-pnpm collect            # the 4 collectors in sequence + validation
+pnpm collect            # the 6 collectors in sequence + validation
 ```
 
 The `--` before `--repos` is required: without it pnpm does not forward the flag. After `pnpm clean`, run `pnpm collect` (or ↻) to regenerate the JSONs.

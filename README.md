@@ -30,7 +30,8 @@ Nothing to copy or edit first: `.env` is created from `.env.example` on the firs
 - **Visão geral** (`/`): commits, lines and pace for the period, with an alert strip that goes straight to the problem.
 - **Devs** (`/devs`, `/devs/<name>`): ranking with commits, lines, active days and streak, day-and-hour heatmap, weekly champion by improvement, exportable CSV.
 - **PRs** (`/prs`): aging of the open ones, cycle time, reviews per dev, merge without review.
-- **Repos** (`/repos`, `/repos/<name>`): activity per repository and releases with the GitHub notes.
+- **Branches** (`/branches`): branch inventory — alerts for landed and abandoned branches, develop × production drift per repo and a sortable table with the branch↔PR join.
+- **Repos** (`/repos`, `/repos/<name>`): activity per repository, releases with the GitHub notes and the commit graph of the recent window (`#grafo`).
 - **Times** (`/teams`, `/teams/<name>`): group devs by team and open the team dashboard, with period and repos filterable.
 - **Saúde** (`/health`): off-hours work, fix hotspots, review bottleneck, inactivity and bus factor.
 - **Resumo semanal**: markdown of the last closed ISO week against the previous one, ready to paste into the meeting.
@@ -48,8 +49,10 @@ Full publishing flow, including the demo deploy: [Publishing the static build](d
 ```bash
 pnpm dev / start        # dashboard at http://localhost:5173
 pnpm setup              # terminal wizard: choose and clone the org's repos
-pnpm collect            # the 4 collectors in sequence + validation (incremental)
+pnpm collect            # the 6 collectors in sequence + validation (incremental)
+pnpm collect:branches   # the branch inventory only
 pnpm collect:github     # PRs and reviews only
+pnpm collect:graph      # the commit-graph topology only
 pnpm collect:releases   # releases only
 pnpm collect:team       # the team roster only
 pnpm check:data         # validates shape and invariants of the collected JSONs

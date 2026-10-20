@@ -31,8 +31,10 @@ Todos os scripts do `package.json`:
 | Comando | O que faz |
 |---|---|
 | `pnpm setup` | assistente no terminal: escolher e clonar os repos da org |
-| `pnpm collect` | os 4 coletores em sequência, mais `check:data` (incremental) |
+| `pnpm collect` | os 6 coletores em sequência, mais `check:data` (incremental) |
+| `pnpm collect:branches` | só o inventário de branches (`branches.json`) |
 | `pnpm collect:github` | só PRs e reviews |
+| `pnpm collect:graph` | só a topologia do grafo de commits (`graph-*.json`) |
 | `pnpm collect:releases` | só releases |
 | `pnpm collect:team` | só o cadastro do time (`team.json`) |
 | `pnpm check:data` | shape e invariantes dos JSONs; gate local de dados |
@@ -49,6 +51,7 @@ Todos os scripts do `package.json`:
 | `pnpm docs:build` | build do site de docs; gate de CI contra dead link |
 | `pnpm docs:preview` | serve o site de docs buildado |
 | `pnpm demo:shots` | regenera as capturas das docs do fixture sintético |
+| `pnpm snapshot:metrics` | harness de regressão das agregações: JSON determinístico da matriz de cenários de filtros (abaixo) |
 | `pnpm changeset` | registrar uma mudança; obrigatório em PR |
 | `pnpm version:packages` | aplicar changesets (bump + `CHANGELOG.md`) |
 
@@ -92,5 +95,20 @@ O pipeline completo e as regras dos filtros estão no `AGENTS.md` da raiz. Leia 
 2. Confira o que de fato renderiza (textos do DOM, tabelas, valores) e o console do navegador.
 3. Tabs do Reka UI não respondem a `.click()` sintético: use clique real ou navegue pela URL (`/devs`, `/health`).
 4. Feche com os gates acima, incluindo `pnpm check:data` se você mexeu nos coletores.
+
+## Harness de regressão das agregações (`snapshot:metrics`)
+
+Não há suíte de testes; para mudanças no núcleo de filtros/agregações (`filters-core.ts`, `filters.ts`, `aggregations.ts`) o método de validação da casa é o `scripts/snapshot-metrics.ts`: um script node/tsx puro (sem vite, sem browser) que injeta o `public/data/stats.json` real no ref do store, muta os filtros só pelas ações nomeadas e imprime um snapshot JSON determinístico de tudo o que deriva deles, para uma matriz de cenários.
+
+```bash
+pnpm snapshot:metrics > baseline.json              # stdout = o JSON do baseline
+pnpm snapshot:metrics --now=2026-10-01 > b.json    # relógio pinado (ver abaixo)
+```
+
+- **Cenários** — 6 bases × 3 escopos de trabalho (`all`/`prod`/`progress`) = 18 snapshots: `default-12m`, `range-all`, `custom-range` (janela derivada dos dados), `bots-on`, `single-repo` e `single-dev` (nomes de repo/dev lidos do `stats.json`, nada hardcoded). Cada snapshot traz `filteredTotals`, `filteredCommitCount`, `previousTotals`, as linhas de `pace`, `burnout` e `offHoursPeriod` e a contagem + somas aditivas das 4 projeções filtradas (`filteredWeekly`/`Monthly`/`Heatmap`/`Types`).
+- **Determinismo**: a saída tem chaves ordenadas e nenhum timestamp — mesmo `stats.json` + mesmo relógio → mesmos bytes. Os presets de período e as janelas fixas de semanas derivam de "hoje": execuções seguidas são idênticas, mas para um baseline guardado entre dias use `--now=YYYY-MM-DD` (pina o `Date` global no meio-dia local). Compare baselines gerados na mesma máquina/fuso.
+- **Comparar versões**: gere o baseline no `main`, mude para o branch, gere de novo com o MESMO `stats.json` e compare byte a byte (`cmp` / `sha256sum`). Todo número que se move é uma mudança de comportamento que o diff precisa explicar.
+- **Sanity embutido**: o script verifica a identidade aditiva `prod + progress == all` em todos os cenários (no stderr) e sai com 1 se houver qualquer violação.
+- **Privacidade**: sobre dados reais a saída contém nomes reais de autores e repos — nunca commite um baseline gerado sobre os dados do time. Para um baseline compartilhável, gere o fixture sintético (`pnpm exec tsx scripts/make-demo-data.ts`) e rode sobre ele.
 
 Depois da revisão, o caminho até a versão está em [Ritual de release](./release.md); o destino do `dist/` está em [Publicando o build estático](../guide/publishing.md).
