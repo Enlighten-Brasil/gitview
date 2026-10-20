@@ -66,6 +66,8 @@ export interface Config {
   integrationRefs?: string[]
   /** dias sem atividade para branch com aheadProd=0 virar "pousada" (issue #123); default 30 */
   branchStaleDays?: number
+  /** commits por repo na janela de topologia dos graph-*.json (issue #126); inteiro > 0, default 1000 */
+  graphWindow?: number
   /** nomes exatos de branches de bot (extras ao BOT_BRANCH_RE de lib/team.ts); comparação lowercase */
   botBranches?: string[]
   /** porta do dev server */
@@ -103,6 +105,7 @@ const ENV_KEYS: Record<string, keyof Config> = {
   GITVIEW_INTEGRATION_REFS: 'integrationRefs',
   GITVIEW_BRANCH_STALE_DAYS: 'branchStaleDays',
   GITVIEW_BOT_BRANCHES: 'botBranches',
+  GITVIEW_GRAPH_WINDOW: 'graphWindow',
 }
 
 /**
@@ -140,6 +143,16 @@ export const DEFAULT_EXCLUDE_PATHS = [
  * sobrescreve (inteiro >= 0 — inválido cai no default, como GITVIEW_PORT).
  */
 export const DEFAULT_BRANCH_STALE_DAYS = 30
+
+/**
+ * Commits por repo na janela de topologia dos graph-*.json (issue #126,
+ * coletor collect-graph.ts). A janela é CONTAGEM de commits, não dias: o
+ * período coberto varia com a velocidade do repo (medido 2026-10-19 nos
+ * clones reais: 1000 commits ≈ 87d no repo mais ativo; 300 cobriria só
+ * ~38d). GITVIEW_GRAPH_WINDOW sobrescreve (inteiro > 0 — inválido/0/
+ * negativo cai no default COM AVISO no loadConfig).
+ */
+export const DEFAULT_GRAPH_WINDOW = 1000
 
 /** campos que vivem no team.local.json (não vão para o .env) */
 const TEAM_FIELDS = new Set<keyof Config>(['devProfiles', 'teams', 'bots', 'githubBots'])
@@ -243,6 +256,16 @@ export function loadConfig(): Config {
   const botBranches = envValue('GITVIEW_BOT_BRANCHES', file)
   if (botBranches)
     config.botBranches = parseCsv(botBranches)
+  const graphWindow = envValue('GITVIEW_GRAPH_WINDOW', file)
+  if (graphWindow) {
+    // inteiro > 0; inválido cai no default COM aviso (diferente do GITVIEW_PORT,
+    // que ignora em silêncio — janela errada muda o desenho do grafo inteiro)
+    const n = Number(graphWindow)
+    if (Number.isInteger(n) && n > 0)
+      config.graphWindow = n
+    else
+      console.warn(`! GITVIEW_GRAPH_WINDOW inválido ("${graphWindow}") — esperado inteiro > 0; usando default ${DEFAULT_GRAPH_WINDOW}`)
+  }
 
   return { ...config, ...readTeamFile() }
 }

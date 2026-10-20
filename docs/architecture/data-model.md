@@ -5,7 +5,7 @@ description: The shapes of the six JSONs in public/data/ and the invariants the 
 
 # Data model
 
-The frontend consumes exactly six JSONs in `public/data/`. The shape is a contract: when a field the UI reads disappears, `check-data.ts` fails the collection. The gate's general behavior is in [Collectors](./collectors.md); here are the keys and the checks of each file.
+The frontend consumes exactly six JSONs in `public/data/`, plus one `graph-<repo>.json` per repo (commit topology for the graph view — the static frontend loads only the file of the repo being visited). The shape is a contract: when a field the UI reads disappears, `check-data.ts` fails the collection. The gate's general behavior is in [Collectors](./collectors.md); here are the keys and the checks of each file.
 
 ## Summary
 
@@ -17,6 +17,7 @@ The frontend consumes exactly six JSONs in `public/data/`. The shape is a contra
 | `releases.json` | tags, commits per tag, unreleased, notes | `collect-releases.ts` |
 | `team.json` | devs, teams, unmapped candidates | `collect-team.ts` |
 | `branches.json` | branch inventory per repo: status, ahead/behind without merges, authors ahead | `collect-branches.ts` |
+| `graph-<repo>.json` | commit topology WITH merges (one file per repo, window of `GITVIEW_GRAPH_WINDOW` commits) | `collect-graph.ts` |
 
 Rules common to all six: top-level object with `generatedAt` (ISO timestamp of the run), commit dates in UTC ISO with milliseconds. Authors are already canonical (aliases applied at collection) in every file **except `branches.json`**, which carries raw git e-mails (`%ae`) by design — pure git fact; the frontend maps e-mail→dev via `team.json#devs[].emails`. Lists are sparse: zero rows do not exist (no `commits: 0` filler).
 
@@ -158,3 +159,51 @@ Rules common to all six: top-level object with `generatedAt` (ISO timestamp of t
 ```
 
 **The gate requires**: valid `generatedAt`; every `repo` present in `stats.json#repos`; exactly one branch with status `production` per repo, named the same as that entry's `productionRef`; branch names unique per repo; `tip` matching `^[0-9a-f]{7,40}$`; `aheadProd`/`behindProd`/`additions`/`deletions` integers ≥ 0; `aheadInt`/`behindInt` integers ≥ 0 or `null`; `status` inside the closed union; `authorsAhead` a list of strings containing `@`; `lastActivity` parseable as a date. **Non-blocking warnings**: `lastActivity` in the future (more than 1 day of slack); a repo without any integration ref.
+
+## graph-\<repo\>.json
+
+One file per repo (`graph-<repo>.json`, `<repo>` = the folder name of the clone, same name used in `stats.json#repos`): the commit topology for the graph view, WITH merges — they are the connectors of the drawing. The collector reads git directly (`git log --all --date-order`); it feeds neither the database nor `stats.json`, so the `--no-merges` decision of the metrics stays intact.
+
+| key | shape | meaning |
+|---|---|---|
+| `generatedAt` | string ISO | timestamp of the run that wrote this file |
+| `repo` | string | repo name (equal to the file name stem) |
+| `window` | number | `GITVIEW_GRAPH_WINDOW` used in the run (default 1000) — a COUNT of commits, not days |
+| `commits` | `[{ hash, parents, author, date, subject, refs }]` | the last `window` commits of all refs, descending by timestamp |
+
+| commit key | shape | meaning |
+|---|---|---|
+| `hash` | string | full 40-hex SHA |
+| `parents` | `string[]` | full 40-hex SHAs of the parents: `[]` at a root, 2+ at a merge. Parents outside the window are NOT resolved — the renderer indexes hash→row and clips them |
+| `author` | string | canonical author (aliases applied at collection) |
+| `date` | string ISO | author date in UTC with milliseconds (`2026-02-01T12:00:00.000Z`) |
+| `subject` | string | commit subject (`%s`, single line) |
+| `refs` | `string[]` | decoration items (`%D`), one per entry: `HEAD -> main`, `tag: v1.0.0`, `develop`…; `[]` with no refs. Managed clones are BARE with local refs (`refs/heads/*`, no `origin/` prefix): branches come as short names |
+
+```json
+{
+  "generatedAt": "2026-02-01T12:34:56.000Z",
+  "repo": "<repo>",
+  "window": 1000,
+  "commits": [
+    {
+      "hash": "3f9a1c7e5b2d84061fa9c3e7b5d20481af6c9e3b",
+      "parents": ["9c8f6e2a1d4b70358fa9c3e7b5d20481af6c9e11", "1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d"],
+      "author": "ana-dev",
+      "date": "2026-02-01T12:00:00.000Z",
+      "subject": "Merge branch 'feat/new-export' into main",
+      "refs": ["HEAD -> main"]
+    },
+    {
+      "hash": "9c8f6e2a1d4b70358fa9c3e7b5d20481af6c9e11",
+      "parents": ["7d6c5b4a39281706f5e4d3c2b1a0988776655443"],
+      "author": "bruno-dev",
+      "date": "2026-01-31T18:05:13.000Z",
+      "subject": "feat: new export",
+      "refs": []
+    }
+  ]
+}
+```
+
+**The gate requires** (per file present): valid `generatedAt`; `repo` equal to the file name stem; `window` an integer > 0 and `commits` no longer than the window; every `hash` and `parents[]` matching `^[0-9a-f]{40}$`; `author` a non-empty string; `date` in UTC ISO with milliseconds; `subject`/`refs` present (`refs` a list of strings); descending order by real timestamp; no duplicate hash. **Non-blocking warnings**: a repo of `stats.json#repos` without its `graph-<repo>.json` (only a full collection generates it — the light re-collection leaves existing files untouched and the UI shows an empty state); a graph file whose repo is not in `stats.json#repos` (orphan — the repo left the selection; `pnpm clean` removes it).

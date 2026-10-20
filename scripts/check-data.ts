@@ -6,7 +6,7 @@
  * ponytail: asserts de superfície (campos que os loaders/computed do src/ leem).
  * Quando um painel quebrar por dado novo, adiciona o campo aqui.
  */
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
@@ -475,6 +475,103 @@ if (branches) {
   }
 }
 
+// ── graph-*.json (topologia por repo, issue #126 — UM arquivo por repo) ────
+// A recoleta light não roda o collect-graph (não escaneia git): valida só os
+// arquivos PRESENTES, e repo do stats.json SEM graph-*.json é AVISO, não erro
+// (usuário incremental só terá o arquivo após recoletar; a UI mostra
+// empty-state). Invariantes por arquivo: hash/parents 40-hex completos (o
+// renderer indexa hash→linha), date UTC ISO com ms, author não vazio, ordem
+// descendente por timestamp e sem hash duplicado.
+const HASH40_RE = /^[0-9a-f]{40}$/
+const ISO_MS_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
+const statsReposForGraph = new Set(isArr(stats?.repos) ? (stats!.repos as string[]) : [])
+const graphRepos = new Set<string>()
+if (existsSync(DATA_DIR)) {
+  for (const file of readdirSync(DATA_DIR).sort()) {
+    const nameMatch = file.match(/^graph-(.+)\.json$/)
+    if (!nameMatch)
+      continue
+    const repoName = nameMatch[1]
+    graphRepos.add(repoName)
+    let data: Record<string, unknown>
+    try {
+      const parsed = JSON.parse(readFileSync(join(DATA_DIR, file), 'utf-8'))
+      if (parsed == null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        errors.push(`${file}: esperado objeto no topo`)
+        continue
+      }
+      data = parsed as Record<string, unknown>
+    }
+    catch (err) {
+      errors.push(`${file}: JSON inválido (${(err as Error).message})`)
+      continue
+    }
+    genAt(data, file)
+    if (data.repo !== repoName)
+      errors.push(`${file}: repo "${String(data.repo)}" != nome do arquivo ("${repoName}")`)
+    if (typeof data.window !== 'number' || !Number.isInteger(data.window) || data.window <= 0)
+      errors.push(`${file}.window: esperado inteiro > 0, veio ${JSON.stringify(data.window)}`)
+    if (!isArr(data.commits)) {
+      errors.push(`${file}.commits: esperado lista`)
+      continue
+    }
+    const rows = data.commits as Record<string, unknown>[]
+    if (typeof data.window === 'number' && Number.isInteger(data.window) && rows.length > data.window)
+      errors.push(`${file}: ${rows.length} commits acima da janela declarada (${data.window})`)
+    if (statsReposForGraph.size > 0 && !statsReposForGraph.has(repoName))
+      warn(false, `${file}: repo "${repoName}" ausente do stats.json#repos — arquivo órfão (repo saiu da seleção? \`pnpm clean\` remove)`)
+    const seen = new Set<string>()
+    let prev = Infinity
+    for (let i = 0; i < rows.length; i++) {
+      const c = rows[i]
+      const cw = `${file}.commits[${i}]`
+      const hash = typeof c.hash === 'string' ? c.hash : ''
+      if (!HASH40_RE.test(hash)) {
+        errors.push(`${cw}.hash: fora do formato 40-hex ("${String(c.hash).slice(0, 50)}")`)
+        break
+      }
+      if (seen.has(hash)) {
+        errors.push(`${file}: hash duplicado "${hash}" (commits[${i}])`)
+        break
+      }
+      seen.add(hash)
+      if (!isArr(c.parents) || !c.parents.every(p => typeof p === 'string' && HASH40_RE.test(p))) {
+        errors.push(`${cw}.parents: esperado lista de 40-hex (vazia na raiz, 2+ em merge), veio ${JSON.stringify(c.parents)?.slice(0, 80)}`)
+        break
+      }
+      if (typeof c.author !== 'string' || !c.author.trim()) {
+        errors.push(`${cw}.author: vazio ou ausente`)
+        break
+      }
+      const d = typeof c.date === 'string' ? c.date : ''
+      if (!ISO_MS_RE.test(d) || Number.isNaN(Date.parse(d))) {
+        errors.push(`${cw}.date: fora do formato UTC ISO com ms ("${String(c.date).slice(0, 40)}")`)
+        break
+      }
+      if (typeof c.subject !== 'string') {
+        errors.push(`${cw}.subject: esperado string`)
+        break
+      }
+      if (!isArr(c.refs) || !c.refs.every(r => typeof r === 'string')) {
+        errors.push(`${cw}.refs: esperado lista de strings (itens de decoration do %D)`)
+        break
+      }
+      const t = Date.parse(d)
+      if (t > prev) {
+        errors.push(`${file}: fora de ordem descendente em "${hash}" (${d})`)
+        break
+      }
+      prev = t
+    }
+  }
+}
+// repo do stats SEM graph-*.json = aviso (não erro): só a coleta completa gera
+if (stats && isArr(stats.repos)) {
+  for (const r of stats.repos as string[]) {
+    warn(graphRepos.has(String(r)), `graph-${String(r)}.json: ausente para repo do stats.json — rode a coleta completa (a light não gera; a UI mostra empty-state)`)
+  }
+}
+
 // ── veredito ──────────────────────────────────────────────────────────────
 if (warnings.length) {
   console.warn(`\n⚠ check-data: ${warnings.length} aviso(s) de qualidade (não bloqueiam):`)
@@ -487,4 +584,4 @@ if (errors.length) {
   process.exit(1)
 }
 
-console.log('✓ check-data: stats/commits/github/releases/team/branches com shape e invariantes ok')
+console.log('✓ check-data: stats/commits/github/releases/team/branches + graph-*.json com shape e invariantes ok')

@@ -2,9 +2,9 @@ import type { Buffer } from 'node:buffer'
 import type { Connect, Plugin } from 'vite'
 /**
  * Plugin Vite (apenas dev): expõe GET /__collect como stream SSE que roda os
- * cinco coletores em sequência, mais a verificação final (check-data), e
+ * seis coletores em sequência, mais a verificação final (check-data), e
  * transmite o progresso linha a linha. No modo leve (`?light=1`) re-agrega
- * commits e pula releases e branches.
+ * commits e pula releases, branches e graph.
  *
  * - `?full=1` repassa `--full` (re-scan completo do git + refetch total de PRs)
  * - `?clean=1` apaga banco + JSONs antes de coletar (implica full)
@@ -27,6 +27,7 @@ const STEPS: CollectStep[] = [
   { script: 'scripts/collect.ts', label: 'commits' },
   { script: 'scripts/collect-github.ts', label: 'pull requests' },
   { script: 'scripts/collect-branches.ts', label: 'branches' },
+  { script: 'scripts/collect-graph.ts', label: 'graph' },
   { script: 'scripts/collect-releases.ts', label: 'releases' },
   { script: 'scripts/collect-team.ts', label: 'time' },
   { script: 'scripts/check-data.ts', label: 'verificação' },
@@ -34,9 +35,12 @@ const STEPS: CollectStep[] = [
 
 // ?light=1 (edição de time/aliases em /teams): sem git fetch/scan nem releases —
 // re-agrega o banco com os aliases novos, incremental de PRs, team + verificação.
-// collect-branches fica FORA de propósito (issue #123): a light não faz fetch,
-// então o frescor de branches.json fica atrelado ao fetch do full (como o
-// stats.json) — re-enumerar aqui daria resultado idêntico ao último full, só custo.
+// collect-branches e collect-graph ficam FORA de propósito (issues #123/#126):
+// a light não faz fetch nem escaneia git, então re-enumerar produziria
+// resultado idêntico ao do último full, só com custo. Os graph-*.json
+// existentes SOBREVIVEM à light (nada os reescreve nem apaga) — o check-data
+// valida os arquivos presentes e repo do stats sem graph-*.json é aviso, não
+// erro.
 const STEPS_LIGHT: CollectStep[] = [
   { script: 'scripts/collect.ts', label: 'commits (reagregação)', args: ['--reaggregate'] },
   { script: 'scripts/collect-github.ts', label: 'pull requests' },

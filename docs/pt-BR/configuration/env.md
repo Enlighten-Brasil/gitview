@@ -46,6 +46,17 @@ O `.env` guarda a config da máquina: credenciais do GitHub, onde estão os clon
 - `GITVIEW_BRANCH_STALE_DAYS` aceita inteiro ≥ 0; vazio ou inválido cai no default 30, que casa com o ciclo mensal de release. `pousada` também exige `aheadProd = 0` — branch velha com commits à frente da produção continua `feature`.
 - O `branches.json` é fato puramente git: `authorsAhead` leva e-mails crus de commit (`%ae`), nunca nomes canônicos, e as linhas somam o numstat cru. Edição de alias/time reflete sem recoletar — o frontend mapeia e-mail→dev via `team.json#devs[].emails`.
 
+## Grafo
+
+| chave | o que faz | default |
+|---|---|---|
+| `GITVIEW_GRAPH_WINDOW` | commits por repo no arquivo de topologia `graph-<repo>.json` (grafo de commits, com merges) | `1000` |
+
+- O `collect-graph.ts` grava um arquivo por repo com os últimos `GITVIEW_GRAPH_WINDOW` commits de todos os refs (`git log --all --date-order`), incluindo merges — eles são os conectores do desenho do grafo. O arquivo não alimenta o banco nem as métricas: a decisão `--no-merges` segue intacta.
+- A janela é CONTAGEM de commits, não dias: o período coberto varia com a velocidade de cada repo (1000 commits ≈ 90 dias no ritmo atual do time).
+- Aceita inteiro > 0; vazio conta como não definido. Valor inválido (0, negativo, não numérico) imprime aviso e cai no default 1000.
+- Só a coleta completa gera os arquivos (`pnpm collect` / **recoletar tudo**); a recoleta leve deixa os `graph-*.json` existentes intocados, e repo sem o seu arquivo é aviso não bloqueante no `check-data` (a UI mostra empty-state).
+
 ## Métricas e dados
 
 | chave | o que faz | default |
