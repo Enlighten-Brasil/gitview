@@ -1,5 +1,11 @@
 # gitview
 
+## 0.58.1
+
+### Patch Changes
+
+- Corrige o loop /setup em instância nova: os JSONs de `public/data/` escritos depois do boot do dev server passam a ser servidos por middleware `/data/*` no collect-plugin (lê direto do disco). Sem isso, a 1ª coleta do wizard ficava invisível — o boot recebia index.html no lugar do stats.json, o guard mandava /setup para sempre e o wizard parecia reiniciar. Causa: `fs.deny '**/data/**'` + snapshot `publicFiles` do Vite (que só conhece arquivo de `public/` visto no boot, já que o watcher ignora `**/data/**`).
+
 ## 0.58.0
 
 ### Minor Changes

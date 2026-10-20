@@ -12,6 +12,7 @@ import type { Connect, Plugin } from 'vite'
  * - no build estático o endpoint não existe — o botão da UI só aparece em dev
  */
 import { spawn } from 'node:child_process'
+import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
@@ -81,6 +82,27 @@ export function collectPlugin(): Plugin {
     name: 'gitview-collect',
     apply: 'serve', // só no dev server
     configureServer(server) {
+      // /data/*.json direto do disco, ANTES dos middlewares internos do Vite:
+      // o fs.deny '**/data/**' protege o data/ (banco + clones), e o snapshot
+      // publicFiles do Vite só conhece arquivo de public/ visto no boot (o
+      // watcher ignora '**/data/**'). Sem isto, os JSONs escritos pela 1ª
+      // coleta de uma instância nova nunca são servidos: o boot lê index.html
+      // no lugar do stats.json, decide "sem dados" e o guard manda /setup para
+      // sempre. Semântica igual à que o loader espera: arquivo ausente cai no
+      // próximo middleware (SPA fallback vira 404 sintético no loader).
+      server.middlewares.use('/data', (req, res, next) => {
+        const name = (req.url ?? '').split('?')[0].replace(/^\/+/, '')
+        // só JSON simples de public/data/ — sem separador de caminho não há traversal
+        if (!/^[\w.-]+\.json$/.test(name))
+          return next()
+        const file = join(root, 'public', 'data', name)
+        if (!existsSync(file))
+          return next()
+        res.setHeader('Content-Type', 'application/json; charset=utf-8')
+        res.setHeader('Cache-Control', 'no-cache')
+        res.end(readFileSync(file))
+      })
+
       const handler: Connect.NextHandleFunction = (req, res) => {
         res.writeHead(200, {
           'Content-Type': 'text/event-stream',

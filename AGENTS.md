@@ -83,7 +83,7 @@ A tela **Configurações** (`/settings`, com dados) tem os cards **Refs dos repo
 
 ### Coleta pela UI (dev only)
 
-`scripts/collect-plugin.ts` é um plugin Vite (`apply: 'serve'`) que expõe `GET /__collect` (SSE; `?full=1` = completo; `?clean=1` apaga banco + JSONs antes e implica full; **`?light=1` = recoleta leve** — `collect --reaggregate` + github incremental + team + check-data, sem git scan nem releases) rodando os passos com progresso ao vivo. O botão ↻ no navbar (`App.vue` + `src/collect.ts` — `startCollect(full, clean, light)`) só renderiza em `import.meta.env.DEV`; após o `done`, os loaders refazem o fetch com cache-bust (`loadStats/loadGithub/loadReleases/loadCommits/loadTeam` aceitam `force`). No build estático o endpoint não existe.
+`scripts/collect-plugin.ts` é um plugin Vite (`apply: 'serve'`) que expõe `GET /__collect` (SSE; `?full=1` = completo; `?clean=1` apaga banco + JSONs antes e implica full; **`?light=1` = recoleta leve** — `collect --reaggregate` + github incremental + team + check-data, sem git scan nem releases) rodando os passos com progresso ao vivo, e um middleware `GET /data/*` que serve `public/data/*.json` direto do disco (o `fs.deny '**/data/**'` protege o `data/` do banco/clones e o snapshot `publicFiles` do Vite não enxerga arquivo criado depois do boot — sem ele, a 1ª coleta de uma instância nova fica invisível pro boot do app e o guard manda `/setup` para sempre). O botão ↻ no navbar (`App.vue` + `src/collect.ts` — `startCollect(full, clean, light)`) só renderiza em `import.meta.env.DEV`; após o `done`, os loaders refazem o fetch com cache-bust (`loadStats/loadGithub/loadReleases/loadCommits/loadTeam` aceitam `force`). No build estático o endpoint não existe.
 
 ## Comandos
 
