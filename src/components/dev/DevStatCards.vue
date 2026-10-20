@@ -75,14 +75,14 @@ const cards = computed<{ value: string, label: string, icon?: string, color?: st
     { value: fmtCompact(commits), label: 'commits', icon: 'i-lucide-git-commit-horizontal' },
     { value: fmtCompact(additions), label: 'linhas +', icon: 'i-lucide-plus', color: 'text-success' },
     { value: fmtCompact(deletions), label: 'linhas −', icon: 'i-lucide-minus', color: 'text-error' },
-    { value: String(a.activeDays), label: `dias ativos${histSuffix.value}`, icon: 'i-lucide-calendar-check' },
+    { value: String(a.activeDays), label: `${a.activeDays === 1 ? 'dia ativo' : 'dias ativos'}${histSuffix.value}`, icon: 'i-lucide-calendar-check' },
     { value: fmtRatio(a.commits / Math.max(a.activeDays, 1)), label: `commits/dia ativo${histSuffix.value}`, icon: 'i-lucide-zap' },
     { value: `${a.streak} (máx ${a.longestStreak})`, label: `streak${histSuffix.value}`, icon: 'i-lucide-flame' },
-    { value: String(a.repos), label: `repositórios${histSuffix.value}`, icon: 'i-lucide-git-branch' },
+    { value: String(a.repos), label: `${a.repos === 1 ? 'repositório' : 'repositórios'}${histSuffix.value}`, icon: 'i-lucide-git-branch' },
   ]
   if (github.value) {
     base.push(
-      { value: String(myOpen.value.length), label: 'PRs abertos', icon: 'i-lucide-git-pull-request' },
+      { value: String(myOpen.value.length), label: myOpen.value.length === 1 ? 'PR aberto' : 'PRs abertos', icon: 'i-lucide-git-pull-request' },
       { value: fmtDuration(myCycleHours.value), label: 'cycle time mediano', icon: 'i-lucide-timer' },
       { value: `${myReviews.value.total} (${myReviews.value.approvals} aprovações)`, label: 'reviews feitas', icon: 'i-lucide-eye' },
     )

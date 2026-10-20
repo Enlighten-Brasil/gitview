@@ -54,8 +54,8 @@ const periodCards = computed(() => {
     },
     { value: fmtCompact(t.additions), label: 'linhas +', icon: 'i-lucide-plus', color: 'text-success', delta: cardDelta(t.additions, p?.additions, false) },
     { value: fmtCompact(t.deletions), label: 'linhas −', icon: 'i-lucide-minus', color: 'text-error', delta: cardDelta(t.deletions, p?.deletions, false) },
-    { value: String(t.authors), label: 'devs ativos', icon: 'i-lucide-users', color: undefined, delta: cardDelta(t.authors, p?.authors, true) },
-    { value: String(t.repos), label: 'repos ativos', icon: 'i-lucide-git-branch', color: undefined, delta: cardDelta(t.repos, p?.repos, true) },
+    { value: String(t.authors), label: t.authors === 1 ? 'dev ativo' : 'devs ativos', icon: 'i-lucide-users', color: undefined, delta: cardDelta(t.authors, p?.authors, true) },
+    { value: String(t.repos), label: t.repos === 1 ? 'repo ativo' : 'repos ativos', icon: 'i-lucide-git-branch', color: undefined, delta: cardDelta(t.repos, p?.repos, true) },
   ]
 })
 

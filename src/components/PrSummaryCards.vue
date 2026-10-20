@@ -13,20 +13,21 @@ const cards = computed(() => {
   return [
     {
       value: String(openPrs.value.length),
-      label: 'PRs abertos',
+      label: openPrs.value.length === 1 ? 'PR aberto' : 'PRs abertos',
       icon: 'i-lucide-git-pull-request',
       sub: drafts ? `${drafts} rascunho${drafts > 1 ? 's' : ''}` : null,
     },
     {
       value: String(stale),
-      label: `parados há +${PR_STALE_DAYS} dias`,
+      // singular na frase do AlertStrip (mesmo threshold, mesma concordância)
+      label: stale === 1 ? `PR parado há ${PR_STALE_DAYS}+ dias` : `parados há +${PR_STALE_DAYS} dias`,
       icon: 'i-lucide-hourglass',
       color: stale > 0 ? 'text-warning' : undefined,
       sub: null,
     },
     {
       value: String(mergedPrs.value.length),
-      label: 'mergeados no período',
+      label: mergedPrs.value.length === 1 ? 'mergeado no período' : 'mergeados no período',
       icon: 'i-lucide-git-merge',
       sub: null,
     },
