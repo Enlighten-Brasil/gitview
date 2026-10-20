@@ -1,8 +1,8 @@
-# Gates da org em CI: pnpm lint → pnpm typecheck → pnpm build, em PR e push
-# em main, mais o job `docs` (paridade EN ↔ pt-BR + build do VitePress como
-# gate de links — issue #73). O check:data fica FORA de propósito: ele valida
-# os JSONs de public/data/ (gitignored), que só existem depois de uma coleta
-# com token — o CI não coleta e não deve precisar de segredo.
+# Gates da org em CI: pnpm check:scrub → pnpm lint → pnpm typecheck → pnpm build,
+# em PR e push em main, mais o job `docs` (paridade EN ↔ pt-BR + build do
+# VitePress como gate de links — issue #73). O check:data fica FORA de propósito:
+# ele valida os JSONs de public/data/ (gitignored), que só existem depois de
+# uma coleta com token — o CI não coleta e não deve precisar de segredo.
 name: CI
 
 on:
