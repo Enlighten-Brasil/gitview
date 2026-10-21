@@ -11,14 +11,14 @@ defineProps<{
   pct: number
   /** status resolvido por `statusOf` (cor do preenchimento) */
   status: RiskStatus
-  /** mostra o % à direita (tabelas com coluna própria de % deixam false) */
+  /** mostra o % à direita — cast booleano do Vue: ausente = false (quem quer texto passa :show-value="true"); tabelas com coluna própria de % deixam false */
   showValue?: boolean
 }>()
 </script>
 
 <template>
   <div class="flex items-center gap-2">
-    <div class="h-2 flex-1 rounded bg-accented overflow-hidden">
+    <div class="h-2 flex-1 rounded bg-accented overflow-hidden" role="img" :aria-label="`${Math.round(pct * 100)}% — ${status.label}`">
       <div class="h-full rounded" :style="{ width: `${Math.round(pct * 100)}%`, background: status.hex }" />
     </div>
     <span v-if="showValue !== false" class="num text-xs w-9">{{ Math.round(pct * 100) }}%</span>

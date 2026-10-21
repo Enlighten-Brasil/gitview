@@ -3,16 +3,17 @@ import type { RiskStatus, RiskTier } from '../risk'
 import { computed } from 'vue'
 import { reviewShareByRepo } from '../github'
 import { statusOf } from '../risk'
+import { REVIEW_BOTTLENECK_AMBER, REVIEW_BOTTLENECK_MIN_REVIEWS, REVIEW_BOTTLENECK_RED } from '../thresholds'
 import RiskBar from './RiskBar.vue'
 
 /** repos com volume mínimo de reviews — concentração em 1 pessoa é gargalo de fluxo */
 const rows = computed(() =>
-  reviewShareByRepo.value.filter(r => r.total >= 5),
+  reviewShareByRepo.value.filter(r => r.total >= REVIEW_BOTTLENECK_MIN_REVIEWS),
 )
 
 const RISK_TIERS: RiskTier[] = [
-  { at: 0.7, color: 'error', label: 'gargalo' },
-  { at: 0.5, color: 'warning', label: 'atenção' },
+  { at: REVIEW_BOTTLENECK_RED, color: 'error', label: 'gargalo' },
+  { at: REVIEW_BOTTLENECK_AMBER, color: 'warning', label: 'atenção' },
   { at: 0, color: 'success', label: 'ok' },
 ]
 
@@ -57,7 +58,7 @@ function riskStatus(r: { topShare: number }): RiskStatus {
               {{ r.repo }}
             </td>
             <td>
-              <RiskBar :pct="r.topShare" :status="riskStatus(r)" />
+              <RiskBar :pct="r.topShare" :status="riskStatus(r)" :show-value="true" />
             </td>
             <td>{{ r.topReviewer }}</td>
             <td class="num">
@@ -72,7 +73,7 @@ function riskStatus(r: { topShare: number }): RiskStatus {
         </tbody>
       </table>
       <p class="text-dimmed text-xs mt-2.5">
-        gargalo = 1 pessoa faz ≥70% das reviews do repo · atenção = ≥50% · repos com &lt;5 reviews no período são ignorados
+        gargalo = 1 pessoa faz ≥{{ Math.round(REVIEW_BOTTLENECK_RED * 100) }}% das reviews do repo · atenção = ≥{{ Math.round(REVIEW_BOTTLENECK_AMBER * 100) }}% · repos com &lt;{{ REVIEW_BOTTLENECK_MIN_REVIEWS }} reviews no período são ignorados
       </p>
     </template>
   </UCard>

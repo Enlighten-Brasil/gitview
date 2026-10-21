@@ -4,6 +4,7 @@ import { computed } from 'vue'
 import { filteredMonthly, nestBySum } from '../data'
 import { reviewShareByRepo } from '../github'
 import { statusOf } from '../risk'
+import { BUS_FACTOR_BLIND_SPOT_MIN_REVIEWS, BUS_FACTOR_BLIND_SPOT_REVIEW_SHARE, BUS_FACTOR_HIGH_MAX_DEVS, BUS_FACTOR_MIN_COMMITS, BUS_FACTOR_RISK_AMBER, BUS_FACTOR_RISK_RED, BUS_FACTOR_TOP_REVIEWER_MIN_REVIEWS } from '../thresholds'
 import RiskBar from './RiskBar.vue'
 import TablePanel from './TablePanel.vue'
 
@@ -33,37 +34,37 @@ const rows = computed<RepoRisk[]>(() => {
       const total = sorted.reduce((s, [, v]) => s + v, 0)
       const [topAuthor, topCommits] = sorted[0]
       const rev = reviews.get(repo)
-      const blindSpot = !!rev && rev.total >= 5 && rev.topShare >= 0.7 && rev.topReviewer === topAuthor
+      const blindSpot = !!rev && rev.total >= BUS_FACTOR_BLIND_SPOT_MIN_REVIEWS && rev.topShare >= BUS_FACTOR_BLIND_SPOT_REVIEW_SHARE && rev.topReviewer === topAuthor
       return {
         repo,
         total,
         devs: sorted.length,
         topAuthor,
         topShare: topCommits / total,
-        topReviewer: rev && rev.total >= 3 ? rev.topReviewer : null,
+        topReviewer: rev && rev.total >= BUS_FACTOR_TOP_REVIEWER_MIN_REVIEWS ? rev.topReviewer : null,
         reviewShare: rev?.topShare ?? 0,
         reviewTotal: rev?.total ?? 0,
         blindSpot,
       }
     })
-    .filter(r => r.total >= 10) // ignora repos quase sem atividade no período
+    .filter(r => r.total >= BUS_FACTOR_MIN_COMMITS) // ignora repos quase sem atividade no período
     .sort((a, b) => (Number(b.blindSpot) - Number(a.blindSpot)) || (b.topShare - a.topShare))
 })
 
 const RISK_TIERS: RiskTier[] = [
-  { at: 0.7, color: 'error', label: 'alto' },
-  { at: 0.5, color: 'warning', label: 'médio' },
+  { at: BUS_FACTOR_RISK_RED, color: 'error', label: 'alto' },
+  { at: BUS_FACTOR_RISK_AMBER, color: 'warning', label: 'médio' },
   { at: 0, color: 'success', label: 'ok' },
 ]
 
 /**
- * risco no eixo dos tiers (alto ≥0,7 · médio ≥0,5): concentração alta só vira
- * "alto" com ≤2 devs ativos ou ponto cego de review — fora disso o teto é
- * "médio", preservando a regra original do painel
+ * risco no eixo dos tiers (alto/médio de thresholds.ts): concentração alta só
+ * vira "alto" com poucos devs ativos (BUS_FACTOR_HIGH_MAX_DEVS) ou ponto cego
+ * de review — fora disso o teto é "médio", preservando a regra do painel
  */
 function riskScore(r: RepoRisk): number {
-  const high = (r.topShare >= 0.7 && r.devs <= 2) || (r.blindSpot && r.topShare >= 0.5)
-  return high ? 0.7 : Math.min(r.topShare, 0.5)
+  const high = (r.topShare >= BUS_FACTOR_RISK_RED && r.devs <= BUS_FACTOR_HIGH_MAX_DEVS) || (r.blindSpot && r.topShare >= BUS_FACTOR_RISK_AMBER)
+  return high ? BUS_FACTOR_RISK_RED : Math.min(r.topShare, BUS_FACTOR_RISK_AMBER)
 }
 
 function riskStatus(r: RepoRisk): RiskStatus {
@@ -137,7 +138,7 @@ function riskStatus(r: RepoRisk): RiskStatus {
         </tbody>
       </table>
       <p class="text-dimmed text-xs px-4 pb-3 pt-2.5">
-        alto = 1 dev com ≥70% e ≤2 devs ativos, ou dev principal (≥50%) que também faz ≥70% das reviews · médio = 1 dev com ≥50% · repos com &lt;10 commits no período são ignorados
+        alto = 1 dev com ≥{{ Math.round(BUS_FACTOR_RISK_RED * 100) }}% e ≤{{ BUS_FACTOR_HIGH_MAX_DEVS }} devs ativos, ou dev principal (≥{{ Math.round(BUS_FACTOR_RISK_AMBER * 100) }}%) que também faz ≥{{ Math.round(BUS_FACTOR_BLIND_SPOT_REVIEW_SHARE * 100) }}% das reviews · médio = 1 dev com ≥{{ Math.round(BUS_FACTOR_RISK_AMBER * 100) }}% · repos com &lt;{{ BUS_FACTOR_MIN_COMMITS }} commits no período são ignorados
       </p>
     </template>
   </TablePanel>
