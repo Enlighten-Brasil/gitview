@@ -18,7 +18,8 @@ const statsLoader = defineLoader<Stats>('stats.json', {
   httpError: status => `HTTP ${status} — rode "pnpm collect" primeiro`,
 })
 export const stats = statsLoader.data
-export const loadError = statsLoader.error
+// erro de REDE do último load (≠ 404/HTML = sem arquivo) — o retry do toast observa
+export const statsNetworkError = statsLoader.networkError
 export const loadStats = statsLoader.load
 
 /** commits recentes (últimos 100/autor) — carregado sob demanda pela página do dev */

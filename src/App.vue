@@ -1,13 +1,39 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { useToast } from '@nuxt/ui/composables'
+import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import { loadStats, stats, statsNetworkError } from '@/data'
 
 // App raiz só casaroteia: UApp (toasts/popovers do Nuxt UI) + a rota ativa.
 // O shell do dashboard (rail/navbar) é pages/(app)/_parent.vue; o do setup tem
 // layout próprio — o guard (src/router/guards.ts) decide quem entra onde.
 const router = useRouter()
 const ready = ref(false)
+
+// erro de REDE no loadStats ≠ 404 (sem arquivo → wizard): aqui há feedback com
+// retry em vez de silêncio (issue #195). Toast fixo (duration 0) porque a rede
+// pode continuar fora; o retry refaz o load e só sai do wizard se vier dado.
+const toast = useToast()
+watch(statsNetworkError, (net) => {
+  if (!net)
+    return
+  toast.add({
+    title: 'Falha de rede ao carregar os dados',
+    description: 'Sem conexão com o servidor dos dados — o que está na tela pode estar desatualizado.',
+    color: 'error',
+    icon: 'i-lucide-wifi-off',
+    duration: 0,
+    actions: [{
+      label: 'Tentar de novo',
+      onClick: async () => {
+        await loadStats(true)
+        if (stats.value != null && router.currentRoute.value.meta.onboarding)
+          router.push('/')
+      },
+    }],
+  })
+})
 
 onMounted(() => {
   router.isReady().then(() => {
