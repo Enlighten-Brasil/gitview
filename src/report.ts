@@ -132,7 +132,7 @@ function isFullMonth(from: Date, to: Date): boolean {
  * mês'; rolante (termina em `now`) → 'nos N dias'; custom dia-inteiro → 'no
  * período'. Aplicado nos textos congelados de releases/off-hours.
  */
-export function windowLabel(from: Date, to: Date): string {
+function windowLabel(from: Date, to: Date): string {
   if (isClosedIsoWeek(from, to))
     return 'na semana'
   if (isFullMonth(from, to))

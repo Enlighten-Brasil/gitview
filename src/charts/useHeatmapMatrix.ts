@@ -11,7 +11,7 @@ import { computed, toValue } from 'vue'
 import { axisLabel, ct, heatRamp, tooltipBase } from '../chartTheme'
 
 /** rótulos canônicos dos dias da semana (dom=0 … sáb=6) — única fonte do projeto */
-export const WEEKDAYS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
+const WEEKDAYS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
 
 /** valor de categoria de um eixo: rótulo textual ou índice numérico */
 export type HeatValue = string | number

@@ -49,7 +49,7 @@ function parseToken(token: string, kind: 'l' | 'c' | 'h' | 'a'): number | null {
  * formato inesperado…) vira o `fallback` hex — a saída **nunca** contém
  * `oklch(` cru.
  */
-export function oklchToHex(input: string, fallback = OKLCH_FALLBACK): string {
+function oklchToHex(input: string, fallback = OKLCH_FALLBACK): string {
   const trimmed = input.trim()
   if (/^#[0-9a-f]{3,8}$/i.test(trimmed))
     return trimmed
@@ -128,15 +128,6 @@ function resolve(): Record<string, string> {
     warning500: v('--ui-color-warning-500', '#f59e0b'),
   }
   return cache
-}
-
-/**
- * Zera o cache de cores do tema. As CSS vars são lidas do CSSOM uma única vez
- * (proxy `ct`) — chame depois de trocar o design system em runtime (ex.:
- * mudança de tema/variáveis) para os próximos gráficos re-resolverem as cores.
- */
-export function resetThemeCache(): void {
-  cache = null
 }
 
 export const ct = new Proxy({} as ReturnType<typeof resolve>, {

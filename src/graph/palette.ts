@@ -50,7 +50,7 @@ const DARK_ORDER = [0, 2, 10, 8, 5, 4, 9, 11, 1, 7, 6, 3]
 export const GRAPH_LANE_DARK = DARK_ORDER.map(i => PALETTE[i % PALETTE.length])
 
 /** tema ativo: Nuxt UI (color-mode) aplica a classe `dark` no <html>; fallback = preferência do sistema */
-export function isDarkTheme(): boolean {
+function isDarkTheme(): boolean {
   if (typeof document === 'undefined')
     return true
   const cls = document.documentElement.classList
