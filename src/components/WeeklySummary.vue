@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useMarkdownExport } from '@/composables/useMarkdownExport'
+import { loadDaily } from '@/data'
 import { buildWeeklySummary } from '../summary'
 
 // slideover com o resumo da última semana fechada — gerado na abertura
 const open = ref(false)
 const summary = computed(() => (open.value ? buildWeeklySummary() : null))
+
+// daily.json opcional: sem ele o resumo cai no fallback semanal (issue #192)
+onMounted(loadDaily)
 
 // copiar/baixar moram na composable compartilhada com /reports (issue #177)
 const { copied, hasCopyPath, copy, download } = useMarkdownExport('resumo')

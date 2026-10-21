@@ -11,7 +11,7 @@ import type { ReportSubject, ReportWindow } from '@/report'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMarkdownExport } from '@/composables/useMarkdownExport'
-import { stats } from '@/data'
+import { loadDaily, stats } from '@/data'
 import { githubError } from '@/github'
 import { renderMarkdown } from '@/markdown'
 import { buildReport, customWindow, presetWindow, rollingWindow } from '@/report'
@@ -28,6 +28,9 @@ definePage({
 // team.json não entra no shell (só github/releases) — quem precisa carrega
 // (precedente branches.vue); loader com onErrorValue null
 onMounted(loadTeam)
+// daily.json é opcional (issue #176): sem ele o relatório cai no fallback
+// semanal; loader idempotente (cache) — o mesmo loadDaily cobre WeeklySummary
+onMounted(loadDaily)
 
 // ---------------------------------------------------------------------------
 // vocabário bakeado (issue #177/#187) — NUNCA range/bots/scope (o do urlState);
