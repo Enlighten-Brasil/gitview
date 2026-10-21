@@ -32,7 +32,7 @@ Each dev name opens the profile `/devs/:name`.
 
 Answers what the person did in the selected period. `/dev/:name` stays as an alias; a name with no match in the data shows **Dev não encontrado** with **Quis dizer:** (did you mean) suggestions.
 
-- Cards for **commits**, **linhas +**, **linhas −** in the period, plus the historical cards **dias ativos**, **commits/dia ativo**, **streak** and **repositórios**: with a period active they carry the **(total)** suffix, and under a work-scope cut they read the selected scope (prod/progress) when the data carries `byScope`, degrading to the historical total with **(total)** on older data; with GitHub data, also **PRs abertos**, **cycle time mediano**, **reviews feitas**.
+- Cards for **commits**, **linhas +**, **linhas −** in the period, plus the historical cards **dias ativos**, **commits/dia ativo**, **streak** and **repositórios**: with a period active they carry the **(total)** suffix, and under a work-scope cut they read the selected scope (prod/progress) when the data carries `byScope`, degrading to the historical total with **(total)** on older data; with GitHub data, also **PRs abertos**, **cycle time mediano (PRs do mês)**, **reviews feitas**.
 - **Commits por semana** / **Commits por mês** for this dev only.
 - **Distribuição por repositório** (donut) and **Horários de atividade —** *\<window\>*, which under **Tudo** becomes **Horários de atividade — últimos 24 meses** (the aggregation limit).
 - **PRs abertos de** *\<first name\>*: current state, not scoped to the period.
@@ -61,8 +61,8 @@ The tables sort where a risk column exists; the Visão geral alerts point here a
 
 Depends on GitHub data, collected with an authenticated `gh`; without it the page shows **Sem dados do GitHub**. The contextual sub-nav covers three anchors, and the Visão geral alerts land on `#abertos` and `#reviews`.
 
-- `#abertos`: cards **PRs abertos** (with a drafts sub-line), **PRs parados há 14+ dias**, **mergeados no período**, **cycle time mediano**, **mergeados sem review**; then **PRs parados — abertos há 14+ dias** and **PRs abertos — mais antigos primeiro**.
-- `#cycle-time`: **Cycle time mediano por repo (criação → merge)** and **Tendência de cycle time — últimos 6 meses**, a fixed window.
+- `#abertos`: cards **PRs abertos** (with a drafts sub-line), **PRs parados há 14+ dias**, **mergeados no período**, **cycle time mediano (corte por dia)**, **mergeados sem review**; then **PRs parados — abertos há 14+ dias** and **PRs abertos — mais antigos primeiro**.
+- `#cycle-time`: **Cycle time mediano por repo (criação → merge, corte por dia)** and **Tendência de cycle time — últimos 6 meses**, a fixed window.
 - `#reviews`: **Reviews por dev (no período)**.
 
 PR rows open GitHub.
@@ -96,7 +96,7 @@ Repository index, with an anchor sub-nav (**Tabela**, **Linhas +/−**, **Distri
 
 `/repo/:name` stays as an alias; an unknown name shows **Repo não encontrado**. The period applies to commits, charts, merged PRs and cycle time; releases and open PRs are milestones or current state, as [Filter rules](../dashboard/filters.md) describes.
 
-- Cards for **commits**, **linhas +**, **linhas −**, **devs** in the period, **commits (total)** when a period or a scope cut is active, **última release (há Nd)**, **commits não liberados** (color by threshold), **dev principal** with the top share (colored above 50% and 70%) and, with GitHub data, **PRs abertos** and **cycle time mediano**.
+- Cards for **commits**, **linhas +**, **linhas −**, **devs** in the period, **commits (total)** when a period or a scope cut is active, **última release (há Nd)**, **commits não liberados** (color by threshold), **dev principal** with the top share (colored above 50% and 70%) and, with GitHub data, **PRs abertos** and **cycle time mediano (PRs do mês)**.
 - **Tipos de commit** (donut) and **Commits por dev** (bars, top 10).
 - **Releases**: tag / data / commits / notas, the **pré** badge for prereleases and inline-expandable **notas**; the 30 most recent tags, with a notice. The commit counts *between* tags follow the period where they appear.
 - `#grafo` **Grafo de commits**: the repo's commit window drawn as a pure-SVG lane graph — one colored lane per branch, merge commits as hollow circles, ref chips that highlight the lane on hover (click to pin), rows linking to the commit on GitHub and a tooltip with the full subject, author, date and refs. The window is fixed (the last *N* commits, labeled in the footer) and ignores the period/bots/scope filters: parents outside the window end in dashed **continua** edges and **Mostrar mais antigos** grows the drawing 300 rows at a time. Full description in [Commit graph](../dashboard/graph.md).
@@ -117,7 +117,7 @@ Dev server only; in the static build the page shows **edição só no modo dev**
 
 The same panels as Visão geral, with the dev selection locked to the team members (the team registry is the source of truth). The header carries the team chip, the window label, the **times** button and **ver como filtro livre** (view as a free filter), which opens `/?devs=<members>` as an editable filter.
 
-Panels: summary cards, commits per week, **Dev × mês (comparação)** and commit types; with GitHub data, the PR cards, **PRs abertos — mais antigos primeiro** and **Cycle time mediano por repo**; and **Fora do horário**. Member chips open `/devs/:name`; a renamed team redirects from the old URL; an unknown name shows **Time não encontrado** with **Times disponíveis:**.
+Panels: summary cards, commits per week, **Dev × mês (comparação)** and commit types; with GitHub data, the PR cards, **PRs abertos — mais antigos primeiro** and **Cycle time mediano por repo (criação → merge, corte por dia)**; and **Fora do horário**. Member chips open `/devs/:name`; a renamed team redirects from the old URL; an unknown name shows **Time não encontrado** with **Times disponíveis:**.
 
 ## Weekly summary: the meeting-ready export
 

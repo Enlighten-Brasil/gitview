@@ -128,7 +128,7 @@ const cards = computed<{ value: string, label: string, icon?: string, color?: st
   if (github.value) {
     base.push(
       { value: String(openPrs.value.length), label: openPrs.value.length === 1 ? 'PR aberto' : 'PRs abertos', icon: 'i-lucide-git-pull-request' },
-      { value: fmtDuration(cycleHours.value), label: 'cycle time mediano', icon: 'i-lucide-timer' },
+      { value: fmtDuration(cycleHours.value), label: 'cycle time mediano (PRs do mês)', icon: 'i-lucide-timer' },
     )
   }
   return base

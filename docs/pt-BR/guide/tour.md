@@ -32,7 +32,7 @@ Cada nome de dev abre o perfil `/devs/:name`.
 
 Responde o que a pessoa fez no período selecionado. `/dev/:name` continua como alias; nome sem correspondência nos dados mostra **Dev não encontrado** com sugestões **Quis dizer:**.
 
-- Cards de **commits**, **linhas +**, **linhas −** no período, mais os cards históricos **dias ativos**, **commits/dia ativo**, **streak** e **repositórios**: com período ativo ganham o sufixo **(total)**, e sob recorte de escopo leem o eixo selecionado (prod/progresso) quando a linha tem `byScope`, degradando para o total histórico com **(total)** em dado mais antigo; com dados do GitHub, também **PRs abertos**, **cycle time mediano**, **reviews feitas**.
+- Cards de **commits**, **linhas +**, **linhas −** no período, mais os cards históricos **dias ativos**, **commits/dia ativo**, **streak** e **repositórios**: com período ativo ganham o sufixo **(total)**, e sob recorte de escopo leem o eixo selecionado (prod/progresso) quando a linha tem `byScope`, degradando para o total histórico com **(total)** em dado mais antigo; com dados do GitHub, também **PRs abertos**, **cycle time mediano (PRs do mês)**, **reviews feitas**.
 - **Commits por semana** / **Commits por mês** só deste dev.
 - **Distribuição por repositório** (donut) e **Horários de atividade —** *\<janela\>*, que em **Tudo** vira **Horários de atividade — últimos 24 meses** (limite da agregação).
 - **PRs abertos de** *\<primeiro nome\>*: estado atual, não recortado ao período.
@@ -61,8 +61,8 @@ As tabelas ordenam onde existe coluna de risco; os alertas da Visão geral apont
 
 Depende dos dados do GitHub, coletados com `gh` autenticado; sem eles a página mostra **Sem dados do GitHub**. O sub-nav contextual cobre três âncoras e os alertas da Visão geral caem em `#abertos` e `#reviews`.
 
-- `#abertos`: cards **PRs abertos** (com linha auxiliar de rascunhos), **PRs parados há 14+ dias**, **mergeados no período**, **cycle time mediano**, **mergeados sem review**; depois **PRs parados — abertos há 14+ dias** e **PRs abertos — mais antigos primeiro**.
-- `#cycle-time`: **Cycle time mediano por repo (criação → merge)** e **Tendência de cycle time — últimos 6 meses**, de janela fixa.
+- `#abertos`: cards **PRs abertos** (com linha auxiliar de rascunhos), **PRs parados há 14+ dias**, **mergeados no período**, **cycle time mediano (corte por dia)**, **mergeados sem review**; depois **PRs parados — abertos há 14+ dias** e **PRs abertos — mais antigos primeiro**.
+- `#cycle-time`: **Cycle time mediano por repo (criação → merge, corte por dia)** e **Tendência de cycle time — últimos 6 meses**, de janela fixa.
 - `#reviews`: **Reviews por dev (no período)**.
 
 Linhas de PR abrem o GitHub.
@@ -96,7 +96,7 @@ O inventário de branches da coleta completa (`branches.json`); a página ignora
 
 `/repo/:name` continua como alias; nome desconhecido mostra **Repo não encontrado**. O período vale para commits, gráficos, PRs mergeados e cycle time; releases e PRs abertos são marcos ou estado atual, como descreve [Regras dos filtros](../dashboard/filters.md).
 
-- Cards de **commits**, **linhas +**, **linhas −**, **devs** no período, **commits (total)** quando há período ou recorte de escopo ativo, **última release (há Nd)**, **commits não liberados** (cor por threshold), **dev principal** com a participação do topo (colorida acima de 50% e 70%) e, com dados do GitHub, **PRs abertos** e **cycle time mediano**.
+- Cards de **commits**, **linhas +**, **linhas −**, **devs** no período, **commits (total)** quando há período ou recorte de escopo ativo, **última release (há Nd)**, **commits não liberados** (cor por threshold), **dev principal** com a participação do topo (colorida acima de 50% e 70%) e, com dados do GitHub, **PRs abertos** e **cycle time mediano (PRs do mês)**.
 - **Tipos de commit** (donut) e **Commits por dev** (barras, top 10).
 - **Releases**: tag / data / commits / notas, badge **pré** para prereleases e **notas** expansível inline; as 30 tags mais recentes, com aviso. As contagens de commits *entre* tags seguem o período onde aparecem.
 - `#grafo` **Grafo de commits**: a janela de commits do repo desenhada como grafo de lanes em SVG puro — uma lane colorida por branch, commits de merge como círculos vazados, chips de refs que destacam a lane no hover (clique fixa), linhas linkando o commit no GitHub e tooltip com o assunto completo, autor, data e refs. A janela é fixa (os últimos *N* commits, rotulados no rodapé) e ignora os filtros de período/bots/escopo: pais fora da janela viram arestas tracejadas **continua** e **Mostrar mais antigos** cresce o desenho de 300 em 300 linhas. Descrição completa em [Commit graph](../dashboard/graph.md).
@@ -117,7 +117,7 @@ Só no dev server; no build estático a página avisa **edição só no modo dev
 
 Os mesmos painéis da Visão geral, com a seleção de devs travada nos membros do time (o cadastro de times é a fonte da verdade). O cabeçalho traz o chip do time, o rótulo da janela, o botão **times** e **ver como filtro livre**, que abre `/?devs=<membros>` como filtro editável.
 
-Painéis: cards de resumo, commits por semana, **Dev × mês (comparação)** e tipos de commit; com dados do GitHub, os cards de PR, **PRs abertos — mais antigos primeiro** e **Cycle time mediano por repo**; e **Fora do horário**. Chips de membros abrem `/devs/:name`; time renomeado redireciona a partir da URL antiga; nome desconhecido mostra **Time não encontrado** com **Times disponíveis:**.
+Painéis: cards de resumo, commits por semana, **Dev × mês (comparação)** e tipos de commit; com dados do GitHub, os cards de PR, **PRs abertos — mais antigos primeiro** e **Cycle time mediano por repo (criação → merge, corte por dia)**; e **Fora do horário**. Chips de membros abrem `/devs/:name`; time renomeado redireciona a partir da URL antiga; nome desconhecido mostra **Time não encontrado** com **Times disponíveis:**.
 
 ## Resumo semanal: a exportação pronta para a reunião
 

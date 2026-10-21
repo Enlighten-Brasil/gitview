@@ -33,7 +33,7 @@ const cards = computed(() => {
     },
     {
       value: fmtDuration(medianCycleHours.value),
-      label: 'cycle time mediano',
+      label: 'cycle time mediano (corte por dia)',
       icon: 'i-lucide-timer',
       sub: null,
     },

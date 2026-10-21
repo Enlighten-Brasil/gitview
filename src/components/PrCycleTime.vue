@@ -44,5 +44,5 @@ const option = computed<EChartsOption>(() => {
 </script>
 
 <template>
-  <ChartPanel title="Cycle time mediano por repo (criação → merge)" icon="i-lucide-timer" :option="option" tall />
+  <ChartPanel title="Cycle time mediano por repo (criação → merge, corte por dia)" icon="i-lucide-timer" :option="option" tall />
 </template>
