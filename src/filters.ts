@@ -24,7 +24,8 @@ export const loadStats = statsLoader.load
 /** commits recentes (últimos 100/autor) — carregado sob demanda pela página do dev */
 const commitsLoader = defineLoader<CommitRow[]>('commits.json', {
   pick: json => (json as { commits: CommitRow[] }).commits,
-  // falha engolida (sem mensagem): a página do dev mostra a lista vazia
+  // em falha esvazia a lista; o painel do dev distingue erro de vazio real
+  // pela ref de erro exportada (commitsError, issue #194)
   onErrorValue: [],
 })
 export const recentCommits = commitsLoader.data
