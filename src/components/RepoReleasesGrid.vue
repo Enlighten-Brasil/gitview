@@ -5,12 +5,15 @@
  * Adiciona cadência (releases/mês em 12M) e dias desde a última tag.
  */
 import { computed } from 'vue'
+import { repoSelected } from '../filters-core'
 import { fmtRatio } from '../format'
 import { daysSinceLastRelease, lastTagLabel, releases, releasesError, releasesPerMonth } from '../releases'
 import { RELEASE_STALE_DAYS, UNRELEASED_AMBER, UNRELEASED_RED } from '../thresholds'
 
 const rows = computed(() =>
   (releases.value?.repos ?? [])
+    // segue a seleção de repos da sidebar como a RepoTable (vazio = todos)
+    .filter(r => repoSelected(r.repo))
     .map(r => ({
       ...r,
       days: daysSinceLastRelease(r.repo),
@@ -29,7 +32,7 @@ const rows = computed(() =>
       <div class="flex items-center gap-2">
         <UIcon name="i-lucide-tag" class="size-4 text-primary" />
         <span class="text-sm font-semibold text-highlighted">Releases por repositório</span>
-        <span class="text-xs text-dimmed ml-auto">marcos — ignoram o filtro de período e o escopo · clique no repo pra ver a cadência completa</span>
+        <span class="text-xs text-dimmed ml-auto">marcos — seguem a seleção de repos da sidebar · ignoram o filtro de período e o escopo · clique no repo pra ver a cadência completa</span>
       </div>
     </template>
 
@@ -37,8 +40,11 @@ const rows = computed(() =>
     <div v-if="!releases && !releasesError" class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
       <USkeleton v-for="i in 6" :key="i" class="h-20 rounded-lg" />
     </div>
-    <p v-else-if="!rows.length || releasesError" class="text-sm text-dimmed">
+    <p v-else-if="releasesError || !releases?.repos.length" class="text-sm text-dimmed">
       Sem dados de release — rode <code>pnpm collect:releases</code> (ou <UIcon name="i-lucide-refresh-cw" class="size-3.5 align-[-2px]" /> no navbar).
+    </p>
+    <p v-else-if="!rows.length" class="text-sm text-dimmed">
+      Nenhum repo da seleção tem dados de release.
     </p>
 
     <div v-else class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
