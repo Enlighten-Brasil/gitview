@@ -16,6 +16,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   abandonadas,
+  abandonadasTop,
   BRANCH_STALE_DAYS,
   branches,
   branchesAge,
@@ -24,6 +25,7 @@ import {
   integrationSkew,
   loadBranches,
   pousadas,
+  pousadasTop,
   prLinkCoverage,
 } from '@/branches'
 import TablePanel from '@/components/TablePanel.vue'
@@ -192,7 +194,7 @@ function ageClass(days: number): string {
               ahead 0 (já mergeada) ou liberada via squash-merge, sem atividade há {{ BRANCH_STALE_DAYS }}+ dias.
             </p>
             <ul v-if="pousadas.length" class="flex flex-col gap-1 text-xs">
-              <li v-for="b in pousadas.slice(0, 5)" :key="`${b.repo}/${b.name}`" class="flex items-center gap-1.5 min-w-0">
+              <li v-for="b in pousadasTop" :key="`${b.repo}/${b.name}`" class="flex items-center gap-1.5 min-w-0">
                 <RouterLink :to="{ name: '/repos/[name]', params: { name: b.repo } }" class="text-muted hover:text-primary shrink-0">
                   {{ b.repo }}
                 </RouterLink>
@@ -237,7 +239,7 @@ function ageClass(days: number): string {
               ahead &gt; 0 sem PR aberto, paradas há {{ BRANCH_STALE_DAYS }}+ dias — o trabalho ainda não chegou à produção.
             </p>
             <ul v-if="abandonadas.length" class="flex flex-col gap-1 text-xs">
-              <li v-for="b in abandonadas.slice(0, 5)" :key="`${b.repo}/${b.name}`" class="flex items-center gap-1.5 min-w-0">
+              <li v-for="b in abandonadasTop" :key="`${b.repo}/${b.name}`" class="flex items-center gap-1.5 min-w-0">
                 <RouterLink :to="{ name: '/repos/[name]', params: { name: b.repo } }" class="text-muted hover:text-primary shrink-0">
                   {{ b.repo }}
                 </RouterLink>
@@ -403,6 +405,11 @@ function ageClass(days: number): string {
                         pousada via squash
                       </UBadge>
                     </UTooltip>
+                    <UTooltip v-else-if="r.abandonada" :text="`commits à frente de produção sem PR aberto, parados há ${BRANCH_STALE_DAYS}+ dias — trabalho não liberado`">
+                      <UBadge color="warning" variant="subtle" size="sm" class="ml-1">
+                        abandonada
+                      </UBadge>
+                    </UTooltip>
                     <UTooltip v-else-if="r.vivaSemPr" text="commits à frente de produção sem nenhum PR aberto">
                       <UBadge color="warning" variant="subtle" size="sm" class="ml-1">
                         viva sem PR
@@ -417,7 +424,7 @@ function ageClass(days: number): string {
                   </td>
                   <td class="num whitespace-nowrap text-muted">
                     <template v-if="r.aheadInt != null && r.behindInt != null">
-                      +{{ r.aheadInt }} / −{{ r.behindInt }}
+                      +{{ fmtInt(r.aheadInt) }} / −{{ fmtInt(r.behindInt) }}
                     </template>
                     <span v-else class="text-dimmed">—</span>
                   </td>
@@ -429,7 +436,7 @@ function ageClass(days: number): string {
                   <td class="whitespace-nowrap">
                     <UTooltip v-if="r.authorNames.length" :text="r.authorsAhead.join(', ')">
                       <span>
-                        {{ r.authorNames.slice(0, 2).join(', ') }}<span v-if="r.authorNames.length > 2" class="text-dimmed"> +{{ r.authorNames.length - 2 }}</span>
+                        {{ r.authorNamesTop.join(', ') }}<span v-if="r.authorNames.length > 2" class="text-dimmed"> +{{ r.authorNames.length - 2 }}</span>
                       </span>
                     </UTooltip>
                     <span v-else class="text-dimmed">—</span>

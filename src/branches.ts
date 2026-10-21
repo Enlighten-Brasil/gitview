@@ -137,6 +137,8 @@ export interface BranchRowView {
   squashPousada: boolean
   /** derivado: feature com ahead > 0 e sem PR aberto — trabalho vivo sem PR (refs de integração com desvio: card develop×produção) */
   vivaSemPr: boolean
+  /** derivado: vivaSemPr envelhecida (≥ BRANCH_STALE_DAYS) — mesmo predicado do card Abandonadas */
+  abandonada: boolean
   aheadProd: number
   behindProd: number
   aheadInt: number | null
@@ -147,6 +149,8 @@ export interface BranchRowView {
   authorsAhead: string[]
   /** devs resolvidos via team.json (e-mail desconhecido mantém o e-mail cru) */
   authorNames: string[]
+  /** preview da célula de autores — 2 primeiros; o resto vira "+N" */
+  authorNamesTop: string[]
   additions: number
   deletions: number
   /** PR vinculado (aberto tem precedência; null = sem vínculo, nunca "sem PR") */
@@ -175,6 +179,7 @@ export const branchRows = computed<BranchRowView[]>(() => {
       const squashPousada = ghLoaded && isSquashPousada(r.repo, br)
       const vivaSemPr = ghLoaded && br.status === 'feature' && br.aheadProd > 0
         && !squashPousada && !hasOpenPr(r.repo, br.name)
+      const ageDays = daysSince(br.lastActivity)
       const authorNames = br.authorsAhead.map(e => devOfEmail(e) ?? e)
       // filtro de devs: mantém as branches com algum dev selecionado à frente
       if (filters.authors.length && !authorNames.some(n => filters.authors.includes(n)))
@@ -185,14 +190,16 @@ export const branchRows = computed<BranchRowView[]>(() => {
         status: br.status,
         squashPousada,
         vivaSemPr,
+        abandonada: vivaSemPr && ageDays >= BRANCH_STALE_DAYS,
         aheadProd: br.aheadProd,
         behindProd: br.behindProd,
         aheadInt: br.aheadInt,
         behindInt: br.behindInt,
         lastActivity: br.lastActivity,
-        ageDays: daysSince(br.lastActivity),
+        ageDays,
         authorsAhead: br.authorsAhead,
         authorNames,
+        authorNamesTop: authorNames.slice(0, 2),
         additions: br.additions,
         deletions: br.deletions,
         pr: ghLoaded ? linkedPr(r.repo, br.name) : null,
@@ -210,10 +217,14 @@ export const pousadas = computed(() =>
   ),
 )
 
-/** card (b): trabalho não liberado parado — viva-sem-PR envelhecida (disjunto de (a)) */
+/** card (b): trabalho não liberado parado — viva-sem-PR envelhecida (disjunto de (a)); a tabela usa o mesmo predicado (linha.abandonada) */
 export const abandonadas = computed(() =>
-  branchRows.value.filter(x => x.vivaSemPr && x.ageDays >= BRANCH_STALE_DAYS),
+  branchRows.value.filter(x => x.abandonada),
 )
+
+/** preview dos cards (a) e (b): primeiras 5 — "ver todas na tabela" lista o conjunto inteiro */
+export const pousadasTop = computed(() => pousadas.value.slice(0, 5))
+export const abandonadasTop = computed(() => abandonadas.value.slice(0, 5))
 
 // ---------------------------------------------------------------------------
 // card (c): develop × produção POR REPO — um "K commits" global seria ambíguo
