@@ -125,6 +125,13 @@ export const DEFAULT_EXCLUDE_PATHS = [
   '*.generated.ts',
   '*.generated.js',
   '*.designer.cs',
+  // artefatos baked na issue #209 (pasta dist, pasta documentation e o
+  // full_documentation.json). 'dist/**' e não 'dist/': padrão com '/' casa o
+  // caminho todo TERMINANDO no padrão — 'dist/' só casaria a pasta em si, não
+  // os arquivos dentro. 'full_documentation.json' (sem '/') casa por basename.
+  'dist/**',
+  'documentation/**',
+  'full_documentation.json',
 ]
 
 /**
