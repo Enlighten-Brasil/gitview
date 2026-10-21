@@ -202,7 +202,7 @@ try {
   ok(!org7Hint.markdown.includes('% vs '), 'hint true omite o delta (em curso)')
 
   // ── organização × semana fechada (caminho do resumo semanal) ──
-  const org = buildReport({ kind: 'org' }, lw.from, lw.to)
+  const org = buildReport({ kind: 'org' }, lw.from, lw.to, undefined, { people: true })
   ok(org !== null, 'org: buildReport devolve resultado com stats carregados')
   const orgMd = org!.markdown
   ok(org!.title === `Resumo da semana — ${fmtDay(lw.from)} a ${fmtDate(lw.to)} (2026-W41)`, 'org: título com janela e chave ISO da semana')
@@ -234,8 +234,19 @@ try {
   ok(orgMd.includes('- sem time: 1 commit · 2 PRs mergeados'), 'times: sem time = complemento da união dos times, sempre presente')
   ok(orgMd.includes('- times podem sobrepor (um dev pode estar em mais de um time) — a soma das linhas excede o total da org'), 'times: rodapé fixo de sobreposição (texto fixo, genérico — nomes reais de time nunca no repositório)')
 
+  // ── opt-in de pessoas (issue #187): default OFF × people: true ──
+  // asserções de default varrem os TEMPLATES das linhas (nomes de dev saem
+  // legitimos nas linhas por dev — o que não pode sair sao as linhas de
+  // off-hours/inativos que nomeiam gente)
+  const orgDefaultMd = buildReport({ kind: 'org' }, lw.from, lw.to)!.markdown
+  ok(!orgDefaultMd.includes('fora do horário') && !orgDefaultMd.includes('devs sem commit'), 'pessoas OFF: linhas de off-hours/inativas (nomes de dev) fora por default')
+  ok(orgDefaultMd.includes('## Atenção') && orgDefaultMd.includes('- repos sem commit há 30+ dias: demo-web'), 'pessoas OFF: repos stale permanece (higiene de repo, fora do gate de pessoas)')
+  ok(!orgDefaultMd.includes('métricas de pessoas'), 'pessoas OFF: sem rodapé de pessoas')
+  ok(orgMd.includes('- Ana: 80% dos commits fora do horário na semana (fds/madrugada)') && orgMd.includes('- devs sem commit há 21+ dias: Beto'), 'pessoas ON: seção completa (off-hours + inativos)')
+  ok(orgMd.includes('- métricas de pessoas — não incluir em relatórios para fora do time'), 'pessoas ON: rodapé fixo de uso interno')
+
   // ── time × semana fechada ──
-  const teamMd = buildReport({ kind: 'team', team: 'Plataforma' }, lw.from, lw.to)!.markdown
+  const teamMd = buildReport({ kind: 'team', team: 'Plataforma' }, lw.from, lw.to, undefined, { people: true })!.markdown
   ok(teamMd.includes('- **5 commits** (+67% vs semana anterior), 1 dev ativo, 1 repo ativo'), 'time: commits só dos membros')
   ok(teamMd.includes('5 commits (+67% vs semana anterior) · 1 PR mergeado · cycle time 5,0d · 1 release'), 'time: abertura na semana fechada')
   ok(teamMd.includes('- Ana: 5 commits (+2) · 1 PR mergeado · 1 review'), 'time: linha por dev só dos membros')
@@ -256,14 +267,14 @@ try {
   ok(!anaMd.includes('## Releases'), 'dev: releases fora do assunto dev')
   ok(!anaMd.includes('repos sem commit'), 'dev: repos stale fora do assunto dev')
   ok(!anaMd.includes('- sem time:') && !anaMd.includes('times podem sobrepor'), 'dev: sem bloco de times')
-  const betoMd = buildReport({ kind: 'dev', dev: 'Beto' }, lw.from, lw.to)!.markdown
+  const betoMd = buildReport({ kind: 'dev', dev: 'Beto' }, lw.from, lw.to, undefined, { people: true })!.markdown
   ok(betoMd.includes('- **1 commit**, 1 dev ativo, 1 repo ativo'), 'dev: singularização commit/dev/repo')
   ok(betoMd.includes('- **2 mergeados** (+100% vs semana anterior), cycle time mediano 3,0d'), 'dev: cycle time mediano dos PRs do dev')
   ok(betoMd.includes('1 commit · 2 PRs mergeados (+100% vs semana anterior) · cycle time 3,0d'), 'dev: abertura omite o delta em base 0 (1 commit sem comparativo)')
   ok(betoMd.includes('- devs sem commit há 21+ dias: Beto'), 'dev: inatividade do próprio dev')
 
   // ── delta: rótulos por formato ──
-  const monthMd = buildReport({ kind: 'org' }, lm.from, lm.to)!.markdown
+  const monthMd = buildReport({ kind: 'org' }, lm.from, lm.to, undefined, { people: true })!.markdown
   ok(monthMd.includes('- **7 commits** (+250% vs mês anterior), 1 dev ativo, 1 repo ativo'), 'delta: "vs mês anterior" para mês calendário completo')
   ok(monthMd.includes('7 commits (+250% vs mês anterior) · 0 PRs mergeados · cycle time <1h · 0 releases'), 'abertura: mês calendário')
   ok(monthMd.includes('- Ana: 7 commits (+5)'), 'linhas por dev: delta absoluto no mês')
@@ -273,11 +284,11 @@ try {
   const w40Md = buildReport({ kind: 'org' }, new Date(2026, 8, 28), new Date(2026, 9, 4, 23, 59, 59, 999))!.markdown
   ok(w40Md.includes('- nenhuma release na semana'), 'rótulo: nenhuma release no formato da janela (na semana)')
   ok(org7.markdown.includes('- nenhuma release nos 7 dias'), 'rótulo: nenhuma release no formato da janela (nos N dias, rolante)')
-  const r30Md = buildReport({ kind: 'org' }, r30.from, r30.to, r30.inProgress)!.markdown
+  const r30Md = buildReport({ kind: 'org' }, r30.from, r30.to, r30.inProgress, { people: true })!.markdown
   ok(r30Md.includes('- Ana: 50% dos commits fora do horário nos 30 dias (fds/madrugada)'), 'rótulo: fora do horário no formato da janela (nos N dias, rolante)')
   const customFrom = new Date(2026, 9, 8)
   const customTo = new Date(2026, 9, 14, 23, 59, 59, 999)
-  const customMd = buildReport({ kind: 'org' }, customFrom, customTo)!.markdown
+  const customMd = buildReport({ kind: 'org' }, customFrom, customTo, undefined, { people: true })!.markdown
   ok(customMd.includes(`- **6 commits** (+200% vs 7 dias anteriores (${fmtDay(new Date(2026, 9, 1))}–${fmtDay(new Date(2026, 9, 7, 23, 59, 59, 999))})), 1 dev ativo, 1 repo ativo`), 'delta: "vs N dias anteriores (DD/MM–DD/MM)" para janela custom')
   ok(customMd.includes(`6 commits (+200% vs 7 dias anteriores (${fmtDay(new Date(2026, 9, 1))}–${fmtDay(new Date(2026, 9, 7, 23, 59, 59, 999))})) · 2 PRs mergeados (+0% vs 7 dias anteriores (${fmtDay(new Date(2026, 9, 1))}–${fmtDay(new Date(2026, 9, 7, 23, 59, 59, 999))})) · cycle time 3,0d · 0 releases`), 'abertura: janela custom (no período)')
   ok(customMd.includes('- nenhuma release no período'), 'rótulo: nenhuma release no formato da janela (no período, custom)')
@@ -317,7 +328,7 @@ try {
 
   // ── fallback sem daily.json (coleta anterior à issue #175) ──
   daily.value = null
-  const fbMd = buildReport({ kind: 'org' }, lw.from, lw.to)!.markdown
+  const fbMd = buildReport({ kind: 'org' }, lw.from, lw.to, undefined, { people: true })!.markdown
   ok(fbMd.includes('- **6 commits** (+100% vs semana anterior), 2 devs ativos, 2 repos ativos'), 'fallback: semana fechada soma identica ao corte dia-preciso (stats.weekly)')
   ok(fbMd.includes('- sem daily.json — recolete para precisão diária'), 'fallback: rodapé de recoleção')
   ok(!fbMd.includes('- diff:'), 'fallback: sem linha de +/− (só existe com daily)')
@@ -331,7 +342,8 @@ try {
   // ── wrapper do resumo semanal (preset semana fechada × organização) ──
   const weekly = buildWeeklySummary()
   ok(weekly !== null && weekly.weekKey === '2026-W41', 'wrapper: weekKey da semana fechada')
-  ok(weekly!.markdown === buildReport({ kind: 'org' }, lw.from, lw.to)!.markdown, 'wrapper: markdown identico ao buildReport(org, semana fechada)')
+  ok(weekly!.markdown === buildReport({ kind: 'org' }, lw.from, lw.to, undefined, { people: true })!.markdown, 'wrapper: markdown identico ao buildReport(org, semana fechada) com o MESMO opts (people: true)')
+  ok(weekly!.markdown.includes('- devs sem commit há 21+ dias: Beto') && weekly!.markdown.includes('- métricas de pessoas — não incluir em relatórios para fora do time'), 'wrapper: resumo semanal mantém a seção de pessoas (people: true explícito)')
 
   // ── pureza: report.ts nunca importa o estado reativo de filters ──
   const reportSource = readFileSync(new URL('../src/report.ts', import.meta.url), 'utf8')
@@ -342,7 +354,7 @@ catch (err) {
   process.exit(1)
 }
 
-console.log(`✓ check-report: ${checks} asserções — buildReport (3 assuntos × janelas), linhas por dev, abertura, rótulos por formato, degradação de PRs, preset→janela, delta, fallback sem daily, wrapper e pureza`)
+console.log(`✓ check-report: ${checks} asserções — buildReport (3 assuntos × janelas), linhas por dev, abertura, rótulos por formato, degradação de PRs, preset→janela, delta, fallback sem daily, opt-in de pessoas (default OFF × people), wrapper e pureza`)
 
 // ── renderer (issue #186) ──
 try {

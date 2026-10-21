@@ -305,7 +305,7 @@ function subjectInfix(subject: ReportSubject): string {
 // ---------------------------------------------------------------------------
 // buildReport
 // ---------------------------------------------------------------------------
-export function buildReport(subject: ReportSubject, from: Date, to: Date, inProgressHint?: boolean): ReportResult | null {
+export function buildReport(subject: ReportSubject, from: Date, to: Date, inProgressHint?: boolean, opts?: { people?: boolean }): ReportResult | null {
   const s = stats.value
   if (!s)
     return null
@@ -554,20 +554,31 @@ export function buildReport(subject: ReportSubject, from: Date, to: Date, inProg
   const inactiveRepos = subject.kind === 'dev'
     ? []
     : s.perRepo.filter(r => daysSince(r.lastCommit) >= REPO_STALE_DAYS)
+  // opt-in de pessoas (issue #187): as linhas que nomeiam devs (off-hours % e
+  // inativos) só saem com `people: true` (default OFF); repos stale é higiene
+  // de repo e permanece no default. O resumo semanal liga explicitamente —
+  // artefato interno de reunião, a seção é conteúdo dele.
+  const people = opts?.people === true
 
-  if (offHours.length || inactiveDevs.length || inactiveRepos.length) {
+  if ((people && (offHours.length || inactiveDevs.length)) || inactiveRepos.length) {
     out.push('## Atenção')
-    for (const a of offHours) {
-      out.push(`- ${a.author}: ${Math.round(a.pct * 100)}% dos commits fora do horário ${windowLabel(from, to)} (fds/madrugada)`)
-    }
-    if (inactiveDevs.length) {
-      out.push(`- devs sem commit há ${DEV_STALE_DAYS}+ dias: ${inactiveDevs.map(a => a.author).join(', ')}`)
+    if (people) {
+      for (const a of offHours) {
+        out.push(`- ${a.author}: ${Math.round(a.pct * 100)}% dos commits fora do horário ${windowLabel(from, to)} (fds/madrugada)`)
+      }
+      if (inactiveDevs.length) {
+        out.push(`- devs sem commit há ${DEV_STALE_DAYS}+ dias: ${inactiveDevs.map(a => a.author).join(', ')}`)
+      }
     }
     if (inactiveRepos.length) {
       out.push(`- repos sem commit há ${REPO_STALE_DAYS}+ dias: ${inactiveRepos.map(r => r.repo).join(', ')}`)
     }
     // janela fixa "até hoje" rotulada no rodapé (convenção do AGENTS.md)
     out.push('- (até hoje, independe do período)')
+    if (people) {
+      // rodapé fixo da opt-in (rótulo congelado da spec #187)
+      out.push('- métricas de pessoas — não incluir em relatórios para fora do time')
+    }
     out.push('')
   }
 
