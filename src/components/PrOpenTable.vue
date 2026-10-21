@@ -62,7 +62,12 @@ function ageColor(days: number): string {
     </div>
 
     <div v-else class="py-10 text-center text-sm text-muted">
-      Nenhum PR aberto nos filtros atuais <UIcon name="i-lucide-party-popper" class="size-4 align-[-2px]" />
+      Nenhum PR aberto agora <UIcon name="i-lucide-party-popper" class="size-4 align-[-2px]" />
     </div>
+
+    <!-- janela fixa (categoria do AGENTS.md) — o recorte de escopo vale, o de período não -->
+    <p class="text-dimmed text-xs px-4 pb-3 pt-2.5">
+      janela fixa: abertos agora — segue escopo, ignora o período
+    </p>
   </TablePanel>
 </template>

@@ -33,5 +33,9 @@ const myOpen = computed(() =>
         </tr>
       </tbody>
     </table>
+    <!-- janela fixa (categoria do AGENTS.md) — o recorte de escopo vale, o de período não -->
+    <p class="text-dimmed text-xs px-4 pb-3 pt-2.5">
+      janela fixa: abertos agora — segue escopo, ignora o período
+    </p>
   </TablePanel>
 </template>
