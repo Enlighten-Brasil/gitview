@@ -89,6 +89,25 @@ export function presetWindow(preset: ReportPreset, now: Date = new Date()): Repo
   return { from, to, inProgress: false }
 }
 
+/**
+ * janela rolante COMPLETA de N dias encerrando agora (chips 7d/30d, issue
+ * #177): comparável com a janela anterior de mesmo tamanho — NÃO é "em
+ * curso", o delta com rótulo "vs N dias anteriores" é o esperado (o default
+ * 7d da página de relatórios existe justamente por dar delta limpo em
+ * qualquer dia da semana).
+ */
+export function rollingWindow(days: number, now: Date = new Date()): ReportWindow {
+  const from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - days + 1)
+  return { from, to: new Date(now), inProgress: false }
+}
+
+/** janela personalizada YYYY-MM-DD (dia inteiro); termina hoje ou depois = em curso (parcial vs completo enganoso — mesma convenção dos presets em curso) */
+export function customWindow(fromIso: string, toIso: string, now: Date = new Date()): ReportWindow {
+  const from = new Date(`${fromIso}T00:00:00`)
+  const end = new Date(`${toIso}T23:59:59.999`)
+  return { from, to: end, inProgress: end >= new Date(now.getFullYear(), now.getMonth(), now.getDate()) }
+}
+
 function isMidnight(d: Date): boolean {
   return d.getHours() === 0 && d.getMinutes() === 0 && d.getSeconds() === 0 && d.getMilliseconds() === 0
 }
@@ -264,16 +283,18 @@ function subjectInfix(subject: ReportSubject): string {
 // ---------------------------------------------------------------------------
 // buildReport
 // ---------------------------------------------------------------------------
-export function buildReport(subject: ReportSubject, from: Date, to: Date): ReportResult | null {
+export function buildReport(subject: ReportSubject, from: Date, to: Date, inProgressHint?: boolean): ReportResult | null {
   const s = stats.value
   if (!s)
     return null
   const names = subjectNames(subject)
   const inSubject = (name: string) => names === null || names.has(name)
   const now = new Date()
-  // preset em curso (ou qualquer janela que termina hoje): parcial vs completo
-  // é enganoso — o delta sai com a nota no cabeçalho (convenção de omitir)
-  const inProgress = to.getTime() >= new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  // em curso: o caller pode afirmar (as janelas rolantes 7d/30d da página de
+  // relatórios são COMPLETAS e pedem o delta — issue #177); sem hint, qualquer
+  // janela que termina hoje é tratada como parcial (parcial vs completo é
+  // enganoso — convenção de omitir o comparativo)
+  const inProgress = inProgressHint ?? to.getTime() >= new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
   const closedWeek = isClosedIsoWeek(from, to)
   const fullMonth = isFullMonth(from, to)
   const title = `Resumo${closedWeek ? ' da semana' : fullMonth ? ' do mês' : ''}${subjectInfix(subject)}`

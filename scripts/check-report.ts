@@ -6,7 +6,8 @@
  *
  *   pnpm check:report
  *
- * Cobre: preset→janela (função pura exportada), buildReport nos 3 assuntos ×
+ * Cobre: preset→janela (função pura exportada), janelas rolantes 7d/30d e
+ * personalizada (chips da página de relatórios), buildReport nos 3 assuntos ×
  * amostra de janelas, delta (rótulos por formato, omissão em curso, base 0),
  * degradação de PR em janela > 400d, fallback sem daily.json (parity com o
  * corte dia-preciso na semana fechada) e a pureza de report.ts (sem import de
@@ -20,7 +21,7 @@ import { daily, stats } from '../src/data'
 import { fmtDate, fmtDay } from '../src/format'
 import { github } from '../src/github'
 import { releases } from '../src/releases'
-import { buildReport, presetWindow } from '../src/report'
+import { buildReport, customWindow, presetWindow, rollingWindow } from '../src/report'
 import { buildWeeklySummary } from '../src/summary'
 import { team } from '../src/team'
 
@@ -177,6 +178,21 @@ try {
   ok(tw.inProgress, 'this-week: marcada em curso')
   const tm = presetWindow('this-month', NOW)
   ok(tm.from.getTime() === new Date(2026, 9, 1).getTime() && tm.to.getTime() === NOW.getTime() && tm.inProgress, 'this-month: dia 1 → agora, em curso')
+
+  // ── janelas rolantes completas e personalizada (chips da página de relatórios) ──
+  const r7 = rollingWindow(7, NOW)
+  ok(r7.from.getTime() === new Date(2026, 9, 9).getTime() && r7.to.getTime() === NOW.getTime(), 'rolling 7d: from = hoje-6 00:00, to = agora')
+  ok(!r7.inProgress, 'rolling 7d: completa — delta habilitado (default da página, issue #177)')
+  const r30 = rollingWindow(30, NOW)
+  ok(r30.from.getTime() === new Date(2026, 8, 16).getTime() && !r30.inProgress, 'rolling 30d: from = hoje-29 00:00, completa')
+  const cwClosed = customWindow('2026-10-01', '2026-10-14', NOW)
+  ok(cwClosed.to.getTime() === new Date(2026, 9, 14, 23, 59, 59, 999).getTime() && !cwClosed.inProgress, 'custom fechado: to = 23:59:59.999, sem em-curso')
+  const cwToday = customWindow('2026-10-01', '2026-10-15', NOW)
+  ok(cwToday.inProgress, 'custom terminando hoje: em curso (omite delta)')
+  const org7 = buildReport({ kind: 'org' }, r7.from, r7.to, r7.inProgress)!
+  ok(/vs 7 dias anteriores \(\d{2}\/\d{2}–\d{2}\/\d{2}\)/.test(org7.markdown), 'hint: 7d leva delta com rótulo "vs 7 dias anteriores"')
+  const org7Hint = buildReport({ kind: 'org' }, r7.from, r7.to, true)!
+  ok(!org7Hint.markdown.includes('% vs '), 'hint true omite o delta (em curso)')
 
   // ── organização × semana fechada (caminho do resumo semanal) ──
   const org = buildReport({ kind: 'org' }, lw.from, lw.to)

@@ -73,6 +73,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/reports': RouteRecordInfo<
+      '/reports',
+      '/reports',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/repos': RouteRecordInfo<
       '/repos',
       '/repos',
@@ -185,6 +192,7 @@ declare module 'vue-router/auto-routes' {
         | '/devs/[name]'
         | '/health'
         | '/prs'
+        | '/reports'
         | '/repos'
         | '/repos/[name]'
         | '/teams'
@@ -247,6 +255,14 @@ declare module 'vue-router/auto-routes' {
     'src/pages/(app)/prs.vue': {
       routes:
         | '/prs'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/(app)/reports.vue': {
+      routes:
+        | '/reports'
       views:
         | never
       pathParamNames:
