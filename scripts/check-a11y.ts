@@ -10,10 +10,14 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import process from 'node:process'
 
-const alertStrip = readFileSync(new URL('../src/components/AlertStrip.vue', import.meta.url), 'utf8')
+const alertStrip = readFileSync('src/components/AlertStrip.vue', 'utf8')
 assert.ok(
   alertStrip.includes('aria-label="alertas de saúde do time"'),
   'AlertStrip sem o aria-label novo (alertas de saúde do time)',
+)
+assert.ok(
+  alertStrip.includes('role="region" aria-label="alertas de saúde do time"'),
+  'AlertStrip sem o role="region" necessário para expor o rótulo',
 )
 
 process.stdout.write('check:a11y ok\n')
