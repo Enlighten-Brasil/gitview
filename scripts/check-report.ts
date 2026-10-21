@@ -232,7 +232,7 @@ try {
   ok(orgMd.includes('- Suporte: 0 commits · 0 PRs mergeados'), 'times: time zerado sai com zeros explícitos (0 é dado, não ausência)')
   ok(orgMd.indexOf('- Plataforma:') < orgMd.indexOf('- Suporte:'), 'times: linhas na ordem do team.json')
   ok(orgMd.includes('- sem time: 1 commit · 2 PRs mergeados'), 'times: sem time = complemento da união dos times, sempre presente')
-  ok(orgMd.includes('- times podem sobrepor (7 devs em mais de um time; Azul e Vermelho contidos em EnDevs) — a soma das linhas excede o total da org'), 'times: rodapé fixo de sobreposição (texto congelado da spec)')
+  ok(orgMd.includes('- times podem sobrepor (um dev pode estar em mais de um time) — a soma das linhas excede o total da org'), 'times: rodapé fixo de sobreposição (texto fixo, genérico — nomes reais de time nunca no repositório)')
 
   // ── time × semana fechada ──
   const teamMd = buildReport({ kind: 'team', team: 'Plataforma' }, lw.from, lw.to)!.markdown

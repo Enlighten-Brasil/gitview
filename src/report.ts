@@ -454,7 +454,7 @@ export function buildReport(subject: ReportSubject, from: Date, to: Date, inProg
       out.push(`- sem time: ${teamCounts(n => !inAnyTeam(n))}`)
       // ponytail: rodapé fixo (texto congelado da spec, sem contagem dinâmica)
       // — upgrade = contar os devs em >1 time se o texto variável voltar a ser pedido
-      out.push('- times podem sobrepor (7 devs em mais de um time; Azul e Vermelho contidos em EnDevs) — a soma das linhas excede o total da org')
+      out.push('- times podem sobrepor (um dev pode estar em mais de um time) — a soma das linhas excede o total da org')
     }
   }
   if (topRepos.length) {
