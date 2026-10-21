@@ -8,8 +8,10 @@
  *
  * Cobre: preset→janela (função pura exportada), janelas rolantes 7d/30d e
  * personalizada (chips da página de relatórios), buildReport nos 3 assuntos ×
- * amostra de janelas, delta (rótulos por formato, omissão em curso, base 0),
- * degradação de PR em janela > 400d, fallback sem daily.json (parity com o
+ * amostra de janelas, linhas por dev com delta absoluto (união das janelas),
+ * abertura (frase de ata), rótulos por formato (windowLabel), delta (rótulos
+ * por formato, omissão em curso, base 0), degradação de PRs por posição da
+ * cobertura [hoje−400d, hoje], fallback sem daily.json (parity com o
  * corte dia-preciso na semana fechada) e a pureza de report.ts (sem import de
  * filters). Qualquer asserção violada → exit 1 com a mensagem no stderr.
  */
@@ -63,7 +65,8 @@ const DAILY: DailyRow[] = [
   { day: '2026-10-09', repo: 'demo-api', author: 'CI Bot', commits: 9, additions: 90, deletions: 9, weekend: 0, night: 0 },
   { day: '2026-10-10', repo: 'demo-api', author: 'Ana', commits: 2, additions: 2, deletions: 0, weekend: 2, night: 0 },
   { day: '2026-10-13', repo: 'demo-api', author: 'Ana', commits: 2, additions: 4, deletions: 1, weekend: 0, night: 0 },
-  { day: '2026-09-29', repo: 'demo-api', author: 'Ana', commits: 3, additions: 6, deletions: 2, weekend: 0, night: 1 },
+  // night alto em setembro: dá base ao off-hours do mês (rótulo 'no mês')
+  { day: '2026-09-29', repo: 'demo-api', author: 'Ana', commits: 3, additions: 6, deletions: 2, weekend: 0, night: 3 },
   { day: '2026-09-21', repo: 'demo-api', author: 'Ana', commits: 4, additions: 8, deletions: 3, weekend: 0, night: 0 },
   { day: '2026-08-10', repo: 'demo-api', author: 'Ana', commits: 2, additions: 4, deletions: 1, weekend: 0, night: 0 },
   // linha distante: dá base ao delta da janela > 400d (senão base 0 = sem delta)
@@ -94,7 +97,7 @@ const STATS: Stats = {
     { week: '2026-W41', repo: 'demo-web', author: 'Beto', commits: 1, weekend: 0, night: 0, scope: 'integration' },
     { week: '2026-W41', repo: 'demo-api', author: 'CI Bot', commits: 9, weekend: 0, night: 0 },
     { week: '2026-W42', repo: 'demo-api', author: 'Ana', commits: 2, weekend: 0, night: 0 },
-    { week: '2026-W40', repo: 'demo-api', author: 'Ana', commits: 3, weekend: 0, night: 1 },
+    { week: '2026-W40', repo: 'demo-api', author: 'Ana', commits: 3, weekend: 0, night: 3 },
     { week: '2026-W39', repo: 'demo-api', author: 'Ana', commits: 4, weekend: 0, night: 0 },
     { week: '2026-W33', repo: 'demo-api', author: 'Ana', commits: 2, weekend: 0, night: 0 },
   ],
@@ -200,7 +203,10 @@ try {
   const orgMd = org!.markdown
   ok(org!.title === `Resumo da semana — ${fmtDay(lw.from)} a ${fmtDate(lw.to)} (2026-W41)`, 'org: título com janela e chave ISO da semana')
   ok(orgMd.includes('- **6 commits** (+100% vs semana anterior), 2 devs ativos, 2 repos ativos'), 'org: commits com delta vs semana anterior (daily dia-preciso, bots fora)')
-  ok(orgMd.includes('- top devs: Ana (5), Beto (1)'), 'org: top devs por commits')
+  ok(orgMd.includes('- Ana: 5 commits (+2) · 1 PR mergeado · 1 review'), 'org: linha por dev com commits, delta absoluto, PRs e reviews')
+  ok(orgMd.includes('- Beto: 1 commit (+1) · 2 PRs mergeados · 1 review'), 'org: linha por dev singularizada, ordenada por commits')
+  ok(!orgMd.includes('top devs'), 'org: ranking top devs substituído pelas linhas por dev')
+  ok(orgMd.includes('6 commits (+100% vs semana anterior) · 3 PRs mergeados (+200% vs semana anterior) · cycle time 5,0d · 1 release'), 'org: abertura (frase de ata) na semana fechada')
   ok(orgMd.includes('- repos mais ativos: demo-api (5), demo-web (1)'), 'org: top repos')
   ok(orgMd.includes('- diff: +20/-4 (prod 5 · progresso 1 commits)'), 'org: linha de +/− com quebra prod/progresso (omit-prod)')
   ok(orgMd.includes('- **3 mergeados** (+200% vs semana anterior), cycle time mediano 5,0d'), 'org: PRs mergeados com delta e cycle time mediano')
@@ -210,7 +216,8 @@ try {
   ok(orgMd.includes(`- demo-api **v1.0.0** (${fmtDay(new Date('2026-10-06T12:00:00.000Z'))}, 3 commits)`), 'org: release na janela')
   ok(orgMd.includes('- commits não liberados: demo-api (5)'), 'org: commits não liberados')
   ok(orgMd.includes('- Ana: 80% dos commits fora do horário na semana (fds/madrugada)'), 'org: off-hours dia-preciso (fds+madrugada do daily, piso de commits)')
-  ok(!orgMd.includes('Beto: ') || !orgMd.includes('- Beto: '), 'org: off-hours respeita o piso de commits (Beto com 1 commit fora)')
+  const atencaoMd = orgMd.slice(orgMd.indexOf('## Atenção'))
+  ok(!atencaoMd.includes('Beto: ') && !atencaoMd.includes('- Beto: '), 'org: off-hours respeita o piso de commits (guarda re-scoped ao bloco Atenção — Beto é legitimo nas linhas por dev)')
   ok(orgMd.includes('- devs sem commit há 21+ dias: Beto'), 'org: devs inativos (medidos até hoje)')
   ok(orgMd.includes('- repos sem commit há 30+ dias: demo-web'), 'org: repos stale')
   ok(orgMd.includes('- (até hoje, independe do período)'), 'org: rodapé da inatividade (janela fixa rotulada)')
@@ -219,6 +226,8 @@ try {
   // ── time × semana fechada ──
   const teamMd = buildReport({ kind: 'team', team: 'Plataforma' }, lw.from, lw.to)!.markdown
   ok(teamMd.includes('- **5 commits** (+67% vs semana anterior), 1 dev ativo, 1 repo ativo'), 'time: commits só dos membros')
+  ok(teamMd.includes('5 commits (+67% vs semana anterior) · 1 PR mergeado · cycle time 5,0d · 1 release'), 'time: abertura na semana fechada')
+  ok(teamMd.includes('- Ana: 5 commits (+2) · 1 PR mergeado · 1 review'), 'time: linha por dev só dos membros')
   ok(teamMd.includes('- **1 mergeado**, cycle time mediano 5,0d'), 'time: PRs mergeados por membro; base 0 na semana anterior = sem delta')
   ok(teamMd.includes('- top reviewers: Beto (1)'), 'time: reviews de terceiros nos PRs do time')
   ok(teamMd.includes('## Releases'), 'time: releases entram (só org/time)')
@@ -228,6 +237,8 @@ try {
   // ── dev × semana fechada ──
   const anaMd = buildReport({ kind: 'dev', dev: 'Ana' }, lw.from, lw.to)!.markdown
   ok(anaMd.includes('Resumo da semana · Ana —'), 'dev: assunto no título')
+  ok(anaMd.includes('5 commits (+67% vs semana anterior) · 1 PR mergeado · cycle time 5,0d'), 'dev: abertura sem parcela de releases (fora do assunto dev)')
+  ok(anaMd.includes('- top devs: Ana (5)'), 'dev: bloco de commits mantém o formato atual (sem a seção nova)')
   ok(anaMd.includes('- **1 mergeado**, cycle time mediano 5,0d'), 'dev: PRs mergeados do dev')
   ok(anaMd.includes('- reviews feitas: 1'), 'dev: top reviewers vira "reviews feitas"')
   ok(!anaMd.includes('## Releases'), 'dev: releases fora do assunto dev')
@@ -235,21 +246,38 @@ try {
   const betoMd = buildReport({ kind: 'dev', dev: 'Beto' }, lw.from, lw.to)!.markdown
   ok(betoMd.includes('- **1 commit**, 1 dev ativo, 1 repo ativo'), 'dev: singularização commit/dev/repo')
   ok(betoMd.includes('- **2 mergeados** (+100% vs semana anterior), cycle time mediano 3,0d'), 'dev: cycle time mediano dos PRs do dev')
+  ok(betoMd.includes('1 commit · 2 PRs mergeados (+100% vs semana anterior) · cycle time 3,0d'), 'dev: abertura omite o delta em base 0 (1 commit sem comparativo)')
   ok(betoMd.includes('- devs sem commit há 21+ dias: Beto'), 'dev: inatividade do próprio dev')
 
   // ── delta: rótulos por formato ──
   const monthMd = buildReport({ kind: 'org' }, lm.from, lm.to)!.markdown
   ok(monthMd.includes('- **7 commits** (+250% vs mês anterior), 1 dev ativo, 1 repo ativo'), 'delta: "vs mês anterior" para mês calendário completo')
+  ok(monthMd.includes('7 commits (+250% vs mês anterior) · 0 PRs mergeados · cycle time <1h · 0 releases'), 'abertura: mês calendário')
+  ok(monthMd.includes('- Ana: 7 commits (+5)'), 'linhas por dev: delta absoluto no mês')
+  ok(monthMd.includes('- nenhuma release no mês'), 'rótulo: nenhuma release no formato da janela (no mês)')
+  ok(monthMd.includes('- Ana: 43% dos commits fora do horário no mês (fds/madrugada)'), 'rótulo: fora do horário no formato da janela (no mês)')
+  const w40Md = buildReport({ kind: 'org' }, new Date(2026, 8, 28), new Date(2026, 9, 4, 23, 59, 59, 999))!.markdown
+  ok(w40Md.includes('- nenhuma release na semana'), 'rótulo: nenhuma release no formato da janela (na semana)')
+  ok(org7.markdown.includes('- nenhuma release nos 7 dias'), 'rótulo: nenhuma release no formato da janela (nos N dias, rolante)')
+  const r30Md = buildReport({ kind: 'org' }, r30.from, r30.to, r30.inProgress)!.markdown
+  ok(r30Md.includes('- Ana: 50% dos commits fora do horário nos 30 dias (fds/madrugada)'), 'rótulo: fora do horário no formato da janela (nos N dias, rolante)')
   const customFrom = new Date(2026, 9, 8)
   const customTo = new Date(2026, 9, 14, 23, 59, 59, 999)
   const customMd = buildReport({ kind: 'org' }, customFrom, customTo)!.markdown
   ok(customMd.includes(`- **6 commits** (+200% vs 7 dias anteriores (${fmtDay(new Date(2026, 9, 1))}–${fmtDay(new Date(2026, 9, 7, 23, 59, 59, 999))})), 1 dev ativo, 1 repo ativo`), 'delta: "vs N dias anteriores (DD/MM–DD/MM)" para janela custom')
+  ok(customMd.includes(`6 commits (+200% vs 7 dias anteriores (${fmtDay(new Date(2026, 9, 1))}–${fmtDay(new Date(2026, 9, 7, 23, 59, 59, 999))})) · 2 PRs mergeados (+0% vs 7 dias anteriores (${fmtDay(new Date(2026, 9, 1))}–${fmtDay(new Date(2026, 9, 7, 23, 59, 59, 999))})) · cycle time 3,0d · 0 releases`), 'abertura: janela custom (no período)')
+  ok(customMd.includes('- nenhuma release no período'), 'rótulo: nenhuma release no formato da janela (no período, custom)')
+  ok(customMd.includes('- Ana: 67% dos commits fora do horário no período (fds/madrugada)'), 'rótulo: fora do horário no formato da janela (no período, custom)')
+  ok(customMd.includes('- Ana: 6 commits (+5) · 0 PRs mergeados · 1 review'), 'linhas por dev: delta absoluto +N, PRs/reviews absolutos')
+  ok(customMd.includes('- Beto: 0 commits (−1) · 2 PRs mergeados · 0 reviews'), 'união: dev que sumiu aparece com 0 commits e delta negativo (sinal − unicode)')
 
   // ── delta: presets em curso omitem comparativo ──
   const weekMd = buildReport({ kind: 'org' }, tw.from, tw.to)!.markdown
   ok(weekMd.includes('_janela em curso — sem comparativo_'), 'em curso: nota no cabeçalho')
   ok(!weekMd.includes('% vs '), 'em curso: nenhum delta no markdown')
   ok(weekMd.includes('- **2 commits**, 1 dev ativo, 1 repo ativo'), 'em curso: commits da parcial')
+  ok(weekMd.includes('- Ana: 2 commits (—) · 0 PRs mergeados · 0 reviews'), 'em curso: linha por dev com traço longo no lugar do delta')
+  ok(weekMd.includes('2 commits · 0 PRs mergeados · cycle time <1h · 0 releases'), 'abertura: em curso sem deltas')
 
   // ── delta: base 0 ──
   const zeroMd = buildReport({ kind: 'dev', dev: 'Beto' }, lm.from, lm.to)!.markdown
@@ -260,7 +288,15 @@ try {
   const longMd = buildReport({ kind: 'org' }, new Date(2025, 5, 1), new Date(2026, 8, 30, 23, 59, 59, 999))!.markdown
   ok(longMd.includes('## Pull requests') && longMd.includes('- sem dados de PRs nesta janela'), 'janela > 400d: seção de PRs degrada com aviso')
   ok(!longMd.includes('mergeados'), 'janela > 400d: sem contagem de PRs (subcontagem)')
+  ok(longMd.includes('- Ana: 9 commits (+8)'), 'janela degradada: linhas por dev sem as parcelas de PR/review')
   ok(/vs \d+ dias anteriores \(\d{2}\/\d{2}–\d{2}\/\d{2}\)/.test(longMd), 'janela longa: delta com rótulo de N dias anteriores')
+
+  // ── degradação por POSIÇÃO: janela curta inteiramente fora da cobertura ──
+  const oldMd = buildReport({ kind: 'org' }, new Date(2023, 0, 1), new Date(2023, 2, 31, 23, 59, 59, 999))!.markdown
+  ok(oldMd.includes('## Pull requests') && oldMd.includes('- sem dados de PRs nesta janela'), 'posição: janela fora da cobertura [hoje−400d, hoje] degrada mesmo sendo curta')
+  ok(oldMd.split('- sem dados de PRs nesta janela').length === 2, 'posição: UMA nota única, nunca repetida')
+  ok(!oldMd.includes('mergeado') && !oldMd.includes('reviews') && !oldMd.includes('cycle time'), 'posição: nenhum número de PR — nada de "0 mergeados" silencioso')
+  ok(oldMd.includes('0 commits · 0 releases'), 'posição: abertura sem as parcelas de PR/cycle quando degradado')
 
   // ── fallback sem daily.json (coleta anterior à issue #175) ──
   daily.value = null
@@ -269,6 +305,8 @@ try {
   ok(fbMd.includes('- sem daily.json — recolete para precisão diária'), 'fallback: rodapé de recoleção')
   ok(!fbMd.includes('- diff:'), 'fallback: sem linha de +/− (só existe com daily)')
   ok(fbMd.includes('- Ana: 80% dos commits fora do horário na semana (fds/madrugada)'), 'fallback: off-hours com weekend/night do weekly')
+  ok(fbMd.includes('- Ana: 5 commits (+2) · 1 PR mergeado · 1 review'), 'fallback: linha por dev do stats.weekly')
+  ok(fbMd.includes('6 commits (+100% vs semana anterior) · 3 PRs mergeados (+200% vs semana anterior) · cycle time 5,0d · 1 release'), 'fallback: abertura igual ao corte dia-preciso')
   const fbCustomMd = buildReport({ kind: 'org' }, customFrom, customTo)!.markdown
   ok(fbCustomMd.includes('- **8 commits**'), 'fallback: janela custom soma as semanas que INTERSECTAM a janela (W41+W42)')
   daily.value = DAILY
@@ -287,4 +325,4 @@ catch (err) {
   process.exit(1)
 }
 
-console.log(`✓ check-report: ${checks} asserções — buildReport (3 assuntos × janelas), preset→janela, delta, fallback sem daily, wrapper e pureza`)
+console.log(`✓ check-report: ${checks} asserções — buildReport (3 assuntos × janelas), linhas por dev, abertura, rótulos por formato, degradação de PRs, preset→janela, delta, fallback sem daily, wrapper e pureza`)
