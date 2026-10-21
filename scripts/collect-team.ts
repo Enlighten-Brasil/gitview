@@ -29,6 +29,18 @@ initLog('collect-team')
 // identidade — nome de exibição sai sem o sufixo e a chave compara lowercase
 const stripBotSuffix = (n: string) => n.replace(/\[bot\]$/i, '')
 const nameKey = (n: string) => stripBotSuffix(n).toLowerCase()
+// nome canônico de exibição por identidade normalizada (primeira menção vence):
+// 'X', 'x' e 'x[bot]' são a MESMA identidade e viram UM dev — nada de nome cru
+// colado direto na lista de saída (Codacy review)
+const canonByName = new Map<string, string>()
+function canon(n: string): string {
+  const hit = canonByName.get(nameKey(n))
+  if (hit !== undefined)
+    return hit
+  const display = stripBotSuffix(n)
+  canonByName.set(nameKey(n), display)
+  return display
+}
 const config = loadConfig()
 const { emailToCanonical, loginToCanonical } = resolveAliases(config)
 const botLogins = botLoginSet(config)
@@ -58,13 +70,13 @@ const ghBotLogins = new Set(Object.entries(github?.users ?? {}).filter(([, u]) =
 // ---------------------------------------------------------------------------
 const profiles = config.devProfiles ?? {}
 const profileByLower = new Map(Object.entries(profiles).map(([k, v]) => [nameKey(k), v]))
-const canonicalNames = new Set<string>(Object.keys(profiles).map(stripBotSuffix))
+const canonicalNames = new Set<string>(Object.keys(profiles).map(canon))
 
-for (const a of stats?.authors ?? []) canonicalNames.add(stripBotSuffix(a.name))
+for (const a of stats?.authors ?? []) canonicalNames.add(canon(a.name))
 // 'ghost' = autor de PR apagado (collect-github) — não é dev
 for (const [login, u] of Object.entries(github?.users ?? {})) {
   if (login.toLowerCase() !== 'ghost')
-    canonicalNames.add(stripBotSuffix(u.name))
+    canonicalNames.add(canon(u.name))
 }
 
 const botAuthorKeys = new Set([...(stats ? botAuthorNames(config, stats.authors ?? []) : [])].map(nameKey))
@@ -101,10 +113,9 @@ const teams = (config.teams ?? []).map((t) => {
   }
 })
 const teamsByDev = new Map<string, string[]>()
-const canonicalByLower = new Map([...canonicalNames].map(n => [nameKey(n), n]))
 for (const t of teams) {
   for (const member of t.members) {
-    const canonical = canonicalByLower.get(nameKey(member)) ?? stripBotSuffix(member)
+    const canonical = canon(member)
     getOrCreate(teamsByDev, canonical, () => []).push(t.name)
     canonicalNames.add(canonical)
   }
@@ -115,11 +126,11 @@ const emailsByDev = new Map<string, Set<string>>()
 function addEmail(dev: string, email: string) {
   getOrCreate(emailsByDev, dev, () => new Set<string>()).add(email)
 }
-for (const [email, canonical] of emailToCanonical) addEmail(stripBotSuffix(canonical), email)
+for (const [email, canonical] of emailToCanonical) addEmail(canon(canonical), email)
 for (const a of stats?.authors ?? []) {
   for (const e of a.emails) {
     // se o e-mail tem alias próprio apontando pra outro canônico, respeita o alias
-    addEmail(stripBotSuffix(emailToCanonical.get(e.toLowerCase()) ?? a.name), e)
+    addEmail(canon(emailToCanonical.get(e.toLowerCase()) ?? a.name), e)
   }
 }
 
@@ -140,11 +151,11 @@ function addLogin(dev: string, login: string) {
   }
   set.add(login)
 }
-for (const [login, canonical] of loginToCanonical) addLogin(stripBotSuffix(canonical), login)
+for (const [login, canonical] of loginToCanonical) addLogin(canon(canonical), login)
 for (const [login, u] of Object.entries(github?.users ?? {})) {
   if (login.toLowerCase() === 'ghost')
     continue
-  addLogin(stripBotSuffix(loginToCanonical.get(login.toLowerCase()) ?? u.name), login)
+  addLogin(canon(loginToCanonical.get(login.toLowerCase()) ?? u.name), login)
 }
 
 const devs = [...canonicalNames]
