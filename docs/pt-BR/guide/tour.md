@@ -61,7 +61,7 @@ As tabelas ordenam onde existe coluna de risco; os alertas da Visão geral apont
 
 Depende dos dados do GitHub, coletados com `gh` autenticado; sem eles a página mostra **Sem dados do GitHub**. O sub-nav contextual cobre três âncoras e os alertas da Visão geral caem em `#abertos` e `#reviews`.
 
-- `#abertos`: cards **PRs abertos** (com linha auxiliar de rascunhos), **parados há +14 dias**, **mergeados no período**, **cycle time mediano**, **mergeados sem review**; depois **PRs parados — abertos há 14+ dias** e **PRs abertos — mais antigos primeiro**.
+- `#abertos`: cards **PRs abertos** (com linha auxiliar de rascunhos), **PRs parados há 14+ dias**, **mergeados no período**, **cycle time mediano**, **mergeados sem review**; depois **PRs parados — abertos há 14+ dias** e **PRs abertos — mais antigos primeiro**.
 - `#cycle-time`: **Cycle time mediano por repo (criação → merge)** e **Tendência de cycle time — últimos 6 meses**, de janela fixa.
 - `#reviews`: **Reviews por dev (no período)**.
 

@@ -28,6 +28,7 @@ const commitsLoader = defineLoader<CommitRow[]>('commits.json', {
   onErrorValue: [],
 })
 export const recentCommits = commitsLoader.data
+export const commitsError = commitsLoader.error
 export const loadCommits = commitsLoader.load
 
 // ---------------------------------------------------------------------------

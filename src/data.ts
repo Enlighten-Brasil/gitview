@@ -39,6 +39,7 @@ export { isoWeekKey, isoWeekKeyBefore, isoWeekMonday, lastNWeekKeys } from './da
 
 // store: loaders, ações nomeadas, projeções filtradas e label do período
 export {
+  commitsError,
   filteredCommitCount,
   filteredHeatmap,
   filteredMonthly,

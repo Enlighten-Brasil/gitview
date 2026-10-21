@@ -19,8 +19,8 @@ const cards = computed(() => {
     },
     {
       value: String(stale),
-      // singular na frase do AlertStrip (mesmo threshold, mesma concordância)
-      label: stale === 1 ? `PR parado há ${PR_STALE_DAYS}+ dias` : `parados há +${PR_STALE_DAYS} dias`,
+      // mesma frase do AlertStrip (mesmo threshold, mesma concordância)
+      label: stale === 1 ? `PR parado há ${PR_STALE_DAYS}+ dias` : `PRs parados há ${PR_STALE_DAYS}+ dias`,
       icon: 'i-lucide-hourglass',
       color: stale > 0 ? 'text-warning' : undefined,
       sub: null,

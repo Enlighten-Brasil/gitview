@@ -5,7 +5,7 @@
  */
 import { computed } from 'vue'
 import TablePanel from '@/components/TablePanel.vue'
-import { inPeriodMonth, recentCommits, scopeMatches, stats } from '@/data'
+import { commitsError, inPeriodMonth, recentCommits, scopeMatches, stats } from '@/data'
 import { fmtDateTime, fmtInt } from '@/format'
 
 const props = defineProps<{ dev: string }>()
@@ -73,6 +73,9 @@ const commits = computed(() =>
           </tr>
         </tbody>
       </table>
+    </div>
+    <div v-else-if="commitsError" class="py-10 text-center text-sm text-muted">
+      Erro de leitura do commits.json — {{ commitsError }}
     </div>
     <div v-else class="py-10 text-center text-sm text-muted">
       Sem commits no período — ajuste o filtro ou rode <code>pnpm collect</code> para gerar o commits.json.
