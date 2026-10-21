@@ -148,7 +148,10 @@ const dataAge = computed(() => {
 
       <template #body>
         <CandidatesBanner v-if="route.meta.filters === 'full'" />
-        <RouterView />
+        <!-- landmark main: o conteúdo da rota (banner fica fora) -->
+        <main>
+          <RouterView />
+        </main>
       </template>
     </UDashboardPanel>
   </div>

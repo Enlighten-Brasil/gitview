@@ -63,7 +63,7 @@ const commits = computed(() =>
               ><code class="text-xs bg-accented px-1 py-0.5 rounded">{{ c.hash }}</code></a>
               <code v-else class="text-xs bg-accented px-1 py-0.5 rounded">{{ c.hash }}</code>
             </td>
-            <td class="max-w-[520px] truncate" :title="c.message">
+            <td class="max-w-[520px] truncate" :title="c.message" :aria-label="c.message">
               {{ c.message }}
             </td>
             <td class="num whitespace-nowrap">
