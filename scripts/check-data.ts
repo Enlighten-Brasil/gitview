@@ -413,6 +413,7 @@ if (releases) {
     let prevT = Infinity
     let tagCommits = 0
     let prevSumMs = NaN
+    let groupCount = 0
     for (const t of tags) {
       const ms = Date.parse(String(t.date ?? ''))
       if (Number.isNaN(ms)) {
@@ -428,9 +429,16 @@ if (releases) {
         errors.push(`releases["${r.repo}"]: tag "${t.tag}" com commits negativos`)
         break
       }
-      // tags irmãs (mesmo instante) dividem o count do grupo — soma uma vez
-      if (ms !== prevSumMs)
+      // tags irmãs (mesmo instante) dividem o count do grupo — soma uma vez;
+      // counts divergentes no mesmo instante são dado inconsistente: a dedup
+      // silenciosa somaria errado, então erroa (Codacy review)
+      if (ms !== prevSumMs) {
         tagCommits += Number(t.commits) || 0
+        groupCount = Number(t.commits) || 0
+      }
+      else if ((Number(t.commits) || 0) !== groupCount) {
+        errors.push(`releases["${r.repo}"]: tags do mesmo instante com counts divergentes ("${t.tag}" = ${t.commits}, esperado ${groupCount})`)
+      }
       prevSumMs = ms
     }
     const unreleased = Number(r.unreleased)
