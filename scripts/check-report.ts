@@ -354,9 +354,7 @@ catch (err) {
   process.exit(1)
 }
 
-console.log(`✓ check-report: ${checks} asserções — buildReport (3 assuntos × janelas), linhas por dev, abertura, rótulos por formato, degradação de PRs, preset→janela, delta, fallback sem daily, opt-in de pessoas (default OFF × people), wrapper e pureza`)
-
-// ── renderer (issue #186) ──
+// ── renderer ──
 try {
   const { renderMarkdown } = await import('../src/markdown')
   const evil = renderMarkdown('## Time <script>alert(1)</script>\n- **<script>bad</script>**: 5 commits')
@@ -371,3 +369,5 @@ catch (err) {
   console.error(`✗ check-report: ${err instanceof Error ? err.message : err}`)
   process.exit(1)
 }
+
+console.log(`✓ check-report: ${checks} asserções — buildReport (3 assuntos × janelas), linhas por dev, abertura, rótulos por formato, degradação de PRs, preset→janela, delta, fallback sem daily, opt-in de pessoas (default OFF × people), wrapper, pureza e renderer`)
