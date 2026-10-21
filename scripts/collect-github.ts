@@ -152,7 +152,9 @@ async function fetchPrs(
   const out: GhPr[] = []
   let cursor: string | null = null
 
-  for (let page = 0; page < 30; page++) {
+  let hasNext = false
+  let page = 0
+  for (; page < 30; page++) {
     const vars: Record<string, string> = { owner: ghRepo.owner, name: ghRepo.repo }
     if (cursor)
       vars.cursor = cursor
@@ -161,7 +163,8 @@ async function fetchPrs(
     if (!prs)
       break
     out.push(...prs.nodes)
-    if (!prs.pageInfo.hasNextPage)
+    hasNext = prs.pageInfo.hasNextPage
+    if (!hasNext)
       break
     // mergeados vêm por UPDATED_AT desc: para quando a página já passou do cutoff
     const oldest = prs.nodes[prs.nodes.length - 1]
@@ -169,6 +172,9 @@ async function fetchPrs(
       break
     cursor = prs.pageInfo.endCursor
   }
+  // teto de páginas atingido com mais páginas por vir: avisa (nunca trunca em silêncio)
+  if (page === 30 && hasNext)
+    console.warn(`  ! ${ghRepo.owner}/${ghRepo.repo}: PRs ${states} truncados em ${out.length} (teto de 30 páginas em fetchPrs)`)
   return out
 }
 
