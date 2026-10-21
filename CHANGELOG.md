@@ -1,5 +1,23 @@
 # gitview
 
+## 0.65.0
+
+### Minor Changes
+
+- fdc637e: numstat: artefatos gerados saem das métricas de linhas. `DEFAULT_EXCLUDE_PATHS` passa a excluir `dist/**`, `documentation/**` e `full_documentation.json` (commits continuam contando; só as linhas saem) — `GITVIEW_EXCLUDE_PATHS` segue como override aditivo. Retroativo: o histórico só reflete com `pnpm clean` + `pnpm collect:full` na janela de release.
+- d991c15: check-data ganha invariantes cross-file no gate: as somas de weekly e monthlyTypes fecham com totals, author e repo de PRs existem em users e stats.repos, todo repo de releases existe no stats e o hash de commits.json é único por (repo, hash) — violação sai com exit 1. Dois avisos não bloqueantes novos: tags com commits=0 além da primeira do repo e commits com assunto de merge e diff +0/-0, lidos do data/gitview.db quando existe — sem o banco o gate segue verde e marca o aviso como não avaliado.
+- 5e4a34e: coletores: warning de overflow de paginação — fetchPrs e ghApiAll avisam quando esgotam o teto de páginas com mais itens por vir (repo, função e teto na mensagem), sem falhar a coleta.
+- b5576d9: collect-branches: pousada agora exige aheadInt nulo ou 0, além de aheadProd 0 e idade - branch com trabalho não mergeado na ref de integração deixa de ser rotulada como morta e migra para feature (a branch do caso real, aheadInt 1).
+
+### Patch Changes
+
+- 6fa4eb9: collect-team: a canonicalização normaliza o sufixo de bot — o autor git "x[bot]" equivale ao login do GitHub "x" e os perfis do team.local.json continuam válidos (merge por nome normalizado). O team.json deixa de ter pares de dev bot duplicados (cards repetidos no editor de time) e o check:data passa a rejeitar pares que colidam só pelo sufixo.
+- bb30ebc: Rótulos de cycle time mediano agora nomeiam a granularidade do corte: detalhe de dev e de repo mostram "cycle time mediano (PRs do mês)" (meses inteiros tocados pela janela), /prs e time mostram "cycle time mediano (corte por dia)" (janela exata do filtro) e o relatório mostra "cycle time mediano (janela do relatório)".
+- 86f3596: guard/shell: estado de erro alcançável e saída no build estático — o alerta de falha de carga do dashboard (inalcançável: o guard já mandava para /setup sem dados) sai de cena, o /setup do build estático ganha diagnóstico honesto com link de saída para a documentação do projeto (URL do próprio repositório, versionada no package.json) e falha de rede no carregamento dos dados mostra toast com "Tentar de novo" em vez de silêncio (404 = sem arquivo continua caindo no wizard).
+- da9808c: CommitGraph usa fmtDateTimeShort (dd/mm/aaaa hh:mm, sem segundos) do format.ts no lugar do toLocaleString local, e os cards de time do /teams passam a exibir métricas com fmtCompact (k/M) — a mesma notação do resto do app (antes o Intl compact local gerava "35 mil"/"1,2 mi").
+- eab942c: releases: tags criadas no mesmo commit agora recebem o count do intervalo do grupo em vez de 0, cobrindo todas as tags irmãs do monorepo na contagem de commits por release.
+- d4bbf62: collect: a janela incremental (--since) agora tem a base limitada a now + 24h antes de subtrair a margem de 7 dias — um commit com relógio do autor no futuro não esconde mais commits novos entre coletas até um --full.
+
 ## 0.64.1
 
 ### Patch Changes
