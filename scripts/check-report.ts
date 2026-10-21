@@ -11,9 +11,10 @@
  * amostra de janelas, linhas por dev com delta absoluto (união das janelas),
  * abertura (frase de ata), rótulos por formato (windowLabel), delta (rótulos
  * por formato, omissão em curso, base 0), degradação de PRs por posição da
- * cobertura [hoje−400d, hoje], fallback sem daily.json (parity com o
- * corte dia-preciso na semana fechada) e a pureza de report.ts (sem import de
- * filters). Qualquer asserção violada → exit 1 com a mensagem no stderr.
+ * cobertura [hoje−400d, hoje], linhas por time no assunto org, opt-in de
+ * pessoas (default OFF × people), fallback sem daily.json (parity com o
+ * corte dia-preciso na semana fechada), a pureza de report.ts (sem import de
+ * filters) e o renderer de markdown (escape-first). Qualquer asserção violada → exit 1 com a mensagem no stderr.
  */
 import type { DailyRow, GitHubData, PrReview, PullRequest, ReleasesData, Stats, TeamData } from '../src/types'
 import assert from 'node:assert/strict'
