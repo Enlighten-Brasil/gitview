@@ -1,5 +1,18 @@
 # gitview
 
+## 0.64.1
+
+### Patch Changes
+
+- 7937d87: Branches: a linha de viva-sem-PR envelhecida (≥ BRANCH_STALE_DAYS) passa a renderizar como "abandonada" na tabela — o card Abandonadas já as contava e agora card e tabela concordam; "viva sem PR" fica só para as linhas frescas. A coluna "vs integração" formata as duas metades com separador de milhar (fmtInt), como "à frente"/"atrás". Os previews dos cards viram computeds e o preview de autores vira campo pré-computado na view row — nada de .slice(0, no template.
+- 6506e58: carrega o daily.json nas rotas consumidoras (/reports e resumo semanal): com o agregado presente o relatório passa a mostrar a linha de diff do agregado diário e sem ele mantém o fallback semanal com o aviso de ausência.
+- d9f0d28: filterbar: oculta a seção Período (presets e Personalizado) em /branches — a página é inventário "agora" e não consome o período; o switch "incluir bots" permanece na sidebar.
+- 6207ccf: saúde: limiares de Bus factor e Gargalo de review centralizados em thresholds.ts (rodapés interpolam os valores) e célula de % com valor visível + aria-label (pct e status) em Fix hotspots e Gargalo de review para leitores de tela.
+- 0efab9c: nav: sub-âncoras cujo id não existe na rota atual deixam de aparecer no painel contextual
+- 735e1c6: Painéis de PR/dev distinguem erro de leitura de vazio real e ganham rótulo de janela fixa: a tabela de commits do dev mostra a mensagem de erro do loader quando o commits.json falha (sem mandar rodar o coletor) e mantém o texto de "sem commits no período" só para vazio de verdade; "PRs abertos" (/prs, time e detalhe do dev) ganham o rodapé "janela fixa: abertos agora — segue escopo, ignora o período" e o empty state deixa de alegar filtros de período ("Nenhum PR aberto agora"); o card de PRs parados unifica a fórmula "PR parado há N+ dias" / "PRs parados há N+ dias" no padrão do alerta da visão geral.
+- 40b0b64: repos: a grade de releases passa a seguir a seleção de repos da sidebar, como a tabela de repos logo acima; sem seleção continua listando todos. O rótulo da seção reflete o comportamento.
+- 86627a4: Scroll de âncora ganha cancelamento por navegação: os timers do retry (poll 100ms até 50×) e dos re-scrolls (500/1500ms após o render dos gráficos) agora são guardados e limpos no `afterEach` seguinte — antes, timers de uma navegação antiga seguiam rolando a página por até ~5s e podiam rolar a rota nova quando o mesmo `id` existia nela. A navegação com âncora válida mantém o comportamento atual (scroll até a seção + re-scrolls após o render dos gráficos).
+
 ## 0.64.0
 
 ### Minor Changes
