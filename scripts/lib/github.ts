@@ -78,7 +78,10 @@ export async function ghApiAll<T>(path: string, token: string): Promise<T[]> {
     const items = await ghApi<T[]>(`${path}${sep}per_page=100&page=${page}`, token)
     out.push(...items)
     if (items.length < 100)
-      break
+      return out
+    // página cheia na última iteração: possível truncagem — avisa (nunca em silêncio)
+    if (page === 10)
+      console.warn(`  ! GitHub API ${path}: lista truncada em ${out.length} itens (teto de 10 páginas em ghApiAll)`)
   }
   return out
 }
