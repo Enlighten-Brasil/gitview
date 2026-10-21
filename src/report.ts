@@ -30,7 +30,7 @@ import {
 import { isMergedPr } from './types'
 
 const DAY_MS = 86_400_000
-/** o github.json cobre PRs MERGED dos últimos 400d — janela maior subconta (seção degrada) */
+/** cobertura do github.json em PRs MERGED: [hoje−400d, hoje] — janela fora dela subconta (seção degrada) */
 const PR_COVERAGE_DAYS = 400
 
 /** assunto do relatório — organização inteira, um time (membros do team.json) ou um dev */
@@ -126,6 +126,22 @@ function isFullMonth(from: Date, to: Date): boolean {
   return next.getTime() === new Date(from.getFullYear(), from.getMonth() + 1, 1).getTime()
 }
 
+/**
+ * rótulo da janela JÁ com preposição (issue #184) — concatenar 'na' + label
+ * produziria "na mês". Semana ISO fechada → 'na semana'; mês completo → 'no
+ * mês'; rolante (termina em `now`) → 'nos N dias'; custom dia-inteiro → 'no
+ * período'. Aplicado nos textos congelados de releases/off-hours.
+ */
+export function windowLabel(from: Date, to: Date): string {
+  if (isClosedIsoWeek(from, to))
+    return 'na semana'
+  if (isFullMonth(from, to))
+    return 'no mês'
+  if (isMidnight(from) && isMidnight(new Date(to.getTime() + 1)))
+    return 'no período'
+  return `nos ${Math.round((to.getTime() + 1 - from.getTime()) / DAY_MS)} dias`
+}
+
 interface DeltaWindow {
   from: Date
   to: Date
@@ -164,6 +180,12 @@ function deltaLine(cur: number, prev: number, label: string): string {
     return ''
   const pct = Math.round(((cur - prev) / prev) * 100)
   return ` (${pct >= 0 ? '+' : ''}${pct}% ${label})`
+}
+
+/** delta absoluto em commits (+N/−N, sinal unicode −) — por dev, % seria enganoso (1→5 = +400%) */
+function devDelta(cur: number, before: number): string {
+  const d = cur - before
+  return d >= 0 ? `+${d}` : `−${-d}`
 }
 
 // ---------------------------------------------------------------------------
@@ -304,6 +326,54 @@ export function buildReport(subject: ReportSubject, from: Date, to: Date, inProg
   const delta = (cur: number, prevValue: number) => (inProgress ? '' : deltaLine(cur, prevValue, dw.label))
   const out: string[] = []
 
+  // agregados ANTES da emissão — a linha de abertura sai antes das seções
+  const agg = commitAgg(inSubject, from, to)
+  const topDevs = [...agg.byAuthor.entries()].sort((a, b) => b[1].commits - a[1].commits)
+  const topRepos = [...agg.byRepo.entries()].sort((a, b) => b[1] - a[1])
+
+  // PRs — degradação por POSIÇÃO (issue #184): o github.json cobre mergedAt em
+  // [hoje−400d, hoje]; janela fora da cobertura subconta, então PRs/reviews
+  // somem da seção, das linhas por dev e da abertura com UMA nota (vazio ≠ zero)
+  const prs = github.value?.prs ?? []
+  const coverFrom = new Date(now.getFullYear(), now.getMonth(), now.getDate() - PR_COVERAGE_DAYS)
+  const prsDegraded = !prs.length || dayKey(from) < dayKey(coverFrom) || dayKey(to) > dayKey(now)
+  const prInSubject = (pr: PullRequest) => !ghIsBot(pr.author) && inSubject(ghName(pr.author))
+  let merged: MergedPr[] = []
+  let prevMerged = 0
+  let cycle = 0
+  const mergedByDev = new Map<string, number>()
+  const reviewsByDev = new Map<string, number>()
+  if (!prsDegraded) {
+    // narrowing de PR mergeado (issue #42): mergedAt garantido no ciclo
+    merged = prs.filter((pr): pr is MergedPr => isMergedPr(pr) && inRange(pr.mergedAt, from, to) && prInSubject(pr))
+    prevMerged = inProgress ? 0 : prs.filter(pr => isMergedPr(pr) && inRange(pr.mergedAt, dw.from, dw.to) && prInSubject(pr)).length
+    cycle = median(merged.map(pr => (new Date(pr.mergedAt).getTime() - new Date(pr.createdAt).getTime()) / 3_600_000))
+    for (const pr of merged) {
+      const author = ghName(pr.author)
+      mergedByDev.set(author, (mergedByDev.get(author) ?? 0) + 1)
+    }
+    // reviews FEITAS pelo dev (mesma base do "reviews feitas" do assunto dev):
+    // qualquer PR mergeado na janela, exceto os do próprio dev
+    for (const pr of prs) {
+      if (!isMergedPr(pr) || !inRange(pr.mergedAt, from, to) || ghIsBot(pr.author))
+        continue
+      for (const r of pr.reviews) {
+        if (r.author === pr.author || ghIsBot(r.author))
+          continue
+        const reviewer = ghName(r.author)
+        reviewsByDev.set(reviewer, (reviewsByDev.get(reviewer) ?? 0) + 1)
+      }
+    }
+  }
+
+  // releases (só organização/time) — rótulo por formato no texto vazio
+  const relRepos = releases.value?.repos ?? []
+  const relInScope = relRepos.length > 0 && subject.kind !== 'dev'
+  const windowTags = relInScope
+    ? relRepos.flatMap(r => r.tags.filter(t => inRange(t.date, from, to)).map(t => ({ repo: r.repo, ...t })))
+    : []
+  const unreleased = relInScope ? relRepos.filter(r => r.unreleased > 0).sort((a, b) => b.unreleased - a.unreleased) : []
+
   // -------------------------------------------------------------------------
   // cabeçalho
   // -------------------------------------------------------------------------
@@ -314,15 +384,49 @@ export function buildReport(subject: ReportSubject, from: Date, to: Date, inProg
   out.push('')
 
   // -------------------------------------------------------------------------
+  // abertura — frase de ata determinística (issue #184); mesmas regras de
+  // omissão do motor: sem delta em curso ou base 0, PRs/cycle fora quando
+  // degradado, singular/plural como as linhas existentes
+  // -------------------------------------------------------------------------
+  const opening = [`${agg.total} ${agg.total === 1 ? 'commit' : 'commits'}${delta(agg.total, prev?.total ?? 0)}`]
+  if (!prsDegraded) {
+    opening.push(`${merged.length} ${merged.length === 1 ? 'PR mergeado' : 'PRs mergeados'}${delta(merged.length, prevMerged)}`)
+    opening.push(`cycle time ${fmtDuration(cycle)}`)
+  }
+  if (relInScope)
+    opening.push(`${windowTags.length} ${windowTags.length === 1 ? 'release' : 'releases'}`)
+  out.push(opening.join(' · '))
+  out.push('')
+
+  // -------------------------------------------------------------------------
   // commits
   // -------------------------------------------------------------------------
-  const agg = commitAgg(inSubject, from, to)
-  const topDevs = [...agg.byAuthor.entries()].sort((a, b) => b[1].commits - a[1].commits)
-  const topRepos = [...agg.byRepo.entries()].sort((a, b) => b[1] - a[1])
   out.push('## Commits')
   out.push(`- **${agg.total} ${agg.total === 1 ? 'commit' : 'commits'}**${delta(agg.total, prev?.total ?? 0)}, ${agg.byAuthor.size} ${agg.byAuthor.size === 1 ? 'dev ativo' : 'devs ativos'}, ${agg.byRepo.size} ${agg.byRepo.size === 1 ? 'repo ativo' : 'repos ativos'}`)
-  if (topDevs.length) {
-    out.push(`- top devs: ${topDevs.slice(0, 5).map(([name, a]) => `${name} (${a.commits})`).join(', ')}`)
+  if (subject.kind === 'dev') {
+    // assunto dev mantém o formato atual do bloco de commits
+    if (topDevs.length)
+      out.push(`- top devs: ${topDevs.slice(0, 5).map(([name, a]) => `${name} (${a.commits})`).join(', ')}`)
+  }
+  else {
+    // uma linha por dev (issue #184): união das duas janelas (quem sumiu
+    // aparece com 0 commits e delta negativo), ordenada por commits
+    // decrescente, sem teto — delta absoluto; em curso, o traço longo
+    const devNames = new Set([...agg.byAuthor.keys(), ...(prev?.byAuthor.keys() ?? [])])
+    const devRows = [...devNames]
+      .map(name => ({ name, commits: agg.byAuthor.get(name)?.commits ?? 0, before: prev?.byAuthor.get(name)?.commits ?? 0 }))
+      .sort((a, b) => b.commits - a.commits || a.name.localeCompare(b.name))
+    for (const d of devRows) {
+      const parts = [`${d.commits} ${d.commits === 1 ? 'commit' : 'commits'} (${inProgress ? '—' : devDelta(d.commits, d.before)})`]
+      if (!prsDegraded) {
+        // PRs/reviews absolutos; omitidos só quando degradado (vazio ≠ zero)
+        const pm = mergedByDev.get(d.name) ?? 0
+        const rv = reviewsByDev.get(d.name) ?? 0
+        parts.push(`${pm} ${pm === 1 ? 'PR mergeado' : 'PRs mergeados'}`)
+        parts.push(`${rv} ${rv === 1 ? 'review' : 'reviews'}`)
+      }
+      out.push(`- ${d.name}: ${parts.join(' · ')}`)
+    }
   }
   if (topRepos.length) {
     out.push(`- repos mais ativos: ${topRepos.slice(0, 5).map(([repo, n]) => `${repo} (${n})`).join(', ')}`)
@@ -340,20 +444,13 @@ export function buildReport(subject: ReportSubject, from: Date, to: Date, inProg
   // -------------------------------------------------------------------------
   // pull requests
   // -------------------------------------------------------------------------
-  const prs = github.value?.prs ?? []
   if (prs.length) {
     out.push('## Pull requests')
-    if (to.getTime() + 1 - from.getTime() > PR_COVERAGE_DAYS * DAY_MS) {
-      // github.json só cobre 400d de MERGED — janela maior subconta por design
+    if (prsDegraded) {
       out.push('- sem dados de PRs nesta janela')
       out.push('')
     }
     else {
-      const prInSubject = (pr: PullRequest) => !ghIsBot(pr.author) && inSubject(ghName(pr.author))
-      // narrowing de PR mergeado (issue #42): mergedAt garantido no ciclo
-      const merged = prs.filter((pr): pr is MergedPr => isMergedPr(pr) && inRange(pr.mergedAt, from, to) && prInSubject(pr))
-      const prevMerged = inProgress ? 0 : prs.filter(pr => isMergedPr(pr) && inRange(pr.mergedAt, dw.from, dw.to) && prInSubject(pr)).length
-      const cycle = median(merged.map(pr => (new Date(pr.mergedAt).getTime() - new Date(pr.createdAt).getTime()) / 3_600_000))
       const noReview = merged.filter(pr => !pr.reviews.some(r => r.author !== pr.author && !ghIsBot(r.author)))
       const noReviewPct = merged.length ? Math.round((noReview.length / merged.length) * 100) : 0
       const open = prs.filter(pr => pr.state === 'OPEN' && prInSubject(pr))
@@ -373,6 +470,8 @@ export function buildReport(subject: ReportSubject, from: Date, to: Date, inProg
         out.push(`- reviews feitas: ${reviewsMade}`)
       }
       else {
+        // top reviewers = reviews RECEBIDAS nos PRs do assunto (semântica da
+        // seção — difere do "reviews feitas" das linhas por dev)
         const reviews = new Map<string, number>()
         for (const pr of merged) {
           for (const r of pr.reviews) {
@@ -394,15 +493,9 @@ export function buildReport(subject: ReportSubject, from: Date, to: Date, inProg
   // -------------------------------------------------------------------------
   // releases (só organização/time)
   // -------------------------------------------------------------------------
-  const relRepos = releases.value?.repos ?? []
-  if (relRepos.length && subject.kind !== 'dev') {
+  if (relInScope) {
     // ponytail: releases não têm dimensão de autor (RepoReleases = repo/tags/
     // unreleased) — upgrade = tags dos repos onde o dev tem commits no período
-    const windowTags = relRepos.flatMap(r =>
-      r.tags.filter(t => inRange(t.date, from, to)).map(t => ({ repo: r.repo, ...t })),
-    )
-    const unreleased = relRepos.filter(r => r.unreleased > 0).sort((a, b) => b.unreleased - a.unreleased)
-
     out.push('## Releases')
     if (windowTags.length) {
       for (const t of windowTags.sort((a, b) => a.date.localeCompare(b.date))) {
@@ -410,9 +503,7 @@ export function buildReport(subject: ReportSubject, from: Date, to: Date, inProg
       }
     }
     else {
-      // ponytail: texto herdado do resumo semanal diz "semana" em qualquer
-      // janela — rótulo por formato quando alguém pedir (byte-compare: string frozen)
-      out.push('- nenhuma release na semana')
+      out.push(`- nenhuma release ${windowLabel(from, to)}`)
     }
     if (unreleased.length) {
       out.push(`- commits não liberados: ${unreleased.slice(0, 5).map(r => `${r.repo} (${r.unreleased})`).join(', ')}`)
@@ -438,9 +529,7 @@ export function buildReport(subject: ReportSubject, from: Date, to: Date, inProg
   if (offHours.length || inactiveDevs.length || inactiveRepos.length) {
     out.push('## Atenção')
     for (const a of offHours) {
-      // ponytail: "na semana" é o texto do artefato herdado — vale para a
-      // janela do cabeçalho; rótulo por formato quando alguém pedir
-      out.push(`- ${a.author}: ${Math.round(a.pct * 100)}% dos commits fora do horário na semana (fds/madrugada)`)
+      out.push(`- ${a.author}: ${Math.round(a.pct * 100)}% dos commits fora do horário ${windowLabel(from, to)} (fds/madrugada)`)
     }
     if (inactiveDevs.length) {
       out.push(`- devs sem commit há ${DEV_STALE_DAYS}+ dias: ${inactiveDevs.map(a => a.author).join(', ')}`)
