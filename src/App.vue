@@ -15,10 +15,14 @@ const ready = ref(false)
 // retry em vez de silêncio (issue #195). Toast fixo (duration 0) porque a rede
 // pode continuar fora; o retry refaz o load e só sai do wizard se vier dado.
 const toast = useToast()
+let netToastId: ReturnType<typeof toast.add> | undefined
 watch(statsNetworkError, (net) => {
   if (!net)
     return
-  toast.add({
+  // um toast por falha: o watcher re-dispara a cada tentativa — não duplicar
+  if (netToastId !== undefined)
+    return
+  netToastId = toast.add({
     title: 'Falha de rede ao carregar os dados',
     description: 'Sem conexão com o servidor dos dados — o que está na tela pode estar desatualizado.',
     color: 'error',
@@ -28,8 +32,16 @@ watch(statsNetworkError, (net) => {
       label: 'Tentar de novo',
       onClick: async () => {
         await loadStats(true)
+        // navega pelo resultado FRESCO do retry (não por stats velho): rede
+        // ainda fora mantém o toast; sucesso o remove e sai do wizard
+        if (statsNetworkError.value)
+          return
+        if (netToastId !== undefined) {
+          toast.remove(netToastId)
+          netToastId = undefined
+        }
         if (stats.value != null && router.currentRoute.value.meta.onboarding)
-          router.push('/')
+          void router.push('/')
       },
     }],
   })
