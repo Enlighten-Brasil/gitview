@@ -102,3 +102,52 @@ body {
 .data-table .del {
   color: var(--ui-error);
 }
+
+/* ---------- relatório: preview renderizado + impressão (issue #186) ---------- */
+.report-md {
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.report-md h1 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+
+.report-md h2 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 1rem 0 0.35rem;
+}
+
+.report-md p {
+  margin: 0.25rem 0;
+}
+
+.report-md ul {
+  list-style: disc;
+  margin: 0.25rem 0 0.5rem;
+  padding-left: 1.25rem;
+}
+
+.report-md li {
+  margin: 0.15rem 0;
+}
+
+/* impressão (Ctrl+P → PDF do navegador): só o relatório na página */
+@media print {
+  .rail,
+  .context,
+  header,
+  nav,
+  aside,
+  button,
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: none;
+  }
+}

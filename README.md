@@ -34,7 +34,7 @@ Nothing to copy or edit first: `.env` is created from `.env.example` on the firs
 - **Repos** (`/repos`, `/repos/<name>`): activity per repository, releases with the GitHub notes and the commit graph of the recent window (`#grafo`).
 - **Times** (`/teams`, `/teams/<name>`): group devs by team and open the team dashboard, with period and repos filterable.
 - **Saúde** (`/health`): off-hours work, fix hotspots, review bottleneck, inactivity and bus factor.
-- **Relatórios** (`/reports`): exportable markdown report for the organization, a team or a dev over six period presets — copy or download the .md; the URL reproduces the report.
+- **Relatórios** (`/reports`): exportable markdown report for the organization, a team or a dev over six period presets — copy or download the .md; the URL reproduces the report. The preview is rendered (raw markdown on a toggle) and the print button gives PDF via the browser.
 - **Resumo semanal**: markdown of the last closed ISO week against the previous one, ready to paste into the meeting.
 
 ## Collect and publish
