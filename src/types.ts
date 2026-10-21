@@ -225,7 +225,7 @@ export interface TeamData {
  * - `production`: a ref de produção do repo (nome == productionRef)
  * - `integration`: ref de integração (nome ∈ integrationRefs)
  * - `bot`: nome casa BOT_BRANCH_RE (dependabot/*, renovate/*) ou GITVIEW_BOT_BRANCHES
- * - `pousada`: aheadProd == 0 e sem atividade há ≥ GITVIEW_BRANCH_STALE_DAYS dias
+ * - `pousada`: aheadProd == 0, aheadInt nulo ou 0 e sem atividade há ≥ GITVIEW_BRANCH_STALE_DAYS dias
  * - `feature`: demais
  * Vínculos com PR ('viva-sem-PR', 'pousada-via-squash') NÃO fazem parte da
  * union: o frontend os calcula em join com github.json (headRef).

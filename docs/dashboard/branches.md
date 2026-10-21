@@ -11,7 +11,7 @@ description: "How the /branches page reads the branch inventory: alert cards, de
 
 - **Freshness badge** — `inventário …` (agora mesmo / há Nh / há Nd) from the `generatedAt` of `branches.json`, with the exact timestamp in the tooltip. Light recollections do **not** refresh the inventory, so the badge turns warning-colored after 24h to make the age explicit.
 - **Three cards**:
-  - **Pousadas — podem ser limpas**: branches with `aheadProd` 0 (collector status `pousada`) or released through a squash-merge (see below), inactive for `GITVIEW_BRANCH_STALE_DAYS`+ days (default 30). Safe-to-delete candidates.
+  - **Pousadas — podem ser limpas**: branches with `aheadProd` 0 and `aheadInt` null or 0 (collector status `pousada`) or released through a squash-merge (see below), inactive for `GITVIEW_BRANCH_STALE_DAYS`+ days (default 30). Safe-to-delete candidates.
   - **Abandonadas — trabalho não liberado parado**: `aheadProd` > 0, no open PR, inactive for 30+ days, not a bot — work that never reached production and stopped moving. Disjoint from *Pousadas*.
   - **develop × produção**: per-repo mini-list with both deviations of the first integration ref against production: ahead = unreleased work; behind with ahead 0 = abandoned (dead) integration branch. A single global counter would be ambiguous across repos, so the list is per repo.
 - **Sortable table** (`.data-table`): branch, repo, status (badge), ahead/behind production, `vs integração` (when the repo has an integration ref), last activity, authors ahead, linked PR and a GitHub link to the branch. Clicking a card filters the table (`só pousadas` / `só abandonadas` chip, removable) and scrolls to it.
@@ -20,7 +20,7 @@ The inventory is a *now* snapshot: the period filter does not apply (like open P
 
 ## Statuses
 
-Collector statuses (closed union in `branches.json`): `production` (the production ref), `integration` (an integration ref), `bot` (name matches dependabot/renovate patterns or `GITVIEW_BOT_BRANCHES`), `pousada` (ahead 0 and inactive for 30+ days) and `feature` (everything else).
+Collector statuses (closed union in `branches.json`): `production` (the production ref), `integration` (an integration ref), `bot` (name matches dependabot/renovate patterns or `GITVIEW_BOT_BRANCHES`), `pousada` (`aheadProd` 0, `aheadInt` null or 0, and inactive for 30+ days) and `feature` (everything else).
 
 Two derived statuses are computed in the frontend from the branch↔PR join:
 

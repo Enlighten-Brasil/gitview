@@ -210,7 +210,7 @@ export const branchRows = computed<BranchRowView[]>(() => {
   return out
 })
 
-/** card (a): podem ser limpas — 'pousada' do coletor (ahead 0 + velha) ou liberada via squash */
+/** card (a): podem ser limpas — 'pousada' do coletor (ahead 0 nos dois eixos + velha) ou liberada via squash */
 export const pousadas = computed(() =>
   branchRows.value.filter(x =>
     x.status === 'pousada' || (x.squashPousada && x.ageDays >= BRANCH_STALE_DAYS),

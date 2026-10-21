@@ -11,7 +11,7 @@ description: "Como a página /branches lê o inventário de branches: cards de a
 
 - **Badge de frescor** — `inventário …` (agora mesmo / há Nh / há Nd) a partir do `generatedAt` do `branches.json`, com o timestamp exato no tooltip. A recoleta light **não** atualiza o inventário, então o badge fica em cor de aviso após 24h para deixar a idade explícita.
 - **Três cards**:
-  - **Pousadas — podem ser limpas**: branches com `aheadProd` 0 (status `pousada` do coletor) ou liberadas via squash-merge (ver abaixo), sem atividade há `GITVIEW_BRANCH_STALE_DAYS`+ dias (default 30). Candidatas a remoção segura.
+  - **Pousadas — podem ser limpas**: branches com `aheadProd` 0 e `aheadInt` nulo ou 0 (status `pousada` do coletor) ou liberadas via squash-merge (ver abaixo), sem atividade há `GITVIEW_BRANCH_STALE_DAYS`+ dias (default 30). Candidatas a remoção segura.
   - **Abandonadas — trabalho não liberado parado**: `aheadProd` > 0, sem PR aberto, paradas há 30+ dias, não-bot — trabalho que nunca chegou à produção e parou de andar. Disjunto de *Pousadas*.
   - **develop × produção**: mini-lista por repo com os dois desvios da primeira ref de integração contra a produção: à frente = trabalho não liberado; atrás com ahead 0 = integração abandonada (morta). Um contador global único seria ambíguo entre repos, então a lista é por repo.
 - **Tabela ordenável** (`.data-table`): branch, repo, status (badge), à frente/atrás da produção, `vs integração` (quando o repo tem ref de integração), última atividade, autores à frente, PR vinculado e link da branch no GitHub. Clicar num card filtra a tabela (chip `só pousadas` / `só abandonadas`, removível) e rola até ela.
@@ -20,7 +20,7 @@ O inventário é uma foto do *agora*: o filtro de período não se aplica (como 
 
 ## Status
 
-Status do coletor (union fechada no `branches.json`): `production` (a ref de produção), `integration` (uma ref de integração), `bot` (nome casa os padrões dependabot/renovate ou `GITVIEW_BOT_BRANCHES`), `pousada` (ahead 0 e sem atividade há 30+ dias) e `feature` (demais).
+Status do coletor (union fechada no `branches.json`): `production` (a ref de produção), `integration` (uma ref de integração), `bot` (nome casa os padrões dependabot/renovate ou `GITVIEW_BOT_BRANCHES`), `pousada` (`aheadProd` 0, `aheadInt` nulo ou 0, e sem atividade há 30+ dias) e `feature` (demais).
 
 Dois status derivados são calculados no frontend a partir do join branch↔PR:
 

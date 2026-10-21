@@ -147,15 +147,15 @@ async function listHeads(repoPath: string): Promise<RefRow[]> {
   return rows
 }
 
-/** union fechada de status (src/types.ts) — ordem: produção/integração (estrutura), bot (nome), pousada (idade), feature */
-function statusOf(name: string, prodRef: string, integRefs: string[], aheadProd: number, lastActivityMs: number, nowMs: number): BranchStatus {
+/** union fechada de status (src/types.ts) — ordem: produção/integração (estrutura), bot (nome), pousada (idade + sem trabalho não mergeado), feature */
+function statusOf(name: string, prodRef: string, integRefs: string[], aheadProd: number, aheadInt: number | null, lastActivityMs: number, nowMs: number): BranchStatus {
   if (name === prodRef)
     return 'production'
   if (integRefs.includes(name))
     return 'integration'
   if (BOT_BRANCH_RE.test(name) || botBranches.has(name.toLowerCase()))
     return 'bot'
-  if (aheadProd === 0 && nowMs - lastActivityMs >= staleDays * 86_400_000)
+  if (aheadProd === 0 && (aheadInt == null || aheadInt === 0) && nowMs - lastActivityMs >= staleDays * 86_400_000)
     return 'pousada'
   return 'feature'
 }
@@ -164,7 +164,7 @@ function statusOf(name: string, prodRef: string, integRefs: string[], aheadProd:
 // main
 // ---------------------------------------------------------------------------
 const repos = discoverRepos(resolveReposRoot(config))
-console.log(`Inventariando branches de ${repos.length} repos (pool de 4; pousada = aheadProd 0 e ≥ ${staleDays}d sem atividade)...`)
+console.log(`Inventariando branches de ${repos.length} repos (pool de 4; pousada = aheadProd 0, aheadInt 0/nulo e ≥ ${staleDays}d sem atividade)...`)
 
 // Pré-passo sequencial: o seam lib/refs.ts usa spawnSync — resolvido ANTES do
 // pool para o miolo por branch (log/rev-list) rodar 100% assíncrono. Repo sem
@@ -263,7 +263,7 @@ await mapPool(repos, 4, async (repo) => {
         authorsAhead: aheadWalk.emails,
         additions: aheadWalk.additions,
         deletions: aheadWalk.deletions,
-        status: statusOf(head.name, prodName, integNames, aheadWalk.ahead, lastActivityMs, nowMs),
+        status: statusOf(head.name, prodName, integNames, aheadWalk.ahead, aheadInt, lastActivityMs, nowMs),
       })
     }
     const counts: Record<BranchStatus, number> = { production: 0, integration: 0, feature: 0, bot: 0, pousada: 0 }
