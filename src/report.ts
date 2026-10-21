@@ -488,7 +488,7 @@ export function buildReport(subject: ReportSubject, from: Date, to: Date, inProg
         .filter(x => x.age >= PR_STALE_DAYS)
         .sort((a, b) => b.age - a.age)
 
-      out.push(`- **${merged.length} ${merged.length === 1 ? 'mergeado' : 'mergeados'}**${delta(merged.length, prevMerged)}, cycle time mediano ${fmtDuration(cycle)}`)
+      out.push(`- **${merged.length} ${merged.length === 1 ? 'mergeado' : 'mergeados'}**${delta(merged.length, prevMerged)}, cycle time mediano (janela do relatório) ${fmtDuration(cycle)}`)
       out.push(`- ${open.length} ${open.length === 1 ? 'aberto agora' : 'abertos agora'}, **${stale.length} ${stale.length === 1 ? 'parado' : 'parados'} há ${PR_STALE_DAYS}+ dias**${stale.length ? `: ${stale.slice(0, 3).map(x => `${x.pr.repo}#${x.pr.number} (${x.age}d)`).join(', ')}${stale.length > 3 ? '…' : ''}` : ''}`)
       out.push(`- ${noReviewPct}% mergeados sem review${noReview.length ? ` (${noReview.length} ${noReview.length === 1 ? 'PR' : 'PRs'})` : ''}`)
       if (subject.kind === 'dev') {

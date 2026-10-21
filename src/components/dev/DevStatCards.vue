@@ -100,7 +100,7 @@ const cards = computed<{ value: string, label: string, icon?: string, color?: st
   if (github.value) {
     base.push(
       { value: String(myOpen.value.length), label: myOpen.value.length === 1 ? 'PR aberto' : 'PRs abertos', icon: 'i-lucide-git-pull-request' },
-      { value: fmtDuration(myCycleHours.value), label: 'cycle time mediano', icon: 'i-lucide-timer' },
+      { value: fmtDuration(myCycleHours.value), label: 'cycle time mediano (PRs do mês)', icon: 'i-lucide-timer' },
       { value: `${myReviews.value.total} (${myReviews.value.approvals} aprovações)`, label: 'reviews feitas', icon: 'i-lucide-eye' },
     )
   }
