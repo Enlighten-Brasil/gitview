@@ -63,6 +63,16 @@ export function fmtDateTime(iso: string | Date | null | undefined): string {
   return toDate(iso).toLocaleString('pt-BR')
 }
 
+/** data + hora sem segundos pt-BR (dd/mm/aaaa hh:mm); "—" sem data ou data inválida */
+export function fmtDateTimeShort(iso: string | Date | null | undefined): string {
+  if (iso == null || iso === '')
+    return '—'
+  const d = toDate(iso)
+  if (Number.isNaN(d.getTime()))
+    return '—'
+  return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
 /** "hoje" / "ontem" / "há Nd" a partir de uma data */
 export function fmtDaysAgo(iso: string): string {
   const days = daysSince(iso)
