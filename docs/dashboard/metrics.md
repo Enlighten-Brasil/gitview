@@ -37,7 +37,7 @@ Every number on the dashboard has a formula, a window and a reading. The per-rou
 | Weekly Champions | growth against own baseline | ISO week in the period |
 | Card delta | % against the previous window | omitted in custom range and **Tudo** |
 
-- A **fixed**, **now**, **milestones** or **full history** window: ignores the period on purpose and says so in the label, but respects repos, devs and bots. Only releases and inactivity ignore the entire sidebar.
+- A **fixed**, **now**, **milestones** or **full history** window: ignores the period on purpose and says so in the label, but respects repos, devs and bots. Only inactivity ignores the entire sidebar; releases follow the repo selection.
 - Dates are stored in UTC ISO with milliseconds, and the time buckets (month, day, ISO week, weekend, late night, heatmap) come from `GITVIEW_TIMEZONE`, default `America/Sao_Paulo` ([Configuration](../configuration/env.md)).
 
 ## Activity
@@ -72,7 +72,7 @@ From the GitHub collection: every open PR plus the ones merged in the last 400 d
 
 ## Releases
 
-From the release collection: local `git tag` for coverage and the GitHub REST API for names and notes. Tags are milestones, so the panels ignore the entire sidebar. Commits are attributed to tags by timestamp comparison, never by text.
+From the release collection: local `git tag` for coverage and the GitHub REST API for names and notes. Tags are milestones, so the panels ignore the period and follow the repo selection. Commits are attributed to tags by timestamp comparison, never by text.
 
 - **Days since last release**: days since the newest tag, `null` with no tags, warning at 30+ days.
 - **Release cadence**: tags with a date in the last 12 months divided by 12, shown as `X/mês`.

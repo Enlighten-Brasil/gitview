@@ -37,7 +37,7 @@ Cada número do dashboard tem fórmula, janela e leitura. O escopo de filtro por
 | Weekly Champions | evolução contra a própria base | semana ISO no período |
 | Delta dos cards | % contra a janela anterior | omitido em range custom e **Tudo** |
 
-- Janela **fixa**, **agora**, **marcos** ou **histórico completo**: ignora o período de propósito e diz isso no rótulo, mas respeita repos, devs e bots. Só releases e inatividade ignoram a sidebar inteira.
+- Janela **fixa**, **agora**, **marcos** ou **histórico completo**: ignora o período de propósito e diz isso no rótulo, mas respeita repos, devs e bots. Só inatividade ignora a sidebar inteira; releases seguem a seleção de repos.
 - Datas são gravadas em UTC ISO com milissegundos e os buckets de tempo (mês, dia, semana ISO, fim de semana, madrugada, heatmap) saem de `GITVIEW_TIMEZONE`, default `America/Sao_Paulo` ([Configuração](../configuration/env.md)).
 
 ## Atividade
@@ -72,7 +72,7 @@ Vêm da coleta do GitHub: todo PR aberto mais os mergeados dos últimos 400 dias
 
 ## Releases
 
-Vêm da coleta de releases: `git tag` local para cobertura e API REST do GitHub para nomes e notas. Tags são marcos, então os painéis ignoram a sidebar inteira. Commits são atribuídos a tags por comparação de timestamp, nunca por texto.
+Vêm da coleta de releases: `git tag` local para cobertura e API REST do GitHub para nomes e notas. Tags são marcos, então os painéis ignoram o período e seguem a seleção de repos. Commits são atribuídos a tags por comparação de timestamp, nunca por texto.
 
 - **Dias desde a última release**: dias desde a tag mais nova, `null` sem tags, warning aos 30+ dias.
 - **Cadência de release**: tags com data nos últimos 12 meses divididas por 12, exibida como `X/mês`.

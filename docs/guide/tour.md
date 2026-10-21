@@ -90,7 +90,7 @@ Repository index, with an anchor sub-nav (**Tabela**, **Linhas +/−**, **Distri
 - `#distribuicao` **Distribuição por repositório (período filtrado)**.
 - `#por-mes` **Repositório × mês**.
 - `#tipos` **Tipos de commit por mês (feat × fix × ...)** and **Mix por repo (% — ordenado por fix)**.
-- `#releases` **Releases por repositório**: last tag, age and the **X/mês** cadence over the last 12 months. Footer **marcos — ignoram o filtro de período · clique no repo pra ver a cadência completa** (milestones ignore the period filter; click a repo to see the full cadence).
+- `#releases` **Releases por repositório**: last tag, age and the **X/mês** cadence over the last 12 months. Footer **marcos — seguem a seleção de repos da sidebar · ignoram o filtro de período e o escopo · clique no repo pra ver a cadência completa** (milestones follow the sidebar's repo selection and ignore the period filter; click a repo to see the full cadence).
 
 ## Repo (`/repos/:name`): how is this repository doing?
 
