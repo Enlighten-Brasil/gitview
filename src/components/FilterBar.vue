@@ -41,6 +41,11 @@ const showWorkScope = computed(() =>
   !!stats.value && 'prodCommits' in stats.value.totals && route.meta.section !== 'branches',
 )
 
+// seção Período (issue #210): oculta em /branches com a mesma guarda dos chips
+// de Escopo acima — a página é inventário "agora" e não consome o período
+// (o switch "incluir bots" fica: branches.ts consome filters.showBots)
+const showPeriod = computed(() => route.meta.section !== 'branches')
+
 const workScopes = [
   { label: 'Todos', value: 'all' },
   { label: 'Produção', value: 'prod' },
@@ -113,40 +118,42 @@ function clearList(list: ListKey) {
 
 <template>
   <div class="flex flex-col gap-5">
-    <section class="flex flex-col gap-2">
-      <span class="filter-label">Período</span>
-      <div class="flex flex-wrap gap-1.5">
-        <UButton
-          v-for="r in ranges"
-          :key="r.label"
-          size="xs"
-          :color="!isCustomRange() && filters.rangeMonths === r.months ? 'primary' : 'neutral'"
-          :variant="!isCustomRange() && filters.rangeMonths === r.months ? 'soft' : 'outline'"
-          :aria-pressed="!isCustomRange() && filters.rangeMonths === r.months"
-          @click="setRange(r.months)"
-        >
-          {{ r.label }}
-        </UButton>
-        <UButton
-          size="xs"
-          icon="i-lucide-calendar-range"
-          :color="isCustomRange() ? 'primary' : 'neutral'"
-          :variant="isCustomRange() ? 'soft' : 'outline'"
-          :aria-pressed="isCustomRange()"
-          @click="toggleCustomRange"
-        >
-          Personalizado
-        </UButton>
-      </div>
-      <div v-if="isCustomRange()" class="flex items-end gap-1.5">
-        <UFormField label="de" :ui="{ label: 'sr-only' }" class="flex-1">
-          <UInput :model-value="filters.dateFrom" type="date" size="xs" class="w-full" @update:model-value="setDateFrom" />
-        </UFormField>
-        <UIcon name="i-lucide-arrow-right" class="size-3.5 text-dimmed shrink-0 mb-1.5" />
-        <UFormField label="até" :ui="{ label: 'sr-only' }" class="flex-1">
-          <UInput :model-value="filters.dateTo" type="date" size="xs" class="w-full" @update:model-value="setDateTo" />
-        </UFormField>
-      </div>
+    <section v-if="showPeriod || showBots" class="flex flex-col gap-2">
+      <template v-if="showPeriod">
+        <span class="filter-label">Período</span>
+        <div class="flex flex-wrap gap-1.5">
+          <UButton
+            v-for="r in ranges"
+            :key="r.label"
+            size="xs"
+            :color="!isCustomRange() && filters.rangeMonths === r.months ? 'primary' : 'neutral'"
+            :variant="!isCustomRange() && filters.rangeMonths === r.months ? 'soft' : 'outline'"
+            :aria-pressed="!isCustomRange() && filters.rangeMonths === r.months"
+            @click="setRange(r.months)"
+          >
+            {{ r.label }}
+          </UButton>
+          <UButton
+            size="xs"
+            icon="i-lucide-calendar-range"
+            :color="isCustomRange() ? 'primary' : 'neutral'"
+            :variant="isCustomRange() ? 'soft' : 'outline'"
+            :aria-pressed="isCustomRange()"
+            @click="toggleCustomRange"
+          >
+            Personalizado
+          </UButton>
+        </div>
+        <div v-if="isCustomRange()" class="flex items-end gap-1.5">
+          <UFormField label="de" :ui="{ label: 'sr-only' }" class="flex-1">
+            <UInput :model-value="filters.dateFrom" type="date" size="xs" class="w-full" @update:model-value="setDateFrom" />
+          </UFormField>
+          <UIcon name="i-lucide-arrow-right" class="size-3.5 text-dimmed shrink-0 mb-1.5" />
+          <UFormField label="até" :ui="{ label: 'sr-only' }" class="flex-1">
+            <UInput :model-value="filters.dateTo" type="date" size="xs" class="w-full" @update:model-value="setDateTo" />
+          </UFormField>
+        </div>
+      </template>
       <USwitch v-if="showBots" :model-value="filters.showBots" label="incluir bots" size="sm" class="mt-1" @update:model-value="setShowBots" />
     </section>
 
