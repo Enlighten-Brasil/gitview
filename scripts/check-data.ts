@@ -465,6 +465,18 @@ if (team) {
   if (names.size !== devs.length)
     errors.push('team.json.devs: nomes duplicados')
 
+  // nomes que colidem só pelo sufixo de bot ('x' e 'x[bot]') são a MESMA
+  // identidade — collect-team canonicaliza sem o sufixo; par sobrevivente = bug
+  const normKeys = new Map<string, string>()
+  for (const d of devs) {
+    const k = String(d.name).replace(/\[bot\]$/i, '').toLowerCase()
+    const twin = normKeys.get(k)
+    if (twin !== undefined)
+      errors.push(`team.json.devs: "${d.name}" duplica "${twin}" após normalizar sufixo de bot`)
+    else
+      normKeys.set(k, String(d.name))
+  }
+
   // membro de time precisa ser dev conhecido (senão badge/membro órfão na UI)
   if (isArr(team.teams)) {
     for (const t of team.teams as Record<string, unknown>[]) {
