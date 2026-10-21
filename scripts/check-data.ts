@@ -412,6 +412,7 @@ if (releases) {
     const tags = (isArr(r.tags) ? r.tags : []) as Record<string, unknown>[]
     let prevT = Infinity
     let tagCommits = 0
+    let prevSumMs = NaN
     for (const t of tags) {
       const ms = Date.parse(String(t.date ?? ''))
       if (Number.isNaN(ms)) {
@@ -427,7 +428,10 @@ if (releases) {
         errors.push(`releases["${r.repo}"]: tag "${t.tag}" com commits negativos`)
         break
       }
-      tagCommits += Number(t.commits) || 0
+      // tags irmãs (mesmo instante) dividem o count do grupo — soma uma vez
+      if (ms !== prevSumMs)
+        tagCommits += Number(t.commits) || 0
+      prevSumMs = ms
     }
     const unreleased = Number(r.unreleased)
     if (!Number.isFinite(unreleased) || unreleased < 0) {

@@ -111,12 +111,23 @@ await mapPool(repos, 4, async (repo) => {
 
   /** commits em (after, until] — timestamps ordenados, two-pointer simples */
   let cursor = 0
+  // tags irmãs no mesmo instante (mesmo commit de release) dividem o count do
+  // grupo: o intervalo é calculado UMA vez e atribuído a todas as tags do grupo
+  let prevMs = NaN
+  let prevCount = 0
   const tagRows = tags.map((t) => {
-    let count = 0
     const tagMs = new Date(t.date).getTime()
-    while (cursor < dates.length && dates[cursor] <= tagMs) {
-      cursor++
-      count++
+    let count = 0
+    if (tagMs === prevMs) {
+      count = prevCount
+    }
+    else {
+      while (cursor < dates.length && dates[cursor] <= tagMs) {
+        cursor++
+        count++
+      }
+      prevMs = tagMs
+      prevCount = count
     }
     const gh = ghMap.get(t.tag)
     return {
