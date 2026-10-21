@@ -13,6 +13,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useMarkdownExport } from '@/composables/useMarkdownExport'
 import { stats } from '@/data'
 import { githubError } from '@/github'
+import { renderMarkdown } from '@/markdown'
 import { buildReport, customWindow, presetWindow, rollingWindow } from '@/report'
 import { loadTeam, team, teamLoadError } from '@/team'
 
@@ -229,6 +230,15 @@ function applyCustom() {
 // ---------------------------------------------------------------------------
 const { copied, hasCopyPath, copy, download } = useMarkdownExport('relatório')
 
+// apresentação pura: cru × preview — fora da URL (o markdown exportado não muda)
+const viewMode = ref<'preview' | 'raw'>('preview')
+const previewHtml = computed(() => (report.value ? renderMarkdown(report.value.markdown) : ''))
+
+// feedback 0.46: impressão abre o diálogo NATIVO do navegador — sem toast
+function onPrint() {
+  window.print()
+}
+
 function fileSlug(title: string): string {
   return title
     .normalize('NFD')
@@ -251,7 +261,7 @@ function onDownload() {
 
 <template>
   <div class="max-w-[1320px] w-full mx-auto px-5 py-6 flex flex-col gap-4">
-    <section id="assunto" class="flex flex-col gap-3 scroll-mt-16">
+    <section id="assunto" class="flex flex-col gap-3 scroll-mt-16 no-print">
       <div class="flex flex-wrap items-center gap-2">
         <span class="text-sm text-dimmed">assunto</span>
         <UButton
@@ -321,11 +331,33 @@ function onDownload() {
     />
 
     <section id="relatorio" class="flex flex-col gap-3 scroll-mt-16">
-      <div class="flex flex-wrap items-center justify-between gap-2">
+      <div class="flex flex-wrap items-center justify-between gap-2 no-print">
         <h1 class="text-lg font-semibold">
           {{ report?.title ?? 'Relatório' }}
         </h1>
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2">
+          <UButton
+            label="preview"
+            size="sm"
+            color="neutral"
+            :variant="viewMode === 'preview' ? 'solid' : 'soft'"
+            @click="viewMode = 'preview'"
+          />
+          <UButton
+            label="markdown cru"
+            size="sm"
+            color="neutral"
+            :variant="viewMode === 'raw' ? 'solid' : 'soft'"
+            @click="viewMode = 'raw'"
+          />
+          <UButton
+            icon="i-lucide-printer"
+            label="imprimir"
+            color="neutral"
+            variant="outline"
+            :disabled="!report"
+            @click="onPrint"
+          />
           <UButton
             :icon="copied ? 'i-lucide-check' : 'i-lucide-clipboard'"
             :label="copied ? 'copiado!' : 'copiar markdown'"
@@ -344,15 +376,20 @@ function onDownload() {
         </div>
       </div>
       <pre
-        v-if="report"
+        v-if="report && viewMode === 'raw'"
         class="font-mono text-xs leading-relaxed whitespace-pre-wrap rounded-lg border border-default p-4"
       >{{ report.markdown }}</pre>
+      <div
+        v-else-if="report"
+        class="report-md rounded-lg border border-default p-4"
+        v-html="previewHtml"
+      />
       <p v-else class="text-sm text-dimmed">
         sem dados — rode a coleta primeiro
       </p>
       <!-- decisão da issue #177: o relatório é dia-preciso e ignorado pelos
            filtros da sidebar (como o resumo semanal, issue #129) -->
-      <p class="text-xs text-dimmed">
+      <p class="text-xs text-dimmed no-print">
         relatório dia-preciso — pode divergir do dashboard da sidebar, que corta por mês; ignora os filtros da sidebar e sempre exclui bots.
       </p>
     </section>

@@ -343,3 +343,19 @@ catch (err) {
 }
 
 console.log(`✓ check-report: ${checks} asserções — buildReport (3 assuntos × janelas), linhas por dev, abertura, rótulos por formato, degradação de PRs, preset→janela, delta, fallback sem daily, wrapper e pureza`)
+
+// ── renderer (issue #186) ──
+try {
+  const { renderMarkdown } = await import('../src/markdown')
+  const evil = renderMarkdown('## Time <script>alert(1)</script>\n- **<script>bad</script>**: 5 commits')
+  ok(evil.includes('&lt;script&gt;alert(1)&lt;/script&gt;') && !evil.includes('<script'), 'renderer: nome com <script> renderiza como texto (escape-first)')
+  ok(!/<h[12]>/.test(renderMarkdown('meio da linha # não vira heading nem repo#42')), 'renderer: heading só em início de linha')
+  const snake = renderMarkdown('repo_snake_case e repo#42_x ficam intactos')
+  ok(snake.includes('repo_snake_case') && snake.includes('repo#42_x') && !snake.includes('<em>'), 'renderer: sublinhado intra-palavra preservado')
+  ok(renderMarkdown('- **5 commits** aqui').includes('<strong>5 commits</strong>'), 'renderer: **bold** renderizado')
+  ok(renderMarkdown('_dados de ontem_').includes('<em>dados de ontem</em>'), 'renderer: _itálico_ renderizado')
+}
+catch (err) {
+  console.error(`✗ check-report: ${err instanceof Error ? err.message : err}`)
+  process.exit(1)
+}
