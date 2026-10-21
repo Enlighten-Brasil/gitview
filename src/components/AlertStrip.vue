@@ -68,7 +68,7 @@ const alerts = computed<Alert[]>(() => {
 </script>
 
 <template>
-  <div v-if="alerts.length" class="flex flex-wrap gap-2" aria-label="alertas do período">
+  <div v-if="alerts.length" class="flex flex-wrap gap-2" aria-label="alertas de saúde do time">
     <RouterLink
       v-for="a in alerts"
       :key="a.label"
