@@ -427,6 +427,35 @@ export function buildReport(subject: ReportSubject, from: Date, to: Date, inProg
       }
       out.push(`- ${d.name}: ${parts.join(' · ')}`)
     }
+    if (subject.kind === 'org') {
+      // bloco de times (issue #185) — só assunto org: uma linha por time na
+      // ordem do team.json, 'sem time' sempre presente (0 é dado, não ausência)
+      // e rodapé fixo de sobreposição. PRs por time contam o author já resolvido
+      // por ghName (o login cru do github.json zeraria a coluna); degradado, só
+      // commits — a nota única da seção de PRs cobre o resto
+      const teamList = team.value?.teams ?? []
+      const inAnyTeam = (name: string) => teamList.some(t => t.members.includes(name))
+      const teamCounts = (inTeam: (name: string) => boolean): string => {
+        let commits = 0
+        let teamPrs = 0
+        for (const [name, a] of agg.byAuthor) {
+          if (inTeam(name))
+            commits += a.commits
+        }
+        // merged já vem filtrado à janela com bots fora (vazio quando degradado)
+        for (const pr of merged) {
+          if (inTeam(ghName(pr.author)))
+            teamPrs++
+        }
+        return `${commits} ${commits === 1 ? 'commit' : 'commits'}${prsDegraded ? '' : ` · ${teamPrs} ${teamPrs === 1 ? 'PR mergeado' : 'PRs mergeados'}`}`
+      }
+      for (const t of teamList)
+        out.push(`- ${t.name}: ${teamCounts(n => t.members.includes(n))}`)
+      out.push(`- sem time: ${teamCounts(n => !inAnyTeam(n))}`)
+      // ponytail: rodapé fixo (texto congelado da spec, sem contagem dinâmica)
+      // — upgrade = contar os devs em >1 time se o texto variável voltar a ser pedido
+      out.push('- times podem sobrepor (um dev pode estar em mais de um time) — a soma das linhas excede o total da org')
+    }
   }
   if (topRepos.length) {
     out.push(`- repos mais ativos: ${topRepos.slice(0, 5).map(([repo, n]) => `${repo} (${n})`).join(', ')}`)

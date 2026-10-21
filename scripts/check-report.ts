@@ -146,7 +146,11 @@ const TEAM_DATA: TeamData = {
     { name: 'Beto', title: null, description: null, emails: [], githubLogins: ['beto-login'], teams: [], bot: false },
     { name: 'CI Bot', title: null, description: null, emails: [], githubLogins: ['ci-bot'], teams: [], bot: true },
   ],
-  teams: [{ name: 'Plataforma', description: null, color: null, members: ['Ana'] }],
+  teams: [
+    { name: 'Plataforma', description: null, color: null, members: ['Ana'] },
+    // time sem membros: cobre a linha de time zerada e a ordem do team.json
+    { name: 'Suporte', description: null, color: null, members: [] },
+  ],
   candidates: [],
 }
 
@@ -223,6 +227,13 @@ try {
   ok(orgMd.includes('- (até hoje, independe do período)'), 'org: rodapé da inatividade (janela fixa rotulada)')
   ok(!orgMd.includes('CI Bot'), 'org: bot excluído de commits e PRs')
 
+  // ── bloco de times (issue #185) — só assunto org, sob ## Commits ──
+  ok(orgMd.includes('- Plataforma: 5 commits · 1 PR mergeado'), 'times: linha por time com PRs resolvidos por ghName (author cru do github.json não zera a coluna)')
+  ok(orgMd.includes('- Suporte: 0 commits · 0 PRs mergeados'), 'times: time zerado sai com zeros explícitos (0 é dado, não ausência)')
+  ok(orgMd.indexOf('- Plataforma:') < orgMd.indexOf('- Suporte:'), 'times: linhas na ordem do team.json')
+  ok(orgMd.includes('- sem time: 1 commit · 2 PRs mergeados'), 'times: sem time = complemento da união dos times, sempre presente')
+  ok(orgMd.includes('- times podem sobrepor (um dev pode estar em mais de um time) — a soma das linhas excede o total da org'), 'times: rodapé fixo de sobreposição (texto fixo, genérico — nomes reais de time nunca no repositório)')
+
   // ── time × semana fechada ──
   const teamMd = buildReport({ kind: 'team', team: 'Plataforma' }, lw.from, lw.to)!.markdown
   ok(teamMd.includes('- **5 commits** (+67% vs semana anterior), 1 dev ativo, 1 repo ativo'), 'time: commits só dos membros')
@@ -233,6 +244,7 @@ try {
   ok(teamMd.includes('## Releases'), 'time: releases entram (só org/time)')
   ok(!teamMd.includes('- devs sem commit há 21+ dias: Beto'), 'time: inatividade filtrada aos membros (Beto não é membro)')
   ok(teamMd.includes('- repos sem commit há 30+ dias: demo-web'), 'time: repos stale valem para time')
+  ok(!teamMd.includes('- sem time:') && !teamMd.includes('times podem sobrepor'), 'time: sem bloco de times (o recorte do assunto já é a resposta)')
 
   // ── dev × semana fechada ──
   const anaMd = buildReport({ kind: 'dev', dev: 'Ana' }, lw.from, lw.to)!.markdown
@@ -243,6 +255,7 @@ try {
   ok(anaMd.includes('- reviews feitas: 1'), 'dev: top reviewers vira "reviews feitas"')
   ok(!anaMd.includes('## Releases'), 'dev: releases fora do assunto dev')
   ok(!anaMd.includes('repos sem commit'), 'dev: repos stale fora do assunto dev')
+  ok(!anaMd.includes('- sem time:') && !anaMd.includes('times podem sobrepor'), 'dev: sem bloco de times')
   const betoMd = buildReport({ kind: 'dev', dev: 'Beto' }, lw.from, lw.to)!.markdown
   ok(betoMd.includes('- **1 commit**, 1 dev ativo, 1 repo ativo'), 'dev: singularização commit/dev/repo')
   ok(betoMd.includes('- **2 mergeados** (+100% vs semana anterior), cycle time mediano 3,0d'), 'dev: cycle time mediano dos PRs do dev')
@@ -256,6 +269,7 @@ try {
   ok(monthMd.includes('- Ana: 7 commits (+5)'), 'linhas por dev: delta absoluto no mês')
   ok(monthMd.includes('- nenhuma release no mês'), 'rótulo: nenhuma release no formato da janela (no mês)')
   ok(monthMd.includes('- Ana: 43% dos commits fora do horário no mês (fds/madrugada)'), 'rótulo: fora do horário no formato da janela (no mês)')
+  ok(monthMd.includes('- sem time: 0 commits · 0 PRs mergeados') && monthMd.includes('times podem sobrepor'), 'times: sem time presente com 0 e rodapé em qualquer janela')
   const w40Md = buildReport({ kind: 'org' }, new Date(2026, 8, 28), new Date(2026, 9, 4, 23, 59, 59, 999))!.markdown
   ok(w40Md.includes('- nenhuma release na semana'), 'rótulo: nenhuma release no formato da janela (na semana)')
   ok(org7.markdown.includes('- nenhuma release nos 7 dias'), 'rótulo: nenhuma release no formato da janela (nos N dias, rolante)')
@@ -278,6 +292,7 @@ try {
   ok(weekMd.includes('- **2 commits**, 1 dev ativo, 1 repo ativo'), 'em curso: commits da parcial')
   ok(weekMd.includes('- Ana: 2 commits (—) · 0 PRs mergeados · 0 reviews'), 'em curso: linha por dev com traço longo no lugar do delta')
   ok(weekMd.includes('2 commits · 0 PRs mergeados · cycle time <1h · 0 releases'), 'abertura: em curso sem deltas')
+  ok(weekMd.includes('- sem time: 0 commits · 0 PRs mergeados') && weekMd.includes('times podem sobrepor'), 'times: bloco presente também em janela em curso')
 
   // ── delta: base 0 ──
   const zeroMd = buildReport({ kind: 'dev', dev: 'Beto' }, lm.from, lm.to)!.markdown
@@ -289,6 +304,7 @@ try {
   ok(longMd.includes('## Pull requests') && longMd.includes('- sem dados de PRs nesta janela'), 'janela > 400d: seção de PRs degrada com aviso')
   ok(!longMd.includes('mergeados'), 'janela > 400d: sem contagem de PRs (subcontagem)')
   ok(longMd.includes('- Ana: 9 commits (+8)'), 'janela degradada: linhas por dev sem as parcelas de PR/review')
+  ok(longMd.includes('- Plataforma: 9 commits') && longMd.includes('- sem time: 0 commits') && !longMd.includes('PRs mergeados'), 'degradação: linhas de time só com commits (nota única já cobre a ausência de PRs)')
   ok(/vs \d+ dias anteriores \(\d{2}\/\d{2}–\d{2}\/\d{2}\)/.test(longMd), 'janela longa: delta com rótulo de N dias anteriores')
 
   // ── degradação por POSIÇÃO: janela curta inteiramente fora da cobertura ──
@@ -297,6 +313,7 @@ try {
   ok(oldMd.split('- sem dados de PRs nesta janela').length === 2, 'posição: UMA nota única, nunca repetida')
   ok(!oldMd.includes('mergeado') && !oldMd.includes('reviews') && !oldMd.includes('cycle time'), 'posição: nenhum número de PR — nada de "0 mergeados" silencioso')
   ok(oldMd.includes('0 commits · 0 releases'), 'posição: abertura sem as parcelas de PR/cycle quando degradado')
+  ok(oldMd.includes('- Plataforma: 0 commits') && oldMd.includes('- sem time: 0 commits'), 'posição: linhas de time só com commits, zeros explícitos')
 
   // ── fallback sem daily.json (coleta anterior à issue #175) ──
   daily.value = null
