@@ -144,7 +144,7 @@ Regras comuns aos sete: objeto no topo com `generatedAt` (timestamp ISO da execu
 | `additions` / `deletions` | number | somas cruas do numstat dos commits à frente da produção |
 | `status` | string | union fechada: `production`, `integration`, `feature`, `bot`, `pousada` |
 
-`pousada` = `aheadProd = 0` e sem atividade há ≥ `GITVIEW_BRANCH_STALE_DAYS` dias (default 30). `bot` casa o prefixo `dependabot/` ou `renovate/` (`BOT_BRANCH_RE`) ou nome exato em `GITVIEW_BOT_BRANCHES`. Precedência de status: production → integration → bot → pousada → feature. Os vínculos com PRs (branch viva sem PR, pousada mergeada via squash) são calculados pelo frontend em join com o `github.json` (`headRef`) — não fazem parte do status.
+`pousada` = `aheadProd = 0`, `aheadInt` nulo ou 0, e sem atividade há ≥ `GITVIEW_BRANCH_STALE_DAYS` dias (default 30). `bot` casa o prefixo `dependabot/` ou `renovate/` (`BOT_BRANCH_RE`) ou nome exato em `GITVIEW_BOT_BRANCHES`. Precedência de status: production → integration → bot → pousada → feature. Os vínculos com PRs (branch viva sem PR, pousada mergeada via squash) são calculados pelo frontend em join com o `github.json` (`headRef`) — não fazem parte do status.
 
 ```json
 {
