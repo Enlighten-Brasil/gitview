@@ -61,7 +61,7 @@ The tables sort where a risk column exists; the Visão geral alerts point here a
 
 Depends on GitHub data, collected with an authenticated `gh`; without it the page shows **Sem dados do GitHub**. The contextual sub-nav covers three anchors, and the Visão geral alerts land on `#abertos` and `#reviews`.
 
-- `#abertos`: cards **PRs abertos** (with a drafts sub-line), **parados há +14 dias**, **mergeados no período**, **cycle time mediano**, **mergeados sem review**; then **PRs parados — abertos há 14+ dias** and **PRs abertos — mais antigos primeiro**.
+- `#abertos`: cards **PRs abertos** (with a drafts sub-line), **PRs parados há 14+ dias**, **mergeados no período**, **cycle time mediano**, **mergeados sem review**; then **PRs parados — abertos há 14+ dias** and **PRs abertos — mais antigos primeiro**.
 - `#cycle-time`: **Cycle time mediano por repo (criação → merge)** and **Tendência de cycle time — últimos 6 meses**, a fixed window.
 - `#reviews`: **Reviews por dev (no período)**.
 
