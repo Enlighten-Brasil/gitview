@@ -277,7 +277,10 @@ function sinceArgs(repoName: string): string[] {
   const row = maxDateStmt.get(repoName) as { max: string | null }
   if (!row.max)
     return []
-  const d = new Date(row.max)
+  // clamp (issue #207): relógio do autor no futuro não pode empurrar a janela
+  // e esconder commits novos até um --full — a base nunca passa de now + 24h
+  // (margem dos 7 dias continua sendo subtraída depois)
+  const d = new Date(Math.min(new Date(row.max).getTime(), Date.now() + 86_400_000))
   d.setDate(d.getDate() - SINCE_MARGIN_DAYS)
   return [`--since=${d.toISOString()}`]
 }
