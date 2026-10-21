@@ -30,7 +30,9 @@ definePage({
 onMounted(loadTeam)
 
 // ---------------------------------------------------------------------------
-// vocabário bakeado (issue #177) — NUNCA range/bots/scope (o do urlState)
+// vocabário bakeado (issue #177/#187) — NUNCA range/bots/scope (o do urlState);
+// people= é opt-in estrita (`q.people === '1'`) e deliberada a cada visita:
+// nunca persiste no LS_KEY (strip) — o boot não pode religar sozinho
 // ---------------------------------------------------------------------------
 type SubjectId = 'org' | 'team' | 'dev'
 type PresetId = 'week-closed' | 'week-current' | '7d' | 'month-current' | '30d' | 'custom'
@@ -77,6 +79,8 @@ const state = computed(() => {
     preset,
     from,
     to,
+    // sanitização estrita: só a string '1' liga (array/repetido cai no default)
+    people: q.people === '1',
   }
 })
 type ReportState = typeof state.value
@@ -96,12 +100,17 @@ function queryOf(s: ReportState): Record<string, string> {
     q.from = s.from
     q.to = s.to
   }
+  if (s.people)
+    q.people = '1'
   return q
 }
 
 function set(patch: Partial<ReportState>) {
   const q = queryOf({ ...state.value, ...patch })
-  localStorage.setItem(LS_KEY, new URLSearchParams(q).toString())
+  // strip do people no localStorage: a opt-in vale só a visita corrente
+  const lsQuery = { ...q }
+  delete lsQuery.people
+  localStorage.setItem(LS_KEY, new URLSearchParams(lsQuery).toString())
   router.replace({ path: '/reports', query: q })
 }
 
@@ -111,6 +120,8 @@ function savedQuery(): Record<string, string> | null {
     return null
   const q: Record<string, string> = {}
   for (const [k, v] of new URLSearchParams(raw)) q[k] = v
+  // defesa em profundidade: people nunca volta do LS, mesmo se gravado à mão
+  delete q.people
   return Object.keys(q).length ? q : null
 }
 
@@ -182,7 +193,7 @@ const windowOf = computed<ReportWindow>(() => {
   }
 })
 
-const report = computed(() => buildReport(resolved.value.subject, windowOf.value.from, windowOf.value.to, windowOf.value.inProgress))
+const report = computed(() => buildReport(resolved.value.subject, windowOf.value.from, windowOf.value.to, windowOf.value.inProgress, { people: state.value.people }))
 
 // ---------------------------------------------------------------------------
 // controles
@@ -336,6 +347,13 @@ function onDownload() {
           {{ report?.title ?? 'Relatório' }}
         </h1>
         <div class="flex flex-wrap gap-2">
+          <UButton
+            label="incluir gestão de pessoas"
+            size="sm"
+            color="neutral"
+            :variant="state.people ? 'solid' : 'soft'"
+            @click="set({ people: !state.people })"
+          />
           <UButton
             label="preview"
             size="sm"

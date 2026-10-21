@@ -20,6 +20,9 @@ export function buildWeeklySummary(): WeeklySummary | null {
   if (!stats.value)
     return null
   const { from, to } = presetWindow('last-week')
-  const report = buildReport({ kind: 'org' }, from, to)
+  // people: true explícito (issue #187): artefato interno de reunião — a seção
+  // de pessoas é conteúdo dele; a paridade wrapper × buildReport (mesmo opts)
+  // é o byte-compare do artefato, coberto pelo check:report
+  const report = buildReport({ kind: 'org' }, from, to, undefined, { people: true })
   return report && { from, to, weekKey: isoWeekKey(from), markdown: report.markdown }
 }
