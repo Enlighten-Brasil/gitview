@@ -77,6 +77,30 @@ export const PR_AGE_AMBER = 3
 /** idade em dias que pinta a idade do PR de erro */
 export const PR_AGE_RED = 7
 
+// --- Bus factor (BusFactor) — concentração de commits/reviews por repo ---
+/** amostra mínima de commits no período para incluir o repo */
+export const BUS_FACTOR_MIN_COMMITS = 10
+/** reviews mínimas no repo para nomear o reviewer principal */
+export const BUS_FACTOR_TOP_REVIEWER_MIN_REVIEWS = 3
+/** reviews mínimas no repo para avaliar ponto cego de review */
+export const BUS_FACTOR_BLIND_SPOT_MIN_REVIEWS = 5
+/** % das reviews do repo que, nas mãos do dev principal, caracteriza ponto cego (espelha o gargalo de review) */
+export const BUS_FACTOR_BLIND_SPOT_REVIEW_SHARE = 0.7
+/** % de concentração de 1 dev considerado risco "alto" */
+export const BUS_FACTOR_RISK_RED = 0.7
+/** % de concentração de 1 dev considerado risco "médio" */
+export const BUS_FACTOR_RISK_AMBER = 0.5
+/** devs ativos no repo que ainda permitem "alto" por concentração */
+export const BUS_FACTOR_HIGH_MAX_DEVS = 2
+
+// --- Gargalo de review (ReviewBottleneck) — concentração de reviews por repo ---
+/** reviews mínimas no período para incluir o repo */
+export const REVIEW_BOTTLENECK_MIN_REVIEWS = 5
+/** % das reviews do repo em 1 pessoa que caracteriza "gargalo" */
+export const REVIEW_BOTTLENECK_RED = 0.7
+/** % das reviews do repo em 1 pessoa que caracteriza "atenção" */
+export const REVIEW_BOTTLENECK_AMBER = 0.5
+
 // --- Delta dos cards de resumo (SummaryCards) ---
 /** variação % absoluta até esse valor é exibida como "flat" */
 export const DELTA_FLAT_PCT = 2

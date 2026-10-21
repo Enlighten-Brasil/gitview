@@ -72,7 +72,7 @@ function riskStatus(r: RepoFix): RiskStatus {
               {{ r.repo }}
             </td>
             <td>
-              <RiskBar :pct="r.fixPct" :status="riskStatus(r)" />
+              <RiskBar :pct="r.fixPct" :status="riskStatus(r)" :show-value="true" />
             </td>
             <td class="num">
               {{ r.fix }}
