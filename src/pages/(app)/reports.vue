@@ -13,7 +13,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useMarkdownExport } from '@/composables/useMarkdownExport'
 import { stats } from '@/data'
 import { githubError } from '@/github'
-import { buildReport, presetWindow } from '@/report'
+import { buildReport, customWindow, presetWindow, rollingWindow } from '@/report'
 import { loadTeam, team, teamLoadError } from '@/team'
 
 definePage({
@@ -166,24 +166,10 @@ const resolved = computed<{ subject: ReportSubject, message: string }>(() => {
 })
 
 // ---------------------------------------------------------------------------
-// período → janela (motor: presetWindow; 7d/30d = hoje + N-1 dias, corte
-// dia-preciso igual ao do daily.json)
+// período → janela (TUDO do motor — issues #176/#177: a página só mapeia
+// chips; 7d/30d são janelas rolantes completas com delta limpo em qualquer
+// dia, por isso são o default)
 // ---------------------------------------------------------------------------
-function rollingWindow(days: number): ReportWindow {
-  const now = new Date()
-  return { from: new Date(now.getFullYear(), now.getMonth(), now.getDate() - days + 1), to: now, inProgress: true }
-}
-
-function customWindow(from: string, to: string): ReportWindow {
-  const end = new Date(`${to}T23:59:59.999`)
-  const today = new Date()
-  return {
-    from: new Date(`${from}T00:00:00`),
-    to: end,
-    inProgress: end >= new Date(today.getFullYear(), today.getMonth(), today.getDate()),
-  }
-}
-
 const windowOf = computed<ReportWindow>(() => {
   switch (state.value.preset) {
     case 'week-closed': return presetWindow('last-week')
@@ -195,7 +181,7 @@ const windowOf = computed<ReportWindow>(() => {
   }
 })
 
-const report = computed(() => buildReport(resolved.value.subject, windowOf.value.from, windowOf.value.to))
+const report = computed(() => buildReport(resolved.value.subject, windowOf.value.from, windowOf.value.to, windowOf.value.inProgress))
 
 // ---------------------------------------------------------------------------
 // controles
