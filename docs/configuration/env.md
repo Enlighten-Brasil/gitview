@@ -74,6 +74,7 @@ package-lock.json  pnpm-lock.yaml  yarn.lock  bun.lock  bun.lockb
 Cargo.lock  composer.lock  Gemfile.lock  poetry.lock  Pipfile.lock
 pubspec.lock  Package.resolved  go.sum
 *.min.js  *.min.css  *.min.map  *.snap  *.generated.ts  *.generated.js  *.designer.cs
+dist/**  documentation/**  full_documentation.json
 ```
 
 ## How values are resolved
