@@ -1,6 +1,7 @@
 /**
  * Sanity check dos JSONs gerados pelos coletores — roda no fim do `pnpm collect`
- * (e como último passo do /__collect na UI). Não regenera nada: só lê public/data/*
+ * (e como último passo do /__collect na UI). Não regenera nada: lê public/data/*
+ * (mais o data/gitview.db quando existe — só para avisos, nunca para asserts)
  * e falha (exit 1) se o shape quebrar, antes de a UI estranhar os dados.
  *
  * ponytail: asserts de superfície (campos que os loaders/computed do src/ leem).
@@ -142,6 +143,8 @@ if (stats) {
     check(sum(stats.perAuthor, 'commits') === totals.commits, `stats.json: ΣperAuthor.commits (${sum(stats.perAuthor, 'commits')}) != totals.commits (${totals.commits})`)
     check(sum(stats.perRepo, 'commits') === totals.commits, `stats.json: ΣperRepo.commits (${sum(stats.perRepo, 'commits')}) != totals.commits (${totals.commits})`)
     check(sum(stats.monthly, 'commits') === totals.commits, `stats.json: Σmonthly.commits (${sum(stats.monthly, 'commits')}) != totals.commits (${totals.commits})`)
+    check(sum(stats.weekly, 'commits') === totals.commits, `stats.json: Σweekly.commits (${sum(stats.weekly, 'commits')}) != totals.commits (${totals.commits})`)
+    check(sum(stats.monthlyTypes, 'commits') === totals.commits, `stats.json: ΣmonthlyTypes.commits (${sum(stats.monthlyTypes, 'commits')}) != totals.commits (${totals.commits})`)
     check(typeof totals.additions === 'number' && totals.additions >= 0 && typeof totals.deletions === 'number' && totals.deletions >= 0, 'stats.json.totals: additions/deletions negativos')
     // split de escopo (issue #119): prod + progresso recompõem o total e a
     // partição do monthly (linha sem scope = prod; com scope = progresso)
@@ -273,7 +276,6 @@ if (commits) {
   const list = (isArr(commits.commits) ? commits.commits : []) as Record<string, unknown>[]
   let prev = Infinity
   let checked = 0
-  let mergeLike = 0
   for (const c of list) {
     const d = String(c.date ?? '')
     if (!d.endsWith('Z')) {
@@ -294,16 +296,46 @@ if (commits) {
       errors.push(`commits.json: hash fora do formato 7-hex ("${c.hash}")`)
       break
     }
-    // commits de merge topológicos saem pelo --no-merges (decisão #7). Os que
-    // sobram com assunto de merge são single-parent (squash/pull regravado) —
-    // se têm diff zero, só inflam contagem: revisão manual (aviso, não bloqueia)
-    if (/^Merge (?:branch|remote-tracking branch|pull request|refs\/)/.test(String(c.message ?? '')) && Number(c.additions) === 0 && Number(c.deletions) === 0)
-      mergeLike++
     if (++checked >= 4000)
       break // amostra generosa — não precisa varrer tudo
   }
-  if (mergeLike)
-    warn(false, `commits.json: ${mergeLike} commits com assunto de merge e diff zero na amostra — single-parent (squash/pull regravado), candidate a excluir (decisão #7)`)
+  // hash único por (repo, hash) — a chave da linha: o mesmo commit pode
+  // existir em repos irmãos com história compartilhada (unicidade global
+  // quebraria o gate); duplicata dentro do repo = linha inserida 2×
+  const seenHash = new Set<string>()
+  for (let i = 0; i < list.length; i++) {
+    const c = list[i]
+    const key = JSON.stringify([c.repo, c.hash])
+    if (seenHash.has(key)) {
+      errors.push(`commits.json: hash "${String(c.hash)}" duplicado no repo "${String(c.repo)}" (commits[${i}])`)
+      break
+    }
+    seenHash.add(key)
+  }
+}
+
+// ── data/gitview.db (opcional — CI-safe, issue #204) ─────────────────────
+// O aviso de merge-subject + diff zero precisa do banco (gitignored): a
+// leitura é CONDICIONAL à existência do arquivo — com o banco roda e avisa;
+// sem ele (CI) loga a linha de não avaliado e segue verde. Os asserts acima
+// continuam lendo APENAS os JSONs de public/data.
+const DB_PATH = join(dirname(fileURLToPath(import.meta.url)), '..', 'data', 'gitview.db')
+if (existsSync(DB_PATH)) {
+  // merges topológicos saem pelo --no-merges (decisão #7): o que resta no
+  // banco com assunto de merge é single-parent (squash/pull regravado) — com
+  // diff zero, só infla a contagem
+  const { DatabaseSync } = await import('node:sqlite')
+  const db = new DatabaseSync(DB_PATH, { readOnly: true })
+  const dbTotal = (db.prepare('SELECT COUNT(*) AS n FROM commits').get() as { n: number }).n
+  const dbRows = db.prepare('SELECT hash, subject FROM commits WHERE additions = 0 AND deletions = 0 AND subject LIKE ?').all('Merge %') as { hash: string, subject: string }[]
+  db.close()
+  const mergeLike = dbRows.filter(r => /^Merge (?:branch|remote-tracking branch|pull request|refs\/)/.test(r.subject))
+  // decisão baked (#204): AVISAR e manter a contagem (3 de 21.311 — o custo
+  // de um filtro retroativo não compensa); reverter se discordar
+  warn(mergeLike.length === 0, `data/gitview.db: ${mergeLike.length} de ${dbTotal} commits single-parent com assunto de merge e diff +0/-0 (${mergeLike.map(r => r.hash.slice(0, 8)).join(', ')}) — manter a contagem (decisão baked)`)
+}
+else {
+  console.log('○ check-data: data/gitview.db ausente (gitignored) — aviso de merge-subject + diff +0/-0 não avaliado (CI-safe)')
 }
 
 // ── daily.json (7º fixo — agregado dia-preciso, issue #175) ───────────────
@@ -361,6 +393,10 @@ if (github) {
       errors.push('github.json.users[*]: esperado {name: string, bot: boolean}')
     }
   }
+  // cross-file (#204): author de PR mapeado em users (ghost = PR apagado,
+  // isento) e repo de PR existente no stats.json
+  const ghUsers = new Set(github.users && typeof github.users === 'object' && !Array.isArray(github.users) ? Object.keys(github.users as Record<string, unknown>) : [])
+  const ghStatsRepos = new Set(isArr(stats?.repos) ? (stats!.repos as string[]) : [])
   // invariantes dos PRs: estado válido, mergedAt presente em MERGED, sem duplicados
   const seenPr = new Set<string>()
   // janela de mergeados (issue #5): nada com mergedAt mais velho que 400d +
@@ -369,6 +405,10 @@ if (github) {
   let staleMerged = 0
   let oldestStale = ''
   for (const p of (isArr(github.prs) ? github.prs : []) as Record<string, unknown>[]) {
+    if (ghUsers.size > 0 && String(p.author) !== 'ghost' && !ghUsers.has(String(p.author)))
+      errors.push(`github.prs ${p.repo}#${p.number}: author "${String(p.author)}" ausente do github.json.users (ghost isento)`)
+    if (ghStatsRepos.size > 0 && !ghStatsRepos.has(String(p.repo)))
+      errors.push(`github.prs ${p.repo}#${p.number}: repo ausente do stats.json#repos — descoberta/config divergente entre coletores`)
     if (p.state !== 'OPEN' && p.state !== 'MERGED') {
       errors.push(`github.prs ${p.repo}#${p.number}: state inesperado "${p.state}"`)
       break
@@ -438,6 +478,27 @@ if (releases) {
     if (expected != null && expected > 0 && unreleased + tagCommits !== expected)
       errors.push(`releases["${r.repo}"]: unreleased (${unreleased}) + commits em tags (${tagCommits}) != commits do repo (${expected})`)
   }
+
+  // #204 — bloco novo DEPOIS do loop de cobertura (a soma tagCommits e o if
+  // de cobertura acima são da #193 em paralelo, não editar)
+  const releasesStatsRepos = new Set(isArr(stats?.repos) ? (stats!.repos as string[]) : [])
+  const zeroTagRepos = new Map<string, number>()
+  for (const r of (isArr(releases.repos) ? releases.repos : []) as Record<string, unknown>[]) {
+    const repo = String(r.repo)
+    if (releasesStatsRepos.size > 0 && !releasesStatsRepos.has(repo))
+      errors.push(`releases.repos["${repo}"]: repo ausente do stats.json#repos — descoberta/config divergente entre coletores`)
+    const tags = isArr(r.tags) ? (r.tags as Record<string, unknown>[]) : []
+    // a PRIMEIRA tag do repo (a mais antiga — a lista é desc) é isenta: pode
+    // nascer antes do 1º commit e ter 0 legítimo; as irmãs no mesmo commit
+    // caem aqui até a #193 corrigir a contagem
+    for (let i = 0; i < tags.length - 1; i++) {
+      if (Number(tags[i].commits) === 0)
+        zeroTagRepos.set(repo, (zeroTagRepos.get(repo) ?? 0) + 1)
+    }
+  }
+  const zeroTotal = [...zeroTagRepos.values()].reduce((s, n) => s + n, 0)
+  const zeroByRepo = [...zeroTagRepos].map(([repo, n]) => `${repo} ${n}`).join(', ')
+  warn(zeroTotal === 0, `releases.json: ${zeroTotal} tag(s) com commits=0 além da primeira do repo (${zeroByRepo}) — release vazio/duplicado?`)
 }
 
 // ── team.json (shape + invariantes do 4º coletor) ─────────────────────────
