@@ -40,7 +40,7 @@ Só aparece quando a coleta encontrou autores de git ou logins do GitHub sem map
 Com dados coletados, `/setup` redireciona para as Configurações (`/settings`, item **Config** na rail, só em dev). Lá você gerencia repositórios e usa **recoletar tudo**, **limpar e recoletar** ou **apagar dados**; o efeito de cada ação está em [Manutenção dos dados](../configuration/maintenance.md).
 
 :::warning
-O wizard e as Configurações só existem no dev server. No build estático (`pnpm build`), `/setup` mostra o alerta **Setup disponível apenas em modo dev**.
+O wizard e as Configurações só existem no dev server. No build estático (`pnpm build`), `/setup` mostra o alerta **Setup disponível apenas em modo dev**. Sem dados coletados no dist, o alerta também explica o que falta e tem link de saída para a documentação do projeto.
 :::
 
 ## Pelo terminal

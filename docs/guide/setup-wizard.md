@@ -40,7 +40,7 @@ Only appears when the collection found git authors or GitHub logins without a ma
 With collected data, `/setup` redirects to Settings (`/settings`, the **Config** item in the rail, dev only). There you manage repositories and use **recoletar tudo** (re-collect everything), **limpar e recoletar** (clear and re-collect) or **apagar dados** (delete data); each action's effect is in [Data maintenance](../configuration/maintenance.md).
 
 :::warning
-The wizard and Settings only exist in the dev server. In the static build (`pnpm build`), `/setup` shows the alert **Setup disponível apenas em modo dev** (setup available in dev mode only).
+The wizard and Settings only exist in the dev server. In the static build (`pnpm build`), `/setup` shows the alert **Setup disponível apenas em modo dev** (setup available in dev mode only). With no collected data in the dist, the alert also explains what is missing and links out to the project documentation.
 :::
 
 ## From the terminal

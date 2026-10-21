@@ -26,6 +26,8 @@ export interface Loader<T> {
   /** payload do JSON — shallow: trocado por inteiro a cada load */
   data: ShallowRef<T | null>
   error: ShallowRef<string | null>
+  /** falha de REDE do último load (fetch interrompido) ≠ arquivo ausente/HTTP */
+  networkError: ShallowRef<boolean>
   load: (force?: boolean) => Promise<void>
 }
 
@@ -37,11 +39,14 @@ function markRawPayload<T>(value: T): T {
 export function defineLoader<T>(path: string, opts: LoaderOptions<T> = {}): Loader<T> {
   const data = shallowRef(null) as ShallowRef<T | null>
   const error = shallowRef<string | null>(null)
+  const networkError = shallowRef(false)
 
   async function load(force = false) {
     // política de cache unificada: já carregado e sem force → não refaz o fetch
     if (data.value && !force)
       return
+    // estado por tentativa: quem observa vira false→true a cada falha de rede
+    networkError.value = false
     try {
       const url = `${import.meta.env.BASE_URL}data/${path}`
       const res = await fetch(force ? `${url}?t=${Date.now()}` : url)
@@ -66,6 +71,9 @@ export function defineLoader<T>(path: string, opts: LoaderOptions<T> = {}): Load
     }
     catch (err) {
       const e = err as Error
+      // TypeError é o que o fetch rejeita em falha de REDE (spec) — distinto
+      // dos erros sintéticos acima (HTTP não-OK / sem arquivo), todos Error
+      networkError.value = e instanceof TypeError
       // onErrorValue define o dado em falha; sem ele, o valor atual é preservado
       if (opts.onErrorValue !== undefined)
         data.value = markRawPayload(opts.onErrorValue)
@@ -75,5 +83,5 @@ export function defineLoader<T>(path: string, opts: LoaderOptions<T> = {}): Load
     }
   }
 
-  return { data, error, load }
+  return { data, error, networkError, load }
 }
