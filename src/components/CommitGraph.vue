@@ -6,7 +6,7 @@ import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import { ct } from '@/chartTheme'
 import TablePanel from '@/components/TablePanel.vue'
 import { stats } from '@/data'
-import { fmtDate, fmtDaysAgo } from '@/format'
+import { fmtDate, fmtDateTimeShort, fmtDaysAgo } from '@/format'
 import { computeLanes, mergePassRuns } from '@/graph/lanes'
 import { laneColor, refColor, useThemeVersion } from '@/graph/palette'
 import { parseRefs, refKey } from '@/graph/refs'
@@ -163,13 +163,7 @@ function truncate(text: string, font: string, budget: number): string {
   return out
 }
 
-// --- datas (linha: dd/mm/aaaa; tooltip: dd/mm/aaaa hh:mm) -------------------
-function fmtMinute(iso: string): string {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime()))
-    return '—'
-  return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-}
+// --- datas (linha: dd/mm/aaaa; tooltip: dd/mm/aaaa hh:mm via format.ts) -----
 
 const windowDays = computed(() => {
   const cs = commits.value
@@ -406,7 +400,7 @@ const view = computed(() => {
       fullSubject: c.subject,
       author: truncate(c.author, META_FONT, AUTHOR_W - 10),
       date: fmtDate(c.date),
-      tipDate: fmtMinute(c.date),
+      tipDate: fmtDateTimeShort(c.date),
       refsLabel: refs.map(gr => (gr.type === 'HEAD' ? `HEAD -> ${gr.name}` : gr.type === 'tag' ? `tag: ${gr.name}` : gr.name)).join(', '),
       chips,
       href: commitUrl(c.hash),

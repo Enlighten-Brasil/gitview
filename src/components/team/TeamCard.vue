@@ -10,7 +10,7 @@ import type { MemberAddItem, TeamMetrics } from '@/team'
  */
 import { computed, ref } from 'vue'
 import { useConfirm } from '@/composables/useConfirm'
-import { fmtDaysAgo } from '@/format'
+import { fmtCompact, fmtDaysAgo } from '@/format'
 import { avatarBgClass, initialsOf, TEAM_PALETTE } from '@/team'
 
 const props = defineProps<{
@@ -84,8 +84,6 @@ async function requestRemove() {
   if (ok)
     emit('remove', props.cid)
 }
-
-const numFmt = new Intl.NumberFormat('pt-BR', { notation: 'compact' })
 </script>
 
 <template>
@@ -217,11 +215,11 @@ const numFmt = new Intl.NumberFormat('pt-BR', { notation: 'compact' })
         </span>
         <span class="inline-flex items-center gap-1">
           <UIcon name="i-lucide-git-commit-horizontal" class="size-3.5" />
-          {{ numFmt.format(metrics.commits) }} commits
+          {{ fmtCompact(metrics.commits) }} commits
         </span>
         <span class="inline-flex items-center gap-1">
           <UIcon name="i-lucide-git-pull-request" class="size-3.5" />
-          {{ numFmt.format(metrics.prs) }} {{ metrics.prs === 1 ? 'PR' : 'PRs' }}
+          {{ fmtCompact(metrics.prs) }} {{ metrics.prs === 1 ? 'PR' : 'PRs' }}
         </span>
         <UTooltip v-if="metrics.lastCommit" :text="`último commit: ${metrics.lastCommit}`">
           <span class="ml-auto inline-flex items-center gap-1">
