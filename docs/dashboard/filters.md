@@ -95,10 +95,10 @@ Following a link (a dev name, a repo row, an alert chip) applies the parameters 
 | **PRs abertos** | state as of now | `/prs`, `/devs/:name`, `/repos/:name` |
 | **Ranking do time (histórico completo)** | full history | `/devs` |
 | **Inatividade — repos e devs parados** | up to today, ignores all filters | `/health` |
-| **Releases por repositório** | milestones; footer **marcos — ignoram o filtro de período** | `/repos` |
+| **Releases por repositório** | milestones; footer **marcos — seguem a seleção de repos da sidebar · ignoram o filtro de período e o escopo** | `/repos` |
 | **Commit graph** (`#grafo`) | the repo's last N commits (`window` in the JSON, labeled in the footer); also ignores bots and scope | `/repos/:name` |
 
-Each fixed panel declares its own window in the title or the footer, because the question defines the window: pace is, by definition, 4 weeks against the 8 before. The fixed windows respect repos, devs and bots, and the commit-line ones (pace, off-hours in **8 semanas** mode) also respect the work scope; only releases and inactivity ignore the entire sidebar. The formulas are in [Metrics glossary](./metrics.md).
+Each fixed panel declares its own window in the title or the footer, because the question defines the window: pace is, by definition, 4 weeks against the 8 before. The fixed windows respect repos, devs and bots, and the commit-line ones (pace, off-hours in **8 semanas** mode) also respect the work scope; only inactivity ignores the entire sidebar (releases follow the repo selection). The formulas are in [Metrics glossary](./metrics.md).
 
 ## What follows the period on `/devs/:name` and `/repos/:name`
 

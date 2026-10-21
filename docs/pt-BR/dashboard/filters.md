@@ -95,10 +95,10 @@ Seguir um link (nome de dev, linha de repo, chip de alerta) aplica os parâmetro
 | **PRs abertos** | estado agora | `/prs`, `/devs/:name`, `/repos/:name` |
 | **Ranking do time (histórico completo)** | histórico completo | `/devs` |
 | **Inatividade — repos e devs parados** | até hoje, ignora todos os filtros | `/health` |
-| **Releases por repositório** | marcos, rodapé **marcos — ignoram o filtro de período** | `/repos` |
+| **Releases por repositório** | marcos, rodapé **marcos — seguem a seleção de repos da sidebar · ignoram o filtro de período e o escopo** | `/repos` |
 | **Grafo de commits** (`#grafo`) | os últimos N commits do repo (`window` no JSON, rotulado no rodapé); também ignora bots e escopo | `/repos/:name` |
 
-Cada painel fixo declara a própria janela no título ou no rodapé porque a pergunta define a janela: o ritmo é, por definição, 4 semanas contra as 8 anteriores. As janelas fixas respeitam repos, devs e bots, e as alimentadas por linhas de commit (ritmo, fora do horário no modo **8 semanas**) respeitam também o escopo de trabalho; só releases e inatividade ignoram a sidebar inteira. As fórmulas estão em [Glossário de métricas](./metrics.md).
+Cada painel fixo declara a própria janela no título ou no rodapé porque a pergunta define a janela: o ritmo é, por definição, 4 semanas contra as 8 anteriores. As janelas fixas respeitam repos, devs e bots, e as alimentadas por linhas de commit (ritmo, fora do horário no modo **8 semanas**) respeitam também o escopo de trabalho; só inatividade ignora a sidebar inteira (releases seguem a seleção de repos). As fórmulas estão em [Glossário de métricas](./metrics.md).
 
 ## O que segue o período em `/devs/:name` e `/repos/:name`
 

@@ -90,7 +90,7 @@ O inventário de branches da coleta completa (`branches.json`); a página ignora
 - `#distribuicao` **Distribuição por repositório (período filtrado)**.
 - `#por-mes` **Repositório × mês**.
 - `#tipos` **Tipos de commit por mês (feat × fix × ...)** e **Mix por repo (% — ordenado por fix)**.
-- `#releases` **Releases por repositório**: última tag, idade e cadência **X/mês** sobre os últimos 12 meses. Rodapé **marcos — ignoram o filtro de período · clique no repo pra ver a cadência completa**.
+- `#releases` **Releases por repositório**: última tag, idade e cadência **X/mês** sobre os últimos 12 meses. Rodapé **marcos — seguem a seleção de repos da sidebar · ignoram o filtro de período e o escopo · clique no repo pra ver a cadência completa**.
 
 ## Repo (`/repos/:name`): como está este repositório?
 
