@@ -5,6 +5,8 @@
  * A seção ativa vem de `route.meta.section` (definida por página em
  * src/pages) — não mais de match por prefixo. Sub-itens:
  * `to` = rota; `hash` = âncora dentro da própria página (scroll suave).
+ * Sub `hash` só aparece quando o id existe na rota atual (AppNav filtra
+ * pós-render, com reavaliação para seções lazy — #200).
  */
 export interface NavSub {
   label: string
