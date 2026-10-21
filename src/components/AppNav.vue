@@ -5,8 +5,9 @@
  * - painel contextual (220px): sub-itens da seção ativa + filtros (quando couber)
  * O painel contextual é recolhível (botão « no header), persistido em localStorage.
  * A seção ativa vem de route.meta.section; sub-itens são rotas ou âncoras.
+ * Sub só de âncora (#id) só renderiza se o id existir na rota atual (#200).
  */
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { NAV_BOTTOM, NAV_SECTIONS } from '@/nav'
 import { serverMode } from '@/router/guards'
@@ -17,6 +18,41 @@ const sectionKey = computed(() => route.meta.section ?? null)
 const section = computed(() =>
   [...NAV_SECTIONS, NAV_BOTTOM].find(s => s.key === sectionKey.value) ?? null,
 )
+
+// sub-âncoras: só aparecem se o id existir na rota atual (#200) — checagem
+// pós-render (o DOM não é reativo); seções lazy nascem depois do render
+// inicial, então um MutationObserver reavalia junto com cada mudança de rota
+const anchorIds = ref<Set<string>>(new Set())
+function refreshAnchors() {
+  const next = new Set<string>()
+  for (const s of section.value?.subs ?? []) {
+    if (s.hash && document.getElementById(s.hash))
+      next.add(s.hash)
+  }
+  if (next.size !== anchorIds.value.size || [...next].some(id => !anchorIds.value.has(id)))
+    anchorIds.value = next
+}
+
+// item com rota própria sempre renderiza; item só de âncora some junto do id órfão
+const visibleSubs = computed(() =>
+  (section.value?.subs ?? []).filter(s => s.to || !s.hash || anchorIds.value.has(s.hash)),
+)
+
+let anchorObserver: MutationObserver | undefined
+let anchorRaf = 0
+watch(() => route.fullPath, refreshAnchors, { flush: 'post' })
+onMounted(() => {
+  refreshAnchors()
+  anchorObserver = new MutationObserver(() => {
+    cancelAnimationFrame(anchorRaf)
+    anchorRaf = requestAnimationFrame(refreshAnchors)
+  })
+  anchorObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['id'] })
+})
+onUnmounted(() => {
+  anchorObserver?.disconnect()
+  cancelAnimationFrame(anchorRaf)
+})
 
 // recolher o painel contextual (a rail fica sempre visível)
 const CONTEXT_KEY = 'gitview:contextCollapsed'
@@ -47,7 +83,7 @@ const showPanel = computed(() => {
   const s = section.value
   if (!s)
     return false
-  return s.subs.length > 0 || filtersScope.value !== 'none'
+  return visibleSubs.value.length > 0 || filtersScope.value !== 'none'
 })
 </script>
 
@@ -102,9 +138,9 @@ const showPanel = computed(() => {
         />
       </header>
 
-      <nav v-if="section?.subs.length" class="context-nav">
+      <nav v-if="visibleSubs.length" class="context-nav">
         <RouterLink
-          v-for="s in section.subs"
+          v-for="s in visibleSubs"
           :key="s.label"
           :to="subLink(s)"
           class="context-item"
@@ -116,14 +152,14 @@ const showPanel = computed(() => {
       </nav>
 
       <template v-if="filtersScope !== 'none'">
-        <USeparator v-if="section?.subs.length" class="my-3" />
+        <USeparator v-if="visibleSubs.length" class="my-3" />
         <FilterBar />
       </template>
     </aside>
 
     <!-- botão flutuante pra reabrir quando recolhido -->
     <UButton
-      v-else-if="section && (section.subs.length > 0 || filtersScope !== 'none')"
+      v-else-if="section && (visibleSubs.length > 0 || filtersScope !== 'none')"
       icon="i-lucide-chevrons-right"
       color="neutral"
       variant="soft"
