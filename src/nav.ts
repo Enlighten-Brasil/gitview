@@ -88,6 +88,16 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: 'Grafo', icon: 'i-lucide-git-graph', hash: 'grafo' },
     ],
   },
+  {
+    key: 'reports',
+    label: 'Relatórios',
+    icon: 'i-lucide-file-text',
+    to: '/reports',
+    subs: [
+      { label: 'Assunto e período', hash: 'assunto' },
+      { label: 'Relatório', hash: 'relatorio' },
+    ],
+  },
 ]
 
 /** config — isolada no rodapé da rail (padrão Sentry); só no dev server */

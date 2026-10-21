@@ -1,94 +1,23 @@
 <script setup lang="ts">
-import { useToast } from '@nuxt/ui/composables'
-import { computed, onUnmounted, ref } from 'vue'
+import { computed, ref } from 'vue'
+import { useMarkdownExport } from '@/composables/useMarkdownExport'
 import { buildWeeklySummary } from '../summary'
 
 // slideover com o resumo da última semana fechada — gerado na abertura
 const open = ref(false)
-const copied = ref(false)
-const toast = useToast()
 const summary = computed(() => (open.value ? buildWeeklySummary() : null))
 
-// timer do "copiado!" — guardado pra limpar no unmount (nada de timer órfão)
-let copiedTimer: ReturnType<typeof setTimeout> | undefined
+// copiar/baixar moram na composable compartilhada com /reports (issue #177)
+const { copied, hasCopyPath, copy, download } = useMarkdownExport('resumo')
 
-// Clipboard API só existe em contexto seguro (https/localhost); fora dele resta o execCommand.
-// queryCommandSupported ausente = suporte assumido (execCommand ainda funciona na maioria dos browsers)
-const hasCopyPath = computed(() =>
-  Boolean(navigator.clipboard?.writeText)
-  || document.queryCommandSupported?.('copy') !== false,
-)
-
-function markCopied() {
-  copied.value = true
-  clearTimeout(copiedTimer)
-  copiedTimer = setTimeout(() => (copied.value = false), 2000)
-  toast.add({ title: 'Resumo copiado', description: 'markdown na área de transferência.', color: 'success' })
+function onCopy() {
+  if (summary.value)
+    copy(summary.value.markdown)
 }
 
-// fallback pra contexto não-seguro (http na LAN): textarea temporária + execCommand('copy')
-function fallbackCopy(markdown: string): boolean {
-  const textarea = document.createElement('textarea')
-  textarea.value = markdown
-  textarea.setAttribute('readonly', '')
-  textarea.style.position = 'fixed'
-  textarea.style.opacity = '0'
-  document.body.appendChild(textarea)
-  textarea.select()
-  try {
-    return document.execCommand('copy')
-  }
-  finally {
-    textarea.remove()
-  }
-}
-
-async function copy() {
-  if (!summary.value)
-    return
-  const markdown = summary.value.markdown
-  let lastError: unknown
-
-  // caminho moderno: Clipboard API (se existir)
-  if (navigator.clipboard?.writeText) {
-    try {
-      await navigator.clipboard.writeText(markdown)
-      markCopied()
-      return
-    }
-    catch (err) {
-      lastError = err
-    }
-  }
-
-  // fallback: textarea temporária (clipboard ausente ou writeText rejeitado)
-  try {
-    if (fallbackCopy(markdown)) {
-      markCopied()
-      return
-    }
-    lastError ??= new Error('cópia não suportada neste navegador')
-  }
-  catch (err) {
-    lastError = err
-  }
-
-  toast.add({ title: 'Falha ao copiar o resumo', description: String((lastError as Error)?.message ?? lastError), color: 'error' })
-}
-
-onUnmounted(() => clearTimeout(copiedTimer))
-
-function download() {
-  if (!summary.value)
-    return
-  const blob = new Blob([summary.value.markdown], { type: 'text/markdown;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `resumo-${summary.value.weekKey}.md`
-  a.click()
-  URL.revokeObjectURL(url)
-  toast.add({ title: 'Resumo baixado', description: a.download, color: 'success' })
+function onDownload() {
+  if (summary.value)
+    download(summary.value.markdown, `resumo-${summary.value.weekKey}.md`)
 }
 </script>
 
@@ -122,7 +51,7 @@ function download() {
             :label="copied ? 'copiado!' : 'copiar markdown'"
             :color="copied ? 'success' : 'primary'"
             :disabled="!summary || !hasCopyPath"
-            @click="copy"
+            @click="onCopy"
           />
           <UButton
             icon="i-lucide-download"
@@ -130,7 +59,7 @@ function download() {
             color="neutral"
             variant="outline"
             :disabled="!summary"
-            @click="download"
+            @click="onDownload"
           />
         </div>
         <!-- decisão da issue #129: o resumo é relatório do time inteiro — mantém

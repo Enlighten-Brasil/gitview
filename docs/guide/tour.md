@@ -7,7 +7,7 @@ description: "Each gitview dashboard page: the question it answers, the panels o
 
 Pages follow navigation order. For each one: the question it answers, the panels with their real on-screen labels and the link exits. Filter behavior lives in [Filter rules](../dashboard/filters.md); the data pipeline in [Pipeline](../architecture/pipeline.md). The screenshots use the public demo's synthetic data, never real team data.
 
-The left rail groups **Dashboards** (**Visão geral** `/`, **Devs** `/devs`, **Saúde** `/health`), **Times** `/teams`, **PRs** `/prs`, **Branches** `/branches`, **Repos** `/repos` and, dev server only, **Config** `/settings`. The navbar carries the data freshness badge, the weekly summary button and, in dev, the collection controls. Every chart panel exports a PNG through the download icon (toast **Imagem exportada**) and the tooltips show the numbers behind each point.
+The left rail groups **Dashboards** (**Visão geral** `/`, **Devs** `/devs`, **Saúde** `/health`), **Times** `/teams`, **PRs** `/prs`, **Branches** `/branches`, **Repos** `/repos`, **Relatórios** `/reports` and, dev server only, **Config** `/settings`. The navbar carries the data freshness badge, the weekly summary button and, in dev, the collection controls. Every chart panel exports a PNG through the download icon (toast **Imagem exportada**) and the tooltips show the numbers behind each point.
 
 ## Visão geral (`/`): what is the team shipping right now?
 

@@ -7,7 +7,7 @@ description: "Cada página do dashboard do gitview: a pergunta que responde, os 
 
 As páginas vêm na ordem da navegação. Para cada uma: a pergunta que ela responde, os painéis com os rótulos reais da tela e as saídas dos links. O comportamento dos filtros tem casa própria em [Regras dos filtros](../dashboard/filters.md); o pipeline de dados, em [Pipeline](../architecture/pipeline.md). As capturas usam os dados sintéticos da demo pública, nunca dados reais do time.
 
-A rail à esquerda agrupa **Dashboards** (**Visão geral** `/`, **Devs** `/devs`, **Saúde** `/health`), **Times** `/teams`, **PRs** `/prs`, **Branches** `/branches`, **Repos** `/repos` e, só no dev server, **Config** `/settings`. A navbar traz o badge de frescor dos dados, o botão do resumo semanal e, em dev, os controles de coleta. Todo painel de gráfico exporta PNG pelo ícone de download (toast **Imagem exportada**) e os tooltips mostram os números por trás de cada ponto.
+A rail à esquerda agrupa **Dashboards** (**Visão geral** `/`, **Devs** `/devs`, **Saúde** `/health`), **Times** `/teams`, **PRs** `/prs`, **Branches** `/branches`, **Repos** `/repos`, **Relatórios** `/reports` e, só no dev server, **Config** `/settings`. A navbar traz o badge de frescor dos dados, o botão do resumo semanal e, em dev, os controles de coleta. Todo painel de gráfico exporta PNG pelo ícone de download (toast **Imagem exportada**) e os tooltips mostram os números por trás de cada ponto.
 
 ## Visão geral (`/`): o que o time está entregando agora?
 
