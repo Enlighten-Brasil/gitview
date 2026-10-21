@@ -321,9 +321,10 @@ if (commits) {
 // continuam lendo APENAS os JSONs de public/data.
 const DB_PATH = join(dirname(fileURLToPath(import.meta.url)), '..', 'data', 'gitview.db')
 if (existsSync(DB_PATH)) {
-  // merges topológicos saem pelo --no-merges (decisão #7): o que resta no
-  // banco com assunto de merge é single-parent (squash/pull regravado) — com
-  // diff zero, só infla a contagem
+  // merges topológicos saem pelo --no-merges (decisão #7): o que resta com
+  // assunto de merge é squash/pull regravado OU merge topológico legado de
+  // banco antigo (a tabela não guarda parents — sem como verificar aqui) —
+  // com diff zero, só infla a contagem
   const { DatabaseSync } = await import('node:sqlite')
   const db = new DatabaseSync(DB_PATH, { readOnly: true })
   const dbTotal = (db.prepare('SELECT COUNT(*) AS n FROM commits').get() as { n: number }).n
@@ -332,7 +333,7 @@ if (existsSync(DB_PATH)) {
   const mergeLike = dbRows.filter(r => /^Merge (?:branch|remote-tracking branch|pull request|refs\/)/.test(r.subject))
   // decisão baked (#204): AVISAR e manter a contagem (3 de 21.311 — o custo
   // de um filtro retroativo não compensa); reverter se discordar
-  warn(mergeLike.length === 0, `data/gitview.db: ${mergeLike.length} de ${dbTotal} commits single-parent com assunto de merge e diff +0/-0 (${mergeLike.map(r => r.hash.slice(0, 8)).join(', ')}) — manter a contagem (decisão baked)`)
+  warn(mergeLike.length === 0, `data/gitview.db: ${mergeLike.length} de ${dbTotal} commits com assunto de merge e diff +0/-0 (${mergeLike.map(r => r.hash.slice(0, 8)).join(', ')}) — revisar manualmente; manter a contagem (decisão baked)`)
 }
 else {
   console.log('○ check-data: data/gitview.db ausente (gitignored) — aviso de merge-subject + diff +0/-0 não avaliado (CI-safe)')
@@ -394,9 +395,13 @@ if (github) {
     }
   }
   // cross-file (#204): author de PR mapeado em users (ghost = PR apagado,
-  // isento) e repo de PR existente no stats.json
-  const ghUsers = new Set(github.users && typeof github.users === 'object' && !Array.isArray(github.users) ? Object.keys(github.users as Record<string, unknown>) : [])
-  const ghStatsRepos = new Set(isArr(stats?.repos) ? (stats!.repos as string[]) : [])
+  // isento) e repo de PR existente no stats.json. Presença estrutural, não
+  // cardinalidade: lista vazia mantém o assert ativo (Codacy review) —
+  // ausente = sem o que comparar; vazia = tudo referenciado é órfão
+  const ghUsers = github.users && typeof github.users === 'object' && !Array.isArray(github.users)
+    ? new Set(Object.keys(github.users as Record<string, unknown>))
+    : null
+  const ghStatsRepos = isArr(stats?.repos) ? new Set(stats!.repos as string[]) : null
   // invariantes dos PRs: estado válido, mergedAt presente em MERGED, sem duplicados
   const seenPr = new Set<string>()
   // janela de mergeados (issue #5): nada com mergedAt mais velho que 400d +
@@ -405,9 +410,9 @@ if (github) {
   let staleMerged = 0
   let oldestStale = ''
   for (const p of (isArr(github.prs) ? github.prs : []) as Record<string, unknown>[]) {
-    if (ghUsers.size > 0 && String(p.author) !== 'ghost' && !ghUsers.has(String(p.author)))
+    if (ghUsers && String(p.author) !== 'ghost' && !ghUsers.has(String(p.author)))
       errors.push(`github.prs ${p.repo}#${p.number}: author "${String(p.author)}" ausente do github.json.users (ghost isento)`)
-    if (ghStatsRepos.size > 0 && !ghStatsRepos.has(String(p.repo)))
+    if (ghStatsRepos && !ghStatsRepos.has(String(p.repo)))
       errors.push(`github.prs ${p.repo}#${p.number}: repo ausente do stats.json#repos — descoberta/config divergente entre coletores`)
     if (p.state !== 'OPEN' && p.state !== 'MERGED') {
       errors.push(`github.prs ${p.repo}#${p.number}: state inesperado "${p.state}"`)
@@ -481,11 +486,11 @@ if (releases) {
 
   // #204 — bloco novo DEPOIS do loop de cobertura (a soma tagCommits e o if
   // de cobertura acima são da #193 em paralelo, não editar)
-  const releasesStatsRepos = new Set(isArr(stats?.repos) ? (stats!.repos as string[]) : [])
+  const releasesStatsRepos = isArr(stats?.repos) ? new Set(stats!.repos as string[]) : null
   const zeroTagRepos = new Map<string, number>()
   for (const r of (isArr(releases.repos) ? releases.repos : []) as Record<string, unknown>[]) {
     const repo = String(r.repo)
-    if (releasesStatsRepos.size > 0 && !releasesStatsRepos.has(repo))
+    if (releasesStatsRepos && !releasesStatsRepos.has(repo))
       errors.push(`releases.repos["${repo}"]: repo ausente do stats.json#repos — descoberta/config divergente entre coletores`)
     const tags = isArr(r.tags) ? (r.tags as Record<string, unknown>[]) : []
     // a PRIMEIRA tag do repo (a mais antiga — a lista é desc) é isenta: pode
