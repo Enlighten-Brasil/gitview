@@ -41,30 +41,33 @@ function resolveLocale(locale?: string): string {
 }
 
 /** tabela por locale com fallback pro default — locale sem entrada degrada, nunca quebra */
-function pick<T>(table: Record<string, T>, locale?: string): T {
-  return table[resolveLocale(locale)] ?? table[DEFAULT_LOCALE]
+function pick<T>(table: ReadonlyMap<string, T>, locale?: string): T {
+  // Map.get, não subscript Record[string]: '__proto__' & cia caem no fallback
+  // (fecha o object-injection sink que o Codacy flagou); o default existe por
+  // construção — as três tabelas abaixo são constantes do módulo
+  return table.get(resolveLocale(locale)) ?? table.get(DEFAULT_LOCALE)!
 }
 
 /** palavras relativas por locale — hoje/ontem/há Nd ↔ today/yesterday/Nd ago */
-const RELATIVE_WORDS: Record<string, { today: string, yesterday: string, daysAgo: (days: number) => string }> = {
-  'pt-BR': { today: 'hoje', yesterday: 'ontem', daysAgo: d => `há ${d}d` },
-  'en-US': { today: 'today', yesterday: 'yesterday', daysAgo: d => `${d}d ago` },
-  'es-ES': { today: 'hoy', yesterday: 'ayer', daysAgo: d => `hace ${d}d` },
-}
+const RELATIVE_WORDS: ReadonlyMap<string, { today: string, yesterday: string, daysAgo: (days: number) => string }> = new Map([
+  ['pt-BR', { today: 'hoje', yesterday: 'ontem', daysAgo: d => `há ${d}d` }],
+  ['en-US', { today: 'today', yesterday: 'yesterday', daysAgo: d => `${d}d ago` }],
+  ['es-ES', { today: 'hoy', yesterday: 'ayer', daysAgo: d => `hace ${d}d` }],
+])
 
 /** sufixos de duração por locale — h/d/sem ↔ h/d/w */
-const DURATION_UNITS: Record<string, { h: string, d: string, w: string }> = {
-  'pt-BR': { h: 'h', d: 'd', w: 'sem' },
-  'en-US': { h: 'h', d: 'd', w: 'w' },
-  'es-ES': { h: 'h', d: 'd', w: 'sem' },
-}
+const DURATION_UNITS: ReadonlyMap<string, { h: string, d: string, w: string }> = new Map([
+  ['pt-BR', { h: 'h', d: 'd', w: 'sem' }],
+  ['en-US', { h: 'h', d: 'd', w: 'w' }],
+  ['es-ES', { h: 'h', d: 'd', w: 'sem' }],
+])
 
 /** rótulos curtos dos dias da semana (dom=0 … sáb=6) por locale — única fonte do projeto */
-const WEEKDAY_NAMES: Record<string, readonly string[]> = {
-  'pt-BR': ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'],
-  'en-US': ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'],
-  'es-ES': ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'],
-}
+const WEEKDAY_NAMES: ReadonlyMap<string, readonly string[]> = new Map([
+  ['pt-BR', ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']],
+  ['en-US', ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']],
+  ['es-ES', ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb']],
+])
 
 function toDate(iso: string | Date): Date {
   return iso instanceof Date ? iso : new Date(iso)
