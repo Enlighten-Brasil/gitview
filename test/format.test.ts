@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { daysSince, fmtCompact, fmtDate, fmtDateTime, fmtDateTimeShort, fmtDay, fmtDaysAgo, fmtDuration, fmtInt, fmtRatio, median } from '../src/format'
+import { afterEach, describe, expect, it } from 'vitest'
+import { daysSince, fmtCompact, fmtDate, fmtDateTime, fmtDateTimeShort, fmtDay, fmtDaysAgo, fmtDuration, fmtInt, fmtRatio, fmtWeekdays, median, setFormatLocale } from '../src/format'
 
 /**
  * Issue #249 — comportamento DEFAULT pt-BR byte-idêntico: os literais abaixo
@@ -89,5 +89,76 @@ describe('median', () => {
     const arr = [3, 1, 2]
     expect(median(arr)).toBe(2)
     expect(arr).toEqual([3, 1, 2])
+  })
+})
+
+/**
+ * Issue #253 — locales en-US/es-ES via parâmetro explícito ou estado de módulo
+ * (setFormatLocale). O afterEach garante o default pt-BR intacto pros describes
+ * acima independente da ordem de execução.
+ */
+describe('i18n: locale explícito por parâmetro', () => {
+  afterEach(() => setFormatLocale('pt-BR'))
+
+  it('números e datas via Intl no locale pedido, sem tocar o default', () => {
+    const d = new Date(2026, 9, 15, 14, 30, 5)
+    expect(fmtInt(1_234_567, 'en-US')).toBe('1,234,567')
+    expect(fmtRatio(1.5, 'en-US')).toBe('1.5')
+    expect(fmtCompact(2_200_000, 'en-US')).toBe('2.2M')
+    expect(fmtDate(d, 'en-US')).toBe('10/15/2026')
+    expect(fmtDay(d, 'en-US')).toBe('10/15')
+    expect(fmtDateTime(d, 'en-US')).toBe('10/15/2026, 2:30:05 PM')
+    expect(fmtDateTimeShort(d, 'en-US')).toBe('10/15/2026, 02:30 PM')
+    expect(fmtDate(d, 'es-ES')).toBe('15/10/2026')
+    // default pt-BR intacto depois dos overrides pontuais
+    expect(fmtDate(d)).toBe('15/10/2026')
+    expect(fmtInt(1_234_567)).toBe('1.234.567')
+    expect(fmtRatio(1.5)).toBe('1,5')
+  })
+
+  it('unidades de duração por locale (h/d/sem ↔ h/d/w)', () => {
+    expect(fmtDuration(0.5, 'en-US')).toBe('<1h')
+    expect(fmtDuration(48, 'en-US')).toBe('2.0d')
+    expect(fmtDuration(336, 'en-US')).toBe('2.0w')
+    expect(fmtDuration(336, 'es-ES')).toBe('2,0sem')
+    expect(fmtDuration(720, 'en-US')).toBe('4.3w')
+  })
+
+  it('relativos por locale (hoje/ontem/há Nd ↔ today/yesterday/Nd ago)', () => {
+    const now = Date.now()
+    expect(fmtDaysAgo(new Date(now).toISOString(), 'en-US')).toBe('today')
+    expect(fmtDaysAgo(new Date(now - 86_400_000).toISOString(), 'en-US')).toBe('yesterday')
+    expect(fmtDaysAgo(new Date(now - 5 * 86_400_000).toISOString(), 'en-US')).toBe('5d ago')
+    expect(fmtDaysAgo(new Date(now).toISOString(), 'es-ES')).toBe('hoy')
+    expect(fmtDaysAgo(new Date(now - 86_400_000).toISOString(), 'es-ES')).toBe('ayer')
+    expect(fmtDaysAgo(new Date(now - 5 * 86_400_000).toISOString(), 'es-ES')).toBe('hace 5d')
+  })
+
+  it('fmtWeekdays por locale (dom=0 … sáb=6)', () => {
+    expect(fmtWeekdays()).toEqual(['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'])
+    expect(fmtWeekdays('en-US')).toEqual(['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'])
+    expect(fmtWeekdays('es-ES')).toEqual(['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'])
+  })
+})
+
+describe('i18n: estado de módulo', () => {
+  afterEach(() => setFormatLocale('pt-BR'))
+
+  it('setFormatLocale muda o default das funções sem locale explícito', () => {
+    const now = Date.now()
+    setFormatLocale('en-US')
+    expect(fmtDaysAgo(new Date(now).toISOString())).toBe('today')
+    expect(fmtDuration(336)).toBe('2.0w')
+    expect(fmtInt(1_234_567)).toBe('1,234,567')
+    expect(fmtWeekdays()[0]).toBe('sun')
+    // parâmetro explícito continua vencendo o estado
+    expect(fmtDaysAgo(new Date(now).toISOString(), 'pt-BR')).toBe('hoje')
+  })
+
+  it('locale sem entrada nas tabelas degrada pro default (Intl segue o pedido)', () => {
+    const now = Date.now()
+    expect(fmtDaysAgo(new Date(now).toISOString(), 'fr-FR')).toBe('hoje')
+    expect(fmtDuration(336, 'fr-FR')).toBe('2,0sem')
+    expect(fmtWeekdays('fr-FR')).toEqual(['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'])
   })
 })

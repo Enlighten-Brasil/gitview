@@ -9,9 +9,7 @@ import type { EChartsOption } from 'echarts'
 import type { ComputedRef, MaybeRefOrGetter } from 'vue'
 import { computed, toValue } from 'vue'
 import { axisLabel, ct, heatRamp, tooltipBase } from '../chartTheme'
-
-/** rótulos canônicos dos dias da semana (dom=0 … sáb=6) — única fonte do projeto */
-const WEEKDAYS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
+import { fmtWeekdays } from '../format'
 
 /** valor de categoria de um eixo: rótulo textual ou índice numérico */
 export type HeatValue = string | number
@@ -163,11 +161,11 @@ export function useWeekdayHourHeatmap(params: {
     ramp: 'success',
     order: {
       x: Array.from({ length: 24 }, (_, h) => h),
-      y: WEEKDAYS.map((_, i) => i),
+      y: fmtWeekdays().map((_, i) => i),
     },
     xLabel: h => `${h}h`,
-    yLabel: d => WEEKDAYS[Number(d)],
-    formatTip: (x, y, v) => `${WEEKDAYS[Number(y)]} ${String(x).padStart(2, '0')}h: <b>${v}</b> commits`,
+    yLabel: d => fmtWeekdays()[Number(d)],
+    formatTip: (x, y, v) => `${fmtWeekdays()[Number(y)]} ${String(x).padStart(2, '0')}h: <b>${v}</b> commits`,
     grid: params.grid ?? { left: 50, right: params.visualMap === false ? 20 : 60, top: 10, bottom: 30 },
     visualMap: params.visualMap,
   })
