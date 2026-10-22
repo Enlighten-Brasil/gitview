@@ -81,7 +81,7 @@ const dataAge = computed(() => {
 </script>
 
 <template>
-  <div class="flex h-screen overflow-hidden">
+  <div class="flex h-screen overflow-clip">
     <AppNav />
 
     <!-- body sem padding: cada view controla seu próprio padding/container
