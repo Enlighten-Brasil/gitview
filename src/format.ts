@@ -20,9 +20,19 @@ const DEFAULT_LOCALE = 'pt-BR'
 
 let moduleLocale = DEFAULT_LOCALE
 
-/** define o locale global dos formatadores (bootstrap do i18n chama na onda 2) */
+/**
+ * define o locale global dos formatadores (bootstrap do i18n chama na onda 2).
+ * Identificador malformado (o Intl rejeita) é ignorado com warn — o locale
+ * anterior segue valendo em vez de quebrar o render num fmt* posterior
+ */
 export function setFormatLocale(locale: string): void {
-  moduleLocale = locale
+  try {
+    Intl.DateTimeFormat.supportedLocalesOf([locale])
+    moduleLocale = locale
+  }
+  catch {
+    console.warn(`[format] locale malformado '${locale}' — mantendo '${moduleLocale}'`)
+  }
 }
 
 /** locale efetivo: o parâmetro explícito vence o estado de módulo */

@@ -161,4 +161,11 @@ describe('i18n: estado de módulo', () => {
     expect(fmtDuration(336, 'fr-FR')).toBe('2,0sem')
     expect(fmtWeekdays('fr-FR')).toEqual(['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'])
   })
+
+  it('setFormatLocale ignora identificador malformado e mantém o locale anterior', () => {
+    const now = Date.now()
+    setFormatLocale('en-US')
+    setFormatLocale('!!malformed')
+    expect(fmtDaysAgo(new Date(now).toISOString())).toBe('today')
+  })
 })
