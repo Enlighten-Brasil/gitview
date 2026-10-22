@@ -29,9 +29,9 @@ export function setFormatLocale(locale: string): void {
   try {
     // o Intl valida E normaliza (pt-br → pt-BR): malformado lança RangeError
     // e o retorno traz o case canônico; sem entrada suportada, mantém o anterior
-    const [canonical] = Intl.DateTimeFormat.supportedLocalesOf([locale])
-    if (canonical !== undefined)
-      moduleLocale = canonical
+    const supported = Intl.DateTimeFormat.supportedLocalesOf([locale])
+    if (supported.length > 0)
+      moduleLocale = supported[0]
   }
   catch {
     console.warn(`[format] locale malformado '${locale}' — mantendo '${moduleLocale}'`)
@@ -46,9 +46,13 @@ function resolveLocale(locale?: string): string {
 /** tabela por locale com fallback pro default — locale sem entrada degrada, nunca quebra */
 function pick<T>(table: ReadonlyMap<string, T>, locale?: string): T {
   // Map.get, não subscript Record[string]: '__proto__' & cia caem no fallback
-  // (fecha o object-injection sink que o Codacy flagou); o default existe por
-  // construção — as três tabelas abaixo são constantes do módulo
-  return table.get(resolveLocale(locale)) ?? table.get(DEFAULT_LOCALE)!
+  // (fecha o object-injection sink que o Codacy flagou)
+  const hit = table.get(resolveLocale(locale)) ?? table.get(DEFAULT_LOCALE)
+  if (hit === undefined)
+    // inalcançável: as três tabelas abaixo são constantes do módulo com a
+    // entrada default — o throw só torna a função total sem non-null assertion
+    throw new Error(`format: tabela sem o locale default ${DEFAULT_LOCALE}`)
+  return hit
 }
 
 /** palavras relativas por locale — hoje/ontem/há Nd ↔ today/yesterday/Nd ago */
