@@ -17,6 +17,13 @@ const MERGE_GRAPH: LaneInput[] = [
   { hash: 'F', parents: ['A'] },
   { hash: 'A', parents: [] },
 ]
+// M e C concorrem pela mesma mãe A — cobre R8 (dedupe) e o deslizamento de lane
+const R8_GRAPH: LaneInput[] = [
+  { hash: 'M', parents: ['A', 'B'] },
+  { hash: 'C', parents: ['A'] },
+  { hash: 'A', parents: [] },
+  { hash: 'B', parents: [] },
+]
 describe('computeLanes', () => {
   it('linha reta: uma lane viva e o root morre na própria linha (R3/R6)', () => {
     const rows = computeLanes([
@@ -73,6 +80,54 @@ describe('computeLanes', () => {
     expect(rows[1].edges.some(e => e.kind === 'in')).toBe(false)
     expect(rows[1].edges.find(e => e.kind === 'pass')).toMatchObject({ c0: 0, c1: 0 })
   })
+
+  it('persist (default): lane viva segue esperando o pai externo, com aresta clipped (R7)', () => {
+    const graph: LaneInput[] = [
+      { hash: 'C', parents: ['B'] },
+      { hash: 'B', parents: ['EXT'] },
+    ]
+    const rows = computeLanes(graph)
+
+    expect(rows[1]).toMatchObject({ boundaryParents: 1, colsAfter: 1 }) // lane não morre (≠ free)
+    expect(rows[1].edges).toEqual([
+      { kind: 'in', laneId: 1, c0: 0 },
+      { kind: 'out', laneId: 1, c1: 0, clipped: true, stub: false, junction: undefined },
+    ])
+
+    const free = computeLanes(graph, { boundaryLanes: 'free' })
+    expect(free[1]).toMatchObject({ colsAfter: 0 }) // sem lane zumbi esperando o hash externo
+    expect(free[1].edges.at(-1)).toMatchObject({ kind: 'out', clipped: true, stub: true })
+  })
+
+  it('dedupeFirstParent: 1ª mãe já esperada vira junção imediata e a lane do commit morre (R8)', () => {
+    const dedup = computeLanes(R8_GRAPH, { dedupeFirstParent: true })
+
+    // C (coluna 2) curva para a lane 0 que já espera A — sem criar uma 2ª expectativa
+    expect(dedup[1]).toMatchObject({ lane: 2, freshTip: true, colsAfter: 2 })
+    expect(dedup[1].edges.find(e => e.junction)).toMatchObject({ kind: 'out', c1: 0, clipped: false })
+
+    const naive = computeLanes(R8_GRAPH)
+    expect(naive[1].colsAfter).toBe(3) // sem dedupe sobra a lane zumbi esperando A
+    expect(naive[1].edges.find(e => e.kind === 'out')).toMatchObject({ c1: 2, junction: undefined })
+  })
+
+  it('pais além do 1º reusam a lane que já espera aquele pai (R4)', () => {
+    const rows = computeLanes([
+      { hash: 'T', parents: ['A'] },
+      { hash: 'S', parents: ['B'] },
+      { hash: 'M', parents: ['A', 'B'] },
+      { hash: 'A', parents: [] },
+      { hash: 'B', parents: [] },
+    ])
+
+    const outs = rows[2].edges.filter(e => e.kind === 'out')
+    // 1ª mãe na própria lane do M (id3); 2ª mãe reusa a lane id2 de S — nenhum id novo
+    expect(outs.map(e => [e.c1, e.laneId])).toEqual([[2, 3], [1, 2]])
+    expect(rows[2].colsAfter).toBe(3)
+    // A é esperado por T e M → colapso de uma; a lane de B desliza na linha do root
+    expect(rows[3].collapsed).toBe(1)
+    expect(rows[3].edges.find(e => e.kind === 'pass')).toMatchObject({ c0: 1, c1: 0 })
+  })
 })
 
 describe('mergePassRuns', () => {
@@ -85,6 +140,21 @@ describe('mergePassRuns', () => {
     expect(runs).toEqual([
       { laneId: 2, col: 1, from: 0, to: 1, clipped: false },
       { laneId: 1, col: 0, from: 2, to: 2, clipped: false },
+    ])
+  })
+
+  it('pass com deslizamento (c0 != c1) sai em singles p/ o renderer desenhar como bézier', () => {
+    // A é raiz e morre: a lane de B desliza uma coluna à esquerda na própria linha
+    const rows = computeLanes(R8_GRAPH, { dedupeFirstParent: true })
+
+    const { runs, singles } = mergePassRuns(rows)
+
+    expect(singles).toEqual([
+      { row: 2, edge: { kind: 'pass', laneId: 2, c0: 1, c1: 0, clipped: false } },
+    ])
+    expect(runs).toEqual([
+      { laneId: 2, col: 1, from: 0, to: 1, clipped: false },
+      { laneId: 1, col: 0, from: 1, to: 1, clipped: false },
     ])
   })
 })
