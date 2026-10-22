@@ -132,6 +132,18 @@ export const DEFAULT_EXCLUDE_PATHS = [
   'dist/**',
   'documentation/**',
   'full_documentation.json',
+  // candidatos avaliados na issue #236 (amostra git log --numstat nos clones
+  // reais + classificação por padrão de conteúdo). 'overwrites/**': cópias
+  // vendored de pacotes npm de terceiros (repo A: 1497 arquivos, 97% tocados
+  // exatamente 2x — cópia-entrada/cópia-saída — e depois migrados para
+  // pacotes privados); 91k de additions num commit só. '*.apidog.json':
+  // export serializado do Apidog (cabeçalho "apidogProject"/"$schema"
+  // app:apidog; o README do gerador chama de "exports... JSON pronto para
+  // importação") — 270k das 347k linhas de scripts/ do repo A. 'scripts/**'
+  // NÃO entra: conteúdo misto (o gerador em JS/TS é fonte humana, ~55k de
+  // origem contra 270k do export gerado) e a pasta em outros repos é fonte.
+  'overwrites/**',
+  '*.apidog.json',
 ]
 
 /**

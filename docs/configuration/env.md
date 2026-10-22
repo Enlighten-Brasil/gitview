@@ -73,8 +73,8 @@ These generated files stay out of the +/− line metrics (their commits still co
 package-lock.json  pnpm-lock.yaml  yarn.lock  bun.lock  bun.lockb
 Cargo.lock  composer.lock  Gemfile.lock  poetry.lock  Pipfile.lock
 pubspec.lock  Package.resolved  go.sum
-*.min.js  *.min.css  *.min.map  *.snap  *.generated.ts  *.generated.js  *.designer.cs
-dist/**  documentation/**  full_documentation.json
+*.min.js  *.min.css  *.min.map  *.snap  *.generated.ts  *.generated.js  *.designer.cs  *.apidog.json
+dist/**  documentation/**  full_documentation.json  overwrites/**
 ```
 
 ## How values are resolved
