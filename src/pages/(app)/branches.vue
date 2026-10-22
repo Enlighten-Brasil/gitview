@@ -410,7 +410,7 @@ function ageClass(days: number): string {
                         abandonada
                       </UBadge>
                     </UTooltip>
-                    <UTooltip v-else-if="r.vivaSemPr" text="commits à frente de produção sem nenhum PR aberto">
+                    <UTooltip v-else-if="r.vivaSemPr" text="commits à frente de produção ou não mergeados na integração, sem nenhum PR aberto">
                       <UBadge color="warning" variant="subtle" size="sm" class="ml-1">
                         viva sem PR
                       </UBadge>

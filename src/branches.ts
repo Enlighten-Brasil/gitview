@@ -135,9 +135,9 @@ export interface BranchRowView {
   status: BranchStatus
   /** derivado: ahead > 0 mas liberado via squash-merge (join com PR MERGED) */
   squashPousada: boolean
-  /** derivado: feature com ahead > 0 e sem PR aberto — trabalho vivo sem PR (refs de integração com desvio: card develop×produção) */
+  /** derivado: feature sem PR aberto e trabalho não liberado — aheadProd > 0 OU aheadInt > 0 (não mergeado na integração, #235) — refs de integração com desvio: card develop×produção */
   vivaSemPr: boolean
-  /** derivado: vivaSemPr envelhecida (≥ BRANCH_STALE_DAYS) — mesmo predicado do card Abandonadas */
+  /** derivado: vivaSemPr envelhecida (≥ BRANCH_STALE_DAYS) que nunca chegou à produção — só aheadProd > 0; o card pousadas/abandonadas não considera aheadInt (#235) */
   abandonada: boolean
   aheadProd: number
   behindProd: number
@@ -177,9 +177,14 @@ export const branchRows = computed<BranchRowView[]>(() => {
       if (br.status === 'bot' && !filters.showBots)
         continue
       const squashPousada = ghLoaded && isSquashPousada(r.repo, br)
-      const vivaSemPr = ghLoaded && br.status === 'feature' && br.aheadProd > 0
-        && !squashPousada && !hasOpenPr(r.repo, br.name)
       const ageDays = daysSince(br.lastActivity)
+      // base dos derivados viva/abandonada: feature sem PR aberto
+      const semPr = ghLoaded && br.status === 'feature' && !squashPousada && !hasOpenPr(r.repo, br.name)
+      // viva-sem-PR: trabalho não liberado na produção OU não mergeado na integração (#235)
+      const vivaSemPr = semPr && (br.aheadProd > 0 || (br.aheadInt ?? 0) > 0)
+      // abandonada: viva-sem-PR envelhecida que nunca chegou à produção — o card
+      // pousadas/abandonadas segue inalterado, só aheadProd > 0 (#235)
+      const abandonada = semPr && br.aheadProd > 0 && ageDays >= BRANCH_STALE_DAYS
       const authorNames = br.authorsAhead.map(e => devOfEmail(e) ?? e)
       // filtro de devs: mantém as branches com algum dev selecionado à frente
       if (filters.authors.length && !authorNames.some(n => filters.authors.includes(n)))
@@ -190,7 +195,7 @@ export const branchRows = computed<BranchRowView[]>(() => {
         status: br.status,
         squashPousada,
         vivaSemPr,
-        abandonada: vivaSemPr && ageDays >= BRANCH_STALE_DAYS,
+        abandonada,
         aheadProd: br.aheadProd,
         behindProd: br.behindProd,
         aheadInt: br.aheadInt,
@@ -217,7 +222,7 @@ export const pousadas = computed(() =>
   ),
 )
 
-/** card (b): trabalho não liberado parado — viva-sem-PR envelhecida (disjunto de (a)); a tabela usa o mesmo predicado (linha.abandonada) */
+/** card (b): trabalho não liberado parado — viva-sem-PR envelhecida nunca liberada (só aheadProd > 0, #235; disjunto de (a)); a tabela usa o mesmo predicado (linha.abandonada) */
 export const abandonadas = computed(() =>
   branchRows.value.filter(x => x.abandonada),
 )

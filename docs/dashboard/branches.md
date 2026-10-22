@@ -24,7 +24,7 @@ Collector statuses (closed union in `branches.json`): `production` (the producti
 
 Two derived statuses are computed in the frontend from the branch↔PR join:
 
-- **viva sem PR** — `feature` branch with `aheadProd` > 0 and no open PR: live work without a pull request. Integration refs with pending work show up in the *develop × produção* card instead; bot branches follow the sidebar switch.
+- **viva sem PR** — `feature` branch with `aheadProd` > 0 **or `aheadInt` > 0** and no open PR: live work without a pull request — pending on production or not yet merged into the integration ref. Integration refs with pending work show up in the *develop × produção* card instead; bot branches follow the sidebar switch. The *Abandonadas* card keeps counting only `aheadProd` > 0 (work that never reached production).
 - **pousada via squash** — squash-merges rewrite history, so the branch keeps `aheadProd` > 0 forever even though the work is released. It is only detectable by a MERGED PR with the same repo and `headRef`, plus `headRefOid` equal to the branch tip **or** a `mergedAt` at/after the tip's last activity. The `headRefOid` test avoids false positives when a branch is reused with new commits after the merge.
 
 ## Branch↔PR join and partial coverage
