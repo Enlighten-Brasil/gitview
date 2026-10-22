@@ -21,5 +21,5 @@
       "vue-router/volar/sfc-typed-router"
     ]
   },
-  "include": ["src/**/*.ts", "src/**/*.vue", "scripts/**/*.ts"]
+  "include": ["src/**/*.ts", "src/**/*.vue", "scripts/**/*.ts", "test/**/*.ts", "vitest.config.ts"]
 }

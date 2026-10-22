@@ -15,18 +15,25 @@ Requisitos: **Node 22.13+** (`node:sqlite` sem flag desde a 22.13) e **pnpm 11.2
 
 ## Gates antes do PR
 
-Não há suíte de testes:
+A suíte de testes é o Vitest (ambiente node, testes em `test/`):
 
 ```bash
 pnpm check:scrub  # arquivos tracked livres dos termos de identidade removidos
 pnpm lint         # ESLint @antfu/eslint-config; zero erros é requisito
-pnpm typecheck    # tsc --noEmit em scripts/ e src/ (templates .vue fora)
+pnpm typecheck    # tsc --noEmit em scripts/, src/ e test/ (templates .vue fora)
+pnpm test         # vitest run; a suíte tem que estar verde
 pnpm build        # vite build; o check de compilação
 pnpm check:docs   # paridade EN e pt-BR das páginas de docs/
 pnpm check:data   # shape e invariantes dos JSONs coletados (roda na máquina)
 ```
 
-O CI roda `check:scrub`, `lint`, `typecheck` e `build` no job `gates`, e `check:docs` mais `docs:build` no job `docs`. O `check:data` fica na sua máquina porque `public/data/` é gitignored e só existe depois de uma coleta com token.
+O CI roda `check:scrub`, `lint`, `typecheck` e `build` no job `gates`, `test` no job `test`, e `check:docs` mais `docs:build` no job `docs`. O `check:data` fica na sua máquina porque `public/data/` é gitignored e só existe depois de uma coleta com token.
+
+## Testes
+
+- Lógica nova não-trivial nasce com teste em `test/<module>.test.ts`; `pnpm test` é gate e tem que estar verde no PR.
+- Teste é node puro: sem `public/data/`, sem `.env`, sem rede — só fixtures inline, para a suíte rodar no CI e num clone limpo. Validação que precisa dos dados coletados continua no `scripts/snapshot-metrics.ts`.
+- `pnpm test:watch` é o loop local. O coverage (`pnpm exec vitest run --coverage`, provider v8) imprime relatório mas ainda sem floor.
 
 ## Changeset e commit
 
