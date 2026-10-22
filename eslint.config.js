@@ -1,4 +1,5 @@
 import antfu from '@antfu/eslint-config'
+import pluginVueI18n from '@intlify/eslint-plugin-vue-i18n'
 
 /**
  * Padrão de lint do maintainer do gitview (espelhado direto aqui porque o
@@ -39,6 +40,23 @@ export default antfu(
       // os editors de draft mutam objetos do pai de propósito (barra sticky de gravação)
       'vue/no-mutating-props': 'off',
       'vue/prefer-separate-static-class': 'off',
+    },
+  },
+  // gate de copy padronizado (#254): @intlify/eslint-plugin-vue-i18n.
+  // localeDir aponta src/locales (nasce na #252); sem o catálogo presente o
+  // plugin não quebra — no-missing-keys/no-unused-keys só mordem quando ele existe.
+  ...pluginVueI18n.configs['flat/recommended'],
+  {
+    settings: {
+      'vue-i18n': {
+        localeDir: './src/locales/*.{json,yaml,yml}',
+      },
+    },
+    rules: {
+      '@intlify/vue-i18n/no-missing-keys': 'error',
+      '@intlify/vue-i18n/no-unused-keys': 'error',
+      // no-raw-text fica em warn nesta onda; a graduação para error é a #265
+      '@intlify/vue-i18n/no-raw-text': 'warn',
     },
   },
 )
