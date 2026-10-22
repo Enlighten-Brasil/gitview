@@ -50,6 +50,7 @@ All the scripts in `package.json`:
 | `pnpm lint:fix` | lint with auto-fix |
 | `pnpm typecheck` | `tsc --noEmit` over `scripts/`, `src/` and `test/`; CI gate |
 | `pnpm test` | Vitest suite in `test/`; CI gate |
+| `pnpm test:coverage` | the same suite with coverage (v8); enforces the per-scope floor of #251 and is what CI runs |
 | `pnpm test:watch` | the same suite in watch mode, for the local loop |
 | `pnpm docs:dev` | docs site in dev (VitePress, `DOCS_BASE=/`) |
 | `pnpm docs:build` | docs site build; CI gate against dead links |

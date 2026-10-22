@@ -39,9 +39,10 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm build
 
-  # job da suíte (issue #248): Vitest em ambiente node. CI-safe por
-  # construção — os testes rodam com fixtures inline, sem ler public/data/
-  # (gitignored) nem o .env
+  # job da suíte (issues #248/#251): Vitest em ambiente node, com coverage e
+  # floor por escopo travado (90% statements nos módulos src de #249, 60% nas
+  # libs de scripts/lib de #250). CI-safe por construção — os testes rodam com
+  # fixtures inline, sem ler public/data/ (gitignored) nem o .env
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -59,7 +60,8 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
-      - run: pnpm test
+      # a suíte com coverage; o floor por escopo da #251 trava o job
+      - run: pnpm test:coverage
 
   # job das docs (issue #73): paridade EN ↔ pt-BR + build do VitePress, que
   # falha em link interno morto — o build vira gate de links do site
