@@ -49,7 +49,7 @@ export default antfu(
   {
     settings: {
       'vue-i18n': {
-        localeDir: './src/locales/*.{json,yaml,yml}',
+        localeDir: './src/locales/**/*.{json,yaml,yml}',
       },
     },
     rules: {
