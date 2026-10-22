@@ -1,5 +1,16 @@
 # gitview
 
+## 0.68.0
+
+### Minor Changes
+
+- ad793fc: `src/format.ts` fica locale-aware: o locale vira estado de módulo (default `pt-BR`, comportamento byte-idêntico ao atual) com o novo `setFormatLocale` para o bootstrap do motor de i18n ligar na onda 2, e toda função de formatação aceita um locale explícito opcional que vence o estado. Unidades de duração (`h`/`d`/`sem`), relativos (`hoje`/`ontem`/`há Nd`) e rótulos de dia da semana viram tabelas internas por locale (pt-BR/en-US/es-ES) — números e datas passam pelo `Intl` com o locale resolvido. Os call sites que escapavam do formatador (o `rangeLabel` dos filtros e o `WEEKDAYS` fixo do heatmap) agora passam pelo `format.ts`.
+- ff37be9: Motor de i18n: petite-vue-i18n (alias `vue-i18n`) com catálogos pré-compilados por namespace (`@intlify/unplugin-vue-i18n`) em `src/locales/<locale>/`. pt-BR fica bundled como default e fallback; en-US e es-ES carregam em chunk lazy por locale no boot, antes do mount, com fallback silencioso pro pt-BR se o chunk falhar. A copy da navegação shell (rail, painel contextual, faixa de abas e navbar) foi extraída sem reescrita para as chaves `nav.*`/`navbar.*`/`app.*`; o restante da UI migra em ondas futuras.
+
+### Patch Changes
+
+- 0b75f9c: Gate de copy padronizado (issue #254): o `eslint.config.js` passa a incluir o `flat/recommended` do `@intlify/eslint-plugin-vue-i18n` com `localeDir` apontando `src/locales` (que nasce na #252 — sem o catálogo presente o plugin não quebra). `no-missing-keys` e `no-unused-keys` entram como error, `no-raw-text` fica em warn nesta onda (a graduação para error é a #265). O restante do recommended foi auditado na árvore atual: nenhuma regra dispara, então nada foi desligado. O CI não muda — `pnpm lint` já é gate no job `gates`.
+
 ## 0.67.2
 
 ### Patch Changes
