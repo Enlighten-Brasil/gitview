@@ -1,5 +1,12 @@
 # gitview
 
+## 0.67.1
+
+### Patch Changes
+
+- d0c52af: testes das libs dos coletores (issue #250): um arquivo de teste por lib — config (matchesGlob + lista default de exclusão), refs, github (fetch stubado), repos, scope e team. Para tornar matchesGlob testável, ela foi extraída de scripts/collect.ts (que auto-executa main no import) para scripts/lib/config.ts, ao lado de DEFAULT_EXCLUDE_PATHS — comportamento byte-idêntico.
+- fe8969e: Suíte de testes dos módulos puros do app: um arquivo `test/` por módulo (format, filters-core, aggregations, report, branches, urlState, thresholds, loader e graph/refs), com `test/lanes.test.ts` estendido para as regras faltantes do grafo. Só testes novos — nenhum módulo de produção editado, comportamento do app inalterado.
+
 ## 0.67.0
 
 ### Minor Changes
