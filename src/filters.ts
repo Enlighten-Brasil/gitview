@@ -10,6 +10,7 @@ import type { WorkScope } from './filters-core'
 import type { CommitRow, ProgressScope, Stats } from './types'
 import { computed } from 'vue'
 import { authorSelected, filters, inPeriodMonth, isCustomRange, repoSelected } from './filters-core'
+import { fmtDate } from './format'
 import { defineLoader } from './loader'
 import { isProgressScope } from './types'
 
@@ -171,8 +172,8 @@ export const filteredCommitCount = computed(() =>
 /** label do período selecionado (navbar + cards) */
 export const rangeLabel = computed(() => {
   if (isCustomRange()) {
-    const f = filters.dateFrom ? new Date(`${filters.dateFrom}T00:00:00`).toLocaleDateString('pt-BR') : 'início'
-    const t = filters.dateTo ? new Date(`${filters.dateTo}T00:00:00`).toLocaleDateString('pt-BR') : 'hoje'
+    const f = filters.dateFrom ? fmtDate(`${filters.dateFrom}T00:00:00`) : 'início'
+    const t = filters.dateTo ? fmtDate(`${filters.dateTo}T00:00:00`) : 'hoje'
     return `${f} → ${t}`
   }
   if (filters.rangeMonths == null)

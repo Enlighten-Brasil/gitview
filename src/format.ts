@@ -1,86 +1,161 @@
 /**
- * Formatação pt-BR unificada (issue #32) — única fonte dos formatadores de
+ * Formatação unificada (issue #32) — única fonte dos formatadores de
  * número, data e duração do frontend. Antes cada componente/página tinha os
  * seus (`fmt` com 4 comportamentos, `fmtDate` com 6 assinaturas, cópias de
  * diferença de dias em 6+ lugares, `median`/`fmtDuration` presos em github.ts).
- * Vírgula é o separador decimal em TODO formato com casas decimais.
+ * No locale default (pt-BR) a vírgula é o separador decimal em TODO formato
+ * com casas decimais.
+ *
+ * i18n (issue #253): o locale é ESTADO DE MÓDULO com default 'pt-BR'
+ * (byte-idêntico ao comportamento original) e toda função aceita um `locale`
+ * explícito que vence o estado. `setFormatLocale` será ligado pelo bootstrap
+ * do motor de i18n na onda 2 (#255) — format.ts NUNCA importa o motor
+ * (vue-i18n/petite) porque scripts/check-report.ts o importa em Node puro.
+ * As tabelas de palavras/unidades ficam AQUI (decisão: o formatador é a única
+ * fonte de número/data/duração), não em src/locales.
  */
 
 const DAY_MS = 86_400_000
+const DEFAULT_LOCALE = 'pt-BR'
+
+let moduleLocale = DEFAULT_LOCALE
+
+/**
+ * define o locale global dos formatadores (bootstrap do i18n chama na onda 2).
+ * Identificador malformado (o Intl rejeita) é ignorado com warn — o locale
+ * anterior segue valendo em vez de quebrar o render num fmt* posterior
+ */
+export function setFormatLocale(locale: string): void {
+  try {
+    // o Intl valida E normaliza (pt-br → pt-BR): malformado lança RangeError
+    // e o retorno traz o case canônico; sem entrada suportada, mantém o anterior
+    const supported = Intl.DateTimeFormat.supportedLocalesOf([locale])
+    if (supported.length > 0)
+      moduleLocale = supported[0]
+  }
+  catch {
+    console.warn(`[format] locale malformado '${locale}' — mantendo '${moduleLocale}'`)
+  }
+}
+
+/** locale efetivo: o parâmetro explícito vence o estado de módulo */
+function resolveLocale(locale?: string): string {
+  return locale ?? moduleLocale
+}
+
+/** tabela por locale com fallback pro default — locale sem entrada degrada, nunca quebra */
+function pick<T>(table: ReadonlyMap<string, T>, locale?: string): T {
+  // Map.get, não subscript Record[string]: '__proto__' & cia caem no fallback
+  // (fecha o object-injection sink que o Codacy flagou)
+  const hit = table.get(resolveLocale(locale)) ?? table.get(DEFAULT_LOCALE)
+  if (hit === undefined)
+    // inalcançável: as três tabelas abaixo são constantes do módulo com a
+    // entrada default — o throw só torna a função total sem non-null assertion
+    throw new Error(`format: tabela sem o locale default ${DEFAULT_LOCALE}`)
+  return hit
+}
+
+/** palavras relativas por locale — hoje/ontem/há Nd ↔ today/yesterday/Nd ago */
+const RELATIVE_WORDS: ReadonlyMap<string, { today: string, yesterday: string, daysAgo: (days: number) => string }> = new Map([
+  ['pt-BR', { today: 'hoje', yesterday: 'ontem', daysAgo: d => `há ${d}d` }],
+  ['en-US', { today: 'today', yesterday: 'yesterday', daysAgo: d => `${d}d ago` }],
+  ['es-ES', { today: 'hoy', yesterday: 'ayer', daysAgo: d => `hace ${d}d` }],
+])
+
+/** sufixos de duração por locale — h/d/sem ↔ h/d/w */
+const DURATION_UNITS: ReadonlyMap<string, { h: string, d: string, w: string }> = new Map([
+  ['pt-BR', { h: 'h', d: 'd', w: 'sem' }],
+  ['en-US', { h: 'h', d: 'd', w: 'w' }],
+  ['es-ES', { h: 'h', d: 'd', w: 'sem' }],
+])
+
+/** rótulos curtos dos dias da semana (dom=0 … sáb=6) por locale — única fonte do projeto */
+const WEEKDAY_NAMES: ReadonlyMap<string, readonly string[]> = new Map([
+  ['pt-BR', ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']],
+  ['en-US', ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']],
+  ['es-ES', ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb']],
+])
 
 function toDate(iso: string | Date): Date {
   return iso instanceof Date ? iso : new Date(iso)
 }
 
-/** inteiro com separador de milhar pt-BR — 1.234.567 */
-export function fmtInt(n: number): string {
-  return n.toLocaleString('pt-BR')
+/** inteiro com separador de milhar do locale — 1.234.567 (pt-BR) / 1,234,567 (en-US) */
+export function fmtInt(n: number, locale?: string): string {
+  return n.toLocaleString(resolveLocale(locale))
 }
 
-/** compacto pt-BR — 2,2M / 350k / 1.234 (vírgula decimal) */
-export function fmtCompact(n: number): string {
+/** compacto — 2,2M / 350k / 1.234 no default pt-BR (separadores seguem o locale) */
+export function fmtCompact(n: number, locale?: string): string {
   const abs = Math.abs(n)
   if (abs >= 1_000_000)
-    return `${(n / 1_000_000).toFixed(1).replace('.', ',')}M`
+    return `${fmtRatio(n / 1_000_000, locale)}M`
   if (abs >= 10_000)
     return `${(n / 1_000).toFixed(0)}k`
-  return fmtInt(n)
+  return fmtInt(n, locale)
 }
 
-/** 1 casa decimal com vírgula — "1,5" (sufixo fica no chamador: ×, /sem, /mês) */
-export function fmtRatio(n: number): string {
-  return n.toFixed(1).replace('.', ',')
+/** 1 casa decimal no locale — "1,5" (pt-BR) / "1.5" (en-US) (sufixo fica no chamador: ×, /sem, /mês) */
+export function fmtRatio(n: number, locale?: string): string {
+  return new Intl.NumberFormat(resolveLocale(locale), { maximumFractionDigits: 1, minimumFractionDigits: 1, useGrouping: false }).format(n)
 }
 
-/** horas -> "<1h" / "18h" / "2,3d" / "1,5sem" */
-export function fmtDuration(hours: number): string {
+/** horas -> "<1h" / "18h" / "2,3d" / "1,5sem" (sufixos pela tabela do locale) */
+export function fmtDuration(hours: number, locale?: string): string {
+  const u = pick(DURATION_UNITS, locale)
   if (hours < 1)
-    return '<1h'
+    return `<1${u.h}`
   if (hours < 48)
-    return `${Math.round(hours)}h`
+    return `${Math.round(hours)}${u.h}`
   const days = hours / 24
   if (days < 14)
-    return `${fmtRatio(days)}d`
-  return `${fmtRatio(days / 7)}sem`
+    return `${fmtRatio(days, locale)}${u.d}`
+  return `${fmtRatio(days / 7, locale)}${u.w}`
 }
 
-/** data curta pt-BR (dd/mm/aaaa); "—" sem data */
-export function fmtDate(iso: string | Date | null | undefined): string {
+/** data curta (dd/mm/aaaa em pt-BR); "—" sem data */
+export function fmtDate(iso: string | Date | null | undefined, locale?: string): string {
   if (iso == null || iso === '')
     return '—'
-  return toDate(iso).toLocaleDateString('pt-BR')
+  return toDate(iso).toLocaleDateString(resolveLocale(locale))
 }
 
-/** dia/mês curto (dd/mm) — janelas sem ano, ex.: "13/10 a 19/10" */
-export function fmtDay(d: Date): string {
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+/** dia/mês curto (dd/mm em pt-BR) — janelas sem ano, ex.: "13/10 a 19/10" */
+export function fmtDay(d: Date, locale?: string): string {
+  return d.toLocaleDateString(resolveLocale(locale), { day: '2-digit', month: '2-digit' })
 }
 
-/** data + hora pt-BR (dd/mm/aaaa, hh:mm:ss); "—" sem data */
-export function fmtDateTime(iso: string | Date | null | undefined): string {
+/** data + hora (dd/mm/aaaa, hh:mm:ss em pt-BR); "—" sem data */
+export function fmtDateTime(iso: string | Date | null | undefined, locale?: string): string {
   if (iso == null || iso === '')
     return '—'
-  return toDate(iso).toLocaleString('pt-BR')
+  return toDate(iso).toLocaleString(resolveLocale(locale))
 }
 
-/** data + hora sem segundos pt-BR (dd/mm/aaaa hh:mm); "—" sem data ou data inválida */
-export function fmtDateTimeShort(iso: string | Date | null | undefined): string {
+/** data + hora sem segundos (dd/mm/aaaa hh:mm em pt-BR); "—" sem data ou data inválida */
+export function fmtDateTimeShort(iso: string | Date | null | undefined, locale?: string): string {
   if (iso == null || iso === '')
     return '—'
   const d = toDate(iso)
   if (Number.isNaN(d.getTime()))
     return '—'
-  return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleString(resolveLocale(locale), { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-/** "hoje" / "ontem" / "há Nd" a partir de uma data */
-export function fmtDaysAgo(iso: string): string {
+/** "hoje" / "ontem" / "há Nd" a partir de uma data (palavras pela tabela do locale) */
+export function fmtDaysAgo(iso: string, locale?: string): string {
   const days = daysSince(iso)
+  const w = pick(RELATIVE_WORDS, locale)
   if (days <= 0)
-    return 'hoje'
+    return w.today
   if (days === 1)
-    return 'ontem'
-  return `há ${days}d`
+    return w.yesterday
+  return w.daysAgo(days)
+}
+
+/** rótulos curtos dos dias da semana (dom=0 … sáb=6) no locale resolvido */
+export function fmtWeekdays(locale?: string): readonly string[] {
+  return pick(WEEKDAY_NAMES, locale)
 }
 
 /** dias inteiros desde a data até hoje (0 = hoje) */
