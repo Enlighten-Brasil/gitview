@@ -1,7 +1,8 @@
+import type { GraphCommit } from '../src/types'
 import { Buffer } from 'node:buffer'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { displayRefName, resolveIntegRefs, resolveIntegRefsAsync, resolveProdRef, resolveProdRefAsync } from '../scripts/lib/refs'
-
+import { parseRefs, refKey } from '../src/graph/refs'
 /**
  * lib/refs spawna git (rev-parse/symbolic-ref) e não tem seam de injeção —
  * o node:child_process é stubado aqui para controlar "ref existe" e
@@ -158,5 +159,51 @@ describe('resolveIntegRefs (ordem da lista, vazio é legítimo)', () => {
     await expect(resolveIntegRefsAsync('/fake/integ-async', ['homolog', 'staging']))
       .resolves
       .toEqual(['refs/remotes/origin/homolog'])
+  })
+})
+
+/** Issue #249 — o reader aceita o %d cru do git e o array já parseado (contrato #127). */
+describe('parseRefs', () => {
+  it('string crua "(HEAD -> main, tag: v1.0)" vira lista tipada', () => {
+    expect(parseRefs('(HEAD -> main, tag: v1.0)')).toEqual([
+      { name: 'main', type: 'HEAD' },
+      { name: 'v1.0', type: 'tag' },
+    ])
+  })
+
+  it('classifica remoto (origin/), branch simples e HEAD solto', () => {
+    expect(parseRefs('(origin/main, feature-x)')).toEqual([
+      { name: 'origin/main', type: 'remote' },
+      { name: 'feature-x', type: 'branch' },
+    ])
+    expect(parseRefs('HEAD')).toEqual([{ name: 'HEAD', type: 'HEAD' }])
+    expect(parseRefs('(feature -> develop)')).toEqual([{ name: 'develop', type: 'branch' }])
+  })
+
+  it('array de strings e de objetos passa pelo mesmo classificador', () => {
+    expect(parseRefs(['tag: v2.0', 'origin/dev'])).toEqual([
+      { name: 'v2.0', type: 'tag' },
+      { name: 'origin/dev', type: 'remote' },
+    ])
+    expect(parseRefs([
+      { name: 'main', type: 'HEAD' },
+      { name: 'release', type: 'bogus' },
+      { name: '', type: 'branch' },
+    ])).toEqual([
+      { name: 'main', type: 'HEAD' },
+      { name: 'release', type: 'branch' },
+    ])
+  })
+
+  it('ausente/vazio → lista vazia', () => {
+    const bare: GraphCommit = { hash: 'a', parents: [], author: 'x', date: '2026-01-01T00:00:00.000Z', subject: 's' }
+    expect(parseRefs(undefined)).toEqual([])
+    expect(parseRefs('')).toEqual([])
+    expect(parseRefs('()')).toEqual([])
+    expect(parseRefs(bare.refs)).toEqual([])
+  })
+
+  it('refKey é a chave estável usada por chips e destaque', () => {
+    expect(refKey({ name: 'main', type: 'branch' })).toBe('branch:main')
   })
 })
