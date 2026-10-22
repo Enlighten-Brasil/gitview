@@ -1,3 +1,4 @@
+import type { LaneInput } from '../src/graph/lanes'
 import { describe, expect, it } from 'vitest'
 import { computeLanes, mergePassRuns } from '../src/graph/lanes'
 
@@ -7,6 +8,15 @@ import { computeLanes, mergePassRuns } from '../src/graph/lanes'
  * e é CI-safe. Fixtures inline; o ground truth é o `git log --all --graph`
  * documentado no cabeçalho do módulo (regras R1–R8).
  */
+
+// grafo de merge mínimo (M junta E e F; ambos nascem de A) — compartilhado
+// pelos dois testes que exercitam a semântica de merge
+const MERGE_GRAPH: LaneInput[] = [
+  { hash: 'M', parents: ['E', 'F'] },
+  { hash: 'E', parents: ['A'] },
+  { hash: 'F', parents: ['A'] },
+  { hash: 'A', parents: [] },
+]
 describe('computeLanes', () => {
   it('linha reta: uma lane viva e o root morre na própria linha (R3/R6)', () => {
     const rows = computeLanes([
@@ -26,12 +36,7 @@ describe('computeLanes', () => {
   })
 
   it('merge: colapsa as duas lanes que esperavam o mesmo pai (R2)', () => {
-    const rows = computeLanes([
-      { hash: 'M', parents: ['E', 'F'] },
-      { hash: 'E', parents: ['A'] },
-      { hash: 'F', parents: ['A'] },
-      { hash: 'A', parents: [] },
-    ])
+    const rows = computeLanes(MERGE_GRAPH)
 
     // M abre 2 lanes (1ª mãe na própria coluna, 2ª mãe aloca à direita — R3/R4)
     expect(rows[0].colsAfter).toBe(2)
@@ -72,12 +77,7 @@ describe('computeLanes', () => {
 
 describe('mergePassRuns', () => {
   it('funde "pass" consecutivos da mesma lane/coluna em um run vertical', () => {
-    const rows = computeLanes([
-      { hash: 'M', parents: ['E', 'F'] },
-      { hash: 'E', parents: ['A'] },
-      { hash: 'F', parents: ['A'] },
-      { hash: 'A', parents: [] },
-    ])
+    const rows = computeLanes(MERGE_GRAPH)
 
     const { runs, singles } = mergePassRuns(rows)
 
