@@ -481,20 +481,23 @@ function showMore() {
     >
       <!-- chips dos refs DA JANELA: passar/clicar destaca a lane -->
       <div v-if="windowRefs.length" class="flex flex-wrap gap-1 px-4 pt-3 max-h-[72px] overflow-y-auto">
-        <button
+        <UTooltip
           v-for="r in windowRefs"
           :key="r.key"
-          type="button"
-          class="cg-chip"
-          :class="{ active: effectiveRef === r.key }"
-          :title="pinRef === r.key ? 'clique p/ soltar o destaque' : 'clique p/ fixar o destaque'"
-          @mouseenter="hoverRef = r.key"
-          @mouseleave="hoverRef = null"
-          @click="togglePin(r.key)"
+          :text="pinRef === r.key ? 'clique p/ soltar o destaque' : 'clique p/ fixar o destaque'"
         >
-          <span class="inline-block size-2 rounded-full shrink-0" :style="{ background: refColor(r.type) }" />
-          <span class="truncate max-w-[200px]">{{ r.name }}</span>
-        </button>
+          <button
+            type="button"
+            class="cg-chip"
+            :class="{ active: effectiveRef === r.key }"
+            @mouseenter="hoverRef = r.key"
+            @mouseleave="hoverRef = null"
+            @click="togglePin(r.key)"
+          >
+            <span class="inline-block size-2 rounded-full shrink-0" :style="{ background: refColor(r.type) }" />
+            <span class="truncate max-w-[200px]">{{ r.name }}</span>
+          </button>
+        </UTooltip>
       </div>
 
       <svg
