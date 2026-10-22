@@ -248,7 +248,7 @@ function ageClass(days: number): string {
                   {{ b.name }}
                 </a>
                 <span v-else class="truncate">{{ b.name }}</span>
-                <span class="ml-auto text-dimmed shrink-0">+{{ b.aheadProd }} · {{ b.ageDays }}d</span>
+                <span class="ml-auto text-dimmed shrink-0">+{{ fmtInt(b.aheadProd) }} · {{ b.ageDays }}d</span>
               </li>
             </ul>
             <p v-else class="text-xs text-dimmed">
@@ -288,11 +288,11 @@ function ageClass(days: number): string {
                   <UIcon name="i-lucide-hourglass" class="size-3 shrink-0 text-dimmed" />
                 </UTooltip>
                 <span class="ml-auto flex items-center gap-2 whitespace-nowrap shrink-0">
-                  <UTooltip :text="`+${s.ahead} commits à frente de produção (não liberados)`">
-                    <span :class="s.ahead > 0 ? 'text-warning font-medium' : 'text-dimmed'">+{{ s.ahead }}</span>
+                  <UTooltip :text="`+${fmtInt(s.ahead)} commits à frente de produção (não liberados)`">
+                    <span :class="s.ahead > 0 ? 'text-warning font-medium' : 'text-dimmed'">+{{ fmtInt(s.ahead) }}</span>
                   </UTooltip>
-                  <UTooltip :text="s.ahead === 0 && s.behind > 0 ? `${s.behind} commits atrás — integração abandonada (morta)` : `−${s.behind} commits atrás de produção`">
-                    <span :class="s.ahead === 0 && s.behind > 0 ? 'text-error font-medium' : 'text-dimmed'">−{{ s.behind }}</span>
+                  <UTooltip :text="s.ahead === 0 && s.behind > 0 ? `${fmtInt(s.behind)} commits atrás — integração abandonada (morta)` : `−${fmtInt(s.behind)} commits atrás de produção`">
+                    <span :class="s.ahead === 0 && s.behind > 0 ? 'text-error font-medium' : 'text-dimmed'">−{{ fmtInt(s.behind) }}</span>
                   </UTooltip>
                 </span>
               </li>
