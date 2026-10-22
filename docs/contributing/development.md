@@ -48,7 +48,9 @@ All the scripts in `package.json`:
 | `pnpm preview` | serves the locally built `dist/` |
 | `pnpm lint` | ESLint `@antfu/eslint-config`; CI gate |
 | `pnpm lint:fix` | lint with auto-fix |
-| `pnpm typecheck` | `tsc --noEmit` over `scripts/` and `src/`; CI gate |
+| `pnpm typecheck` | `tsc --noEmit` over `scripts/`, `src/` and `test/`; CI gate |
+| `pnpm test` | Vitest suite in `test/`; CI gate |
+| `pnpm test:watch` | the same suite in watch mode, for the local loop |
 | `pnpm docs:dev` | docs site in dev (VitePress, `DOCS_BASE=/`) |
 | `pnpm docs:build` | docs site build; CI gate against dead links |
 | `pnpm docs:preview` | serves the built docs site |
@@ -60,9 +62,9 @@ All the scripts in `package.json`:
 
 ## Gates before the PR
 
-There is no test suite. Before opening a PR, run `pnpm check:scrub`, `pnpm lint`, `pnpm typecheck` and `pnpm build`, plus `pnpm check:docs` when you touched `docs/` or `docs/.vitepress/config.ts`. Run `pnpm check:data` when you touched collectors or data shapes.
+There is a Vitest suite (`test/`, node environment). Before opening a PR, run `pnpm check:scrub`, `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm build`, plus `pnpm check:docs` when you touched `docs/` or `docs/.vitepress/config.ts`. Run `pnpm check:data` when you touched collectors or data shapes.
 
-The CI (`.github/workflows/ci.yml`) runs scrub, lint, typecheck and build in the `gates` job, and `check:docs` plus `docs:build` in the `docs` job, on every PR and on push to `main`. `check:data` stays on your machine: `public/data/` is gitignored and only exists after a local collection with a token.
+The CI (`.github/workflows/ci.yml`) runs scrub, lint, typecheck and build in the `gates` job, the suite in the `test` job, and `check:docs` plus `docs:build` in the `docs` job, on every PR and on push to `main`. `check:data` stays on your machine: `public/data/` is gitignored and only exists after a local collection with a token.
 
 ## Mandatory conventions
 
@@ -103,7 +105,7 @@ The full pipeline and the filter rules are in the root `AGENTS.md`. Read it befo
 
 ## Regression harness for the aggregations (`snapshot:metrics`)
 
-There is no test suite; for changes to the filter/aggregation core (`filters-core.ts`, `filters.ts`, `aggregations.ts`) the house validation method is `scripts/snapshot-metrics.ts`: a pure node/tsx script (no vite, no browser) that injects the real `public/data/stats.json` into the store ref, mutates the filters only through the named actions and prints a deterministic JSON snapshot of everything derived from them, for a matrix of scenarios.
+The Vitest suite does not reach this core (it needs the collected data); for changes to the filter/aggregation core (`filters-core.ts`, `filters.ts`, `aggregations.ts`) the house validation method is `scripts/snapshot-metrics.ts`: a pure node/tsx script (no vite, no browser) that injects the real `public/data/stats.json` into the store ref, mutates the filters only through the named actions and prints a deterministic JSON snapshot of everything derived from them, for a matrix of scenarios.
 
 ```bash
 pnpm snapshot:metrics > baseline.json              # stdout = the baseline JSON

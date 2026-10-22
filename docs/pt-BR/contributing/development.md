@@ -48,7 +48,9 @@ Todos os scripts do `package.json`:
 | `pnpm preview` | serve o `dist/` buildado localmente |
 | `pnpm lint` | ESLint `@antfu/eslint-config`; gate de CI |
 | `pnpm lint:fix` | lint com auto-fix |
-| `pnpm typecheck` | `tsc --noEmit` em `scripts/` e `src/`; gate de CI |
+| `pnpm typecheck` | `tsc --noEmit` em `scripts/`, `src/` e `test/`; gate de CI |
+| `pnpm test` | suíte Vitest em `test/`; gate de CI |
+| `pnpm test:watch` | a mesma suíte em watch mode, para o loop local |
 | `pnpm docs:dev` | site de docs em dev (VitePress, `DOCS_BASE=/`) |
 | `pnpm docs:build` | build do site de docs; gate de CI contra dead link |
 | `pnpm docs:preview` | serve o site de docs buildado |
@@ -60,9 +62,9 @@ Todos os scripts do `package.json`:
 
 ## Gates antes do PR
 
-Não há suíte de testes. Antes de abrir PR rode `pnpm check:scrub`, `pnpm lint`, `pnpm typecheck` e `pnpm build`, mais `pnpm check:docs` quando mexeu em `docs/` ou em `docs/.vitepress/config.ts`. Rode `pnpm check:data` quando mexeu em coletores ou shapes de dados.
+Existe uma suíte em Vitest (`test/`, ambiente node). Antes de abrir PR rode `pnpm check:scrub`, `pnpm lint`, `pnpm typecheck`, `pnpm test` e `pnpm build`, mais `pnpm check:docs` quando mexeu em `docs/` ou em `docs/.vitepress/config.ts`. Rode `pnpm check:data` quando mexeu em coletores ou shapes de dados.
 
-O CI (`.github/workflows/ci.yml`) roda scrub, lint, typecheck e build no job `gates`, e `check:docs` mais `docs:build` no job `docs`, em todo PR e em push para `main`. O `check:data` fica na sua máquina: `public/data/` é gitignored, só existe depois de uma coleta local com token.
+O CI (`.github/workflows/ci.yml`) roda scrub, lint, typecheck e build no job `gates`, a suíte no job `test`, e `check:docs` mais `docs:build` no job `docs`, em todo PR e em push para `main`. O `check:data` fica na sua máquina: `public/data/` é gitignored, só existe depois de uma coleta local com token.
 
 ## Convenções obrigatórias
 
@@ -103,7 +105,7 @@ O pipeline completo e as regras dos filtros estão no `AGENTS.md` da raiz. Leia 
 
 ## Harness de regressão das agregações (`snapshot:metrics`)
 
-Não há suíte de testes; para mudanças no núcleo de filtros/agregações (`filters-core.ts`, `filters.ts`, `aggregations.ts`) o método de validação da casa é o `scripts/snapshot-metrics.ts`: um script node/tsx puro (sem vite, sem browser) que injeta o `public/data/stats.json` real no ref do store, muta os filtros só pelas ações nomeadas e imprime um snapshot JSON determinístico de tudo o que deriva deles, para uma matriz de cenários.
+A suíte em Vitest não alcança esse núcleo (ela precisa dos dados coletados); para mudanças no núcleo de filtros/agregações (`filters-core.ts`, `filters.ts`, `aggregations.ts`) o método de validação da casa é o `scripts/snapshot-metrics.ts`: um script node/tsx puro (sem vite, sem browser) que injeta o `public/data/stats.json` real no ref do store, muta os filtros só pelas ações nomeadas e imprime um snapshot JSON determinístico de tudo o que deriva deles, para uma matriz de cenários.
 
 ```bash
 pnpm snapshot:metrics > baseline.json              # stdout = o JSON do baseline

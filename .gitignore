@@ -2,6 +2,7 @@ node_modules
 dist
 data
 public/data
+coverage
 screenshot.png
 
 auto-imports.d.ts
