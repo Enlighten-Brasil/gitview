@@ -102,7 +102,9 @@ pnpm snapshot:metrics   # matriz determinística das agregações p/ regressão 
 pnpm demo               # fixtures sintéticas demo-api/demo-web (9 JSONs, incl. graph-demo-*.json)
 pnpm demo:shots         # capturas das docs — SOMENTE sobre a fixture sintética (guard no script)
 pnpm lint               # eslint (@antfu/eslint-config — padrão da org; config em eslint.config.js)
-pnpm typecheck          # tsc --noEmit (scripts + src; templates .vue fora)
+pnpm typecheck          # tsc --noEmit (scripts + src + test; templates .vue fora)
+pnpm test               # vitest run — suíte em test/ (ambiente node, fixtures inline); gate de CI
+pnpm test:watch         # a mesma suíte em watch mode (loop local)
 pnpm dev                # http://localhost:5173 (Vite)
 pnpm start              # alias do dev (setup/coleta só existem no dev server)
 pnpm build              # dist estático
@@ -163,4 +165,4 @@ pnpm version:packages   # aplicar changesets (bumps + CHANGELOG)
 
 - Validar no Chrome via chrome-devtools MCP em `http://localhost:5173`. O modelo não lê imagens — validar por DOM/`evaluate_script` (textos, tabelas, valores) e checar console.
 - Tabs do Reka UI **não respondem a `.click()` sintético** — usar o `click` real do MCP com o uid do snapshot, ou navegar pela URL (`/devs`, `/health`…).
-- Não há suite de testes; `pnpm check:scrub` é o gate anti-regressão do scrub de identidade (roda no CI, primeiro da lista), `pnpm build` (vite) é o check de compilação, `pnpm typecheck` o de tipos (templates `.vue` ficam fora — shim manual em `src/vite-env.d.ts`), `pnpm check:data` o de shape + invariantes dos dados gerados (já roda no fim do `pnpm collect` e como passo final do `/__collect`).
+- Existe suíte de testes (Vitest, `test/<modulo>.test.ts`, ambiente node com fixtures inline — CI-safe): `pnpm test` (run) e `pnpm test:watch` (watch) são gates, e a regra é que lógica nova não-trivial nasce com teste. `pnpm check:scrub` é o gate anti-regressão do scrub de identidade (roda no CI, primeiro da lista), `pnpm build` (vite) é o check de compilação, `pnpm typecheck` o de tipos (templates `.vue` ficam fora — shim manual em `src/vite-env.d.ts` — mas `test/` e o `vitest.config.ts` entram), `pnpm check:data` o de shape + invariantes dos dados gerados (já roda no fim do `pnpm collect` e como passo final do `/__collect`). Coverage com `pnpm exec vitest run --coverage` (provider v8) imprime relatório, ainda sem floor.
