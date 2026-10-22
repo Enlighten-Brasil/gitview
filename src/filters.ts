@@ -20,6 +20,8 @@ const statsLoader = defineLoader<Stats>('stats.json', {
 export const stats = statsLoader.data
 // erro de REDE do último load (≠ 404/HTML = sem arquivo) — o retry do toast observa
 export const statsNetworkError = statsLoader.networkError
+// erro de SERVIDOR (HTTP >= 500) do último load (≠ rede/sem-arquivo) — idem
+export const statsServerError = statsLoader.serverError
 export const loadStats = statsLoader.load
 
 /** commits recentes (últimos 100/autor) — carregado sob demanda pela página do dev */

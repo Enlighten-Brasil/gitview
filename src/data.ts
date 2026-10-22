@@ -61,6 +61,7 @@ export {
   setWorkScope,
   stats,
   statsNetworkError,
+  statsServerError,
   toggleAuthor,
   toggleCustomRange,
   toggleRepo,

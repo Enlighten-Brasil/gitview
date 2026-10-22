@@ -28,6 +28,8 @@ export interface Loader<T> {
   error: ShallowRef<string | null>
   /** falha de REDE do último load (fetch interrompido) ≠ arquivo ausente/HTTP */
   networkError: ShallowRef<boolean>
+  /** HTTP não-OK >= 500 no último load (servidor dos dados com erro) ≠ rede/sem-arquivo */
+  serverError: ShallowRef<boolean>
   load: (force?: boolean) => Promise<void>
 }
 
@@ -40,6 +42,7 @@ export function defineLoader<T>(path: string, opts: LoaderOptions<T> = {}): Load
   const data = shallowRef(null) as ShallowRef<T | null>
   const error = shallowRef<string | null>(null)
   const networkError = shallowRef(false)
+  const serverError = shallowRef(false)
 
   async function load(force = false) {
     // política de cache unificada: já carregado e sem force → não refaz o fetch
@@ -47,11 +50,17 @@ export function defineLoader<T>(path: string, opts: LoaderOptions<T> = {}): Load
       return
     // estado por tentativa: quem observa vira false→true a cada falha de rede
     networkError.value = false
+    serverError.value = false
     try {
       const url = `${import.meta.env.BASE_URL}data/${path}`
       const res = await fetch(force ? `${url}?t=${Date.now()}` : url)
-      if (!res.ok)
+      if (!res.ok) {
+        // HTTP >= 500 = erro do SERVIDOR dos dados (issue #237): caminho de
+        // feedback próprio, distinto de rede (TypeError) e de sem-arquivo
+        // (404/HTML segue o caminho sintético de baixo)
+        serverError.value = res.status >= 500
         throw new Error(opts.httpError ? opts.httpError(res.status) : `HTTP ${res.status}`)
+      }
       // SPA fallback (dev/preview): um JSON ausente devolve index.html com
       // status 200 — content-type text/html ou parse quebrado = arquivo não
       // coletado, reportado como o MESMO erro do 404 real (issue #147): a
@@ -83,5 +92,5 @@ export function defineLoader<T>(path: string, opts: LoaderOptions<T> = {}): Load
     }
   }
 
-  return { data, error, networkError, load }
+  return { data, error, networkError, serverError, load }
 }
