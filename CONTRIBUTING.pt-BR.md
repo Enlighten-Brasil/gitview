@@ -33,7 +33,7 @@ O CI roda `check:scrub`, `lint`, `typecheck` e `build` no job `gates`, `test` no
 
 - Lógica nova não-trivial nasce com teste em `test/<module>.test.ts`; `pnpm test` é gate e tem que estar verde no PR.
 - Teste é node puro: sem `public/data/`, sem `.env`, sem rede — só fixtures inline, para a suíte rodar no CI e num clone limpo. Validação que precisa dos dados coletados continua no `scripts/snapshot-metrics.ts`.
-- `pnpm test:watch` é o loop local. O coverage (`pnpm exec vitest run --coverage`, provider v8) imprime relatório mas ainda sem floor.
+- `pnpm test:watch` é o loop local. O `pnpm test:coverage` roda a suíte com coverage (provider v8) e trava o floor por escopo da #251: 90% de statements nos módulos de `src/` testados em #249 e 60% nas libs de `scripts/lib/` testadas em #250. É o que o CI roda no job `test`.
 
 ## Changeset e commit
 

@@ -10,7 +10,12 @@ import { defineConfig } from 'vitest/config'
  * projects abre caminho p/ um 2º projeto (componentes + happy-dom) sem mexer
  * no config raiz. `coverage` é opção de RAIZ (nunca de projeto).
  *
- * Sem thresholds nesta issue: o floor é issue própria, depois da baseline.
+ * Floor de cobertura por escopo (issue #251): thresholds por glob agregam os
+ * arquivos do padrão (NÃO são por-arquivo) — os dois pisos abaixo cobrem só os
+ * módulos testados em #249/#250, ~4-6pp abaixo da baseline medida (src 95.71%,
+ * scripts/lib 63.57% em 22/10/2026). Sem chave global: os ~80 arquivos de copy
+ * fora de escopo ficam no relatório sem floor. clean.ts e log.ts entram no
+ * include (visíveis a 0%) mas ficam fora dos padrões (nunca foram alvo).
  */
 export default defineConfig({
   test: {
@@ -26,8 +31,16 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text'],
-      include: ['src/**/*.ts'],
+      include: ['src/**/*.ts', 'scripts/lib/**/*.ts'],
       exclude: ['**/*.d.ts'],
+      thresholds: {
+        'src/{aggregations,branches,filters-core,format,loader,report,thresholds,urlState,graph/lanes,graph/refs}.ts': {
+          statements: 90,
+        },
+        'scripts/lib/{config,github,refs,repos,scope,team}.ts': {
+          statements: 60,
+        },
+      },
     },
   },
 })

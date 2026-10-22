@@ -50,6 +50,7 @@ Todos os scripts do `package.json`:
 | `pnpm lint:fix` | lint com auto-fix |
 | `pnpm typecheck` | `tsc --noEmit` em `scripts/`, `src/` e `test/`; gate de CI |
 | `pnpm test` | suíte Vitest em `test/`; gate de CI |
+| `pnpm test:coverage` | a mesma suíte com coverage (v8); trava o floor por escopo da #251 e é o que o CI roda |
 | `pnpm test:watch` | a mesma suíte em watch mode, para o loop local |
 | `pnpm docs:dev` | site de docs em dev (VitePress, `DOCS_BASE=/`) |
 | `pnpm docs:build` | build do site de docs; gate de CI contra dead link |
