@@ -5,6 +5,7 @@
   "nav.aria.hidePanel": "hide panel",
   "nav.aria.showPanel": "show panel",
   "nav.aria.tabs": "dashboard tabs",
+  "nav.page.settings": "Settings",
   "nav.sections.dashboards": "Dashboards",
   "nav.sections.teams": "Teams",
   "nav.sections.prs": "PRs",

@@ -74,4 +74,15 @@ export default antfu(
       '@intlify/vue-i18n/no-unused-keys': 'off',
     },
   },
+  {
+    // chaves de filters.json sem rastreio do plugin: os chips de período e de
+    // escopo resolvem a chave por value (mapa estático em FilterBar.vue) e o
+    // rangeLabel chama t() fora de componente (composer global em src/filters.ts)
+    // — desligado só nos filters.json, as demais chaves (estáticas em
+    // t('literal')) continuam sob a regra. Reavaliar na convenção final (#265)
+    files: ['src/locales/*/filters.json'],
+    rules: {
+      '@intlify/vue-i18n/no-unused-keys': 'off',
+    },
+  },
 )

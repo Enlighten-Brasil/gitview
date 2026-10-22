@@ -64,7 +64,7 @@ The scope decides what the sidebar shows and what the URL carries. Every filter 
 | `period-bots` | `/repos/:name` | period, scope, `bots` | **Período** and **incluir bots** |
 | `none` | `/teams`, `/setup`, `/settings`, 404 | nothing | nothing |
 
-The **Repos** and **Devs** sections carry bulk actions (**selecionar todos**, **inverter seleção**, **limpar**) and a **limpar filtros** (clear filters) button when there is a selection.
+The **Repos** and **Devs** sections carry bulk actions (**selecionar todos** ("select all"), **inverter seleção** ("invert selection"), **limpar** ("clear")) and a **limpar filtros** ("clear filters") button when there is a selection.
 
 ## Team chips in the sidebar
 

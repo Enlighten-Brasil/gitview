@@ -1,3 +1,6 @@
 {
-  "app.loading": "carregando…"
+  "app.loading": "carregando…",
+  "app.notFound.back": "voltar ao início",
+  "app.notFound.description": "Esse caminho não existe no gitview.",
+  "app.notFound.title": "Página não encontrada"
 }

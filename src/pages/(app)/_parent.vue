@@ -40,13 +40,14 @@ onMounted(loadReleases)
 // filtros sincronizados com a URL (escopo por route.meta.filters)
 initUrlState()
 
-// navbar: título por rota — param nas páginas de detalhe, meta.title nas demais,
-// e no dashboard em geral o período atual (DETAIL_ROUTES tipado em router/meta)
+// navbar: título por rota — param nas páginas de detalhe, meta.title nas demais
+// (chave i18n: traduzida aqui via t()), e no dashboard em geral o período
+// atual (DETAIL_ROUTES tipado em router/meta)
 const navTitle = computed(() => {
   if (route.name != null && DETAIL_ROUTES.has(route.name))
     return String(route.params.name ?? '')
   if (route.meta.title)
-    return route.meta.title
+    return t(route.meta.title)
   return rangeLabel.value
 })
 

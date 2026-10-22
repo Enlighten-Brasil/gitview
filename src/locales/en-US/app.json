@@ -1,3 +1,6 @@
 {
-  "app.loading": "loading…"
+  "app.loading": "loading…",
+  "app.notFound.back": "back to home",
+  "app.notFound.description": "This path does not exist in gitview.",
+  "app.notFound.title": "Page not found"
 }

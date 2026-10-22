@@ -2,6 +2,9 @@
 /**
  * 404 — qualquer caminho fora do mapa de rotas.
  */
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n({ useScope: 'global' })
 </script>
 
 <template>
@@ -10,12 +13,12 @@
       <div class="flex flex-col items-center gap-3">
         <UIcon name="i-lucide-compass" class="size-10 text-dimmed" />
         <h1 class="text-xl font-semibold">
-          Página não encontrada
+          {{ t('app.notFound.title') }}
         </h1>
         <p class="text-sm text-dimmed">
-          Esse caminho não existe no gitview.
+          {{ t('app.notFound.description') }}
         </p>
-        <UButton label="voltar ao início" to="/" class="mt-2" />
+        <UButton :label="t('app.notFound.back')" to="/" class="mt-2" />
       </div>
     </UCard>
   </div>

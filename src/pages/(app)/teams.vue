@@ -18,7 +18,7 @@ definePage({
   meta: {
     section: 'teams',
     filters: 'none',
-    title: 'Times',
+    title: 'nav.sections.teams',
   },
 })
 
