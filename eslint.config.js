@@ -50,13 +50,28 @@ export default antfu(
     settings: {
       'vue-i18n': {
         localeDir: './src/locales/**/*.{json,yaml,yml}',
+        // silencia o no-deprecated-modulo-syntax sem versão declarada (avisa
+        // em todo catálogo); a sintaxe usada é a do vue-i18n v11
+        messageSyntaxVersion: '^11.0.0',
       },
     },
     rules: {
       '@intlify/vue-i18n/no-missing-keys': 'error',
+      // 'ignores' do plugin é alavanca morta (medido: nenhum padrão silencia) —
+      // o caso dinâmico do nav vai no bloco scoped abaixo; reavaliar na #265
       '@intlify/vue-i18n/no-unused-keys': 'error',
       // no-raw-text fica em warn nesta onda; a graduação para error é a #265
       '@intlify/vue-i18n/no-raw-text': 'warn',
+    },
+  },
+  {
+    // chaves de nav consumidas dinamicamente via t(s.label) nos componentes
+    // (mapa src/nav.ts) — o plugin não rastreia uso dinâmico e marcaria todas
+    // como unused; desligado só nos nav.json, as demais chaves (estáticas em
+    // t('literal')) continuam sob a regra. Reavaliar na convenção final (#265)
+    files: ['src/locales/*/nav.json'],
+    rules: {
+      '@intlify/vue-i18n/no-unused-keys': 'off',
     },
   },
 )
