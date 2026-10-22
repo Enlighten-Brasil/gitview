@@ -6,7 +6,8 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "vue-i18n": ["./node_modules/petite-vue-i18n/dist/petite-vue-i18n.d.ts"]
     },
     "resolveJsonModule": true,
     "types": ["vite/client", "node"],

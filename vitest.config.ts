@@ -18,6 +18,13 @@ import { defineConfig } from 'vitest/config'
  * include (visíveis a 0%) mas ficam fora dos padrões (nunca foram alvo).
  */
 export default defineConfig({
+  resolve: {
+    alias: {
+      // espelha o alias do vite.config.ts: petite-vue-i18n é o subconjunto
+      // usado no app; sem isso o import 'vue-i18n' não resolve no Vitest
+      'vue-i18n': 'petite-vue-i18n',
+    },
+  },
   test: {
     projects: [
       {

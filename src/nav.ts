@@ -9,6 +9,7 @@
  * pós-render, com reavaliação para seções lazy — #200).
  */
 export interface NavSub {
+  /** chave i18n em nav.subs.* (catálogo src/locales/<locale>/nav.json) */
   label: string
   icon?: string
   /** rota (caminho simples) */
@@ -19,6 +20,7 @@ export interface NavSub {
 export interface NavSection {
   /** bate com route.meta.section */
   key: string
+  /** chave i18n em nav.sections.* (catálogo src/locales/<locale>/nav.json) */
   label: string
   icon: string
   /** rota base da seção na rail */
@@ -29,75 +31,75 @@ export interface NavSection {
 export const NAV_SECTIONS: NavSection[] = [
   {
     key: 'dashboards',
-    label: 'Dashboards',
+    label: 'nav.sections.dashboards',
     icon: 'i-lucide-layout-dashboard',
     to: '/',
     subs: [
-      { label: 'Visão geral', icon: 'i-lucide-layout-dashboard', to: '/' },
-      { label: 'Devs', icon: 'i-lucide-users', to: '/devs' },
-      { label: 'Saúde', icon: 'i-lucide-heart-pulse', to: '/health' },
+      { label: 'nav.subs.dashboards.overview', icon: 'i-lucide-layout-dashboard', to: '/' },
+      { label: 'nav.subs.dashboards.devs', icon: 'i-lucide-users', to: '/devs' },
+      { label: 'nav.subs.dashboards.health', icon: 'i-lucide-heart-pulse', to: '/health' },
     ],
   },
   {
     key: 'teams',
-    label: 'Times',
+    label: 'nav.sections.teams',
     icon: 'i-lucide-users-round',
     to: '/teams',
     subs: [
-      { label: 'Times', icon: 'i-lucide-users-round', hash: 'times' },
-      { label: 'Devs', icon: 'i-lucide-user-round', hash: 'devs' },
-      { label: 'Sem mapeamento', icon: 'i-lucide-user-round-x', hash: 'sem-mapeamento' },
+      { label: 'nav.subs.teams.teams', icon: 'i-lucide-users-round', hash: 'times' },
+      { label: 'nav.subs.teams.devs', icon: 'i-lucide-user-round', hash: 'devs' },
+      { label: 'nav.subs.teams.unmapped', icon: 'i-lucide-user-round-x', hash: 'sem-mapeamento' },
     ],
   },
   {
     key: 'prs',
-    label: 'PRs',
+    label: 'nav.sections.prs',
     icon: 'i-lucide-git-pull-request',
     to: '/prs',
     subs: [
-      { label: 'Abertos', icon: 'i-lucide-git-pull-request-arrow', hash: 'abertos' },
-      { label: 'Cycle time', icon: 'i-lucide-timer', hash: 'cycle-time' },
-      { label: 'Reviews', icon: 'i-lucide-message-square-text', hash: 'reviews' },
+      { label: 'nav.subs.prs.open', icon: 'i-lucide-git-pull-request-arrow', hash: 'abertos' },
+      { label: 'nav.subs.prs.cycleTime', icon: 'i-lucide-timer', hash: 'cycle-time' },
+      { label: 'nav.subs.prs.reviews', icon: 'i-lucide-message-square-text', hash: 'reviews' },
     ],
   },
   {
     key: 'branches',
-    label: 'Branches',
+    label: 'nav.sections.branches',
     // ícone herdado de Repos (issue #124): a rail não pode repetir ícone de seção
     icon: 'i-lucide-git-branch',
     to: '/branches',
     subs: [
-      { label: 'Pousadas', icon: 'i-lucide-plane-landing', hash: 'pousadas' },
-      { label: 'Abandonadas', icon: 'i-lucide-life-buoy', hash: 'abandonadas' },
-      { label: 'develop × produção', icon: 'i-lucide-git-compare-arrows', hash: 'develop-producao' },
-      { label: 'Tabela', icon: 'i-lucide-table', hash: 'tabela' },
+      { label: 'nav.subs.branches.landed', icon: 'i-lucide-plane-landing', hash: 'pousadas' },
+      { label: 'nav.subs.branches.abandoned', icon: 'i-lucide-life-buoy', hash: 'abandonadas' },
+      { label: 'nav.subs.branches.developProduction', icon: 'i-lucide-git-compare-arrows', hash: 'develop-producao' },
+      { label: 'nav.subs.branches.table', icon: 'i-lucide-table', hash: 'tabela' },
     ],
   },
   {
     key: 'repos',
-    label: 'Repos',
+    label: 'nav.sections.repos',
     icon: 'i-lucide-folder-git-2',
     to: '/repos',
     subs: [
       // leva de volta ao índice quando dentro de /repos/:name
-      { label: 'Todos os repositórios', icon: 'i-lucide-list', to: '/repos' },
-      { label: 'Tabela', icon: 'i-lucide-table', hash: 'tabela' },
-      { label: 'Linhas +/−', icon: 'i-lucide-diff', hash: 'linhas' },
-      { label: 'Distribuição', icon: 'i-lucide-chart-pie', hash: 'distribuicao' },
-      { label: 'Por mês', icon: 'i-lucide-calendar-days', hash: 'por-mes' },
-      { label: 'Tipos de commit', icon: 'i-lucide-tag', hash: 'tipos' },
-      { label: 'Releases', icon: 'i-lucide-rocket', hash: 'releases' },
-      { label: 'Grafo', icon: 'i-lucide-git-graph', hash: 'grafo' },
+      { label: 'nav.subs.repos.all', icon: 'i-lucide-list', to: '/repos' },
+      { label: 'nav.subs.repos.table', icon: 'i-lucide-table', hash: 'tabela' },
+      { label: 'nav.subs.repos.lines', icon: 'i-lucide-diff', hash: 'linhas' },
+      { label: 'nav.subs.repos.distribution', icon: 'i-lucide-chart-pie', hash: 'distribuicao' },
+      { label: 'nav.subs.repos.perMonth', icon: 'i-lucide-calendar-days', hash: 'por-mes' },
+      { label: 'nav.subs.repos.commitTypes', icon: 'i-lucide-tag', hash: 'tipos' },
+      { label: 'nav.subs.repos.releases', icon: 'i-lucide-rocket', hash: 'releases' },
+      { label: 'nav.subs.repos.graph', icon: 'i-lucide-git-graph', hash: 'grafo' },
     ],
   },
   {
     key: 'reports',
-    label: 'Relatórios',
+    label: 'nav.sections.reports',
     icon: 'i-lucide-file-text',
     to: '/reports',
     subs: [
-      { label: 'Assunto e período', hash: 'assunto' },
-      { label: 'Relatório', hash: 'relatorio' },
+      { label: 'nav.subs.reports.subject', hash: 'assunto' },
+      { label: 'nav.subs.reports.report', hash: 'relatorio' },
     ],
   },
 ]
@@ -105,12 +107,12 @@ export const NAV_SECTIONS: NavSection[] = [
 /** config — isolada no rodapé da rail (padrão Sentry); só no dev server */
 export const NAV_BOTTOM: NavSection = {
   key: 'settings',
-  label: 'Config',
+  label: 'nav.sections.settings',
   icon: 'i-lucide-settings',
   to: '/settings',
   subs: [
-    { label: 'Geral', icon: 'i-lucide-sliders-horizontal', to: '/settings' },
-    { label: 'Repositórios', icon: 'i-lucide-list-checks', to: '/settings/repos' },
-    { label: 'Conta GitHub', icon: 'i-lucide-github', to: '/settings/account' },
+    { label: 'nav.subs.settings.general', icon: 'i-lucide-sliders-horizontal', to: '/settings' },
+    { label: 'nav.subs.settings.repos', icon: 'i-lucide-list-checks', to: '/settings/repos' },
+    { label: 'nav.subs.settings.account', icon: 'i-lucide-github', to: '/settings/account' },
   ],
 }

@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url'
+import VueI18nPlugin from '@intlify/unplugin-vue-i18n/vite'
 import ui from '@nuxt/ui/vite'
 import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vite'
@@ -41,6 +42,18 @@ export default defineConfig({
       },
     }),
     vue(),
+    // pré-compila os catálogos JSON de src/locales; include restrito pra não
+    // tocar nos demais JSONs do app. module 'petite-vue-i18n': sem isso o
+    // plugin injeta um alias vue-i18n→dist runtime que colide com o nosso;
+    // dropMessageCompiler porque TODA mensagem chega pré-compilada daqui
+    VueI18nPlugin({
+      // picomatch exige forward slashes — fileURLToPath no Windows devolve
+      // backslash e o include não casa (os JSONs passam crus pelo vite:json
+      // e, sem compilador em runtime, t() devolve a chave)
+      include: [`${fileURLToPath(new URL('./src/locales', import.meta.url)).replaceAll('\\', '/')}/**`],
+      module: 'petite-vue-i18n',
+      dropMessageCompiler: true,
+    }),
     collectPlugin(),
     setupPlugin(),
     ui({
@@ -59,6 +72,10 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
+      // petite-vue-i18n (13,6KB gzip vs 19,3 do vue-i18n full): a API usada
+      // aqui (t/interpolação/plural) é subconjunto do petite — migrar pro full
+      // depois = remover este alias (imports seguem dizendo 'vue-i18n')
+      'vue-i18n': 'petite-vue-i18n',
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },

@@ -1,0 +1,9 @@
+{
+  "navbar.generatedAt": "dados gerados em {date}",
+  "navbar.refresh": "atualizar dados",
+  "navbar.refreshTooltip": "atualizar dados (git + GitHub)",
+  "navbar.collectError": "erro na coleta",
+  "navbar.collecting": "coletando {step}…",
+  "navbar.collectDone": "dados atualizados",
+  "navbar.collectFull": "coleta completa (--full)"
+}

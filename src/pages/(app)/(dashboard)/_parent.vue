@@ -4,6 +4,8 @@
  * rota aninhada; a faixa fica sticky no scroll do painel.
  * meta herdada pelos filhos: seção na rail + filtros 'full' na sidebar/URL.
  */
+import { useI18n } from 'vue-i18n'
+
 definePage({
   meta: {
     section: 'dashboards',
@@ -11,10 +13,12 @@ definePage({
   },
 })
 
+// labels são chaves i18n — as mesmas dos sub-itens de dashboards no nav.ts
+const { t } = useI18n({ useScope: 'global' })
 const tabs = [
-  { label: 'Visão geral', icon: 'i-lucide-layout-dashboard', to: '/' },
-  { label: 'Devs', icon: 'i-lucide-users', to: '/devs' },
-  { label: 'Saúde', icon: 'i-lucide-heart-pulse', to: '/health' },
+  { label: 'nav.subs.dashboards.overview', icon: 'i-lucide-layout-dashboard', to: '/' },
+  { label: 'nav.subs.dashboards.devs', icon: 'i-lucide-users', to: '/devs' },
+  { label: 'nav.subs.dashboards.health', icon: 'i-lucide-heart-pulse', to: '/health' },
 ]
 
 const base = 'inline-flex items-center gap-1.5 py-2.5 px-2 text-sm font-medium border-b-2 border-transparent text-dimmed hover:text-default transition-colors'
@@ -25,18 +29,18 @@ const active = 'text-primary border-primary font-semibold'
   <div>
     <!-- faixa colada no navbar, full-bleed (integrada à moldura header+sidebar), sticky no scroll;
          o record da aba só casa nas rotas filhas dela — '/' não fica ativa em /devs -->
-    <nav class="sticky top-0 z-10 bg-default border-b border-default" aria-label="abas do dashboard">
+    <nav class="sticky top-0 z-10 bg-default border-b border-default" :aria-label="t('nav.aria.tabs')">
       <div class="max-w-[1320px] w-full mx-auto px-5 flex gap-1">
         <RouterLink
-          v-for="t in tabs"
-          :key="t.to"
-          :to="t.to"
+          v-for="tab in tabs"
+          :key="tab.to"
+          :to="tab.to"
           :class="base"
           :active-class="active"
           :exact-active-class="active"
         >
-          <UIcon :name="t.icon" class="size-4" />
-          {{ t.label }}
+          <UIcon :name="tab.icon" class="size-4" />
+          {{ t(tab.label) }}
         </RouterLink>
       </div>
     </nav>
