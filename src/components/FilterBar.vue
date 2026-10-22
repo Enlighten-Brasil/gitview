@@ -65,17 +65,22 @@ watch(showDevs, (v) => {
 
 // meses = dado; o rótulo do chip vem do catálogo (mesma chave estática por
 // value dos workScopes — null = janela completa)
-const rangeKeys: Record<number, string> = {
-  1: 'filters.chip.1m',
-  3: 'filters.chip.3m',
-  6: 'filters.chip.6m',
-  12: 'filters.chip.12m',
-  24: 'filters.chip.24m',
-}
+const rangeKeys = new Map<number, string>([
+  [1, 'filters.chip.1m'],
+  [3, 'filters.chip.3m'],
+  [6, 'filters.chip.6m'],
+  [12, 'filters.chip.12m'],
+  [24, 'filters.chip.24m'],
+])
 const ranges: readonly (number | null)[] = [1, 3, 6, 12, 24, null]
 
 function chipLabel(months: number | null): string {
-  return months == null ? t('filters.chip.all') : t(rangeKeys[months])
+  if (months == null)
+    return t('filters.chip.all')
+  const key = rangeKeys.get(months)
+  if (key === undefined)
+    throw new Error(`[filters] range sem chave de chip: ${months} meses`)
+  return t(key)
 }
 
 /** datas do range custom (inputs) — escrita sempre pelas ações de @/data (issue #39) */

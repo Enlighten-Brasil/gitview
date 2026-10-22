@@ -12,9 +12,9 @@
  * bootstrap→format.ts. setupI18n chama setFormatLocale com o locale efetivo
  * (inclusive o default quando o chunk lazy falha) e applyLocale repete a
  * chamada em toda troca de locale já carregado — format.ts continua sem
- * importar este módulo (scripts/check-report.ts o importa em Node puro).
+ * importar este módulo (scripts/check-report.ts o importa em Node puro — por
+ * isso o createI18n é um import DINÂMICO dentro do setupI18n, nunca estático).
  */
-import { createI18n } from 'vue-i18n'
 import { setFormatLocale } from './format'
 import ptBR from './locales/pt-BR'
 
@@ -94,6 +94,10 @@ export async function setupI18n(
   locale: Locale = detectLocale(),
   load: Record<string, LocaleLoader> = lazyLoaders,
 ) {
+  // 'vue-i18n' via import dinâmico: a cadeia Node (scripts/check-report.ts →
+  // src/data → filters → este módulo) roda em tsx puro sem o alias do Vite e
+  // morreria resolvendo o pacote — só o bootstrap assíncrono importa o motor
+  const { createI18n } = await import('vue-i18n')
   const i18n = createI18n({
     legacy: false,
     locale: DEFAULT_LOCALE,
