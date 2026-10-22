@@ -1,5 +1,12 @@
 # gitview
 
+## 0.65.1
+
+### Patch Changes
+
+- 8fb70a9: a11y: o título instrutivo dos chips do grafo vira UTooltip (hover e foco de teclado), a mensagem truncada da tabela de commits passa a expor o texto completo em aria-label, o aria-label da faixa de alertas vira "alertas de saúde do time" (5 dos 6 alertas ignoram o período) e o shell do dashboard ganha o landmark main.
+- c024adc: Remove exports internos redundantes: 8 símbolos sem importadores externos viraram locais (HttpError, devOfEmail, WEEKDAYS, oklchToHex, isDarkTheme, windowLabel, ensureBoot, PR_REVIEW_STATES); resetThemeCache e invalidateStatus, sem uso algum, foram deletados; BRANCH_STATUSES segue exportado porque scripts/check-data.ts o importa.
+
 ## 0.65.0
 
 ### Minor Changes
