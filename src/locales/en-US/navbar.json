@@ -1,0 +1,12 @@
+{
+  "navbar.generatedAt": "data generated at {date}",
+  "navbar.ageNow": "just now",
+  "navbar.ageHours": "{n}h ago",
+  "navbar.ageDays": "{n}d ago",
+  "navbar.refresh": "refresh data",
+  "navbar.refreshTooltip": "refresh data (git + GitHub)",
+  "navbar.collectError": "collection error",
+  "navbar.collecting": "collecting {step}…",
+  "navbar.collectDone": "data updated",
+  "navbar.collectFull": "full collect (--full)"
+}

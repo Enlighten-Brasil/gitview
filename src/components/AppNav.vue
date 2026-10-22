@@ -8,11 +8,14 @@
  * Sub só de âncora (#id) só renderiza se o id existir na rota atual (#200).
  */
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { NAV_BOTTOM, NAV_SECTIONS } from '@/nav'
 import { serverMode } from '@/router/guards'
 import FilterBar from './FilterBar.vue'
 
+// labels do nav.ts são chaves i18n (catálogo nav.json) — resolve no escopo global
+const { t } = useI18n({ useScope: 'global' })
 const route = useRoute()
 const sectionKey = computed(() => route.meta.section ?? null)
 const section = computed(() =>
@@ -90,8 +93,8 @@ const showPanel = computed(() => {
 <template>
   <div class="relative flex h-full">
     <!-- rail primária -->
-    <nav class="rail" aria-label="seções">
-      <RouterLink to="/" class="rail-logo" aria-label="gitview — início">
+    <nav class="rail" :aria-label="t('nav.aria.sections')">
+      <RouterLink to="/" class="rail-logo" :aria-label="t('nav.aria.home')">
         <UIcon name="i-lucide-git-graph" class="size-5" />
       </RouterLink>
       <div class="rail-items">
@@ -101,11 +104,11 @@ const showPanel = computed(() => {
           :to="s.to"
           class="rail-item"
           :class="{ active: sectionKey === s.key }"
-          :aria-label="s.label"
+          :aria-label="t(s.label)"
           :aria-current="sectionKey === s.key ? 'page' : undefined"
         >
           <UIcon :name="s.icon" class="size-[18px]" />
-          <span class="rail-label">{{ s.label }}</span>
+          <span class="rail-label">{{ t(s.label) }}</span>
         </RouterLink>
       </div>
       <div v-if="serverMode" class="rail-bottom">
@@ -113,27 +116,27 @@ const showPanel = computed(() => {
           :to="NAV_BOTTOM.to"
           class="rail-item"
           :class="{ active: sectionKey === NAV_BOTTOM.key }"
-          :aria-label="NAV_BOTTOM.label"
+          :aria-label="t(NAV_BOTTOM.label)"
           :aria-current="sectionKey === NAV_BOTTOM.key ? 'page' : undefined"
         >
           <UIcon :name="NAV_BOTTOM.icon" class="size-[18px]" />
-          <span class="rail-label">{{ NAV_BOTTOM.label }}</span>
+          <span class="rail-label">{{ t(NAV_BOTTOM.label) }}</span>
         </RouterLink>
       </div>
     </nav>
 
     <!-- painel contextual -->
-    <aside v-if="showPanel" class="context" aria-label="navegação da seção">
+    <aside v-if="showPanel" class="context" :aria-label="t('nav.aria.section')">
       <header class="context-header">
         <h2 class="context-title">
-          {{ section?.label }}
+          {{ section ? t(section.label) : '' }}
         </h2>
         <UButton
           icon="i-lucide-chevrons-left"
           color="neutral"
           variant="ghost"
           size="xs"
-          aria-label="ocultar painel"
+          :aria-label="t('nav.aria.hidePanel')"
           @click="contextCollapsed = true"
         />
       </header>
@@ -147,7 +150,7 @@ const showPanel = computed(() => {
           :class="{ active: isSubActive(s) }"
         >
           <UIcon v-if="s.icon" :name="s.icon" class="size-4 shrink-0" />
-          <span class="truncate">{{ s.label }}</span>
+          <span class="truncate">{{ t(s.label) }}</span>
         </RouterLink>
       </nav>
 
@@ -165,7 +168,7 @@ const showPanel = computed(() => {
       variant="soft"
       size="xs"
       class="absolute left-[calc(var(--rail-w)+8px)] top-16 z-10"
-      aria-label="mostrar painel"
+      :aria-label="t('nav.aria.showPanel')"
       @click="contextCollapsed = false"
     />
   </div>

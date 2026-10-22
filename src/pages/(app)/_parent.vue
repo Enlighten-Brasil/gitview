@@ -5,6 +5,7 @@
  * (wizard/settings) renderiza fora daqui.
  */
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { collectError, collecting, collectLog, collectStep, collectSucceeded, startCollect } from '@/collect'
 import AppNav from '@/components/AppNav.vue'
@@ -25,6 +26,7 @@ definePage({
 })
 
 const route = useRoute()
+const { t } = useI18n({ useScope: 'global' })
 
 // feedback de conclusão/erro de qualquer coleta disparada pela UI (navbar,
 // manutenção, salvar + recoletar) — o popover/log mostra o progresso
@@ -70,10 +72,10 @@ const dataAge = computed(() => {
     return null
   const hours = (Date.now() - new Date(stats.value.generatedAt).getTime()) / 3_600_000
   const label = hours < 1
-    ? 'agora mesmo'
+    ? t('navbar.ageNow')
     : hours < 24
-      ? `há ${Math.floor(hours)}h`
-      : `há ${Math.floor(hours / 24)}d`
+      ? t('navbar.ageHours', { n: Math.floor(hours) })
+      : t('navbar.ageDays', { n: Math.floor(hours / 24) })
   return { label, stale: hours >= 24, generatedAt: stats.value.generatedAt }
 })
 </script>
@@ -88,7 +90,7 @@ const dataAge = computed(() => {
       <template #header>
         <UDashboardNavbar :title="navTitle">
           <template #right>
-            <UTooltip v-if="dataAge" :text="`dados gerados em ${fmtDateTime(dataAge.generatedAt)}`">
+            <UTooltip v-if="dataAge" :text="t('navbar.generatedAt', { date: fmtDateTime(dataAge.generatedAt) })">
               <span
                 class="hidden sm:inline-flex items-center gap-1 text-xs"
                 :class="dataAge.stale ? 'text-warning' : 'text-dimmed'"
@@ -99,14 +101,14 @@ const dataAge = computed(() => {
             </UTooltip>
             <WeeklySummary v-if="stats" />
             <UPopover v-if="isDev" v-model:open="collectOpen" :ui="{ content: 'w-96' }">
-              <UTooltip text="atualizar dados (git + GitHub)">
+              <UTooltip :text="t('navbar.refreshTooltip')">
                 <UButton
                   icon="i-lucide-refresh-cw"
                   color="neutral"
                   variant="ghost"
                   size="sm"
                   :loading="collecting"
-                  aria-label="atualizar dados"
+                  :aria-label="t('navbar.refresh')"
                   @click="onCollectClick()"
                 />
               </UTooltip>
@@ -117,10 +119,10 @@ const dataAge = computed(() => {
                       :name="collectError ? 'i-lucide-circle-x' : collecting ? 'i-lucide-loader-circle' : collectSucceeded ? 'i-lucide-circle-check' : 'i-lucide-refresh-cw'"
                       :class="[collecting && 'animate-spin', collectError ? 'text-error' : collectSucceeded && !collecting ? 'text-success' : 'text-primary']"
                     />
-                    <span v-if="collectError">erro na coleta</span>
-                    <span v-else-if="collecting">coletando {{ collectStep ?? '' }}…</span>
-                    <span v-else-if="collectSucceeded">dados atualizados</span>
-                    <span v-else>atualizar dados</span>
+                    <span v-if="collectError">{{ t('navbar.collectError') }}</span>
+                    <span v-else-if="collecting">{{ t('navbar.collecting', { step: collectStep ?? '' }) }}</span>
+                    <span v-else-if="collectSucceeded">{{ t('navbar.collectDone') }}</span>
+                    <span v-else>{{ t('navbar.refresh') }}</span>
                   </div>
                   <pre
                     v-if="collectLog.length"
@@ -135,7 +137,7 @@ const dataAge = computed(() => {
                       size="xs"
                       color="neutral"
                       variant="link"
-                      label="coleta completa (--full)"
+                      :label="t('navbar.collectFull')"
                       @click="onCollectClick(true)"
                     />
                   </div>

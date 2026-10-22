@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { useToast } from '@nuxt/ui/composables'
 import { onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { loadStats, stats, statsNetworkError, statsServerError } from '@/data'
+
+const { t } = useI18n({ useScope: 'global' })
 
 // App raiz só casaroteia: UApp (toasts/popovers do Nuxt UI) + a rota ativa.
 // O shell do dashboard (rail/navbar) é pages/(app)/_parent.vue; o do setup tem
@@ -75,7 +78,7 @@ onMounted(() => {
     <!-- splash enquanto o guard do boot espera o stats.json (1ª navegação) -->
     <div v-if="!ready" class="flex h-screen items-center justify-center bg-muted" role="status">
       <UIcon name="i-lucide-git-graph" class="size-8 animate-pulse text-primary" />
-      <span class="sr-only">carregando…</span>
+      <span class="sr-only">{{ t('app.loading') }}</span>
     </div>
     <RouterView v-else />
     <!-- confirmação destrutiva unificada (useConfirm) — vive fora das rotas -->
