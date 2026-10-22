@@ -14,7 +14,7 @@ import { commitsByAuthorPeriod, filters, groupBySum, inPeriodMonth, isBot, isCus
 import { fmtCompact, fmtDate, fmtDuration, median } from '@/format'
 import { ghIsBot, github } from '@/github'
 import { daysSinceLastRelease, lastTagLabel, loadReleases, releases, repoRelease } from '@/releases'
-import { UNRELEASED_AMBER, UNRELEASED_RED } from '@/thresholds'
+import { DEV_SHARE_AMBER, DEV_SHARE_RED, UNRELEASED_AMBER, UNRELEASED_RED } from '@/thresholds'
 import { isMergedPr } from '@/types'
 
 // rota de detalhe do repo (era /repo/:name — alias mantém os links antigos)
@@ -122,7 +122,7 @@ const cards = computed<{ value: string, label: string, icon?: string, color?: st
       value: `${topDev.value.author.split(' ')[0]} (${Math.round(topDev.value.share * 100)}%)`,
       label: 'dev principal',
       icon: 'i-lucide-bus',
-      color: topDev.value.share >= 0.7 ? 'text-error' : topDev.value.share >= 0.5 ? 'text-warning' : undefined,
+      color: topDev.value.share >= DEV_SHARE_RED ? 'text-error' : topDev.value.share >= DEV_SHARE_AMBER ? 'text-warning' : undefined,
     })
   }
   if (github.value) {

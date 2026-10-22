@@ -77,6 +77,12 @@ export const PR_AGE_AMBER = 3
 /** idade em dias que pinta a idade do PR de erro */
 export const PR_AGE_RED = 7
 
+// --- Dev principal (repos/[name]) — share do autor principal no período ---
+/** % dos commits do período no autor principal que pinta o card de erro */
+export const DEV_SHARE_RED = 0.7
+/** % dos commits do período no autor principal que pinta o card de atenção */
+export const DEV_SHARE_AMBER = 0.5
+
 // --- Bus factor (BusFactor) — concentração de commits/reviews por repo ---
 /** amostra mínima de commits no período para incluir o repo */
 export const BUS_FACTOR_MIN_COMMITS = 10
