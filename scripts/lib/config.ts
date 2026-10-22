@@ -147,6 +147,36 @@ export const DEFAULT_EXCLUDE_PATHS = [
 ]
 
 /**
+ * glob simples: '*' dentro do segmento; '**' casa caminho qualquer; padrão com
+ * '/' casa o caminho todo (em qualquer profundidade), sem '/' casa o basename.
+ * Case-sensitive como gitignore. O placeholder de '**' é um control char — com
+ * espaço literal, um glob tipo 'My Dir/*.lock' virava over-match `.*` (follow-up #11)
+ */
+// cache por execução: a regex só depende do padrão, e o numstat chama
+// isExcludedPath por (caminho × padrão) — sem cache recompilava a mesma regex
+// milhares de vezes (follow-up #12)
+const globCache = new Map<string, RegExp>()
+
+export function matchesGlob(path: string, pattern: string): boolean {
+  let re = globCache.get(pattern)
+  if (!re) {
+    const body = pattern
+      // '?' precisa de escape: sem ele vira quantifier de regex e o glob
+      // '?.lock' sub-exclui silenciosamente (follow-up #12)
+      .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
+      .replace(/\*\*/g, '\u0000')
+      .replace(/\*/g, '[^/]*')
+      .split('\u0000')
+      .join('.*')
+    re = pattern.includes('/')
+      ? new RegExp(`(^|.*/)${body}$`)
+      : new RegExp(`^${body}$`)
+    globCache.set(pattern, re)
+  }
+  return re.test(pattern.includes('/') ? path : (path.split('/').pop() ?? path))
+}
+
+/**
  * Dias sem atividade para uma branch sem commits à frente da produção
  * (aheadProd = 0) ser classificada como "pousada" no branches.json (issue
  * #123). 30 casa com o ciclo mensal de release; GITVIEW_BRANCH_STALE_DAYS

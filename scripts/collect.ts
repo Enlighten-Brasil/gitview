@@ -17,7 +17,7 @@ import process from 'node:process'
 import { DatabaseSync } from 'node:sqlite'
 import { fileURLToPath } from 'node:url'
 import { getOrCreate } from '../src/collections'
-import { loadConfig, resolveReposRoot } from './lib/config'
+import { loadConfig, matchesGlob, resolveReposRoot } from './lib/config'
 import { getToken, NO_TOKEN_HINT } from './lib/github'
 import { initLog } from './lib/log'
 import { denyPush, discoverRepos, fetchRepo, isManagedRepo, mapPool, parseGitHub, remoteOf, scrubPersistedToken } from './lib/repos'
@@ -79,36 +79,8 @@ function toUtcIso(date: string): string {
  */
 const EXCLUDE_PATTERNS = config.excludePaths ?? []
 
-/**
- * glob simples: '*' dentro do segmento; '**' casa caminho qualquer; padrão com
- * '/' casa o caminho todo (em qualquer profundidade), sem '/' casa o basename.
- * Case-sensitive como gitignore. O placeholder de '**' é um control char — com
- * espaço literal, um glob tipo 'My Dir/*.lock' virava over-match `.*` (follow-up #11)
- */
-// cache por execução: a regex só depende do padrão, e o numstat chama
-// isExcludedPath por (caminho × padrão) — sem cache recompilava a mesma regex
-// milhares de vezes (follow-up #12)
-const globCache = new Map<string, RegExp>()
-
-function matchesGlob(path: string, pattern: string): boolean {
-  let re = globCache.get(pattern)
-  if (!re) {
-    const body = pattern
-      // '?' precisa de escape: sem ele vira quantifier de regex e o glob
-      // '?.lock' sub-exclui silenciosamente (follow-up #12)
-      .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
-      .replace(/\*\*/g, '\u0000')
-      .replace(/\*/g, '[^/]*')
-      .split('\u0000')
-      .join('.*')
-    re = pattern.includes('/')
-      ? new RegExp(`(^|.*/)${body}$`)
-      : new RegExp(`^${body}$`)
-    globCache.set(pattern, re)
-  }
-  return re.test(pattern.includes('/') ? path : (path.split('/').pop() ?? path))
-}
-
+// matchesGlob mora em lib/config.ts (regras de exclusão ao lado de
+// DEFAULT_EXCLUDE_PATHS; extração da issue #250 para torná-la testável)
 const isExcludedPath = (path: string): boolean => EXCLUDE_PATTERNS.some(p => matchesGlob(path, p))
 
 function gitLog(repoPath: string, extraArgs: string[] = []): Promise<RawCommit[]> {
