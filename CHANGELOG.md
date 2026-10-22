@@ -1,5 +1,20 @@
 # gitview
 
+## 0.66.0
+
+### Minor Changes
+
+- 5d3f330: numstat: artefatos gerados restantes saem das métricas de linhas. `DEFAULT_EXCLUDE_PATHS` passa a excluir `overwrites/**` (cópias vendored de pacotes de terceiros) e `*.apidog.json` (export serializado do Apidog); `scripts/**` não entra — o conteúdo é misto e o gerador é fonte. Commits continuam contando; só as linhas saem — `GITVIEW_EXCLUDE_PATHS` segue como override aditivo. Retroativo: o histórico só reflete com `pnpm clean` + `pnpm collect:full` na janela de release.
+
+### Patch Changes
+
+- 914b45a: `urlState`: `buildUrl` preserva `location.hash`, então as regravações de URL (watcher de filtros e `afterEach`) não descartam mais a âncora — links de sub-âncora ficam compartilháveis e o refresh na URL ancorada mantém o fragmento.
+- be15630: Cards de branches (abandonadas e desvio integração×produção) formatam as contagens de commits com separador de milhar (fmtInt), igualando a tabela; os tooltips usam o mesmo valor formatado do rótulo. Idade em dias e contadores dos badges continuam crus.
+- 6131d6f: Extrai os limiares do card "dev principal" para src/thresholds.ts: DEV_SHARE_RED (0.7) e DEV_SHARE_AMBER (0.5) substituem os literais em repos/[name].vue; cor do card inalterada para os mesmos dados.
+- 1fdd2de: Favicon estático em public/ com link rel icon explícito no index.html, eliminando o 404 de favicon em todo load.
+- 24a48cb: loader e App: HTTP >= 500 no loadStats ganha caminho de feedback próprio — toast de erro do servidor com retry, distinto do toast de rede e do caminho silencioso de 404/HTML (que segue para o wizard); o watcher de erro passa a remover o toast anterior antes de adicionar o novo (um toast por vez, reabre após fechamento manual) e o remove agora usa o id real do toast, pois o retorno de add é o objeto e nunca casava com remove(id).
+- d05df17: branches: viva-sem-PR passa a considerar trabalho não mergeado na integração — branch `feature` sem PR aberto com `aheadProd` 0 e `aheadInt` > 0 (ou vice-versa) caía como feature comum e não casava nenhum derivado; o predicado aceita `aheadProd` > 0 ou `aheadInt` > 0. Os cards de pousadas/abandonadas seguem contando só `aheadProd` > 0, e o tooltip do badge e a doc EN/pt-BR da página branches refletem a regra nova.
+
 ## 0.65.1
 
 ### Patch Changes
