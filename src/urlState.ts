@@ -134,7 +134,9 @@ function buildUrl(scope: FilterScope): string {
   if (filters.workScope !== 'all')
     q.set('scope', filters.workScope)
   const s = q.toString()
-  return s ? `${location.pathname}?${s}` : location.pathname
+  // preserva a âncora atual: as regravações (watcher de filtros e afterEach)
+  // não descartam o fragmento (#221)
+  return `${s ? `${location.pathname}?${s}` : location.pathname}${location.hash}`
 }
 
 /** remove valores da URL que não existem nos dados (ex.: repo renomeado) */
