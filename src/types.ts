@@ -95,7 +95,7 @@ export interface CommitRow {
  * estados possíveis de uma review (enum PullRequestReviewState da API GraphQL
  * do GitHub) — union fechada: typo de valor não compila (issue #42)
  */
-export const PR_REVIEW_STATES = ['APPROVED', 'CHANGES_REQUESTED', 'COMMENTED', 'DISMISSED', 'PENDING'] as const
+const PR_REVIEW_STATES = ['APPROVED', 'CHANGES_REQUESTED', 'COMMENTED', 'DISMISSED', 'PENDING'] as const
 
 export type PrReviewState = typeof PR_REVIEW_STATES[number]
 

@@ -45,7 +45,7 @@ const devByEmail = computed(() => {
   return m
 })
 
-export function devOfEmail(email: string): string | null {
+function devOfEmail(email: string): string | null {
   return devByEmail.value.get(email.toLowerCase()) ?? null
 }
 

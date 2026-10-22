@@ -15,7 +15,7 @@ let statusPromise: Promise<SetupStatus | null> | null = null
  * stats.json existe (loadStats uma vez; sem 404/HTML-fallback = sem dados).
  * resetBoot() depois de apagar/recoletar para o next navigation reavaliar.
  */
-export function ensureBoot(): Promise<void> {
+function ensureBoot(): Promise<void> {
   if (!bootPromise)
     bootPromise = loadStats().then(() => {})
   return bootPromise
@@ -33,10 +33,6 @@ export function getCachedStatus(force = false): Promise<SetupStatus | null> {
   if (force || !statusPromise)
     statusPromise = fetchSetupStatus().catch(() => null)
   return statusPromise
-}
-
-export function invalidateStatus(): void {
-  statusPromise = null
 }
 
 /** /?tab=<legado> → rotas dedicadas (0.31: prs/repos viraram páginas) */

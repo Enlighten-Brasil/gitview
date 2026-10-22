@@ -7,7 +7,7 @@
  */
 
 /** erro HTTP com status e corpo — mensagem igual à dos helpers originais */
-export class HttpError extends Error {
+class HttpError extends Error {
   status: number
   body: unknown
 
