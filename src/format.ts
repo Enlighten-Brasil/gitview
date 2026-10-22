@@ -27,8 +27,11 @@ let moduleLocale = DEFAULT_LOCALE
  */
 export function setFormatLocale(locale: string): void {
   try {
-    Intl.DateTimeFormat.supportedLocalesOf([locale])
-    moduleLocale = locale
+    // o Intl valida E normaliza (pt-br → pt-BR): malformado lança RangeError
+    // e o retorno traz o case canônico; sem entrada suportada, mantém o anterior
+    const [canonical] = Intl.DateTimeFormat.supportedLocalesOf([locale])
+    if (canonical !== undefined)
+      moduleLocale = canonical
   }
   catch {
     console.warn(`[format] locale malformado '${locale}' — mantendo '${moduleLocale}'`)

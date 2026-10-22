@@ -167,5 +167,8 @@ describe('i18n: estado de módulo', () => {
     setFormatLocale('en-US')
     setFormatLocale('!!malformed')
     expect(fmtDaysAgo(new Date(now).toISOString())).toBe('today')
+    // case BCP-47 normalizado: sem normalização a tabela 'en-US' não casaria
+    setFormatLocale('EN-us')
+    expect(fmtWeekdays()[0]).toBe('sun')
   })
 })
