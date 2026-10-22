@@ -37,7 +37,7 @@ definePage({
   meta: {
     section: 'branches',
     filters: 'full',
-    title: 'Branches',
+    title: 'nav.sections.branches',
   },
 })
 

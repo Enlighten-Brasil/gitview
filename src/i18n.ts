@@ -8,11 +8,14 @@
  * O locale resolve ANTES do mount (main.ts aguarda setupI18n): localStorage
  * 'gitview:lang' → navigator.languages por prefixo → default pt-BR.
  *
- * Contrato com a #253 (format.ts locale-aware): este módulo NÃO importa o
- * format.ts nem chama setter de locale dele — a fiação bootstrap→format.ts
- * é follow-up da onda 2 (#255).
+ * Contrato com a #253 (format.ts locale-aware): este módulo É o elo
+ * bootstrap→format.ts. setupI18n chama setFormatLocale com o locale efetivo
+ * (inclusive o default quando o chunk lazy falha) e applyLocale repete a
+ * chamada em toda troca de locale já carregado — format.ts continua sem
+ * importar este módulo (scripts/check-report.ts o importa em Node puro).
  */
 import { createI18n } from 'vue-i18n'
+import { setFormatLocale } from './format'
 import ptBR from './locales/pt-BR'
 
 export const SUPPORTED_LOCALES = ['pt-BR', 'en-US', 'es-ES'] as const
@@ -77,6 +80,11 @@ function detectLocale(): Locale {
   return pickLocale(saved, langs)
 }
 
+type I18nInstance = Awaited<ReturnType<typeof setupI18n>>
+
+/** composer global criado pelo setupI18n — null enquanto o bootstrap não roda */
+let globalComposer: I18nInstance['global'] | null = null
+
 /**
  * Cria a instância já com as mensagens do locale resolvido (await no main.ts).
  * Falha no chunk lazy → warn + pt-BR, sem derrubar a UI.
@@ -98,11 +106,43 @@ export async function setupI18n(
       // os chunks por locale; o `load` injetável segue cobrindo os testes
       const loader = locale === 'en-US' ? load['en-US'] : load['es-ES']
       i18n.global.setLocaleMessage(locale, (await loader()).default)
-      i18n.global.locale.value = locale
+      applyLocale(i18n, locale)
     }
     catch (err) {
       console.warn(`[i18n] falha ao carregar o locale '${locale}' — usando ${DEFAULT_LOCALE}`, err)
     }
   }
+  // fiação bootstrap→format.ts (#255): o formato acompanha o locale EFETIVO,
+  // inclusive o default quando o chunk lazy falhou no catch acima
+  setFormatLocale(i18n.global.locale.value)
+  globalComposer = i18n.global
   return i18n
+}
+
+/**
+ * composer global do setupI18n, pra consumo fora de componente (rangeLabel em
+ * src/filters.ts). Erro de programa: consultaram antes do bootstrap.
+ */
+export function getComposer(): I18nInstance['global'] {
+  if (globalComposer == null)
+    throw new Error('[i18n] setupI18n ainda não rodou — getComposer chamado antes do bootstrap')
+  return globalComposer
+}
+
+/**
+ * Slot do seletor de idioma (o seletor em si é da #264): troca o locale de uma
+ * instância JÁ carregada, persiste a chave 'gitview:lang' no localStorage
+ * (storage pode estar bloqueado → try/catch) e acompanha o format.ts.
+ * O carregamento do chunk lazy continua sendo responsabilidade do chamador —
+ * o seletor da #264 carrega as mensagens antes de chamar aqui.
+ */
+export function applyLocale(i18n: I18nInstance, locale: Locale): void {
+  i18n.global.locale.value = locale
+  try {
+    localStorage.setItem('gitview:lang', locale)
+  }
+  catch {
+    // storage bloqueado (modo privado/política) — a troca vale só nesta sessão
+  }
+  setFormatLocale(locale)
 }

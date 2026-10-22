@@ -9,7 +9,7 @@ definePage({
     requiresData: true,
     requiresServer: true,
     section: 'settings',
-    title: 'Configurações',
+    title: 'nav.page.settings',
   },
 })
 

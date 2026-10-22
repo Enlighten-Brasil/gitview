@@ -11,6 +11,7 @@ import type { CommitRow, ProgressScope, Stats } from './types'
 import { computed } from 'vue'
 import { authorSelected, filters, inPeriodMonth, isCustomRange, repoSelected } from './filters-core'
 import { fmtDate } from './format'
+import { getComposer } from './i18n'
 import { defineLoader } from './loader'
 import { isProgressScope } from './types'
 
@@ -169,14 +170,15 @@ export const filteredCommitCount = computed(() =>
   filteredMonthly.value.reduce((acc, r) => acc + r.commits, 0),
 )
 
-/** label do período selecionado (navbar + cards) */
+/** label do período selecionado (navbar + cards) — traduzido no módulo: o composer lê o locale reativamente */
 export const rangeLabel = computed(() => {
+  const { t } = getComposer()
   if (isCustomRange()) {
-    const f = filters.dateFrom ? fmtDate(`${filters.dateFrom}T00:00:00`) : 'início'
-    const t = filters.dateTo ? fmtDate(`${filters.dateTo}T00:00:00`) : 'hoje'
-    return `${f} → ${t}`
+    const from = filters.dateFrom ? fmtDate(`${filters.dateFrom}T00:00:00`) : t('filters.range.customStart')
+    const to = filters.dateTo ? fmtDate(`${filters.dateTo}T00:00:00`) : t('filters.range.customEnd')
+    return `${from} → ${to}`
   }
   if (filters.rangeMonths == null)
-    return 'histórico completo'
-  return filters.rangeMonths === 1 ? 'último mês' : `últimos ${filters.rangeMonths} meses`
+    return t('filters.range.all')
+  return filters.rangeMonths === 1 ? t('filters.range.lastMonth') : t('filters.range.lastN', { n: filters.rangeMonths })
 })

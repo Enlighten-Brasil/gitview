@@ -21,7 +21,7 @@ definePage({
   meta: {
     section: 'reports',
     filters: 'none',
-    title: 'Relatórios',
+    title: 'nav.sections.reports',
   },
 })
 

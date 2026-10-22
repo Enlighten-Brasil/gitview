@@ -39,7 +39,10 @@ declare module 'vue-router' {
      * ('team' = período + repos; os devs são travados pela página em filters.authors)
      */
     filters?: FilterScope
-    /** título fixo do navbar (rota de detalhe usa o param no lugar) */
+    /**
+     * título fixo do navbar (rota de detalhe usa o param no lugar) —
+     * carrega CHAVE i18n em nav.* (#255): o shell traduz com t() ao renderizar
+     */
     title?: string
   }
 }

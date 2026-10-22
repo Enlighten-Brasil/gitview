@@ -2,6 +2,7 @@
 import type { WorkScope } from '@/data'
 import type { FilterScope } from '@/router/meta'
 import { computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import {
   filters,
@@ -22,6 +23,7 @@ import {
 import { loadTeam, team } from '@/team'
 
 const route = useRoute()
+const { t } = useI18n({ useScope: 'global' })
 
 // escopo por rota (route.meta.filters): período vale em todas as rotas de
 // dados; repos no escopo 'full' e no 'team'; devs/bots só no 'full' — no 'team'
@@ -46,11 +48,14 @@ const showWorkScope = computed(() =>
 // (o switch "incluir bots" fica: branches.ts consome filters.showBots)
 const showPeriod = computed(() => route.meta.section !== 'branches')
 
-const workScopes = [
-  { label: 'Todos', value: 'all' },
-  { label: 'Produção', value: 'prod' },
-  { label: 'Em progresso', value: 'progress' },
-] as const satisfies { label: string, value: WorkScope }[]
+// valor = dado de negócio; o rótulo vem do catálogo (chave estática por value —
+// uso dinâmico: o gate no-unused-keys não segue t(chave variável))
+const workScopeKeys: Record<WorkScope, string> = {
+  all: 'filters.scope.all',
+  prod: 'filters.scope.prod',
+  progress: 'filters.scope.progress',
+}
+const workScopes: readonly WorkScope[] = ['all', 'prod', 'progress']
 
 // times como atalho de filtro: carrega o team.json sob demanda (só no escopo full)
 watch(showDevs, (v) => {
@@ -58,14 +63,20 @@ watch(showDevs, (v) => {
     loadTeam()
 }, { immediate: true })
 
-const ranges = [
-  { label: '1M', months: 1 },
-  { label: '3M', months: 3 },
-  { label: '6M', months: 6 },
-  { label: '12M', months: 12 },
-  { label: '24M', months: 24 },
-  { label: 'Tudo', months: null },
-] as const
+// meses = dado; o rótulo do chip vem do catálogo (mesma chave estática por
+// value dos workScopes — null = janela completa)
+const rangeKeys: Record<number, string> = {
+  1: 'filters.chip.1m',
+  3: 'filters.chip.3m',
+  6: 'filters.chip.6m',
+  12: 'filters.chip.12m',
+  24: 'filters.chip.24m',
+}
+const ranges: readonly (number | null)[] = [1, 3, 6, 12, 24, null]
+
+function chipLabel(months: number | null): string {
+  return months == null ? t('filters.chip.all') : t(rangeKeys[months])
+}
 
 /** datas do range custom (inputs) — escrita sempre pelas ações de @/data (issue #39) */
 function setDateFrom(v: string | null) {
@@ -120,18 +131,18 @@ function clearList(list: ListKey) {
   <div class="flex flex-col gap-5">
     <section v-if="showPeriod || showBots" class="flex flex-col gap-2">
       <template v-if="showPeriod">
-        <span class="filter-label">Período</span>
+        <span class="filter-label">{{ t('filters.period') }}</span>
         <div class="flex flex-wrap gap-1.5">
           <UButton
             v-for="r in ranges"
-            :key="r.label"
+            :key="String(r)"
             size="xs"
-            :color="!isCustomRange() && filters.rangeMonths === r.months ? 'primary' : 'neutral'"
-            :variant="!isCustomRange() && filters.rangeMonths === r.months ? 'soft' : 'outline'"
-            :aria-pressed="!isCustomRange() && filters.rangeMonths === r.months"
-            @click="setRange(r.months)"
+            :color="!isCustomRange() && filters.rangeMonths === r ? 'primary' : 'neutral'"
+            :variant="!isCustomRange() && filters.rangeMonths === r ? 'soft' : 'outline'"
+            :aria-pressed="!isCustomRange() && filters.rangeMonths === r"
+            @click="setRange(r)"
           >
-            {{ r.label }}
+            {{ chipLabel(r) }}
           </UButton>
           <UButton
             size="xs"
@@ -141,20 +152,20 @@ function clearList(list: ListKey) {
             :aria-pressed="isCustomRange()"
             @click="toggleCustomRange"
           >
-            Personalizado
+            {{ t('filters.custom') }}
           </UButton>
         </div>
         <div v-if="isCustomRange()" class="flex items-end gap-1.5">
-          <UFormField label="de" :ui="{ label: 'sr-only' }" class="flex-1">
+          <UFormField :label="t('filters.from')" :ui="{ label: 'sr-only' }" class="flex-1">
             <UInput :model-value="filters.dateFrom" type="date" size="xs" class="w-full" @update:model-value="setDateFrom" />
           </UFormField>
           <UIcon name="i-lucide-arrow-right" class="size-3.5 text-dimmed shrink-0 mb-1.5" />
-          <UFormField label="até" :ui="{ label: 'sr-only' }" class="flex-1">
+          <UFormField :label="t('filters.to')" :ui="{ label: 'sr-only' }" class="flex-1">
             <UInput :model-value="filters.dateTo" type="date" size="xs" class="w-full" @update:model-value="setDateTo" />
           </UFormField>
         </div>
       </template>
-      <USwitch v-if="showBots" :model-value="filters.showBots" label="incluir bots" size="sm" class="mt-1" @update:model-value="setShowBots" />
+      <USwitch v-if="showBots" :model-value="filters.showBots" :label="t('filters.bots')" size="sm" class="mt-1" @update:model-value="setShowBots" />
     </section>
 
     <!-- chips de escopo de trabalho (issue #129) — ver showWorkScope no script:
@@ -165,22 +176,22 @@ function clearList(list: ListKey) {
       <section class="flex flex-col gap-2">
         <span class="filter-label flex items-center gap-1.5">
           <UIcon name="i-lucide-layers" class="size-3.5" />
-          Escopo
-          <UTooltip :ui="{ content: 'max-w-64' }" text="produção = commits alcançáveis da ref de produção · em progresso = branches de integração/feature. Squash/cherry-pick pode contar o mesmo trabalho duas vezes (hash novo em produção + hash original em progresso). Linhas +/− e commits seguem o recorte; streaks, PRs, releases e inatividade não têm o eixo e ficam integrais.">
+          {{ t('filters.scopes.title') }}
+          <UTooltip :ui="{ content: 'max-w-64' }" :text="t('filters.scopes.help')">
             <UIcon name="i-lucide-info" class="size-3 text-dimmed cursor-help" />
           </UTooltip>
         </span>
         <div class="flex flex-wrap gap-1.5">
           <UButton
             v-for="s in workScopes"
-            :key="s.value"
+            :key="s"
             size="xs"
-            :color="filters.workScope === s.value ? 'primary' : 'neutral'"
-            :variant="filters.workScope === s.value ? 'soft' : 'outline'"
-            :aria-pressed="filters.workScope === s.value"
-            @click="setWorkScope(s.value)"
+            :color="filters.workScope === s ? 'primary' : 'neutral'"
+            :variant="filters.workScope === s ? 'soft' : 'outline'"
+            :aria-pressed="filters.workScope === s"
+            @click="setWorkScope(s)"
           >
-            {{ s.label }}
+            {{ t(workScopeKeys[s]) }}
           </UButton>
         </div>
       </section>
@@ -195,24 +206,24 @@ function clearList(list: ListKey) {
         <section class="flex flex-col gap-2">
           <span class="filter-label flex items-center gap-1.5">
             <UIcon name="i-lucide-users-round" class="size-3.5" />
-            Times
+            {{ t('filters.times') }}
           </span>
           <div class="flex flex-wrap gap-1.5">
             <UButton
-              v-for="t in teamFilters"
-              :key="t.name"
+              v-for="tf in teamFilters"
+              :key="tf.name"
               size="xs"
-              :color="teamState(t.members) === 'none' ? 'neutral' : 'primary'"
-              :variant="teamState(t.members) === 'all' ? 'soft' : teamState(t.members) === 'some' ? 'outline' : 'ghost'"
-              :aria-pressed="teamState(t.members) !== 'none'"
-              @click="toggleTeam(t.members)"
+              :color="teamState(tf.members) === 'none' ? 'neutral' : 'primary'"
+              :variant="teamState(tf.members) === 'all' ? 'soft' : teamState(tf.members) === 'some' ? 'outline' : 'ghost'"
+              :aria-pressed="teamState(tf.members) !== 'none'"
+              @click="toggleTeam(tf.members)"
             >
               <span
                 class="size-2 rounded-full inline-block"
-                :style="{ backgroundColor: t.color ?? 'currentColor' }"
+                :style="{ backgroundColor: tf.color ?? 'currentColor' }"
               />
-              {{ t.name }}
-              <span class="opacity-60">{{ t.members.length }}</span>
+              {{ tf.name }}
+              <span class="opacity-60">{{ tf.members.length }}</span>
             </UButton>
           </div>
         </section>
@@ -223,19 +234,19 @@ function clearList(list: ListKey) {
       <section class="flex flex-col gap-2">
         <span class="filter-label flex items-center gap-1.5">
           <UIcon name="i-lucide-git-branch" class="size-3.5" />
-          Repos
+          {{ t('filters.repos') }}
           <UBadge v-if="filters.repos.length" color="primary" variant="soft" size="sm">
             {{ filters.repos.length }}
           </UBadge>
           <span class="ml-auto flex items-center">
-            <UTooltip text="selecionar todos">
-              <UButton icon="i-lucide-check-check" color="neutral" variant="ghost" size="xs" aria-label="selecionar todos os repos" @click="selectAll('repos')" />
+            <UTooltip :text="t('filters.selectAll')">
+              <UButton icon="i-lucide-check-check" color="neutral" variant="ghost" size="xs" :aria-label="t('filters.aria.selectAll', { target: 'repos' })" @click="selectAll('repos')" />
             </UTooltip>
-            <UTooltip text="inverter seleção">
-              <UButton icon="i-lucide-arrow-left-right" color="neutral" variant="ghost" size="xs" aria-label="inverter seleção de repos" @click="invert('repos')" />
+            <UTooltip :text="t('filters.invert')">
+              <UButton icon="i-lucide-arrow-left-right" color="neutral" variant="ghost" size="xs" :aria-label="t('filters.aria.invert', { target: 'repos' })" @click="invert('repos')" />
             </UTooltip>
-            <UTooltip text="limpar">
-              <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" aria-label="limpar seleção de repos" @click="clearList('repos')" />
+            <UTooltip :text="t('filters.clear')">
+              <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" :aria-label="t('filters.aria.clear', { target: 'repos' })" @click="clearList('repos')" />
             </UTooltip>
           </span>
         </span>
@@ -261,19 +272,19 @@ function clearList(list: ListKey) {
         <section class="flex flex-col gap-2">
           <span class="filter-label flex items-center gap-1.5">
             <UIcon name="i-lucide-users" class="size-3.5" />
-            Devs
+            {{ t('filters.devs') }}
             <UBadge v-if="filters.authors.length" color="primary" variant="soft" size="sm">
               {{ filters.authors.length }}
             </UBadge>
             <span class="ml-auto flex items-center">
-              <UTooltip text="selecionar todos">
-                <UButton icon="i-lucide-check-check" color="neutral" variant="ghost" size="xs" aria-label="selecionar todos os devs" @click="selectAll('authors')" />
+              <UTooltip :text="t('filters.selectAll')">
+                <UButton icon="i-lucide-check-check" color="neutral" variant="ghost" size="xs" :aria-label="t('filters.aria.selectAll', { target: 'devs' })" @click="selectAll('authors')" />
               </UTooltip>
-              <UTooltip text="inverter seleção">
-                <UButton icon="i-lucide-arrow-left-right" color="neutral" variant="ghost" size="xs" aria-label="inverter seleção de devs" @click="invert('authors')" />
+              <UTooltip :text="t('filters.invert')">
+                <UButton icon="i-lucide-arrow-left-right" color="neutral" variant="ghost" size="xs" :aria-label="t('filters.aria.invert', { target: 'devs' })" @click="invert('authors')" />
               </UTooltip>
-              <UTooltip text="limpar">
-                <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" aria-label="limpar seleção de devs" @click="clearList('authors')" />
+              <UTooltip :text="t('filters.clear')">
+                <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" :aria-label="t('filters.aria.clear', { target: 'devs' })" @click="clearList('authors')" />
               </UTooltip>
             </span>
           </span>
@@ -301,7 +312,7 @@ function clearList(list: ListKey) {
           block
           @click="resetSelection"
         >
-          limpar filtros
+          {{ t('filters.clearFilters') }}
         </UButton>
       </template>
     </template>
