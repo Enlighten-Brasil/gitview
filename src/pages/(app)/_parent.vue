@@ -72,10 +72,10 @@ const dataAge = computed(() => {
     return null
   const hours = (Date.now() - new Date(stats.value.generatedAt).getTime()) / 3_600_000
   const label = hours < 1
-    ? 'agora mesmo'
+    ? t('navbar.ageNow')
     : hours < 24
-      ? `há ${Math.floor(hours)}h`
-      : `há ${Math.floor(hours / 24)}d`
+      ? t('navbar.ageHours', { n: Math.floor(hours) })
+      : t('navbar.ageDays', { n: Math.floor(hours / 24) })
   return { label, stale: hours >= 24, generatedAt: stats.value.generatedAt }
 })
 </script>

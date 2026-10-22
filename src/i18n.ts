@@ -19,17 +19,20 @@ export const SUPPORTED_LOCALES = ['pt-BR', 'en-US', 'es-ES'] as const
 export type Locale = (typeof SUPPORTED_LOCALES)[number]
 export const DEFAULT_LOCALE: Locale = 'pt-BR'
 
-/** prefixo de língua → locale (pt→pt-BR, en→en-US, es→es-ES) */
-const PREFIX: Record<string, Locale> = { en: 'en-US', es: 'es-ES', pt: 'pt-BR' }
+/** prefixo de língua → locale (pt→pt-BR, en→en-US, es→es-ES) — Map: lookup via .get, sem object-injection */
+const PREFIX = new Map<string, Locale>([['en', 'en-US'], ['es', 'es-ES'], ['pt', 'pt-BR']])
 
 /** casa uma tag BCP-47 com os locales suportados: exato (case-insensitive) ou por prefixo */
 export function matchLocale(tag: string): Locale | null {
   const norm = tag.trim().toLowerCase()
   if (!norm)
     return null
+  // exato primeiro (normaliza o case BCP-47: pt-br → pt-BR)…
   const exact = SUPPORTED_LOCALES.find(l => l.toLowerCase() === norm)
-  // o exato normaliza o case BCP-47 (pt-br → pt-BR); sem exato, vai o prefixo
-  return exact ?? PREFIX[norm.split('-')[0]] ?? null
+  if (exact !== undefined)
+    return exact
+  // …depois o lookup nullable por prefixo de língua
+  return PREFIX.get(norm.split('-')[0]) ?? null
 }
 
 /** ordem de preferência: localStorage salvo → lista do navegador → default */
@@ -65,7 +68,12 @@ function detectLocale(): Locale {
   catch {
     // storage bloqueado (modo privado/política) — segue pro navigator
   }
-  const langs = typeof navigator === 'undefined' ? [] : (navigator.languages ?? [navigator.language])
+  // navigator.languages é não-nulo nos tipos, mas webviews antigas podem não
+  // tê-lo em runtime — modelado explicitamente, sem o fallback inalcançável
+  // em navigator.language que o Codacy marcava
+  const langs: readonly string[] = typeof navigator === 'undefined' || !Array.isArray(navigator.languages)
+    ? []
+    : navigator.languages
   return pickLocale(saved, langs)
 }
 
@@ -86,7 +94,10 @@ export async function setupI18n(
   })
   if (locale !== DEFAULT_LOCALE) {
     try {
-      i18n.global.setLocaleMessage(locale, (await load[locale]()).default)
+      // branches estáticos por locale (Codacy): chaves literais — o Vite gera
+      // os chunks por locale; o `load` injetável segue cobrindo os testes
+      const loader = locale === 'en-US' ? load['en-US'] : load['es-ES']
+      i18n.global.setLocaleMessage(locale, (await loader()).default)
       i18n.global.locale.value = locale
     }
     catch (err) {
