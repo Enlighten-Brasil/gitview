@@ -3,6 +3,7 @@ import type { LaneRow } from '@/graph/lanes'
 import type { GraphRef } from '@/graph/refs'
 import type { GraphCommit, GraphData } from '@/types'
 import { computed, onMounted, ref, shallowRef, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ct } from '@/chartTheme'
 import TablePanel from '@/components/TablePanel.vue'
 import { stats } from '@/data'
@@ -34,6 +35,8 @@ import { loadGraphData } from '@/graphData'
  * (`#cg-continua`) — nunca desenha para índice inexistente.
  */
 const props = defineProps<{ repo: string }>()
+
+const { t } = useI18n({ useScope: 'global' })
 
 // --- geometria validada no spike #125 --------------------------------------
 const ROW_H = 24
@@ -112,6 +115,13 @@ watch(() => props.repo, load)
 
 const commits = computed<GraphCommit[]>(() => data.value?.commits ?? [])
 const shownCount = computed(() => Math.min(shown.value, commits.value.length))
+
+/** aria-label do SVG: singular/plural de commit resolvido por t() na montagem */
+const ariaLabel = computed(() => t('chart.graph.aria', {
+  n: commits.value.length,
+  unit: commits.value.length === 1 ? t('chart.commit') : t('chart.commits'),
+  repo: props.repo,
+}))
 
 /** colunas visuais GLOBAIS — a largura do SVG não muda no "mostrar mais" */
 const maxCols = computed(() => laneRows.value.reduce((m, r) => Math.max(m, r.maxCol), 1))
@@ -459,19 +469,19 @@ function showMore() {
 </script>
 
 <template>
-  <TablePanel title="Grafo de commits" icon="i-lucide-git-graph" :count="commits.length || undefined">
+  <TablePanel :title="t('chart.graph.title')" icon="i-lucide-git-graph" :count="commits.length || undefined">
     <template v-if="data" #actions>
-      <span class="text-dimmed text-xs" :title="data.generatedAt">coletado {{ fmtDaysAgo(data.generatedAt) }}</span>
+      <span class="text-dimmed text-xs" :title="data.generatedAt">{{ t('chart.graph.collected', { age: fmtDaysAgo(data.generatedAt) }) }}</span>
     </template>
 
     <div v-if="failure?.status === 404" class="py-10 text-center text-sm text-muted">
-      Sem grafo de commits para esse repo — rode <code>pnpm collect</code>.
+      {{ t('chart.graph.noData') }} <code>{{ t('chart.cmd.collect') }}</code>{{ t('chart.dot') }}
     </div>
     <div v-else-if="failure" class="py-10 text-center text-sm text-error">
-      Falha ao carregar o grafo: {{ failure.message }}
+      {{ t('chart.graph.loadFailed') }} {{ failure.message }}
     </div>
     <div v-else-if="!data" class="py-10 text-center text-sm text-muted">
-      Carregando grafo…
+      {{ t('chart.graph.loading') }}
     </div>
 
     <div
@@ -484,7 +494,7 @@ function showMore() {
         <UTooltip
           v-for="r in windowRefs"
           :key="r.key"
-          :text="pinRef === r.key ? 'clique p/ soltar o destaque' : 'clique p/ fixar o destaque'"
+          :text="pinRef === r.key ? t('chart.graph.unpin') : t('chart.graph.pin')"
         >
           <button
             type="button"
@@ -506,7 +516,7 @@ function showMore() {
         :height="view.height"
         :viewBox="`0 0 ${layout.totalW} ${view.height}`"
         role="img"
-        :aria-label="`Grafo dos últimos ${commits.length} ${commits.length === 1 ? 'commit' : 'commits'} de ${props.repo}`"
+        :aria-label="ariaLabel"
       >
         <defs>
           <!-- marcador "continua" das arestas clipadas (pais fora da janela) -->
@@ -598,18 +608,16 @@ function showMore() {
           icon="i-lucide-history"
           @click="showMore"
         >
-          Mostrar mais antigos
+          {{ t('chart.graph.showMore') }}
         </UButton>
         <span class="text-dimmed text-xs">
-          mostrando {{ shownCount }} de {{ commits.length }} {{ commits.length === 1 ? 'commit' : 'commits' }} da janela
+          {{ t('chart.graph.showing', { shown: shownCount, total: commits.length, unit: commits.length === 1 ? t('chart.commit') : t('chart.commits') }) }}
         </span>
       </div>
 
       <p class="text-dimmed text-xs px-4 pb-3 leading-relaxed">
-        últimos {{ commits.length }} {{ commits.length === 1 ? 'commit' : 'commits' }} · ~{{ windowDays }} dias · merges são conectores do desenho (métricas seguem sem merges)
-        · janela fixa: não segue os filtros de período/bots/escopo
-        <template v-if="view.clippedCount">
-          · {{ view.clippedCount }} {{ view.clippedCount === 1 ? 'aresta tracejada com seta: pai fora da janela' : 'arestas tracejadas com seta: pais fora da janela' }} — a história continua mais antigo
+        {{ t('chart.graph.footnote', { n: commits.length, unit: commits.length === 1 ? t('chart.commit') : t('chart.commits'), days: windowDays }) }} <template v-if="view.clippedCount">
+          {{ view.clippedCount === 1 ? t('chart.graph.clippedOne', { n: view.clippedCount }) : t('chart.graph.clippedMany', { n: view.clippedCount }) }}
         </template>
       </p>
 
@@ -619,10 +627,10 @@ function showMore() {
           {{ tip.subject }}
         </div>
         <div class="text-[11px] text-muted mt-1">
-          {{ tip.author }} · {{ tip.date }}
+          {{ t('chart.graph.tipMeta', { author: tip.author, date: tip.date }) }}
         </div>
         <div v-if="tip.refs" class="text-[11px] text-dimmed mt-0.5">
-          ({{ tip.refs }})
+          {{ t('chart.graph.tipRefs', { refs: tip.refs }) }}
         </div>
         <code class="text-[10px] text-dimmed">{{ tip.hash }}</code>
       </div>

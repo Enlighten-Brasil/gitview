@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import type { EChartsOption } from 'echarts'
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { axisLabel, legendText, splitLine, tooltipBase } from '../chartTheme'
 import { COMMIT_TYPES, commitTypeColor, commitTypeGroup } from '../commitTypes'
 import { filteredTypes, nestBySum } from '../data'
 import { fmtInt } from '../format'
 import ChartPanel from './ChartPanel.vue'
+
+const { t } = useI18n({ useScope: 'global' })
 
 /** mix por mês (%) — stacked bar */
 const monthOption = computed<EChartsOption>(() => {
@@ -22,7 +25,10 @@ const monthOption = computed<EChartsOption>(() => {
         const lines = items
           .filter(i => i.value > 0)
           .sort((a, b) => b.value - a.value)
-          .map(i => `${i.seriesName}: <b>${i.value}</b> (${Math.round((i.value / total) * 100)}%)`)
+          .map((i) => {
+            const pct = Math.round((i.value / total) * 100)
+            return `${t('chart.types.tipLine', { name: i.seriesName })} <b>${i.value}</b> ${t('chart.types.tipTail', { pct })}`
+          })
         return `${items[0]?.axisValue ?? ''}<br>${lines.join('<br>')}`
       },
     }),
@@ -62,14 +68,14 @@ const repoOption = computed<EChartsOption>(() => {
           .map((t, i) => ({ t, v: r.pcts[i] }))
           .filter(x => x.v > 0)
           .sort((a, b) => b.v - a.v)
-          .map(x => `${x.t}: <b>${x.v}%</b>`)
-        return `${r.repo} (${fmtInt(r.total)} commits)<br>${lines.join('<br>')}`
+          .map(x => `${t('chart.types.pctLine', { type: x.t })} <b>${t('chart.pct', { n: x.v })}</b>`)
+        return `${t('chart.types.repoTipHead', { repo: r.repo, n: fmtInt(r.total) })}<br>${lines.join('<br>')}`
       },
     }),
     legend: { top: 0, right: 0, textStyle: legendText() },
     // ECharts 6: outerBoundsMode/Contain substituem o legado `grid.containLabel`
     grid: { left: 8, right: 30, top: 30, bottom: 10, outerBoundsMode: 'same', outerBoundsContain: 'axisLabel' },
-    xAxis: { type: 'value', max: 100, axisLabel: axisLabel({ formatter: '{value}%' }), splitLine: splitLine() },
+    xAxis: { type: 'value', max: 100, axisLabel: axisLabel({ formatter: (v: string | number) => t('chart.pct', { n: v }) }), splitLine: splitLine() },
     yAxis: { type: 'category', data: rows.map(r => r.repo), inverse: true, axisLabel: axisLabel() },
     series: COMMIT_TYPES.map((t, i) => ({
       name: t,
@@ -85,7 +91,7 @@ const repoOption = computed<EChartsOption>(() => {
 
 <template>
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-    <ChartPanel title="Tipos de commit por mês (feat × fix × ...)" icon="i-lucide-chart-column-stacked" :option="monthOption" tall />
-    <ChartPanel title="Mix por repo (% — ordenado por fix)" icon="i-lucide-wrench" :option="repoOption" tall />
+    <ChartPanel :title="t('chart.types.monthTitle')" icon="i-lucide-chart-column-stacked" :option="monthOption" tall />
+    <ChartPanel :title="t('chart.types.repoTitle')" icon="i-lucide-wrench" :option="repoOption" tall />
   </div>
 </template>

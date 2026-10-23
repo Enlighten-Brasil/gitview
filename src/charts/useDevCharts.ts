@@ -10,6 +10,7 @@ import { commitsByRepoPeriod } from '../aggregations'
 import { donutBase } from '../chartTheme'
 import { rangeLabel, scopeMatches, stats } from '../filters'
 import { filters, inPeriodMonth, isCustomRange } from '../filters-core'
+import { getComposer } from '../i18n'
 import { useWeekdayHourHeatmap } from './useHeatmapMatrix'
 
 export function useDevCharts(dev: MaybeRefOrGetter<string>) {
@@ -37,9 +38,13 @@ export function useDevCharts(dev: MaybeRefOrGetter<string>) {
   })
 
   // título do heatmap: em "Tudo" a agregação cobre no máx. 24M; com período, o range
-  const heatTitle = computed(() =>
-    periodFiltered.value ? `Horários de atividade — ${rangeLabel.value}` : 'Horários de atividade — últimos 24 meses',
-  )
+  const heatTitle = computed(() => {
+    // `t` na montagem do valor: a troca de locale reavalia o computed
+    const { t } = getComposer()
+    return periodFiltered.value
+      ? t('chart.heat.titleRange', { range: rangeLabel.value })
+      : t('chart.heat.title24')
+  })
 
   return { repoOption, heatOption, heatTitle }
 }

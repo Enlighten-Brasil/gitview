@@ -4,6 +4,7 @@ import type { Exposed as VChartExposed } from 'vue-echarts'
 import { useToast } from '@nuxt/ui/composables'
 import { computed, ref } from 'vue'
 import VChart from 'vue-echarts'
+import { useI18n } from 'vue-i18n'
 import { ct } from '../chartTheme'
 import '../echarts' // registro dos charts/renderers (side-effect) — chunk só das rotas com gráfico
 
@@ -19,6 +20,7 @@ const props = defineProps<{
 }>()
 
 const toast = useToast()
+const { t } = useI18n({ useScope: 'global' })
 // ref do VChart: a instância sai da API exposta do vue-echarts — nada de
 // introspecção de DOM (`[_echarts_instance_]` + echarts.getInstanceByDom)
 const vchart = ref<VChartExposed | null>(null)
@@ -40,7 +42,7 @@ const isEmpty = computed(() => {
 function exportPng() {
   const instance = vchart.value?.chart
   if (!instance) {
-    toast.add({ title: 'Falha ao exportar a imagem', description: 'o gráfico ainda não está pronto', color: 'error' })
+    toast.add({ title: t('chart.export.failTitle'), description: t('chart.export.failDesc'), color: 'error' })
     return
   }
   try {
@@ -51,10 +53,13 @@ function exportPng() {
     const slug = props.title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-')
     a.download = `gitview-${slug}.png`
     a.click()
-    toast.add({ title: 'Imagem exportada', description: `gitview-${slug}.png`, color: 'success' })
+    toast.add({ title: t('chart.export.doneTitle'), description: `gitview-${slug}.png`, color: 'success' })
   }
   catch (err) {
-    toast.add({ title: 'Falha ao exportar a imagem', description: String((err as Error).message ?? err), color: 'error' })
+    // `instanceof` cobre erro sem `message` (o `??` sobre `.message` tipado como
+    // string é sempre falso pro Codacy e mascararia o valor jogado)
+    const msg = err instanceof Error ? err.message : String(err)
+    toast.add({ title: t('chart.export.failTitle'), description: msg, color: 'error' })
   }
 }
 </script>
@@ -67,9 +72,9 @@ function exportPng() {
         <span class="text-sm font-semibold text-highlighted">{{ title }}</span>
         <span class="ml-auto flex items-center gap-1.5">
           <slot name="actions" />
-          <UTooltip v-if="!isEmpty" text="exportar como imagem">
+          <UTooltip v-if="!isEmpty" :text="t('chart.export.tooltip')">
             <UButton size="xs" color="neutral" variant="ghost" icon="i-lucide-download" @click="exportPng">
-              PNG
+              {{ t('chart.export.png') }}
             </UButton>
           </UTooltip>
         </span>
@@ -78,7 +83,7 @@ function exportPng() {
     <VChart v-if="!isEmpty" ref="vchart" :option="option" :class="tall ? 'chart-tall' : 'chart'" autoresize />
     <!-- empty state: sem dados o gráfico vazio parecia "carregando" pra sempre -->
     <div v-else :class="tall ? 'chart-tall' : 'chart'" class="flex items-center justify-center text-muted text-sm">
-      {{ emptyText ?? 'Sem dados no período filtrado.' }}
+      {{ emptyText ?? t('chart.empty') }}
     </div>
   </UCard>
 </template>

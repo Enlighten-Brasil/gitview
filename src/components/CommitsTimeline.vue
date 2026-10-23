@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { EChartsOption } from 'echarts'
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { nestBySum } from '../aggregations'
 import { axisLabel, legendText, PALETTE, splitLine, tooltipBase } from '../chartTheme'
 import { filteredMonthly, filteredWeekly, inPeriodMonth, scopeMatches, stats } from '../data'
@@ -16,6 +17,16 @@ import ChartPanel from './ChartPanel.vue'
 const props = defineProps<{ author?: string }>()
 
 const granularity = ref<'week' | 'month'>('week')
+
+const { t } = useI18n({ useScope: 'global' })
+
+// título do painel: unidade (mesma chave dos botões); o sufixo "(por dev)" fica
+// no DASHBOARD (sem `author`) — mesma semântica do template original
+const title = computed(() => {
+  const unit = granularity.value === 'week' ? t('chart.week') : t('chart.month')
+  const base = t('chart.timeline.byUnit', { unit })
+  return props.author ? base : `${base} ${t('chart.timeline.perAuthor')}`
+})
 
 // linhas normalizadas para o eixo — o perfil ignora a seleção de repo/autores
 // do dashboard (a rota /devs/:name só tem filtro de período + escopo)
@@ -64,17 +75,17 @@ const option = computed<EChartsOption>(() => {
 
 <template>
   <ChartPanel
-    :title="`Commits por ${granularity === 'week' ? 'semana' : 'mês'}${author ? '' : ' (por dev)'}`"
+    :title="title"
     :option="option"
     icon="i-lucide-chart-column-stacked"
     :tall="!author"
   >
     <template #actions>
       <UButton size="xs" :color="granularity === 'week' ? 'primary' : 'neutral'" :variant="granularity === 'week' ? 'soft' : 'ghost'" :aria-pressed="granularity === 'week'" @click="granularity = 'week'">
-        semana
+        {{ t('chart.week') }}
       </UButton>
       <UButton size="xs" :color="granularity === 'month' ? 'primary' : 'neutral'" :variant="granularity === 'month' ? 'soft' : 'ghost'" :aria-pressed="granularity === 'month'" @click="granularity = 'month'">
-        mês
+        {{ t('chart.month') }}
       </UButton>
     </template>
   </ChartPanel>

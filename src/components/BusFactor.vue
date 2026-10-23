@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import type { RiskStatus, RiskTier } from '../risk'
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { filteredMonthly, nestBySum } from '../data'
 import { reviewShareByRepo } from '../github'
 import { statusOf } from '../risk'
 import { BUS_FACTOR_BLIND_SPOT_MIN_REVIEWS, BUS_FACTOR_BLIND_SPOT_REVIEW_SHARE, BUS_FACTOR_HIGH_MAX_DEVS, BUS_FACTOR_MIN_COMMITS, BUS_FACTOR_RISK_AMBER, BUS_FACTOR_RISK_RED, BUS_FACTOR_TOP_REVIEWER_MIN_REVIEWS } from '../thresholds'
 import RiskBar from './RiskBar.vue'
 import TablePanel from './TablePanel.vue'
+
+const { t } = useI18n({ useScope: 'global' })
 
 interface RepoRisk {
   repo: string
@@ -51,11 +54,12 @@ const rows = computed<RepoRisk[]>(() => {
     .sort((a, b) => (Number(b.blindSpot) - Number(a.blindSpot)) || (b.topShare - a.topShare))
 })
 
-const RISK_TIERS: RiskTier[] = [
-  { at: BUS_FACTOR_RISK_RED, color: 'error', label: 'alto' },
-  { at: BUS_FACTOR_RISK_AMBER, color: 'warning', label: 'médio' },
-  { at: 0, color: 'success', label: 'ok' },
-]
+// tiers com o rótulo resolvido por t(): a troca de locale reavalia o badge
+const tiers = computed<RiskTier[]>(() => [
+  { at: BUS_FACTOR_RISK_RED, color: 'error', label: t('chart.bus.tierHigh') },
+  { at: BUS_FACTOR_RISK_AMBER, color: 'warning', label: t('chart.bus.tierMedium') },
+  { at: 0, color: 'success', label: t('chart.risk.ok') },
+])
 
 /**
  * risco no eixo dos tiers (alto/médio de thresholds.ts): concentração alta só
@@ -68,37 +72,37 @@ function riskScore(r: RepoRisk): number {
 }
 
 function riskStatus(r: RepoRisk): RiskStatus {
-  return statusOf(riskScore(r), RISK_TIERS)
+  return statusOf(riskScore(r), tiers.value)
 }
 </script>
 
 <template>
-  <TablePanel title="Bus factor — concentração por repositório" icon="i-lucide-bus" icon-class="text-error">
+  <TablePanel :title="t('chart.bus.title')" icon="i-lucide-bus" icon-class="text-error">
     <p v-if="rows.length === 0" class="text-muted text-sm px-4 py-4">
-      Sem dados suficientes no período filtrado.
+      {{ t('chart.noData') }}
     </p>
 
     <template v-else>
       <table class="data-table">
         <thead>
           <tr>
-            <th>repo</th>
+            <th>{{ t('chart.repo') }}</th>
             <th style="width: 22%">
-              concentração
+              {{ t('chart.bus.concentration') }}
             </th>
-            <th>dev principal</th>
+            <th>{{ t('chart.bus.topDev') }}</th>
             <th class="num">
-              % de 1 dev
-            </th>
-            <th class="num">
-              devs ativos
+              {{ t('chart.bus.pctOneDev') }}
             </th>
             <th class="num">
-              commits
+              {{ t('chart.bus.activeDevs') }}
             </th>
-            <th>review dominante</th>
             <th class="num">
-              risco
+              {{ t('chart.commits') }}
+            </th>
+            <th>{{ t('chart.bus.topReview') }}</th>
+            <th class="num">
+              {{ t('chart.bus.risk') }}
             </th>
           </tr>
         </thead>
@@ -112,7 +116,7 @@ function riskStatus(r: RepoRisk): RiskStatus {
             </td>
             <td>{{ r.topAuthor }}</td>
             <td class="num">
-              {{ Math.round(r.topShare * 100) }}%
+              {{ t('chart.pct', { n: Math.round(r.topShare * 100) }) }}
             </td>
             <td class="num">
               {{ r.devs }}
@@ -122,12 +126,12 @@ function riskStatus(r: RepoRisk): RiskStatus {
             </td>
             <td>
               <span v-if="r.topReviewer" :class="r.blindSpot ? 'text-error font-medium' : ''">
-                {{ r.topReviewer }} · {{ Math.round(r.reviewShare * 100) }}%
-                <UTooltip v-if="r.blindSpot" text="o dev principal também domina as reviews">
+                {{ t('chart.bus.reviewShare', { reviewer: r.topReviewer, pct: Math.round(r.reviewShare * 100) }) }}
+                <UTooltip v-if="r.blindSpot" :text="t('chart.bus.blindSpot')">
                   <UIcon name="i-lucide-eye-off" class="size-3.5 align-[-2px]" />
                 </UTooltip>
               </span>
-              <span v-else class="text-dimmed">—</span>
+              <span v-else class="text-dimmed">{{ t('chart.dash') }}</span>
             </td>
             <td class="num">
               <UBadge :color="riskStatus(r).color" variant="soft">
@@ -138,7 +142,7 @@ function riskStatus(r: RepoRisk): RiskStatus {
         </tbody>
       </table>
       <p class="text-dimmed text-xs px-4 pb-3 pt-2.5">
-        alto = 1 dev com ≥{{ Math.round(BUS_FACTOR_RISK_RED * 100) }}% e ≤{{ BUS_FACTOR_HIGH_MAX_DEVS }} devs ativos, ou dev principal (≥{{ Math.round(BUS_FACTOR_RISK_AMBER * 100) }}%) que também faz ≥{{ Math.round(BUS_FACTOR_BLIND_SPOT_REVIEW_SHARE * 100) }}% das reviews · médio = 1 dev com ≥{{ Math.round(BUS_FACTOR_RISK_AMBER * 100) }}% · repos com &lt;{{ BUS_FACTOR_MIN_COMMITS }} commits no período são ignorados
+        {{ t('chart.bus.footnote', { red: Math.round(BUS_FACTOR_RISK_RED * 100), maxDevs: BUS_FACTOR_HIGH_MAX_DEVS, amber: Math.round(BUS_FACTOR_RISK_AMBER * 100), blindShare: Math.round(BUS_FACTOR_BLIND_SPOT_REVIEW_SHARE * 100), min: BUS_FACTOR_MIN_COMMITS }) }}
       </p>
     </template>
   </TablePanel>
