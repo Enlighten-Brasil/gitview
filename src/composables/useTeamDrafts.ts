@@ -144,7 +144,7 @@ export function useTeamDrafts() {
       return true
     }
     catch (err) {
-      toast.add({ title: t('team.toast.saveError'), description: String((err as Error).message ?? err), color: 'error' })
+      toast.add({ title: t('team.toast.saveError'), description: String(err instanceof Error ? err.message : err), color: 'error' })
       return false
     }
     finally {
