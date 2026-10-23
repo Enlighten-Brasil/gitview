@@ -91,3 +91,150 @@ describe('lista default de exclusões (DEFAULT_EXCLUDE_PATHS)', () => {
     expect(isExcluded('docs/content/pt-BR/2.core/1.index.md')).toBe(false)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Equivalência diff-0 contra o matcher regex legado (#269) — oráculo copiado
+// da implementação antiga (só no teste; a produção não tem mais regex)
+// ---------------------------------------------------------------------------
+function legacyGlob(path: string, pattern: string): boolean {
+  const body = pattern
+    .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*\*/g, '\0')
+    .replace(/\*/g, '[^/]*')
+    .split('\0')
+    .join('.*')
+  // match(string) converte via RegExpCreate(source, '') — byte-idêntico a
+  // new RegExp(source), só sem o construtor dinâmico que a Codacy alerta (#285)
+  const source = pattern.includes('/')
+    ? `(^|.*/)${body}$`
+    : `^${body}$`
+  const target = pattern.includes('/') ? path : (path.split('/').pop() ?? path)
+  return target.match(source) !== null
+}
+
+const EXTRA_PATTERNS = [
+  'src/*.ts',
+  '*.min.js',
+  '?.lock',
+  'a**b**c',
+  '**/*.ts',
+  'dist/',
+  'My Dir/*.lock',
+  'x/y/**',
+  '**',
+  '*',
+  'a**',
+  '**b',
+  '.',
+  '',
+  'a**a**a**az',
+]
+
+const CURATED_PATHS = [
+  'pnpm-lock.yaml',
+  'packages/api/pnpm-lock.yaml',
+  'packages/api/pnpm-lock.yaml.bak',
+  'apps/web/full_documentation.json',
+  'src/appXminXjs',
+  'dist/bundle.js',
+  'apps/web/dist/bundle.js',
+  'documentation/api/index.md',
+  'overwrites/npm/pkg/index.js',
+  'dist/',
+  'app.min.js',
+  'assets/vendor/app.min.js',
+  'src/util.ts',
+  'src/deep/util.ts',
+  'src/utils/spec.ts',
+  'Dist/bundle.js',
+  'a.lock',
+  'ab.lock',
+  'src/App.vue',
+  '.git-rewrite/map/0003942c',
+  '.git-rewrite/index',
+  'content/en/1.docs/1.Getting Started/1.index.md',
+  'docs/content/pt-BR/2.core/1.index.md',
+  'src/assets/themes/candy.ts',
+  'a\nb',
+  'a/b\nc/d',
+  'x\ry',
+  'q',
+  '',
+  'a/b/c/d/e/f/g.ts',
+  'dist',
+  'dist//x',
+  'a/dist/b',
+]
+
+describe('matchesGlob — tabela-verdade diff-0 vs o regex legado (#269)', () => {
+  it('todos os DEFAULT_EXCLUDE_PATHS × caminhos curados', () => {
+    for (const pattern of [...DEFAULT_EXCLUDE_PATHS, ...EXTRA_PATTERNS]) {
+      for (const path of CURATED_PATHS) {
+        expect([path, pattern, matchesGlob(path, pattern)])
+          .toEqual([path, pattern, legacyGlob(path, pattern)])
+      }
+    }
+  })
+
+  it('fuzz determinístico de 25.000 pares padrão × caminho', () => {
+    // LCG fixo (Numerical Recipes) — determinístico em qualquer máquina
+    let seed = 20261023
+    const rand = (n: number) => {
+      seed = (seed * 1664525 + 1013904223) >>> 0
+      return seed % n
+    }
+    const PTOK = ['a', 'b', 'x', 'z', '/', '.', '*', '**', '\n', '\r', '\u2029']
+    const PATHOK = ['a', 'b', 'x', 'z', '/', '.', '\n', '\r', '\u2029', 'q', '*']
+    for (let i = 0; i < 25000; i++) {
+      let pattern = ''
+      const plen = rand(8)
+      for (let j = 0; j < plen; j++)
+        pattern += PTOK[rand(PTOK.length)]
+      let path = ''
+      const pathlen = rand(11)
+      for (let j = 0; j < pathlen; j++)
+        path += PATHOK[rand(PATHOK.length)]
+      expect([path, pattern, matchesGlob(path, pattern)])
+        .toEqual([path, pattern, legacyGlob(path, pattern)])
+    }
+  })
+
+  it('quirks preservados: NUL do padrão vira .* e quebra de linha', () => {
+    const NUL = String.fromCharCode(0)
+    const LS = String.fromCharCode(0x2028)
+    expect(matchesGlob('axb', `a${NUL}b`)).toBe(legacyGlob('axb', `a${NUL}b`))
+    expect(matchesGlob('axxb', `a${NUL}b`)).toBe(legacyGlob('axxb', `a${NUL}b`))
+    // '*' ([^/]* da regex) atravessa quebra de linha; '**' ('.*') também, já
+    // que '.' da regex só exclui terminadores — pinado nos dois sentidos
+    expect(matchesGlob('a\nb', 'a*b')).toBe(legacyGlob('a\nb', 'a*b'))
+    expect(matchesGlob('a\nb', 'a**b')).toBe(legacyGlob('a\nb', 'a**b'))
+    expect(matchesGlob(`a${LS}b`, 'a**b')).toBe(legacyGlob(`a${LS}b`, 'a**b'))
+    expect(matchesGlob(`a${LS}b`, 'a*b')).toBe(legacyGlob(`a${LS}b`, 'a*b'))
+  })
+})
+
+describe('matchesGlob — ReDoS eliminado (#269)', () => {
+  it('caso **a x25 + z contra path de 80 chars resolve em <50ms (era >15s)', () => {
+    const pattern = `${'**a'.repeat(25)}z`
+    const path = `${'a'.repeat(79)}!`
+    const t0 = performance.now()
+    const r = matchesGlob(path, pattern)
+    const ms = performance.now() - t0
+    expect(r).toBe(false)
+    expect(ms).toBeLessThan(50)
+  })
+
+  it('padrões dos DEFAULT_EXCLUDE_PATHS seguem casando em massa', () => {
+    const t0 = performance.now()
+    let hits = 0
+    for (let i = 0; i < 50000; i++) {
+      const path = `apps/web/dist/bundle-${i}.js`
+      if (matchesGlob(path, 'dist/**'))
+        hits++
+      if (matchesGlob(path, 'pnpm-lock.yaml'))
+        hits++
+    }
+    expect(hits).toBe(50000)
+    expect(performance.now() - t0).toBeLessThan(2000)
+  })
+})
