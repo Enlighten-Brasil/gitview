@@ -2,6 +2,9 @@ import type { Locale } from '../i18n'
 import { useI18n } from 'vue-i18n'
 import { applyLocale, getComposer, getI18n, loadChunk, SUPPORTED_LOCALES } from '../i18n'
 
+// trocas em sequência: token monótono descarta load que ficou obsoleto
+let switchSeq = 0
+
 /**
  * Lógica do seletor de idioma (issue #264): o ESTADO vem de i18n.global.locale
  * (a detecção de 1º acesso continua no detectLocale do boot — aqui só se
@@ -14,7 +17,18 @@ export async function switchLang(next: Locale): Promise<void> {
   // mesmo locale já ativo: sem chunk novo e sem persistir de novo
   if (next === i18n.global.locale.value)
     return
-  await loadChunk(getComposer(), next)
+  const seq = ++switchSeq
+  try {
+    await loadChunk(getComposer(), next)
+  }
+  catch (err) {
+    // chunk falhou: locale ATUAL preservado (applyLocale só roda no sucesso)
+    console.warn(`[i18n] falha ao carregar o chunk do locale '${next}' — mantendo o idioma atual`, err)
+    return
+  }
+  // outra troca mais nova assumiu enquanto o chunk carregava: descarta esta
+  if (seq !== switchSeq)
+    return
   applyLocale(i18n, next)
 }
 
