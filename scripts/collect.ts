@@ -20,6 +20,7 @@ import { getOrCreate } from '../src/collections'
 import { loadConfig, matchesGlob, resolveReposRoot } from './lib/config'
 import { getToken, NO_TOKEN_HINT } from './lib/github'
 import { initLog } from './lib/log'
+import { parseGitLog } from './lib/numstat'
 import { denyPush, discoverRepos, fetchRepo, isManagedRepo, mapPool, parseGitHub, remoteOf, scrubPersistedToken } from './lib/repos'
 import { collectScopeSets } from './lib/scope'
 import { resolveAliases } from './lib/team'
@@ -49,16 +50,6 @@ function isBot(name: string): boolean {
 // ---------------------------------------------------------------------------
 // git log streaming
 // ---------------------------------------------------------------------------
-interface RawCommit {
-  hash: string
-  name: string
-  email: string
-  date: string
-  subject: string
-  additions: number
-  deletions: number
-}
-
 /**
  * Normaliza a author date para UTC ISO com milis ('2026-10-08T18:05:13.000Z').
  * O %aI do git emite o offset original do autor (-03:00, Z…) e, gravado cru,
@@ -83,7 +74,7 @@ const EXCLUDE_PATTERNS = config.excludePaths ?? []
 // DEFAULT_EXCLUDE_PATHS; extração da issue #250 para torná-la testável)
 const isExcludedPath = (path: string): boolean => EXCLUDE_PATTERNS.some(p => matchesGlob(path, p))
 
-function gitLog(repoPath: string, extraArgs: string[] = []): Promise<RawCommit[]> {
+function gitLog(repoPath: string, extraArgs: string[] = []): Promise<ReturnType<typeof parseGitLog>> {
   return new Promise((resolvePromise, reject) => {
     const child = spawn('git', [
       '-C',
@@ -109,44 +100,9 @@ function gitLog(repoPath: string, extraArgs: string[] = []): Promise<RawCommit[]
         reject(new Error(`git log falhou em ${repoPath}: ${Buffer.concat(errChunks).toString()}`))
         return
       }
-      resolvePromise(parseGitLog(Buffer.concat(chunks).toString('utf-8')))
+      resolvePromise(parseGitLog(Buffer.concat(chunks).toString('utf-8'), isExcludedPath))
     })
   })
-}
-
-function parseGitLog(raw: string): RawCommit[] {
-  const commits: RawCommit[] = []
-  // cada commit começa com \x1e (record separator)
-  for (const block of raw.split('\x1E')) {
-    if (!block.trim())
-      continue
-    const lines = block.split('\n')
-    const header = lines[0].split('\x1F')
-    if (header.length < 5)
-      continue
-    const [hash, name, email, date, subject] = header
-    let additions = 0
-    let deletions = 0
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i].trim()
-      if (!line)
-        continue
-      const parts = line.split('\t')
-      if (parts.length < 3)
-        continue
-      // linhas de arquivos gerados/lockfiles não somam (o commit entra igual)
-      if (isExcludedPath(parts.slice(2).join('\t')))
-        continue
-      const add = Number(parts[0])
-      const del = Number(parts[1])
-      if (Number.isFinite(add))
-        additions += add
-      if (Number.isFinite(del))
-        deletions += del
-    }
-    commits.push({ hash, name, email, date, subject: subject ?? '', additions, deletions })
-  }
-  return commits
 }
 
 /**
