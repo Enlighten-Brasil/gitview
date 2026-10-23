@@ -10,6 +10,7 @@
  * "ver como filtro livre" leva ao dashboard com ?devs=<membros> editável.
  */
 import { computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import AuthorMonthHeatmap from '@/components/AuthorMonthHeatmap.vue'
 import CommitsTimeline from '@/components/CommitsTimeline.vue'
@@ -32,6 +33,8 @@ definePage({
 
 const route = useRoute()
 const router = useRouter()
+// chaves do dashboard por time (catálogo team.*) — escopo global como no FilterBar
+const { t } = useI18n({ useScope: 'global' })
 
 loadTeam()
 
@@ -114,7 +117,7 @@ function goTeam(name: string) {
         color="neutral"
         variant="ghost"
         size="sm"
-        label="times"
+        :label="t('team.dashboard.back')"
       />
       <span
         v-if="current"
@@ -127,7 +130,7 @@ function goTeam(name: string) {
       <h1 class="text-xl font-bold text-highlighted">
         {{ current?.name ?? wanted }}
       </h1>
-      <span v-if="current" class="text-xs text-dimmed">— {{ rangeLabel }}</span>
+      <span v-if="current" class="text-xs text-dimmed">{{ t('team.dashboard.rangeSep', { range: rangeLabel }) }}</span>
       <UButton
         v-if="current"
         class="ml-auto"
@@ -135,7 +138,7 @@ function goTeam(name: string) {
         color="neutral"
         variant="soft"
         size="sm"
-        label="ver como filtro livre"
+        :label="t('team.dashboard.freeFilter')"
         @click="openAsFreeFilter"
       />
     </div>
@@ -148,7 +151,7 @@ function goTeam(name: string) {
       <UTooltip
         v-for="m in current.members"
         :key="m"
-        :text="`dashboard de ${m}`"
+        :text="t('team.dashboard.memberTooltip', { name: m })"
       >
         <UButton
           :to="{ name: '/devs/[name]', params: { name: m } }"
@@ -164,7 +167,7 @@ function goTeam(name: string) {
         </UButton>
       </UTooltip>
       <p v-if="!current.members.length" class="text-xs text-dimmed italic">
-        sem membros cadastrados — edite em Times
+        {{ t('team.dashboard.noMembers') }}
       </p>
     </div>
 
@@ -173,8 +176,8 @@ function goTeam(name: string) {
       color="error"
       variant="subtle"
       icon="i-lucide-triangle-alert"
-      title="team.json não encontrado"
-      description="Rode a coleta (pnpm collect) pra gerar os dados do time."
+      :title="t('team.loadError.title')"
+      :description="t('team.loadError.description')"
     />
 
     <!-- skeleton enquanto o team.json chega (sem ele não dá pra travar os devs) -->
@@ -199,8 +202,8 @@ function goTeam(name: string) {
         color="warning"
         variant="subtle"
         icon="i-lucide-triangle-alert"
-        title="Sem dados do GitHub"
-        :description="`${githubError} para gerar o public/data/github.json (requer gh autenticado).`"
+        :title="t('team.dashboard.githubError.title')"
+        :description="t('team.dashboard.githubError.description', { error: githubError })"
       />
       <template v-else-if="github">
         <PrSummaryCards />
@@ -225,12 +228,12 @@ function goTeam(name: string) {
         color="error"
         variant="subtle"
         icon="i-lucide-users-round-x"
-        title="Time não encontrado"
-        description="Esse nome não está no team.json. Times renomeados pela UI /teams redirecionam sozinhos; cadastre/ajuste o nome em Times."
+        :title="t('team.dashboard.notFound.title')"
+        :description="t('team.dashboard.notFound.description')"
       />
       <div v-if="suggestions.length" class="text-sm">
         <p class="text-dimmed mb-2">
-          Times disponíveis:
+          {{ t('team.dashboard.suggestions') }}
         </p>
         <div class="flex flex-wrap gap-2">
           <UButton

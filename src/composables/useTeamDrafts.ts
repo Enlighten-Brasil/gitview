@@ -5,6 +5,7 @@ import { startCollect } from '@/collect'
 import { useConfirm } from '@/composables/useConfirm'
 import { stats } from '@/data'
 import { github } from '@/github'
+import { getComposer } from '@/i18n'
 import {
   dedupeList,
   fetchTeamConfig,
@@ -26,6 +27,9 @@ import {
 export function useTeamDrafts() {
   const toast = useToast()
   const confirm = useConfirm()
+  // composer global (módulo fora de componente) — o bootstrap já rodou quando a
+  // página monta; traduz só o copy de toasts/confirmações/erros, a lógica não muda
+  const { t } = getComposer()
 
   // ---------------------------------------------------------------------------
   // estado dos drafts
@@ -132,15 +136,15 @@ export function useTeamDrafts() {
       if (res.teamRefreshed)
         await loadTeam(true)
       if (res.warnings?.length)
-        toast.add({ title: 'Salvo com avisos', description: res.warnings.join(' · '), color: 'warning' })
+        toast.add({ title: t('team.toast.savedWithWarnings'), description: res.warnings.join(' · '), color: 'warning' })
       else if (skipRefresh)
-        toast.add({ title: 'Perfis salvos', description: 'a recoleta leve aplica as mudanças nos JSONs', color: 'success' })
+        toast.add({ title: t('team.toast.savedTitle'), description: t('team.toast.savedRecollect'), color: 'success' })
       else
-        toast.add({ title: 'Perfis salvos', description: 'times aplicados na hora; aliases de identidade pedem a recoleta', color: 'success' })
+        toast.add({ title: t('team.toast.savedTitle'), description: t('team.toast.savedInstant'), color: 'success' })
       return true
     }
     catch (err) {
-      toast.add({ title: 'Erro ao salvar', description: String((err as Error).message ?? err), color: 'error' })
+      toast.add({ title: t('team.toast.saveError'), description: String(err instanceof Error ? err.message : err), color: 'error' })
       return false
     }
     finally {
@@ -162,10 +166,10 @@ export function useTeamDrafts() {
   /** volta os rascunhos ao último estado salvo (descarta edições) — destrutivo, pede confirmação */
   async function revert() {
     const ok = await confirm({
-      title: 'Descartar alterações?',
-      description: 'Os perfis e times voltam ao último estado salvo em team.local.json.',
-      confirmLabel: 'descartar',
-      cancelLabel: 'continuar editando',
+      title: t('team.revert.confirm.title'),
+      description: t('team.revert.confirm.description'),
+      confirmLabel: t('team.revert.confirm.confirm'),
+      cancelLabel: t('team.revert.confirm.cancel'),
     })
     if (!ok)
       return
@@ -175,7 +179,7 @@ export function useTeamDrafts() {
     for (const [name, p] of Object.entries(saved.devProfiles))
       profiles[name] = toProfileDraft(p)
     teams.value = saved.teams.map(toTeamDraft)
-    toast.add({ title: 'Mudanças descartadas', color: 'neutral' })
+    toast.add({ title: t('team.toast.reverted'), color: 'neutral' })
   }
 
   /** carrega a config persistida (team.local.json) pros drafts */
@@ -221,20 +225,20 @@ export function useTeamDrafts() {
   }
 
   /** importa um time da org (logins já resolvidos pra devs pelos aliases) */
-  function importTeam(t: GithubTeamData['teams'][number]) {
+  function importTeam(tm: GithubTeamData['teams'][number]) {
     const loginToDev = new Map<string, string>()
     for (const d of team.value?.devs ?? []) {
       for (const l of d.githubLogins)
         loginToDev.set(l.toLowerCase(), d.name)
     }
     const members = [...new Set(
-      t.members.map(l => loginToDev.get(l.toLowerCase())).filter((m): m is string => !!m),
+      tm.members.map(l => loginToDev.get(l.toLowerCase())).filter((m): m is string => !!m),
     )]
     // sobrescrever um time salvo mantém a identidade "salva" dele (cid, savedName,
     // histórico de nomes) — senão o rename anterior desapareceria do config no save
-    const prev = teams.value.find(x => x.name.toLowerCase() === t.name.toLowerCase())
+    const prev = teams.value.find(x => x.name.toLowerCase() === tm.name.toLowerCase())
     const draftTeam: TeamDraft = {
-      ...toTeamDraft({ name: t.name, description: t.description, members }),
+      ...toTeamDraft({ name: tm.name, description: tm.description, members }),
       color: TEAM_PALETTE[teams.value.length % TEAM_PALETTE.length],
       ...(prev ? { cid: prev.cid, renamedFrom: [...prev.renamedFrom], savedName: prev.savedName } : {}),
     }
@@ -242,7 +246,7 @@ export function useTeamDrafts() {
       Object.assign(prev, draftTeam)
     else
       teams.value.push(draftTeam)
-    toast.add({ title: `Time "${t.name}" importado`, description: `${members.length}/${t.members.length} membros mapeados — revise e salve`, color: 'info' })
+    toast.add({ title: t('team.toast.imported.title', { name: tm.name }), description: t('team.toast.imported.description', { mapped: members.length, total: tm.members.length }), color: 'info' })
   }
 
   /** associa login candidato a um dev existente (adiciona no perfil dele) */
@@ -251,7 +255,7 @@ export function useTeamDrafts() {
     const logins = splitList(p.githubLogins)
     if (!logins.some(l => l.toLowerCase() === login.toLowerCase())) {
       p.githubLogins = [...logins, login].join(', ')
-      toast.add({ title: 'Login associado', description: `${login} → ${dev} — salve pra aplicar`, color: 'success' })
+      toast.add({ title: t('team.toast.loginLinked.title'), description: t('team.toast.loginLinked.description', { login, dev }), color: 'success' })
     }
   }
 
@@ -265,7 +269,7 @@ export function useTeamDrafts() {
         merged.push(e)
     }
     p.emails = merged.join(', ')
-    toast.add({ title: 'E-mails associados', description: `${emails.join(', ')} → ${dev} — salve pra aplicar`, color: 'success' })
+    toast.add({ title: t('team.toast.emailsLinked.title'), description: t('team.toast.emailsLinked.description', { list: emails.join(', '), dev }), color: 'success' })
   }
 
   // ---------------------------------------------------------------------------
@@ -318,13 +322,13 @@ export function useTeamDrafts() {
   /** opções do add-member por cid: exclui quem já está no time, marca quem está em outro */
   const addItemsByCid = computed(() => {
     const map = new Map<string, MemberAddItem[]>()
-    for (const t of teams.value) {
-      const inTeam = new Set(t.members)
-      map.set(t.cid, devNames.value
+    for (const tm of teams.value) {
+      const inTeam = new Set(tm.members)
+      map.set(tm.cid, devNames.value
         .filter(d => !inTeam.has(d))
         .map((d) => {
-          const others = otherTeamsOf(d, t.cid)
-          return { label: d, value: d, hint: others.length ? `já em: ${others.join(', ')}` : undefined }
+          const others = otherTeamsOf(d, tm.cid)
+          return { label: d, value: d, hint: others.length ? t('team.card.alreadyIn', { teams: others.join(', ') }) : undefined }
         }))
     }
     return map

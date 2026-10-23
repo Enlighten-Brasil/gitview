@@ -4,6 +4,8 @@
  * snapshot salvo), salvar e salvar + recoleta leve. Ações saem por emits — quem
  * persiste é o composable na página (issue #40).
  */
+import { useI18n } from 'vue-i18n'
+
 defineProps<{
   dirty: boolean
   saving: boolean
@@ -16,6 +18,8 @@ const emit = defineEmits<{
   'save': []
   'save-and-recollect': []
 }>()
+
+const { t } = useI18n({ useScope: 'global' })
 </script>
 
 <template>
@@ -28,12 +32,12 @@ const emit = defineEmits<{
       :class="dirty ? 'text-warning' : 'text-success'"
     />
     <span class="text-xs text-dimmed">
-      {{ dirty ? 'alterações não salvas (só nesta máquina até salvar)' : 'tudo salvo em team.local.json' }}
+      {{ dirty ? t('team.save.dirty') : t('team.save.clean') }}
     </span>
     <div class="ml-auto flex items-center gap-2">
       <UButton
         v-if="dirty"
-        label="desfazer"
+        :label="t('team.save.revert')"
         size="xs"
         color="neutral"
         variant="ghost"
@@ -45,17 +49,17 @@ const emit = defineEmits<{
         size="xs"
         :loading="saving"
         :disabled="!dirty"
-        label="salvar"
+        :label="t('team.save.save')"
         @click="emit('save')"
       />
-      <UTooltip text="salva e roda a recoleta leve (re-agrega os dados com os novos aliases, sem re-escanear o git)">
+      <UTooltip :text="t('team.save.recollectTooltip')">
         <UButton
           icon="i-lucide-refresh-cw"
           color="neutral"
           variant="soft"
           size="xs"
           :loading="collecting"
-          label="salvar + recoletar"
+          :label="t('team.save.recollect')"
           @click="emit('save-and-recollect')"
         />
       </UTooltip>

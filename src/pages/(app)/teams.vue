@@ -1,6 +1,7 @@
 <script setup lang="ts">
 /** /times — orquestração do editor de times (issue #40): drafts/persistência em useTeamDrafts, UI em componentes próprios */
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { collecting } from '@/collect'
 import DevCard from '@/components/team/DevCard.vue'
 import TeamCandidatesSection from '@/components/team/TeamCandidatesSection.vue'
@@ -23,6 +24,8 @@ definePage({
 })
 
 const isDev = import.meta.env.DEV
+// chaves do editor de times (catálogo team.*) — escopo global como no FilterBar
+const { t } = useI18n({ useScope: 'global' })
 const {
   addItemsByCid,
   addMember,
@@ -82,10 +85,10 @@ function openEdit(name: string) {
     <div class="flex items-center gap-3 flex-wrap">
       <div>
         <h1 class="text-xl font-semibold">
-          Times
+          {{ t('team.page.title') }}
         </h1>
         <p class="text-sm text-dimmed">
-          Perfis de devs, aliases (e-mails e logins) e times. Salvo em <code class="text-xs">team.local.json</code> (só na sua máquina).
+          {{ t('team.page.intro') }} <code class="text-xs">{{ t('team.page.introFile') }}</code> {{ t('team.page.introEnd') }}
         </p>
       </div>
       <div class="ml-auto flex items-center gap-2">
@@ -95,7 +98,7 @@ function openEdit(name: string) {
           color="neutral"
           variant="soft"
           size="sm"
-          label="importar do GitHub"
+          :label="t('team.import.title')"
           @click="importOpen = true"
         />
       </div>
@@ -106,16 +109,16 @@ function openEdit(name: string) {
       color="warning"
       variant="subtle"
       icon="i-lucide-lock"
-      title="edição só no modo dev"
-      description="No build estático esta página é somente leitura (perfis e times definidos em team.local.json)."
+      :title="t('team.static.title')"
+      :description="t('team.static.description')"
     />
     <UAlert
       v-if="teamLoadError"
       color="error"
       variant="subtle"
       icon="i-lucide-triangle-alert"
-      title="team.json não encontrado"
-      description="Rode a coleta (pnpm collect) pra gerar os dados do time."
+      :title="t('team.loadError.title')"
+      :description="t('team.loadError.description')"
     />
 
     <!-- skeleton enquanto o team.json chega (senão o vazio parece "sem time") -->
@@ -133,7 +136,7 @@ function openEdit(name: string) {
       <section id="times" class="flex flex-col gap-3 scroll-mt-16">
         <div class="flex items-center gap-2">
           <h2 class="font-medium">
-            Times
+            {{ t('team.section.times') }}
           </h2>
           <UBadge color="neutral" variant="subtle" size="sm">
             {{ teamCount }}
@@ -144,22 +147,22 @@ function openEdit(name: string) {
             size="xs"
             color="neutral"
             variant="soft"
-            label="novo time"
+            :label="t('team.actions.newTeam')"
             class="ml-auto"
             @click="addTeam"
           />
         </div>
         <div class="grid gap-4 md:grid-cols-2">
           <TeamCard
-            v-for="t in teams"
-            :key="t.cid"
-            v-model:name="t.name"
-            v-model:description="t.description"
-            v-model:color="t.color"
-            :cid="t.cid"
-            :members="t.members"
-            :items="addItemsByCid.get(t.cid) ?? []"
-            :metrics="metricsByCid.get(t.cid) ?? EMPTY_TEAM_METRICS"
+            v-for="td in teams"
+            :key="td.cid"
+            v-model:name="td.name"
+            v-model:description="td.description"
+            v-model:color="td.color"
+            :cid="td.cid"
+            :members="td.members"
+            :items="addItemsByCid.get(td.cid) ?? []"
+            :metrics="metricsByCid.get(td.cid) ?? EMPTY_TEAM_METRICS"
             :disabled="!isDev || !configLoaded"
             @remove="removeTeam"
             @add-member="addMember"
@@ -171,10 +174,10 @@ function openEdit(name: string) {
             @click="addTeam"
           >
             <UIcon name="i-lucide-plus" class="size-6" />
-            criar o primeiro time
+            {{ t('team.empty.createFirst') }}
           </button>
           <p v-if="!teams.length && !(isDev && configLoaded)" class="text-sm text-dimmed">
-            Nenhum time cadastrado.
+            {{ t('team.empty.none') }}
           </p>
         </div>
       </section>
@@ -183,12 +186,12 @@ function openEdit(name: string) {
       <section id="devs" class="flex flex-col gap-3 scroll-mt-16">
         <div class="flex items-center gap-2">
           <h2 class="font-medium">
-            Devs
+            {{ t('team.section.devs') }}
           </h2>
           <UBadge color="neutral" variant="subtle" size="sm">
             {{ devs.filter(d => !d.bot).length }}
           </UBadge>
-          <span class="text-xs text-dimmed">nomes unificados pelos aliases; edite o perfil pra cadastrá-los</span>
+          <span class="text-xs text-dimmed">{{ t('team.devs.hint') }}</span>
         </div>
         <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           <DevCard
