@@ -1,5 +1,0 @@
----
-"gitview": minor
----
-
-Onda 3 da migração de i18n nos painéis e gráficos: os títulos dos painéis, os tooltips e legendas do ECharts, os rótulos de eixo, os cabeçalhos de tabela, os rodapés com limiares, os toasts de exportação e os estados vazios saem do código para o catálogo `chart` nos três locales, com interpolação nomeada — números e datas continuam saindo do `format.ts` (decisão #32). Os formatters resolvem a chave na montagem da opção (os componentes já montam as opções em `computed`), então a troca de locale reavalia títulos, legendas e séries; o formatter do donut e os títulos do heatmap do perfil usam o composer global do bootstrap. `pt-BR` segue byte-idêntico ao copy atual (probe DOM de texto e atributos em `/`, `/health`, `/devs` e no perfil do dev), `en-US`/`es-ES` traduzidos com o mesmo sentido. Chaves consumidas só a partir de `.ts` (formatters do ECharts) ficam sob o override scoped do `chart.json` no eslint — `no-missing-keys` continua ativo, e a paridade de chaves entre locales segue garantida pelo teste i18n.
