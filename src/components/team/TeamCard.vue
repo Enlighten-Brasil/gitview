@@ -9,6 +9,7 @@ import type { MemberAddItem, TeamMetrics } from '@/team'
  * do pai. `disabled` (build estático) esconde toda a UI de edição.
  */
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useConfirm } from '@/composables/useConfirm'
 import { fmtCompact, fmtDaysAgo } from '@/format'
 import { avatarBgClass, initialsOf, TEAM_PALETTE } from '@/team'
@@ -33,6 +34,8 @@ const name = defineModel<string>('name', { default: '' })
 const description = defineModel<string>('description', { default: '' })
 const color = defineModel<string>('color', { default: '' })
 
+const { t } = useI18n({ useScope: 'global' })
+
 const colorOpen = ref(false)
 const customColor = ref('')
 const confirm = useConfirm()
@@ -53,7 +56,7 @@ const HEX_RE = /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i
 /** mensagem de erro do campo de cor custom (vazia/limpa = sem erro) */
 const customColorError = computed(() => {
   const v = customColor.value.trim()
-  return v && !HEX_RE.test(v) ? 'use #rgb, #rrggbb ou #rrggbbaa' : undefined
+  return v && !HEX_RE.test(v) ? t('team.card.colorError') : undefined
 })
 
 function commitCustom() {
@@ -77,9 +80,9 @@ function removeMember(m: string) {
 /** remoção do time é destrutiva — passa pelo useConfirm (UModal), sem swap inline */
 async function requestRemove() {
   const ok = await confirm({
-    title: `Remover o time "${name.value.trim() || '?'}"?`,
-    description: 'Os membros voltam a ficar sem time na lista. O time só sai do team.local.json quando você salvar.',
-    confirmLabel: 'remover time',
+    title: t('team.card.removeConfirm.title', { name: name.value.trim() || '?' }),
+    description: t('team.card.removeConfirm.description'),
+    confirmLabel: t('team.card.removeConfirm.confirm'),
   })
   if (ok)
     emit('remove', props.cid)
@@ -98,24 +101,24 @@ async function requestRemove() {
           {{ initialsOf(name || '?') }}
         </span>
         <div class="min-w-0 flex-1">
-          <UFormField v-if="!disabled" label="nome do time" :ui="{ label: 'sr-only' }" class="w-full">
+          <UFormField v-if="!disabled" :label="t('team.card.nameLabel')" :ui="{ label: 'sr-only' }" class="w-full">
             <UInput
               v-model="name"
               variant="none"
               size="lg"
-              placeholder="Nome do time"
+              :placeholder="t('team.card.namePlaceholder')"
               class="w-full font-semibold ps-0! text-lg"
             />
           </UFormField>
           <div v-else class="font-semibold text-lg truncate">
             {{ name }}
           </div>
-          <UFormField v-if="!disabled" label="descrição do time" :ui="{ label: 'sr-only' }" class="w-full">
+          <UFormField v-if="!disabled" :label="t('team.card.descriptionLabel')" :ui="{ label: 'sr-only' }" class="w-full">
             <UInput
               v-model="description"
               variant="ghost"
               size="xs"
-              placeholder="descrição (opcional)"
+              :placeholder="t('team.card.descriptionPlaceholder')"
               class="w-full text-xs ps-0!"
             />
           </UFormField>
@@ -130,7 +133,7 @@ async function requestRemove() {
               color="neutral"
               variant="ghost"
               square
-              :aria-label="`cor do time ${name}`"
+              :aria-label="t('team.card.colorAria', { name })"
             >
               <span class="size-4 rounded-full border border-default" :style="{ backgroundColor: color || 'transparent' }" />
             </UButton>
@@ -147,10 +150,10 @@ async function requestRemove() {
                     @click="setColor(c)"
                   />
                 </div>
-                <UFormField label="cor personalizada" :ui="{ label: 'sr-only' }" :error="customColorError">
-                  <UInput v-model="customColor" size="xs" placeholder="#hex" class="font-mono" @keyup.enter="commitCustom" @blur="commitCustom" />
+                <UFormField :label="t('team.card.customColorLabel')" :ui="{ label: 'sr-only' }" :error="customColorError">
+                  <UInput v-model="customColor" size="xs" :placeholder="t('team.card.customColorPlaceholder')" class="font-mono" @keyup.enter="commitCustom" @blur="commitCustom" />
                 </UFormField>
-                <UButton label="sem cor" size="xs" color="neutral" variant="link" @click="setColor('')" />
+                <UButton :label="t('team.card.noColor')" size="xs" color="neutral" variant="link" @click="setColor('')" />
               </div>
             </template>
           </UPopover>
@@ -160,7 +163,7 @@ async function requestRemove() {
             variant="ghost"
             size="xs"
             square
-            aria-label="remover time"
+            :aria-label="t('team.card.removeAria')"
             @click="requestRemove"
           />
         </div>
@@ -182,25 +185,25 @@ async function requestRemove() {
           <button
             v-if="!disabled"
             class="text-dimmed hover:text-error transition-colors"
-            :aria-label="`remover ${m} do time`"
+            :aria-label="t('team.card.removeMemberAria', { name: m })"
             @click="removeMember(m)"
           >
             <UIcon name="i-lucide-x" class="size-3" />
           </button>
         </span>
         <p v-if="!members.length" class="text-xs text-dimmed italic">
-          sem membros ainda
+          {{ t('team.card.noMembers') }}
         </p>
       </div>
 
       <!-- adicionar membro -->
-      <UFormField v-if="!disabled" label="adicionar membro" :ui="{ label: 'sr-only' }">
+      <UFormField v-if="!disabled" :label="t('team.card.addMemberLabel')" :ui="{ label: 'sr-only' }">
         <UInputMenu
           v-model="pick"
           :items="items"
           value-key="value"
           label-key="label"
-          placeholder="adicionar membro… (busca por nome)"
+          :placeholder="t('team.card.addMemberPlaceholder')"
           size="sm"
           class="w-full"
           @update:model-value="addMember"
@@ -211,17 +214,17 @@ async function requestRemove() {
       <div class="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-default pt-3 text-xs text-dimmed">
         <span class="inline-flex items-center gap-1">
           <UIcon name="i-lucide-users" class="size-3.5" />
-          {{ metrics.devs }} devs
+          {{ t('team.card.metric.devs', { n: metrics.devs }) }}
         </span>
         <span class="inline-flex items-center gap-1">
           <UIcon name="i-lucide-git-commit-horizontal" class="size-3.5" />
-          {{ fmtCompact(metrics.commits) }} commits
+          {{ t('team.card.metric.commits', { n: fmtCompact(metrics.commits) }) }}
         </span>
         <span class="inline-flex items-center gap-1">
           <UIcon name="i-lucide-git-pull-request" class="size-3.5" />
-          {{ fmtCompact(metrics.prs) }} {{ metrics.prs === 1 ? 'PR' : 'PRs' }}
+          {{ t(metrics.prs === 1 ? 'team.card.metric.prsOne' : 'team.card.metric.prsMany', { n: fmtCompact(metrics.prs) }) }}
         </span>
-        <UTooltip v-if="metrics.lastCommit" :text="`último commit: ${metrics.lastCommit}`">
+        <UTooltip v-if="metrics.lastCommit" :text="t('team.card.lastCommitTooltip', { date: metrics.lastCommit })">
           <span class="ml-auto inline-flex items-center gap-1">
             <UIcon name="i-lucide-clock" class="size-3.5" />
             {{ fmtDaysAgo(metrics.lastCommit) }}
@@ -235,7 +238,7 @@ async function requestRemove() {
           color="neutral"
           variant="ghost"
           size="xs"
-          :aria-label="`abrir dashboard do time ${name.trim()}`"
+          :aria-label="t('team.card.openDashboardAria', { name: name.trim() })"
           :class="!metrics.lastCommit && 'ml-auto'"
         />
       </div>

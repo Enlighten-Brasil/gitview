@@ -7,6 +7,7 @@ import type { TeamCandidate } from '@/types'
  * emits; quem grava no perfil é o composable na página.
  */
 import { computed, reactive, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{
   candidates: TeamCandidate[]
@@ -19,6 +20,8 @@ const emit = defineEmits<{
   'assign-login': [dev: string, login: string]
   'assign-emails': [dev: string, emails: string[]]
 }>()
+
+const { t } = useI18n({ useScope: 'global' })
 
 const assignTarget = reactive<Record<string, string>>({})
 
@@ -78,14 +81,14 @@ function assign(c: TeamCandidate) {
   <section v-if="candidates.length" id="sem-mapeamento" class="flex flex-col gap-3 scroll-mt-16">
     <div class="flex items-center gap-2">
       <h2 class="font-medium">
-        Sem mapeamento
+        {{ t('team.candidates.title') }}
       </h2>
       <UBadge color="warning" variant="subtle" size="sm">
         {{ candidates.length }}
       </UBadge>
     </div>
     <p class="text-sm text-dimmed">
-      Identidades vistas nos dados sem alias cadastrado. Associe a um dev existente pra unificar.
+      {{ t('team.candidates.description') }}
     </p>
     <div class="flex flex-col gap-2">
       <div
@@ -97,7 +100,7 @@ function assign(c: TeamCandidate) {
         <div class="min-w-0 flex-1">
           <span class="font-mono text-sm">{{ c.id }}</span>
           <span v-if="c.emails?.length" class="text-xs text-dimmed ml-2">{{ c.emails.join(', ') }}</span>
-          <span v-if="c.prs != null" class="text-xs text-dimmed ml-2">{{ c.prs }} {{ c.prs === 1 ? 'PR/review' : 'PRs/reviews' }}</span>
+          <span v-if="c.prs != null" class="text-xs text-dimmed ml-2">{{ t(c.prs === 1 ? 'team.candidates.prsOne' : 'team.candidates.prsMany', { n: c.prs }) }}</span>
         </div>
         <template v-if="editable">
           <UBadge
@@ -107,14 +110,14 @@ function assign(c: TeamCandidate) {
             size="xs"
             class="shrink-0"
           >
-            sugestão
+            {{ t('team.candidates.suggestion') }}
           </UBadge>
           <!-- UInputMenu com busca: a lista de devs cresce e o select puro não escala -->
-          <UFormField label="associar a um dev" :ui="{ label: 'sr-only' }">
+          <UFormField :label="t('team.assign.devLabel')" :ui="{ label: 'sr-only' }">
             <UInputMenu
               v-model="assignTarget[c.id]"
               :items="devNames"
-              placeholder="associar a… (busca por nome)"
+              :placeholder="t('team.assign.devPlaceholder')"
               size="xs"
               class="w-48"
             />
@@ -124,7 +127,7 @@ function assign(c: TeamCandidate) {
             color="neutral"
             variant="soft"
             :disabled="!assignTarget[c.id]"
-            :label="suggestions[c.id] && assignTarget[c.id] === suggestions[c.id] ? 'confirmar' : 'associar'"
+            :label="suggestions[c.id] && assignTarget[c.id] === suggestions[c.id] ? t('team.assign.confirm') : t('team.assign.action')"
             @click="assign(c)"
           />
         </template>

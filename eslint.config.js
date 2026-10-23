@@ -107,4 +107,15 @@ export default antfu(
       '@intlify/vue-i18n/no-unused-keys': 'off',
     },
   },
+  {
+    // chaves de team.json sem rastreio do plugin: a regra casa t('literal') em
+    // .vue/.js — os toasts/confirmações/hint chamam t() no composable .ts
+    // (src/composables/useTeamDrafts.ts) e os plurais (PR/login/e-mail) resolvem
+    // a chave por ternário no template — desligado só nos team.json, as demais
+    // chaves continuam sob a regra. Reavaliar na convenção final (#265)
+    files: ['src/locales/*/team.json'],
+    rules: {
+      '@intlify/vue-i18n/no-unused-keys': 'off',
+    },
+  },
 )

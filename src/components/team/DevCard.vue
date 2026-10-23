@@ -4,6 +4,7 @@
  * de time com a cor do time, aliases resumidos (completo no tooltip) e acesso
  * rápido ao perfil de commits. Bots não recebem ação de editar.
  */
+import { useI18n } from 'vue-i18n'
 import { avatarBgClass, initialsOf } from '@/team'
 
 defineProps<{
@@ -20,6 +21,8 @@ defineProps<{
   editable: boolean
 }>()
 const emit = defineEmits<{ edit: [] }>()
+
+const { t } = useI18n({ useScope: 'global' })
 </script>
 
 <template>
@@ -32,7 +35,7 @@ const emit = defineEmits<{ edit: [] }>()
       </span>
       <div class="min-w-0 flex-1">
         <div class="flex items-center gap-1.5">
-          <UTooltip v-if="hasProfile" text="ver perfil de commits" class="min-w-0 flex-1">
+          <UTooltip v-if="hasProfile" :text="t('team.dev.viewProfile')" class="min-w-0 flex-1">
             <RouterLink
               :to="{ name: '/devs/[name]', params: { name } }"
               class="font-medium truncate hover:text-primary min-w-0 flex-1"
@@ -44,7 +47,7 @@ const emit = defineEmits<{ edit: [] }>()
             {{ name }}
           </span>
           <UBadge v-if="bot" color="warning" variant="subtle" size="xs" class="shrink-0">
-            bot
+            {{ t('team.dev.bot') }}
           </UBadge>
           <UButton
             v-if="editable"
@@ -54,7 +57,7 @@ const emit = defineEmits<{ edit: [] }>()
             size="xs"
             square
             class="shrink-0"
-            aria-label="editar perfil"
+            :aria-label="t('team.dev.editProfile')"
             @click="emit('edit')"
           />
         </div>
@@ -76,21 +79,21 @@ const emit = defineEmits<{ edit: [] }>()
             {{ tb.name }}
           </UBadge>
           <span v-if="!teamBadges.length" class="text-xs text-dimmed italic">
-            sem time
+            {{ t('team.dev.noTeam') }}
           </span>
         </div>
 
         <div v-if="emails.length || githubLogins.length" class="mt-1.5 flex items-center gap-3 text-xs text-dimmed">
           <UTooltip v-if="githubLogins.length" :text="githubLogins.join(', ')">
-            <button type="button" class="inline-flex items-center gap-1 cursor-default" :aria-label="`logins do GitHub (${githubLogins.length}): ${githubLogins.join(', ')}`">
+            <button type="button" class="inline-flex items-center gap-1 cursor-default" :aria-label="t('team.dev.loginsAria', { n: githubLogins.length, list: githubLogins.join(', ') })">
               <UIcon name="i-lucide-github" class="size-3.5" />
-              {{ githubLogins.length }} login{{ githubLogins.length > 1 ? 's' : '' }}
+              {{ t(githubLogins.length > 1 ? 'team.dev.loginMany' : 'team.dev.loginOne', { n: githubLogins.length }) }}
             </button>
           </UTooltip>
           <UTooltip v-if="emails.length" :text="emails.join(', ')">
-            <button type="button" class="inline-flex items-center gap-1 cursor-default" :aria-label="`e-mails de commit (${emails.length}): ${emails.join(', ')}`">
+            <button type="button" class="inline-flex items-center gap-1 cursor-default" :aria-label="t('team.dev.emailsAria', { n: emails.length, list: emails.join(', ') })">
               <UIcon name="i-lucide-mail" class="size-3.5" />
-              {{ emails.length }} e-mail{{ emails.length > 1 ? 's' : '' }}
+              {{ t(emails.length > 1 ? 'team.dev.emailMany' : 'team.dev.emailOne', { n: emails.length }) }}
             </button>
           </UTooltip>
         </div>
