@@ -159,31 +159,117 @@ export const DEFAULT_EXCLUDE_PATHS = [
 /**
  * glob simples: '*' dentro do segmento; '**' casa caminho qualquer; padrão com
  * '/' casa o caminho todo (em qualquer profundidade), sem '/' casa o basename.
- * Case-sensitive como gitignore. O placeholder de '**' é um control char — com
- * espaço literal, um glob tipo 'My Dir/*.lock' virava over-match `.*` (follow-up #11)
+ * Case-sensitive como gitignore.
+ *
+ * Matcher LINEAR sem regex (issue #269): a regex dinâmica antiga gerava
+ * sequências de '.*' dos '**' com backtracking catastrófico (padrão '**a' x25
+ * + 'z' contra path de 80 chars não resolvia nem em 15s — probe medido). Aqui é
+ * DP O(tokens x path), sem backtrack. Semântica byte-idêntica à regex antiga,
+ * inclusive nos quirks: TODO NUL do padrão virava '.*' (marcador de '**'
+ * colidia) e '.' da regex não engole quebra de linha — a tabela-verdade diff-0
+ * contra o oráculo legado fica pinada em test/config.test.ts.
  */
-// cache por execução: a regex só depende do padrão, e o numstat chama
-// isExcludedPath por (caminho × padrão) — sem cache recompilava a mesma regex
-// milhares de vezes (follow-up #12)
-const globCache = new Map<string, RegExp>()
+interface GlobToken {
+  kind: 'lit' | 'star' | 'dstar'
+  ch?: string
+}
+
+const NUL = String.fromCharCode(0)
+
+function tokenizeGlob(pattern: string): GlobToken[] {
+  const tokens: GlobToken[] = []
+  for (let i = 0; i < pattern.length;) {
+    const c = pattern[i]
+    // '**' esquerda-pra-direita não-sobreposto (mesma ordem do replace antigo)
+    if (c === '*' && pattern[i + 1] === '*') {
+      tokens.push({ kind: 'dstar' })
+      i += 2
+    }
+    else if (c === '*') {
+      tokens.push({ kind: 'star' })
+      i += 1
+    }
+    else if (c === NUL) {
+      tokens.push({ kind: 'dstar' })
+      i += 1
+    }
+    else {
+      tokens.push({ kind: 'lit', ch: c })
+      i += 1
+    }
+  }
+  return tokens
+}
+
+const isLineTerm = (c: string): boolean => c === '\n' || c === '\r' || c === '\u2028' || c === '\u2029'
+
+// cache por execução: os tokens só dependem do padrão, e o numstat chama
+// isExcludedPath por (caminho × padrão) — sem cache recompilava milhares de
+// vezes (o antigo globCache guardava a regex pré-compilada; follow-up #12)
+const globTokens = new Map<string, GlobToken[]>()
 
 export function matchesGlob(path: string, pattern: string): boolean {
-  let re = globCache.get(pattern)
-  if (!re) {
-    const body = pattern
-      // '?' precisa de escape: sem ele vira quantifier de regex e o glob
-      // '?.lock' sub-exclui silenciosamente (follow-up #12)
-      .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
-      .replace(/\*\*/g, '\u0000')
-      .replace(/\*/g, '[^/]*')
-      .split('\u0000')
-      .join('.*')
-    re = pattern.includes('/')
-      ? new RegExp(`(^|.*/)${body}$`)
-      : new RegExp(`^${body}$`)
-    globCache.set(pattern, re)
+  let tokens = globTokens.get(pattern)
+  if (!tokens) {
+    tokens = tokenizeGlob(pattern)
+    globTokens.set(pattern, tokens)
   }
-  return re.test(pattern.includes('/') ? path : (path.split('/').pop() ?? path))
+  // com '/': regex era '(^|.*/)body$' no path todo; sem '/': '^body$' no basename
+  const withSlash = pattern.includes('/')
+  const target = withSlash ? path : (path.split('/').pop() ?? path)
+  const len = target.length
+  let row = new Uint8Array(len + 1)
+  if (withSlash) {
+    // '(^|.*/)' na regex: o '.*' da alternativa pode começar em QUALQUER
+    // posição (regex não ancora o grupo), então start válido é só 0 ou logo
+    // após uma barra — o prefixo não precisa ser o começo do path
+    for (let i = 0; i <= len; i++) {
+      if (i === 0 || target[i - 1] === '/')
+        row[i] = 1
+    }
+  }
+  else {
+    row[0] = 1
+  }
+  let next = new Uint8Array(len + 1)
+  for (const tok of tokens) {
+    next.fill(0)
+    if (tok.kind === 'lit') {
+      const ch = tok.ch
+      for (let p = 0; p < len; p++) {
+        if (row[p] && target[p] === ch)
+          next[p + 1] = 1
+      }
+    }
+    else if (tok.kind === 'star') {
+      // '*' vira '[^/]*' — para na barra
+      let ok = false
+      for (let q = 0; q <= len; q++) {
+        if (row[q])
+          ok = true
+        if (ok)
+          next[q] = 1
+        if (q < len && target[q] === '/')
+          ok = false
+      }
+    }
+    else {
+      // '**' vira '.*' — consome qualquer run, menos quebra de linha
+      let ok = false
+      for (let q = 0; q <= len; q++) {
+        if (row[q])
+          ok = true
+        if (ok)
+          next[q] = 1
+        if (q < len && isLineTerm(target[q]))
+          ok = false
+      }
+    }
+    const tmp = row
+    row = next
+    next = tmp
+  }
+  return row[len] === 1
 }
 
 /**
