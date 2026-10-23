@@ -1,5 +1,11 @@
 # gitview
 
+## 0.71.2
+
+### Patch Changes
+
+- d337447: docs: métrica de concentração por repositório descrita sem citar o rótulo de UI obsoleto em `dashboard/metrics.md` (EN + pt-BR) — o literal não existe mais em `src/` (só `concentração` nos catálogos); a definição da métrica estava correta e se mantém.
+
 ## 0.71.1
 
 ### Patch Changes
