@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import CycleTrend from '@/components/CycleTrend.vue'
 import PrCycleTime from '@/components/PrCycleTime.vue'
 import PrOpenTable from '@/components/PrOpenTable.vue'
@@ -18,6 +19,8 @@ definePage({
     filters: 'full',
   },
 })
+
+const { t } = useI18n({ useScope: 'global' })
 </script>
 
 <template>
@@ -27,8 +30,8 @@ definePage({
       color="warning"
       variant="subtle"
       icon="i-lucide-triangle-alert"
-      title="Sem dados do GitHub"
-      :description="`${githubError} para gerar o public/data/github.json (requer gh autenticado).`"
+      :title="t('branches.error.noGithub')"
+      :description="t('branches.error.githubPrs', { msg: githubError })"
     />
     <div v-else-if="github" class="flex flex-col gap-4">
       <section id="abertos" class="flex flex-col gap-4 scroll-mt-16">

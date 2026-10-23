@@ -2,6 +2,7 @@
 import type { EChartsOption } from 'echarts'
 import type { MergedPr } from '@/types'
 import { computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { axisLabel, ct, donutBase, splitLine, tooltipBase } from '@/chartTheme'
 import { commitTypeColor, commitTypeGroup } from '@/commitTypes'
@@ -27,6 +28,7 @@ definePage({
 })
 
 const route = useRoute()
+const { t } = useI18n({ useScope: 'global' })
 const repo = computed(() => String(route.params.name ?? ''))
 
 onMounted(loadReleases)
@@ -44,8 +46,6 @@ const periodFiltered = computed(() => filters.rangeMonths !== null || isCustomRa
 // escopo de trabalho ativo (issue #129): os cards de período seguem o recorte;
 // os históricos (perRepo/streaks) não têm como seguir e ganham o sufixo
 const scopeFiltered = computed(() => filters.workScope !== 'all')
-// sufixo dos cards que seguem históricos mesmo com período/escopo ativos
-const histSuffix = computed(() => (periodFiltered.value || scopeFiltered.value ? ' (total)' : ''))
 
 // linhas mensais do repo dentro do período, respeitando o switch de bots e o
 // escopo de trabalho (com "Tudo", inPeriodMonth aceita todos os meses e a soma
@@ -93,25 +93,25 @@ const cards = computed<{ value: string, label: string, icon?: string, color?: st
     return []
   const days = daysSinceLastRelease(repo.value)
   const base = [
-    { value: fmtCompact(periodCommits.value), label: 'commits', icon: 'i-lucide-git-commit-horizontal' },
-    { value: fmtCompact(periodAdds.value), label: 'linhas +', icon: 'i-lucide-plus', color: 'text-success' },
-    { value: fmtCompact(periodDels.value), label: 'linhas −', icon: 'i-lucide-minus', color: 'text-error' },
-    { value: String(periodAuthors.value), label: periodAuthors.value === 1 ? 'dev' : 'devs', icon: 'i-lucide-users' },
+    { value: fmtCompact(periodCommits.value), label: t('branches.repos.commits'), icon: 'i-lucide-git-commit-horizontal' },
+    { value: fmtCompact(periodAdds.value), label: t('branches.repos.linesPlus'), icon: 'i-lucide-plus', color: 'text-success' },
+    { value: fmtCompact(periodDels.value), label: t('branches.repos.linesMinus'), icon: 'i-lucide-minus', color: 'text-error' },
+    { value: String(periodAuthors.value), label: periodAuthors.value === 1 ? t('branches.repos.cardDev') : t('branches.repos.cardDevs'), icon: 'i-lucide-users' },
   ]
   // com período/escopo ativos, mostra também o total histórico pra referência
   if (periodFiltered.value || scopeFiltered.value) {
-    base.push({ value: fmtCompact(r.commits), label: `commits${histSuffix.value}`, icon: 'i-lucide-infinity' })
+    base.push({ value: fmtCompact(r.commits), label: t('branches.repos.cardCommitsTotal'), icon: 'i-lucide-infinity' })
   }
   if (rel.value) {
     base.push(
       {
-        value: lastTagLabel(repo.value) ?? '—',
-        label: days != null ? `última release (há ${days}d)` : 'última release',
+        value: lastTagLabel(repo.value) ?? t('branches.sep.dash'),
+        label: days != null ? t('branches.repos.cardLastRelease', { n: days }) : t('branches.repos.cardLastReleaseAny'),
         icon: 'i-lucide-tag',
       },
       {
         value: String(rel.value.unreleased),
-        label: rel.value.unreleased === 1 ? 'commit não liberado' : 'commits não liberados',
+        label: rel.value.unreleased === 1 ? t('branches.repos.cardUnreleased') : t('branches.repos.cardUnreleasedPlural'),
         icon: 'i-lucide-package-open',
         color: rel.value.unreleased >= UNRELEASED_RED ? 'text-error' : rel.value.unreleased >= UNRELEASED_AMBER ? 'text-warning' : undefined,
       },
@@ -120,15 +120,15 @@ const cards = computed<{ value: string, label: string, icon?: string, color?: st
   if (topDev.value) {
     base.push({
       value: `${topDev.value.author.split(' ')[0]} (${Math.round(topDev.value.share * 100)}%)`,
-      label: 'dev principal',
+      label: t('branches.repos.cardTopDev'),
       icon: 'i-lucide-bus',
       color: topDev.value.share >= DEV_SHARE_RED ? 'text-error' : topDev.value.share >= DEV_SHARE_AMBER ? 'text-warning' : undefined,
     })
   }
   if (github.value) {
     base.push(
-      { value: String(openPrs.value.length), label: openPrs.value.length === 1 ? 'PR aberto' : 'PRs abertos', icon: 'i-lucide-git-pull-request' },
-      { value: fmtDuration(cycleHours.value), label: 'cycle time mediano (PRs do mês)', icon: 'i-lucide-timer' },
+      { value: String(openPrs.value.length), label: openPrs.value.length === 1 ? t('branches.repos.cardOpenPr') : t('branches.repos.cardOpenPrs'), icon: 'i-lucide-git-pull-request' },
+      { value: fmtDuration(cycleHours.value), label: t('branches.repos.cardCycleTime'), icon: 'i-lucide-timer' },
     )
   }
   return base
@@ -173,14 +173,14 @@ const shownTags = computed(() => tags.value.slice(0, 30))
 <template>
   <div class="max-w-[1320px] w-full mx-auto px-5 py-6 flex flex-col gap-4">
     <!-- cabeçalho -->
-    <DetailHeader to="/repos" back-label="repos" icon="i-lucide-git-branch" :title="repo">
+    <DetailHeader to="/repos" :back-label="t('branches.back.repos')" icon="i-lucide-git-branch" :title="repo">
       <a
         v-if="rel?.url"
         :href="rel.url"
         target="_blank"
         rel="noopener"
         class="inline-flex items-center gap-0.5 text-xs text-primary hover:underline"
-      >GitHub <UIcon name="i-lucide-arrow-up-right" class="size-3 align-[-2px]" /></a>
+      >{{ t('branches.label.github') }} <UIcon name="i-lucide-arrow-up-right" class="size-3 align-[-2px]" /></a>
     </DetailHeader>
 
     <UAlert
@@ -188,8 +188,8 @@ const shownTags = computed(() => tags.value.slice(0, 30))
       color="error"
       variant="subtle"
       icon="i-lucide-triangle-alert"
-      title="Repo não encontrado"
-      description="Esse nome não aparece nos dados coletados. Confere a grafia ou rode pnpm collect."
+      :title="t('branches.repos.notFound')"
+      :description="t('branches.repos.notFoundDesc')"
     />
 
     <template v-else-if="repoStats">
@@ -198,68 +198,70 @@ const shownTags = computed(() => tags.value.slice(0, 30))
 
       <!-- gráficos -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ChartPanel title="Tipos de commit" icon="i-lucide-chart-pie" :option="typesOption" />
-        <ChartPanel title="Commits por dev" icon="i-lucide-chart-bar" :option="devsOption" />
+        <ChartPanel :title="t('branches.repos.chartTypes')" icon="i-lucide-chart-pie" :option="typesOption" />
+        <ChartPanel :title="t('branches.repos.chartDevs')" icon="i-lucide-chart-bar" :option="devsOption" />
       </div>
 
       <!-- releases -->
-      <TablePanel title="Releases" icon="i-lucide-tag" :count="tags.length">
+      <TablePanel :title="t('branches.repos.releasesTitle')" icon="i-lucide-tag" :count="tags.length">
+        <!-- ponytail: o comando e o "." final viraram chaves próprias porque o
+             no-raw-text trata nó de texto estático como copy (#265 revê a regra) -->
         <div v-if="!releases && !rel" class="py-10 text-center text-sm text-muted">
-          Sem dados de release — rode <code>pnpm collect:releases</code>.
+          {{ ` ${t('branches.repos.releasesMissing')}` }} <code>{{ t('branches.repos.releasesCmd') }}</code>{{ `${t('branches.repos.releasesPeriod')} ` }}
         </div>
         <div v-else-if="tags.length === 0" class="py-10 text-center text-sm text-muted">
-          Esse repo não tem tags — nenhuma release registrada.
+          {{ ` ${t('branches.repos.noTags')} ` }}
         </div>
 
         <table v-else class="data-table">
           <thead>
             <tr>
-              <th>tag</th>
+              <th>{{ t('branches.repos.thTag') }}</th>
               <th class="num">
-                data
+                {{ ` ${t('branches.repos.thDate')} ` }}
               </th>
               <th class="num">
-                commits
+                {{ ` ${t('branches.repos.commits')} ` }}
               </th>
-              <th>notas</th>
+              <th>{{ t('branches.repos.notes') }}</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="t in shownTags" :key="t.tag">
+            <tr v-for="row in shownTags" :key="row.tag">
               <td class="whitespace-nowrap">
                 <a
-                  v-if="t.url"
-                  :href="t.url"
+                  v-if="row.url"
+                  :href="row.url"
                   target="_blank"
                   rel="noopener"
                   class="text-primary hover:underline"
-                ><code class="text-xs bg-accented px-1 py-0.5 rounded">{{ t.tag }}</code></a>
-                <code v-else class="text-xs bg-accented px-1 py-0.5 rounded">{{ t.tag }}</code>
-                <UBadge v-if="t.prerelease" color="warning" variant="subtle" size="sm" class="ml-1">
-                  pré
+                ><code class="text-xs bg-accented px-1 py-0.5 rounded">{{ row.tag }}</code></a>
+                <code v-else class="text-xs bg-accented px-1 py-0.5 rounded">{{ row.tag }}</code>
+                <UBadge v-if="row.prerelease" color="warning" variant="subtle" size="sm" class="ml-1">
+                  {{ ` ${t('branches.repos.prerelease')} ` }}
                 </UBadge>
               </td>
               <td class="num whitespace-nowrap text-muted">
-                {{ fmtDate(t.date) }}
+                {{ fmtDate(row.date) }}
               </td>
               <td class="num">
-                {{ t.commits }}
+                {{ row.commits }}
               </td>
               <td class="max-w-[520px]">
-                <span v-if="t.name" class="text-xs">{{ t.name }} </span>
-                <details v-if="t.notes" class="inline">
+                <span v-if="row.name" class="text-xs">{{ row.name }} </span>
+                <details v-if="row.notes" class="inline">
                   <summary class="text-xs text-primary cursor-pointer inline">
-                    notas
+                    {{ ` ${t('branches.repos.notes')} ` }}
                   </summary>
-                  <pre class="text-xs text-muted whitespace-pre-wrap mt-2 p-2 bg-accented rounded max-h-64 overflow-y-auto">{{ t.notes }}</pre>
+                  <pre class="text-xs text-muted whitespace-pre-wrap mt-2 p-2 bg-accented rounded max-h-64 overflow-y-auto">{{ row.notes }}</pre>
                 </details>
-                <span v-if="!t.name && !t.notes" class="text-dimmed text-xs">—</span>
+                <span v-if="!row.name && !row.notes" class="text-dimmed text-xs">{{ t('branches.sep.dash') }}</span>
               </td>
             </tr>
           </tbody>
         </table>
         <p v-if="tags.length > shownTags.length" class="text-dimmed text-xs px-4 pb-3 pt-2">
-          mostrando as {{ shownTags.length }} mais recentes de {{ tags.length }} tags
+          {{ ` ${t('branches.repos.showing', { shown: shownTags.length, total: tags.length })} ` }}
         </p>
       </TablePanel>
 
