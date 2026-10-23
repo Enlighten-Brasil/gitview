@@ -37,8 +37,16 @@ export function useLangSelect() {
   /** valor vem do evento do DOM — só segue se for locale suportado */
   async function choose(next: string): Promise<void> {
     const hit = SUPPORTED_LOCALES.find(l => l === next)
-    if (hit)
+    if (!hit)
+      return
+    try {
       await switchLang(hit)
+    }
+    catch (err) {
+      // switchLang já engole falha de chunk; aqui protege o event handler
+      // contra erro de programa (ex.: bootstrap ausente) sem derrubar a UI
+      console.warn('[i18n] falha ao trocar o idioma', err)
+    }
   }
   return { locale, choose }
 }
