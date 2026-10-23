@@ -11,14 +11,18 @@ import { stats } from './data'
 import { filters, repoSelected } from './filters-core'
 import { daysSince } from './format'
 import { github } from './github'
+import { getComposer } from './i18n'
 import { defineLoader } from './loader'
 import { team } from './team'
 
 // loader do branches.json — mesmo padrão do github.ts (defineLoader com
 // mensagem fixa). Só a coleta FULL o atualiza (a light preserva o inventário),
 // por isso a página mostra frescor próprio com o generatedAt daqui.
+// A mensagem resolve NA FALHA via composer global (mesmo elo do rangeLabel em
+// src/filters.ts): o contrato do loader segue string fixa, só o idioma passa a
+// seguir o locale ativo.
 const branchesLoader = defineLoader<BranchesData>('branches.json', {
-  errorMessage: 'sem inventário de branches — rode a coleta completa ("pnpm collect:branches")',
+  errorMessage: () => getComposer().t('branches.error.loadFailed'),
 })
 export const branches = branchesLoader.data
 export const branchesError = branchesLoader.error
@@ -271,10 +275,12 @@ export const branchesAge = computed(() => {
   if (!branches.value)
     return null
   const hours = (Date.now() - new Date(branches.value.generatedAt).getTime()) / 3_600_000
+  // mesmas chaves do badge de frescor da navbar (dataAge do _parent.vue)
+  const { t } = getComposer()
   const label = hours < 1
-    ? 'agora mesmo'
+    ? t('navbar.ageNow')
     : hours < 24
-      ? `há ${Math.floor(hours)}h`
-      : `há ${Math.floor(hours / 24)}d`
+      ? t('navbar.ageHours', { n: Math.floor(hours) })
+      : t('navbar.ageDays', { n: Math.floor(hours / 24) })
   return { label, stale: hours >= 24, generatedAt: branches.value.generatedAt }
 })

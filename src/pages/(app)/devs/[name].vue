@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { useDevCharts } from '@/charts/useDevCharts'
 import ChartPanel from '@/components/ChartPanel.vue'
@@ -20,6 +21,7 @@ definePage({
 })
 
 const route = useRoute()
+const { t } = useI18n({ useScope: 'global' })
 const dev = computed(() => String(route.params.name ?? ''))
 
 onMounted(loadCommits)
@@ -57,19 +59,19 @@ const { repoOption, heatOption, heatTitle } = useDevCharts(dev)
 <template>
   <div class="max-w-[1320px] w-full mx-auto px-5 py-6 flex flex-col gap-4">
     <!-- cabeçalho do perfil -->
-    <DetailHeader to="/" back-label="dashboard" icon="i-lucide-user" :title="dev" />
+    <DetailHeader to="/" :back-label="t('branches.back.dashboard')" icon="i-lucide-user" :title="dev" />
 
     <div v-if="stats && !authorStats" class="flex flex-col gap-3">
       <UAlert
         color="error"
         variant="subtle"
         icon="i-lucide-user-x"
-        title="Dev não encontrado"
-        description="Esse nome não aparece nos commits coletados. Confere a grafia ou rode pnpm collect."
+        :title="t('branches.dev.notFound')"
+        :description="t('branches.dev.notFoundDesc')"
       />
       <div v-if="suggestions.length" class="text-sm">
         <p class="text-dimmed mb-2">
-          Quis dizer:
+          {{ ` ${t('branches.dev.didYouMean')} ` }}
         </p>
         <div class="flex flex-wrap gap-2">
           <UButton
@@ -93,7 +95,7 @@ const { repoOption, heatOption, heatTitle } = useDevCharts(dev)
       <!-- gráficos -->
       <CommitsTimeline :author="dev" />
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ChartPanel title="Distribuição por repositório" icon="i-lucide-chart-pie" :option="repoOption" />
+        <ChartPanel :title="t('branches.dev.chartRepo')" icon="i-lucide-chart-pie" :option="repoOption" />
         <ChartPanel :title="heatTitle" icon="i-lucide-clock" :option="heatOption" />
       </div>
 

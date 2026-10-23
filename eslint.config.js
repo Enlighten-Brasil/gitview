@@ -96,4 +96,15 @@ export default antfu(
       '@intlify/vue-i18n/no-unused-keys': 'off',
     },
   },
+  {
+    // chave de branches.json consumida só em src/branches.ts (mensagem do loader
+    // resolvida pelo composer global na falha) — o plugin não rastreia t() em .ts
+    // e marcaria a chave como unused; desligado só nos branches.json, as demais
+    // chaves (estáticas em t('literal') nos .vue) continuam sob a regra.
+    // Reavaliar na convenção final (#265)
+    files: ['src/locales/*/branches.json'],
+    rules: {
+      '@intlify/vue-i18n/no-unused-keys': 'off',
+    },
+  },
 )

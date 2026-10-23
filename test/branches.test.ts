@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { abandonadas, BRANCH_STALE_DAYS, branches, branchesAge, branchGithubUrl, branchRows, hasOpenPr, integrationSkew, isSquashPousada, linkedPr, pousadas, prLinkCoverage } from '../src/branches'
 import { filters, stats } from '../src/data'
 import { github } from '../src/github'
+import { setupI18n } from '../src/i18n'
 import { team } from '../src/team'
 
 /**
@@ -230,7 +231,9 @@ describe('cards e apoios', () => {
     expect(integrationSkew.value.map(s => s.repo)).toEqual(['demo-api'])
   })
 
-  it('branchesAge: frescor da coleta ("agora mesmo" / "há Nd", stale ≥ 24h)', () => {
+  it('branchesAge: frescor da coleta ("agora mesmo" / "há Nd", stale ≥ 24h)', async () => {
+    // o label sai do catálogo (navbar.age* pelo composer global) — bootstrap antes de ler
+    await setupI18n('pt-BR')
     expect(branchesAge.value).toEqual({ label: 'há 1d', stale: true, generatedAt: BRANCHES.generatedAt })
     branches.value = { ...BRANCHES, generatedAt: new Date().toISOString() }
     expect(branchesAge.value).toMatchObject({ label: 'agora mesmo', stale: false })
