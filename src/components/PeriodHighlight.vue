@@ -11,9 +11,9 @@ import { fmtInt } from '../format'
 const { t } = useI18n({ useScope: 'global' })
 
 const top = computed(() => {
-  const best = commitsByAuthor.value[0]
-  if (!best)
+  if (commitsByAuthor.value.length === 0)
     return null
+  const best = commitsByAuthor.value[0]
   const share = filteredCommitCount.value > 0
     ? Math.round((best.commits / filteredCommitCount.value) * 100)
     : 0
