@@ -1,4 +1,8 @@
 {
+  "app.lang.aria": "language",
+  "app.lang.name.enUS": "English",
+  "app.lang.name.esES": "Español",
+  "app.lang.name.ptBR": "Português (Brasil)",
   "app.loading": "loading…",
   "app.notFound.back": "back to home",
   "app.notFound.description": "This path does not exist in gitview.",

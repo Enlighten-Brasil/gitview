@@ -142,6 +142,10 @@ function shootFile(chrome: string, shot: Shot): void {
     '--no-first-run',
     `--user-data-dir=${profile}`,
     '--force-dark-mode',
+    // shots sempre pt-BR: --accept-lang trava Accept-Language/navigator.languages
+    // num único tag (medido: --lang sozinho ainda herda a lista do sistema) —
+    // duas rodadas do demo:shots saem byte-idênticas em qualquer máquina
+    '--accept-lang=pt-BR',
     `--window-size=${shot.width},${shot.height}`,
     '--hide-scrollbars',
     // dá tempo dos JSONs de public/data entrarem no ECharts antes do clique zero
