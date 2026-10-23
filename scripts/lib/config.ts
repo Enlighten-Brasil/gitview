@@ -144,6 +144,16 @@ export const DEFAULT_EXCLUDE_PATHS = [
   // origem contra 270k do export gerado) e a pasta em outros repos é fonte.
   'overwrites/**',
   '*.apidog.json',
+  // candidato avaliado na issue #247 (mesmo método da #236: amostra git log
+  // --numstat nos clones reais + classificação por padrão de conteúdo).
+  // '.git-rewrite/**': scratch do `git filter-branch` commitada por engano no
+  // repo A — 59k de additions em 2 commits (backup-refs/commit/heads/index +
+  // map/<sha>), artefato puro da ferramenta. 'themes/**' e 'content/**'
+  // avaliados e recusados: conteúdo misto — em themes/, tema vendorizado de
+  // IdP convive com temas/SCSS/fontes autorados em src/**/themes; em content/,
+  // demo de template convive com documentação autoral (content/ e
+  // docs/**/content/).
+  '.git-rewrite/**',
 ]
 
 /**

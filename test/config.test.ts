@@ -75,6 +75,8 @@ describe('lista default de exclusões (DEFAULT_EXCLUDE_PATHS)', () => {
     expect(isExcluded('schemas/export.apidog.json')).toBe(true)
     expect(isExcluded('full_documentation.json')).toBe(true)
     expect(isExcluded('apps/web/dist/assets/vendor.js')).toBe(true)
+    // scratch do git filter-branch (#247)
+    expect(isExcluded('.git-rewrite/map/0003942ce1f34b0ca039caba21df7e2d5cf40ebb')).toBe(true)
   })
 
   it('fonte humana nunca cai na lista default', () => {
@@ -83,5 +85,9 @@ describe('lista default de exclusões (DEFAULT_EXCLUDE_PATHS)', () => {
     expect(isExcluded('scripts/collect.ts')).toBe(false)
     expect(isExcluded('src/minjs-helpers.ts')).toBe(false)
     expect(isExcluded('docs/getting-started.md')).toBe(false)
+    // 'themes/**' e 'content/**' recusados de propósito (conteúdo misto, #247)
+    expect(isExcluded('src/assets/themes/candy.ts')).toBe(false)
+    expect(isExcluded('content/en/1.docs/1.Getting Started/1.index.md')).toBe(false)
+    expect(isExcluded('docs/content/pt-BR/2.core/1.index.md')).toBe(false)
   })
 })
