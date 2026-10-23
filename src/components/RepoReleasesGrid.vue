@@ -5,10 +5,13 @@
  * Adiciona cadência (releases/mês em 12M) e dias desde a última tag.
  */
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { repoSelected } from '../filters-core'
 import { fmtRatio } from '../format'
 import { daysSinceLastRelease, lastTagLabel, releases, releasesError, releasesPerMonth } from '../releases'
 import { RELEASE_STALE_DAYS, UNRELEASED_AMBER, UNRELEASED_RED } from '../thresholds'
+
+const { t } = useI18n({ useScope: 'global' })
 
 const rows = computed(() =>
   (releases.value?.repos ?? [])
@@ -31,8 +34,8 @@ const rows = computed(() =>
     <template #header>
       <div class="flex items-center gap-2">
         <UIcon name="i-lucide-tag" class="size-4 text-primary" />
-        <span class="text-sm font-semibold text-highlighted">Releases por repositório</span>
-        <span class="text-xs text-dimmed ml-auto">marcos — seguem a seleção de repos da sidebar · ignoram o filtro de período e o escopo · clique no repo pra ver a cadência completa</span>
+        <span class="text-sm font-semibold text-highlighted">{{ t('ui.releases.title') }}</span>
+        <span class="text-xs text-dimmed ml-auto">{{ t('ui.releases.note') }}</span>
       </div>
     </template>
 
@@ -41,10 +44,10 @@ const rows = computed(() =>
       <USkeleton v-for="i in 6" :key="i" class="h-20 rounded-lg" />
     </div>
     <p v-else-if="releasesError || !releases?.repos.length" class="text-sm text-dimmed">
-      Sem dados de release — rode <code>pnpm collect:releases</code> (ou <UIcon name="i-lucide-refresh-cw" class="size-3.5 align-[-2px]" /> no navbar).
+      {{ t('ui.releases.errorBefore') }} <code>pnpm collect:releases</code> {{ t('ui.releases.errorOr') }} <UIcon name="i-lucide-refresh-cw" class="size-3.5 align-[-2px]" /> {{ t('ui.releases.errorNavbar') }}
     </p>
     <p v-else-if="!rows.length" class="text-sm text-dimmed">
-      Nenhum repo da seleção tem dados de release.
+      {{ t('ui.releases.empty') }}
     </p>
 
     <div v-else class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -57,20 +60,20 @@ const rows = computed(() =>
         <div class="flex items-center gap-2">
           <span class="font-medium truncate">{{ r.repo }}</span>
           <UBadge color="neutral" variant="subtle" size="sm" class="ml-auto shrink-0">
-            {{ r.tags.length }} tags
+            {{ t('ui.releases.tags', { n: r.tags.length }) }}
           </UBadge>
         </div>
         <div class="mt-1.5 text-xs text-dimmed flex items-center gap-1.5 flex-wrap">
           <!-- mesmo rótulo da tabela de repos (lastTagLabel — campo canônico `tag`) -->
-          <span class="font-mono">{{ lastTagLabel(r.repo) ?? '— sem tags —' }}</span>
+          <span class="font-mono">{{ lastTagLabel(r.repo) ?? t('ui.releases.noTags') }}</span>
           <template v-if="r.days != null">
             <span>·</span>
-            <span :class="r.days >= RELEASE_STALE_DAYS ? 'text-warning' : ''">há {{ r.days }}d</span>
+            <span :class="r.days >= RELEASE_STALE_DAYS ? 'text-warning' : ''">{{ t('ui.agoDays', { n: r.days }) }}</span>
             <span>·</span>
-            <span>{{ fmtRatio(r.cadence) }}/mês</span>
+            <span>{{ t('ui.releases.cadence', { v: fmtRatio(r.cadence) }) }}</span>
           </template>
           <UBadge v-if="r.unreleased >= UNRELEASED_AMBER" :color="r.unreleased >= UNRELEASED_RED ? 'error' : 'warning'" variant="soft" size="xs">
-            {{ r.unreleased }} não liberados
+            {{ t('ui.releases.unreleased', { n: r.unreleased }) }}
           </UBadge>
         </div>
       </RouterLink>

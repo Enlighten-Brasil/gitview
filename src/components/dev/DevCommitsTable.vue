@@ -4,11 +4,14 @@
  * filtrada pelo período, limitada a 50 linhas.
  */
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import TablePanel from '@/components/TablePanel.vue'
 import { commitsError, inPeriodMonth, recentCommits, scopeMatches, stats } from '@/data'
 import { fmtDateTime, fmtInt } from '@/format'
 
 const props = defineProps<{ dev: string }>()
+
+const { t } = useI18n({ useScope: 'global' })
 
 /** link pro commit no GitHub (quando o repo tem remote mapeado) */
 function commitUrl(repo: string, hash: string): string | null {
@@ -31,17 +34,17 @@ const commits = computed(() =>
 </script>
 
 <template>
-  <TablePanel title="Últimos commits" icon="i-lucide-history" :count="commits.length">
+  <TablePanel :title="t('ui.devCommits.title')" icon="i-lucide-history" :count="commits.length">
     <div v-if="commits.length" class="overflow-x-auto">
       <table class="data-table">
         <thead>
           <tr>
-            <th>data</th>
-            <th>repo</th>
-            <th>hash</th>
-            <th>mensagem</th>
+            <th>{{ t('ui.th.date') }}</th>
+            <th>{{ t('ui.th.repo') }}</th>
+            <th>{{ t('ui.th.hash') }}</th>
+            <th>{{ t('ui.th.message') }}</th>
             <th class="num">
-              +/−
+              {{ t('ui.th.diff') }}
             </th>
           </tr>
         </thead>
@@ -75,10 +78,10 @@ const commits = computed(() =>
       </table>
     </div>
     <div v-else-if="commitsError" class="py-10 text-center text-sm text-muted">
-      Erro de leitura do commits.json — {{ commitsError }}
+      {{ t('ui.devCommits.readError', { error: commitsError }) }}
     </div>
     <div v-else class="py-10 text-center text-sm text-muted">
-      Sem commits no período — ajuste o filtro ou rode <code>pnpm collect</code> para gerar o commits.json.
+      {{ t('ui.devCommits.emptyBefore') }} <code>pnpm collect</code> {{ t('ui.devCommits.emptyAfter') }}
     </div>
   </TablePanel>
 </template>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { filteredMonthly, filteredTypes, fixByRepo, nestBySum, stats } from '../data'
 import { fmtDate, fmtInt } from '../format'
@@ -7,6 +8,8 @@ import { daysSinceLastRelease, lastTagLabel, releaseByRepo } from '../releases'
 import { displayPct } from '../risk'
 import { FIX_HOTSPOT_AMBER, FIX_HOTSPOT_RED, UNRELEASED_AMBER, UNRELEASED_RED } from '../thresholds'
 import TablePanel from './TablePanel.vue'
+
+const { t } = useI18n({ useScope: 'global' })
 
 const router = useRouter()
 
@@ -72,29 +75,29 @@ function onRowClick(e: MouseEvent, repo: string) {
 </script>
 
 <template>
-  <TablePanel title="Repositórios" icon="i-lucide-folder-git-2" :count="rows.length">
+  <TablePanel :title="t('ui.repoTable.title')" icon="i-lucide-folder-git-2" :count="rows.length">
     <div class="overflow-x-auto">
       <table class="data-table">
         <thead>
           <tr>
-            <th>repo</th>
+            <th>{{ t('ui.th.repo') }}</th>
             <th class="num">
-              commits
+              {{ t('ui.th.commits') }}
             </th>
             <th class="num">
-              devs
+              {{ t('ui.th.devs') }}
             </th>
             <th class="num">
-              % fix
+              {{ t('ui.th.fixPct') }}
             </th>
             <th class="num">
-              último commit
+              {{ t('ui.th.lastCommit') }}
             </th>
             <th class="num">
-              última release
+              {{ t('ui.th.lastRelease') }}
             </th>
             <th class="num">
-              não liberados
+              {{ t('ui.th.unreleased') }}
             </th>
           </tr>
         </thead>
@@ -113,7 +116,7 @@ function onRowClick(e: MouseEvent, repo: string) {
             </td>
             <td class="num">
               <span :class="displayPct(r.fixPct) >= FIX_HOTSPOT_RED ? 'text-error' : displayPct(r.fixPct) >= FIX_HOTSPOT_AMBER ? 'text-warning' : ''">
-                {{ Math.round(r.fixPct * 100) }}%
+                {{ t('ui.pct', { n: Math.round(r.fixPct * 100) }) }}
               </span>
             </td>
             <td class="num whitespace-nowrap text-muted">
@@ -122,7 +125,7 @@ function onRowClick(e: MouseEvent, repo: string) {
             <td class="num whitespace-nowrap">
               <template v-if="r.lastTag">
                 <code class="text-xs bg-accented px-1 py-0.5 rounded">{{ r.lastTag }}</code>
-                <span class="text-dimmed text-xs ml-1">há {{ r.daysSinceRelease }}d</span>
+                <span class="text-dimmed text-xs ml-1">{{ t('ui.agoDays', { n: r.daysSinceRelease }) }}</span>
               </template>
               <span v-else class="text-dimmed">—</span>
             </td>
@@ -134,7 +137,7 @@ function onRowClick(e: MouseEvent, repo: string) {
       </table>
     </div>
     <p class="text-dimmed text-xs px-4 pb-3 pt-2">
-      commits/devs/% fix seguem o filtro do período · não liberados = commits desde a última tag (≥{{ UNRELEASED_AMBER }} em amarelo, ≥{{ UNRELEASED_RED }} em vermelho) · clique no repo pra ver o detalhe
+      {{ t('ui.repoTable.note', { amber: UNRELEASED_AMBER, red: UNRELEASED_RED }) }}
     </p>
   </TablePanel>
 </template>

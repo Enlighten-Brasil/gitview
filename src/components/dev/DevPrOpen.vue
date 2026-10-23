@@ -4,6 +4,7 @@
  * período. Painel só renderiza com PR aberto (mesmo comportamento da página).
  */
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import PrLinkCell from '@/components/PrLinkCell.vue'
 import TablePanel from '@/components/TablePanel.vue'
 import { daysSince } from '@/format'
@@ -11,13 +12,15 @@ import { ghName, github } from '@/github'
 
 const props = defineProps<{ dev: string }>()
 
+const { t } = useI18n({ useScope: 'global' })
+
 const myOpen = computed(() =>
   (github.value?.prs ?? []).filter(pr => ghName(pr.author) === props.dev && pr.state === 'OPEN'),
 )
 </script>
 
 <template>
-  <TablePanel v-if="myOpen.length" :title="`PRs abertos de ${props.dev.split(' ')[0]}`" icon="i-lucide-git-pull-request-arrow" :count="myOpen.length">
+  <TablePanel v-if="myOpen.length" :title="t('ui.devPrOpen.title', { name: props.dev.split(' ')[0] })" icon="i-lucide-git-pull-request-arrow" :count="myOpen.length">
     <table class="data-table">
       <tbody>
         <tr v-for="pr in myOpen" :key="`${pr.repo}#${pr.number}`">
@@ -28,14 +31,14 @@ const myOpen = computed(() =>
             {{ pr.repo }}
           </td>
           <td class="num whitespace-nowrap text-muted">
-            {{ daysSince(pr.createdAt) }}d aberto
+            {{ t('ui.devPrOpen.age', { n: daysSince(pr.createdAt) }) }}
           </td>
         </tr>
       </tbody>
     </table>
     <!-- janela fixa (categoria do AGENTS.md) — o recorte de escopo vale, o de período não -->
     <p class="text-dimmed text-xs px-4 pb-3 pt-2.5">
-      janela fixa: abertos agora — segue escopo, ignora o período
+      {{ t('ui.fixedWindowOpen') }}
     </p>
   </TablePanel>
 </template>

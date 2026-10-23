@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { PullRequest } from '../types'
+import { useI18n } from 'vue-i18n'
 
 /**
  * Célula de link de PR padronizada (issue #36) — antes a célula (link
@@ -10,6 +11,8 @@ import type { PullRequest } from '../types'
 defineProps<{
   pr: Pick<PullRequest, 'number' | 'title' | 'url' | 'draft'>
 }>()
+
+const { t } = useI18n({ useScope: 'global' })
 </script>
 
 <template>
@@ -20,7 +23,7 @@ defineProps<{
       </a>
     </UTooltip>
     <UBadge v-if="pr.draft" color="neutral" variant="soft" size="sm" class="mt-0.5">
-      rascunho
+      {{ t('ui.prLink.draft') }}
     </UBadge>
   </div>
 </template>

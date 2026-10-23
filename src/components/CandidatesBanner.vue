@@ -6,7 +6,10 @@
  * identidades novas (mesmo que o total caia); some sozinho quando candidates chega a 0.
  */
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { loadTeam, team } from '@/team'
+
+const { t } = useI18n({ useScope: 'global' })
 
 const KEY = 'gitview-candidates-dismissed'
 
@@ -42,13 +45,13 @@ function dismiss() {
       <UIcon name="i-lucide-user-round-x" class="size-4 shrink-0 text-warning" />
       <span class="min-w-0 truncate">
         <strong class="font-semibold">{{ candidates.length }}</strong>
-        {{ candidates.length === 1 ? 'identidade sem mapear' : 'identidades sem mapear' }} — cada uma conta como um dev separado nas métricas.
+        {{ candidates.length === 1 ? t('ui.candidates.one') : t('ui.candidates.many') }} — {{ t('ui.candidates.note') }}
       </span>
       <UButton
         size="xs"
         color="primary"
         variant="soft"
-        label="unificar agora"
+        :label="t('ui.candidates.unify')"
         class="shrink-0"
         :to="{ path: '/teams', hash: '#sem-mapeamento' }"
       />
@@ -57,7 +60,7 @@ function dismiss() {
         color="neutral"
         variant="ghost"
         icon="i-lucide-x"
-        aria-label="dispensar aviso"
+        :aria-label="t('ui.candidates.dismiss')"
         class="shrink-0 ml-auto"
         @click="dismiss"
       />

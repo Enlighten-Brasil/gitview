@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useToast } from '@nuxt/ui/composables'
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { filters, isBot, stats } from '../data'
 import { fmtDate, fmtInt, fmtRatio } from '../format'
@@ -8,6 +9,7 @@ import TablePanel from './TablePanel.vue'
 
 const router = useRouter()
 const toast = useToast()
+const { t } = useI18n({ useScope: 'global' })
 
 /** clique na linha abre a página dedicada do dev (atalho — o link na 1ª célula é o caminho acessível) */
 function openDev(author: string) {
@@ -80,6 +82,7 @@ function localDateKey(d: Date) {
 }
 
 function exportCsv() {
+  // ponytail: colunas do CSV são dado parseável — ficam em pt-BR até o export ganhar locale
   const header = ['dev', 'commits', 'linhas_adicionadas', 'linhas_removidas', 'repos', 'dias_ativos', 'commits_por_dia_ativo', 'streak_atual', 'streak_max', 'ultimo_commit']
   const lines = visibleAuthors.value.map(a => [
     a.author,
@@ -102,12 +105,12 @@ function exportCsv() {
   link.download = `ranking-time-${localDateKey(new Date())}.csv`
   link.click()
   URL.revokeObjectURL(url)
-  toast.add({ title: 'CSV exportado', description: link.download, color: 'success' })
+  toast.add({ title: t('ui.devTable.csvExported'), description: link.download, color: 'success' })
 }
 </script>
 
 <template>
-  <TablePanel title="Ranking do time (histórico completo — ignora período e escopo)">
+  <TablePanel :title="t('ui.devTable.title')">
     <template #actions>
       <UButton
         icon="i-lucide-download"
@@ -121,50 +124,50 @@ function exportCsv() {
     <table class="data-table">
       <thead>
         <tr>
-          <th>Dev</th>
+          <th>{{ t('ui.th.dev') }}</th>
           <th class="num sortable" :aria-sort="ariaSort('commits')">
             <button type="button" class="th-sort" @click="toggleSort('commits')">
-              commits
+              {{ t('ui.th.commits') }}
               <UIcon v-if="sortKey === 'commits'" :name="sortAsc ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'" class="size-3 shrink-0" />
             </button>
           </th>
           <th class="num sortable" :aria-sort="ariaSort('additions')">
             <button type="button" class="th-sort" @click="toggleSort('additions')">
-              + linhas
+              {{ t('ui.th.additions') }}
               <UIcon v-if="sortKey === 'additions'" :name="sortAsc ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'" class="size-3 shrink-0" />
             </button>
           </th>
           <th class="num sortable" :aria-sort="ariaSort('deletions')">
             <button type="button" class="th-sort" @click="toggleSort('deletions')">
-              − linhas
+              {{ t('ui.th.deletions') }}
               <UIcon v-if="sortKey === 'deletions'" :name="sortAsc ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'" class="size-3 shrink-0" />
             </button>
           </th>
           <th class="num sortable" :aria-sort="ariaSort('repos')">
             <button type="button" class="th-sort" @click="toggleSort('repos')">
-              repos
+              {{ t('ui.th.repos') }}
               <UIcon v-if="sortKey === 'repos'" :name="sortAsc ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'" class="size-3 shrink-0" />
             </button>
           </th>
           <th class="num sortable" :aria-sort="ariaSort('activeDays')">
             <button type="button" class="th-sort" @click="toggleSort('activeDays')">
-              dias ativos
+              {{ t('ui.th.activeDays') }}
               <UIcon v-if="sortKey === 'activeDays'" :name="sortAsc ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'" class="size-3 shrink-0" />
             </button>
           </th>
           <th class="num">
-            commits/dia ativo
+            {{ t('ui.th.perDay') }}
           </th>
           <th class="num sortable" :aria-sort="ariaSort('streak')">
             <button type="button" class="th-sort" @click="toggleSort('streak')">
-              streak
+              {{ t('ui.th.streak') }}
               <UIcon name="i-lucide-flame" class="size-3 shrink-0" />
               <UIcon v-if="sortKey === 'streak'" :name="sortAsc ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'" class="size-3 shrink-0" />
             </button>
           </th>
           <th class="num sortable" :aria-sort="ariaSort('lastCommit')">
             <button type="button" class="th-sort" @click="toggleSort('lastCommit')">
-              último commit
+              {{ t('ui.th.lastCommit') }}
               <UIcon v-if="sortKey === 'lastCommit'" :name="sortAsc ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'" class="size-3 shrink-0" />
             </button>
           </th>
@@ -210,7 +213,7 @@ function exportCsv() {
                 :variant="a.streak > 0 ? 'subtle' : 'outline'"
                 size="sm"
               />
-              <span class="text-xs text-dimmed">máx {{ a.longestStreak }}</span>
+              <span class="text-xs text-dimmed">{{ t('ui.devTable.max', { n: a.longestStreak }) }}</span>
             </div>
           </td>
           <td class="num">

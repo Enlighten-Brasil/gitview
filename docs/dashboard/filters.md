@@ -89,13 +89,13 @@ Following a link (a dev name, a repo row, an alert chip) applies the parameters 
 
 | Panel | Window | Where |
 |---|---|---|
-| **Ritmo — últimas 4 semanas vs 8 anteriores** | last 4 weeks vs the 8 before | `/devs` |
+| **Ritmo — últimas 4 semanas vs 8 anteriores** ("Pace — last 4 weeks vs previous 8") | last 4 weeks vs the 8 before | `/devs` |
 | **Fora do horário** in **8 semanas** mode | last 8 weeks; the period mode follows the sidebar | `/health`, `/teams/:name` |
 | **Tendência de cycle time — últimos 6 meses** | last 6 months | `/prs` |
-| **PRs abertos** | state as of now | `/prs`, `/devs/:name`, `/repos/:name` |
-| **Ranking do time (histórico completo)** | full history | `/devs` |
-| **Inatividade — repos e devs parados** | up to today, ignores all filters | `/health` |
-| **Releases por repositório** | milestones; footer **marcos — seguem a seleção de repos da sidebar · ignoram o filtro de período e o escopo** | `/repos` |
+| **PRs abertos** ("open PRs") | state as of now | `/prs`, `/devs/:name`, `/repos/:name` |
+| **Ranking do time (histórico completo)** ("Team ranking (full history)") | full history | `/devs` |
+| **Inatividade — repos e devs parados** ("Inactivity — stalled repos and devs") | up to today, ignores all filters | `/health` |
+| **Releases por repositório** ("Releases per repository") | milestones; footer **marcos — seguem a seleção de repos da sidebar · ignoram o filtro de período e o escopo** ("milestones — follow the sidebar repo selection · ignore the period filter and scope") | `/repos` |
 | **Commit graph** (`#grafo`) | the repo's last N commits (`window` in the JSON, labeled in the footer); also ignores bots and scope | `/repos/:name` |
 
 Each fixed panel declares its own window in the title or the footer, because the question defines the window: pace is, by definition, 4 weeks against the 8 before. The fixed windows respect repos, devs and bots, and the commit-line ones (pace, off-hours in **8 semanas** mode) also respect the work scope; only inactivity ignores the entire sidebar (releases follow the repo selection). The formulas are in [Metrics glossary](./metrics.md).
@@ -105,6 +105,6 @@ Each fixed panel declares its own window in the title or the footer, because the
 Commits, lines and devs cards, charts, merged PRs, cycle time, reviews and commit lists stay scoped to the window; **Tudo** means full history. These stay out, each one labeled:
 
 - **dias ativos (total)**, **commits/dia ativo (total)**, **streak (total)** and **repositórios (total)**: lifetime counters with the `(total)` suffix when a period is active. With a scope cut (`?scope=prod`/`progress`) and data carrying the per-author `byScope` axes (collections since issue #152), these cards read the axis of the selected scope and the suffix no longer comes from the scope — only from the period; without the axes (older data) they stay integral and the scope also adds `(total)` (feature-detect on the presence of `byScope`).
-- **PRs abertos**: current state. **Releases**: milestones.
+- **PRs abertos** ("open PRs"): current state. **Releases**: milestones.
 - Under **Tudo**, the hours heatmap covers at most 24 months (**Horários de atividade — últimos 24 meses**), the aggregation limit.
 - On these routes the sidebar shows only the period selector, plus **incluir bots** on `/repos/:name`, where the switch applies to the repo's commits, commit types and PRs.

@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ghName, stalePrs } from '../github'
 import { PR_AGE_ERROR_DAYS, PR_STALE_DAYS, PR_STALE_ERROR_COUNT } from '../thresholds'
 import PrLinkCell from './PrLinkCell.vue'
+
+const { t } = useI18n({ useScope: 'global' })
 
 const stale = computed(() => stalePrs(PR_STALE_DAYS))
 const oldest = computed(() => stale.value[0] ?? null)
@@ -14,7 +17,7 @@ const shown = computed(() => stale.value.slice(0, 5))
     <template #header>
       <div class="flex items-center gap-2">
         <UIcon name="i-lucide-hourglass" class="size-4 text-warning" />
-        <span class="text-sm font-semibold text-highlighted">PRs parados — abertos há {{ PR_STALE_DAYS }}+ dias</span>
+        <span class="text-sm font-semibold text-highlighted">{{ t('ui.prStale.title', { n: PR_STALE_DAYS }) }}</span>
         <UBadge v-if="stale.length" :color="stale.length >= PR_STALE_ERROR_COUNT ? 'error' : 'warning'" variant="soft" size="sm" class="ml-auto">
           {{ stale.length }}
         </UBadge>
@@ -22,7 +25,7 @@ const shown = computed(() => stale.value.slice(0, 5))
     </template>
 
     <p v-if="stale.length === 0" class="text-muted text-sm">
-      Nenhum PR parado além de {{ PR_STALE_DAYS }} dias. <UIcon name="i-lucide-thumbs-up" class="size-4 align-[-2px]" />
+      {{ t('ui.prStale.empty', { n: PR_STALE_DAYS }) }} <UIcon name="i-lucide-thumbs-up" class="size-4 align-[-2px]" />
     </p>
 
     <template v-else>
@@ -39,16 +42,14 @@ const shown = computed(() => stale.value.slice(0, 5))
               {{ ghName(pr.author) }}
             </td>
             <td class="num whitespace-nowrap">
-              <span :class="pr.ageDays >= PR_AGE_ERROR_DAYS ? 'text-error font-medium' : 'text-warning'">{{ pr.ageDays }}d</span>
+              <span :class="pr.ageDays >= PR_AGE_ERROR_DAYS ? 'text-error font-medium' : 'text-warning'">{{ t('ui.days', { n: pr.ageDays }) }}</span>
             </td>
           </tr>
         </tbody>
       </table>
       <p class="text-dimmed text-xs mt-2.5">
-        <template v-if="stale.length > shown.length">
-          mostrando {{ shown.length }} de {{ stale.length }} ·
-        </template>
-        mais antigo: <b>{{ oldest?.ageDays }}d</b> · lista completa na aba Pull requests
+        <template v-if="stale.length > shown.length">{{ t('ui.prStale.showing', { shown: shown.length, total: stale.length }) }}</template>
+        {{ t('ui.prStale.footer', { days: oldest?.ageDays }) }}
       </p>
     </template>
   </UCard>
