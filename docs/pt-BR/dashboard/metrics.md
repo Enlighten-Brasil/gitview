@@ -66,7 +66,7 @@ Vêm da coleta do GitHub: todo PR aberto mais os mergeados dos últimos 400 dias
 
 **Cycle time**: `cycleHours = (mergedAt - createdAt) / 3_600_000`. O card **cycle time mediano** nomeia o corte: **cycle time mediano (corte por dia)** (`/prs` e a página de time) é a mediana sobre os PRs mergeados dentro da janela exata do filtro em dias, enquanto **cycle time mediano (PRs do mês)** (detalhe de dev e de repo) cobre meses inteiros tocados pela janela — o mesmo período, portanto, mostra números diferentes por página. Contagem par usa a média dos dois valores centrais e sem PR o resultado é 0. Por repo (**Cycle time mediano por repo (criação → merge, corte por dia)**, corte por dia), só entram os com 3 ou mais PRs mergeados na janela. A **Tendência de cycle time** usa os últimos 6 meses: uma mediana por mês, meses sem PR pulados, `subindo` quando os últimos 3 meses com dados são estritamente crescentes, e repos com menos de 3 PRs na janela ficam fora.
 
-**Reviews por dev e concentração por repo**: conta as reviews de PRs mergeados no período, sem self-review e sem bots. **Reviews por dev** divide em total, `APPROVED` e `CHANGES_REQUESTED`. **Concentração por repo** é `reviews do top reviewer / reviews de terceiros do período`, ordenada por esse valor.
+**Reviews por dev e concentração por repo**: conta as reviews de PRs mergeados no período, sem self-review e sem bots. **Reviews por dev** divide em total, `APPROVED` e `CHANGES_REQUESTED`. A concentração por repositório é `reviews do top reviewer / reviews de terceiros do período`, ordenada por esse valor.
 
 **Merge sem review**: PR sem nenhuma review de terceiros não-bot; `round(sem review / mergeados no período × 100)`. `≥ 10%` é atenção e `≥ 20%` é crítico, nos cards de resumo e na faixa de alertas.
 
