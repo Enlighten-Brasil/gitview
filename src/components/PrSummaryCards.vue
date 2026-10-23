@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { fmtDuration } from '../format'
 import { medianCycleHours, mergedPrs, mergedWithoutReview, openAging, openPrs } from '../github'
 import { MERGE_NO_REVIEW_AMBER, MERGE_NO_REVIEW_RED, PR_STALE_DAYS } from '../thresholds'
 import StatCard from './StatCard.vue'
+
+const { t } = useI18n({ useScope: 'global' })
 
 const cards = computed(() => {
   // mesma janela de PR parado do alerta e do resumo (PR_STALE_DAYS)
@@ -13,33 +16,37 @@ const cards = computed(() => {
   return [
     {
       value: String(openPrs.value.length),
-      label: openPrs.value.length === 1 ? 'PR aberto' : 'PRs abertos',
+      label: openPrs.value.length === 1 ? t('ui.prCards.openOne') : t('ui.prCards.openMany'),
       icon: 'i-lucide-git-pull-request',
-      sub: drafts ? `${drafts} rascunho${drafts > 1 ? 's' : ''}` : null,
+      sub: drafts
+        ? drafts === 1
+          ? t('ui.prCards.draftsOne', { n: drafts })
+          : t('ui.prCards.draftsMany', { n: drafts })
+        : null,
     },
     {
       value: String(stale),
       // mesma frase do AlertStrip (mesmo threshold, mesma concordância)
-      label: stale === 1 ? `PR parado há ${PR_STALE_DAYS}+ dias` : `PRs parados há ${PR_STALE_DAYS}+ dias`,
+      label: stale === 1 ? t('ui.alerts.prStaleOne', { n: PR_STALE_DAYS }) : t('ui.alerts.prStaleMany', { n: PR_STALE_DAYS }),
       icon: 'i-lucide-hourglass',
       color: stale > 0 ? 'text-warning' : undefined,
       sub: null,
     },
     {
       value: String(mergedPrs.value.length),
-      label: mergedPrs.value.length === 1 ? 'mergeado no período' : 'mergeados no período',
+      label: mergedPrs.value.length === 1 ? t('ui.prCards.mergedOne') : t('ui.prCards.mergedMany'),
       icon: 'i-lucide-git-merge',
       sub: null,
     },
     {
       value: fmtDuration(medianCycleHours.value),
-      label: 'cycle time mediano (corte por dia)',
+      label: t('ui.prCards.cycleTime'),
       icon: 'i-lucide-timer',
       sub: null,
     },
     {
       value: `${mergedWithoutReview.value.pct}%`,
-      label: 'mergeados sem review',
+      label: t('ui.prCards.noReview'),
       icon: 'i-lucide-eye-off',
       // mesmos limiares do ReviewCoverage: red ≥20%, amber ≥10%
       color: mergedWithoutReview.value.pct >= MERGE_NO_REVIEW_RED * 100
@@ -47,7 +54,7 @@ const cards = computed(() => {
         : mergedWithoutReview.value.pct >= MERGE_NO_REVIEW_AMBER * 100
           ? 'text-warning'
           : undefined,
-      sub: `${n} ${n === 1 ? 'PR' : 'PRs'}`,
+      sub: n === 1 ? t('ui.prCards.prCountOne', { n }) : t('ui.prCards.prCountMany', { n }),
     },
   ]
 })

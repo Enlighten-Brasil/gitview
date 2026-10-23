@@ -7,5 +7,6 @@ import filters from './filters.json'
 import nav from './nav.json'
 import navbar from './navbar.json'
 import team from './team.json'
+import ui from './ui.json'
 
-export default { ...app, ...branches, ...chart, ...filters, ...nav, ...navbar, ...team }
+export default { ...app, ...branches, ...chart, ...filters, ...nav, ...navbar, ...team, ...ui }

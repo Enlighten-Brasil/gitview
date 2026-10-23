@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { isBot, stats } from '../data'
 import { daysSince, fmtDate } from '../format'
 import { DEV_STALE_DAYS, DEV_STALE_ERROR_DAYS, REPO_STALE_DAYS, REPO_STALE_ERROR_DAYS } from '../thresholds'
 import TablePanel from './TablePanel.vue'
+
+const { t } = useI18n({ useScope: 'global' })
 
 /** repos sem commits há REPO_STALE_DAYS+ dias */
 const staleRepos = computed(() =>
@@ -24,14 +27,14 @@ const staleDevs = computed(() =>
 </script>
 
 <template>
-  <TablePanel title="Inatividade — repos e devs parados" icon="i-lucide-pause-circle" icon-class="text-warning">
+  <TablePanel :title="t('ui.inactiveWatch.title')" icon="i-lucide-pause-circle" icon-class="text-warning">
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 px-4 pt-4">
       <div>
         <h3 class="text-xs font-semibold text-muted uppercase tracking-wide mb-2">
-          repos sem commit há {{ REPO_STALE_DAYS }}+ dias
+          {{ t('ui.inactiveWatch.reposHeading', { n: REPO_STALE_DAYS }) }}
         </h3>
         <p v-if="staleRepos.length === 0" class="text-muted text-sm">
-          Todos os repos ativos. <UIcon name="i-lucide-thumbs-up" class="size-4 align-[-2px]" />
+          {{ t('ui.inactiveWatch.reposEmpty') }} <UIcon name="i-lucide-thumbs-up" class="size-4 align-[-2px]" />
         </p>
         <table v-else class="data-table">
           <tbody>
@@ -43,7 +46,7 @@ const staleDevs = computed(() =>
                 {{ fmtDate(r.last) }}
               </td>
               <td class="num whitespace-nowrap">
-                <span :class="r.days >= REPO_STALE_ERROR_DAYS ? 'text-error font-medium' : 'text-warning'">{{ r.days }}d</span>
+                <span :class="r.days >= REPO_STALE_ERROR_DAYS ? 'text-error font-medium' : 'text-warning'">{{ t('ui.days', { n: r.days }) }}</span>
               </td>
             </tr>
           </tbody>
@@ -52,10 +55,10 @@ const staleDevs = computed(() =>
 
       <div>
         <h3 class="text-xs font-semibold text-muted uppercase tracking-wide mb-2">
-          devs sem commit há {{ DEV_STALE_DAYS }}+ dias
+          {{ t('ui.inactiveWatch.devsHeading', { n: DEV_STALE_DAYS }) }}
         </h3>
         <p v-if="staleDevs.length === 0" class="text-muted text-sm">
-          Todo mundo commitou recentemente. <UIcon name="i-lucide-thumbs-up" class="size-4 align-[-2px]" />
+          {{ t('ui.inactiveWatch.devsEmpty') }} <UIcon name="i-lucide-thumbs-up" class="size-4 align-[-2px]" />
         </p>
         <table v-else class="data-table">
           <tbody>
@@ -65,7 +68,7 @@ const staleDevs = computed(() =>
                 {{ fmtDate(d.last) }}
               </td>
               <td class="num whitespace-nowrap">
-                <span :class="d.days >= DEV_STALE_ERROR_DAYS ? 'text-error font-medium' : 'text-warning'">{{ d.days }}d</span>
+                <span :class="d.days >= DEV_STALE_ERROR_DAYS ? 'text-error font-medium' : 'text-warning'">{{ t('ui.days', { n: d.days }) }}</span>
               </td>
             </tr>
           </tbody>
@@ -74,7 +77,7 @@ const staleDevs = computed(() =>
     </div>
 
     <p class="text-dimmed text-xs px-4 pb-3 pt-2.5">
-      ignora os filtros da sidebar, inclusive o escopo (inatividade é medida até hoje, sobre todos os repos/devs) · dev inativo pode estar de férias ou travado — vale um 1:1
+      {{ t('ui.inactiveWatch.note') }}
     </p>
   </TablePanel>
 </template>

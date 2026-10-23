@@ -3,6 +3,8 @@
  * Card de métrica compartilhado (ícone + valor + label) — o stat-card que estava
  * copiado em 4 lugares; o grid vem da classe global `.cards-grid` (main.css).
  */
+import { useI18n } from 'vue-i18n'
+
 defineProps<{
   value: string
   label: string
@@ -21,6 +23,8 @@ defineProps<{
     tooltip?: string
   }
 }>()
+
+const { t } = useI18n({ useScope: 'global' })
 </script>
 
 <template>
@@ -37,7 +41,7 @@ defineProps<{
             :name="delta.dir === 'up' ? 'i-lucide-arrow-up' : delta.dir === 'down' ? 'i-lucide-arrow-down' : 'i-lucide-arrow-right'"
             class="size-3"
           />
-          {{ delta.pct }}%
+          {{ t('ui.pct', { n: delta.pct }) }}
         </span>
       </UTooltip>
     </div>

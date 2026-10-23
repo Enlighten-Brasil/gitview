@@ -4,17 +4,20 @@
  * moram as demais métricas por pessoa. Fica fora do grid pra nunca truncar.
  */
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { commitsByAuthor, filteredCommitCount } from '../data'
 import { fmtInt } from '../format'
 
+const { t } = useI18n({ useScope: 'global' })
+
 const top = computed(() => {
-  const t = commitsByAuthor.value[0]
-  if (!t)
+  if (commitsByAuthor.value.length === 0)
     return null
+  const best = commitsByAuthor.value[0]
   const share = filteredCommitCount.value > 0
-    ? Math.round((t.commits / filteredCommitCount.value) * 100)
+    ? Math.round((best.commits / filteredCommitCount.value) * 100)
     : 0
-  return { ...t, share }
+  return { ...best, share }
 })
 </script>
 
@@ -26,13 +29,13 @@ const top = computed(() => {
         {{ top.author }}
       </div>
       <div class="text-xs text-muted">
-        destaque do período
+        {{ t('ui.periodHighlight.label') }}
       </div>
     </div>
     <div class="ml-auto flex items-center gap-2.5 shrink-0">
       <span class="text-lg font-bold text-highlighted">{{ fmtInt(top.commits) }}</span>
       <UBadge color="primary" variant="soft" size="sm">
-        {{ top.share }}% do período
+        {{ t('ui.periodHighlight.share', { n: top.share }) }}
       </UBadge>
     </div>
   </div>

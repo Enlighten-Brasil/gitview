@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { RiskStatus } from '../risk'
+import { useI18n } from 'vue-i18n'
 
 /**
  * Barra de risco padronizada (issue #36) — antes o track + fill + % estavam
@@ -14,13 +15,15 @@ defineProps<{
   /** mostra o % à direita — cast booleano do Vue: ausente = false (quem quer texto passa :show-value="true"); tabelas com coluna própria de % deixam false */
   showValue?: boolean
 }>()
+
+const { t } = useI18n({ useScope: 'global' })
 </script>
 
 <template>
   <div class="flex items-center gap-2">
-    <div class="h-2 flex-1 rounded bg-accented overflow-hidden" role="img" :aria-label="`${Math.round(pct * 100)}% — ${status.label}`">
+    <div class="h-2 flex-1 rounded bg-accented overflow-hidden" role="img" :aria-label="t('ui.riskBar.aria', { pct: Math.round(pct * 100), label: status.label })">
       <div class="h-full rounded" :style="{ width: `${Math.round(pct * 100)}%`, background: status.hex }" />
     </div>
-    <span v-if="showValue !== false" class="num text-xs w-9">{{ Math.round(pct * 100) }}%</span>
+    <span v-if="showValue !== false" class="num text-xs w-9">{{ t('ui.pct', { n: Math.round(pct * 100) }) }}</span>
   </div>
 </template>

@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import type { EChartsOption } from 'echarts'
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { axisLabel, ct, legendText, splitLine, tooltipBase } from '../chartTheme'
 import { reviewsByDev } from '../github'
 import ChartPanel from './ChartPanel.vue'
+
+const { t } = useI18n({ useScope: 'global' })
 
 const option = computed<EChartsOption>(() => {
   const rows = [...reviewsByDev.value].reverse() // horizontal: maior no topo
@@ -16,7 +19,7 @@ const option = computed<EChartsOption>(() => {
     yAxis: { type: 'category', data: rows.map(r => r.dev), axisLabel: axisLabel() },
     series: [
       {
-        name: 'aprovações',
+        name: t('ui.prReviews.approvals'),
         type: 'bar',
         stack: 'reviews',
         data: rows.map(r => r.approvals),
@@ -24,7 +27,7 @@ const option = computed<EChartsOption>(() => {
         barMaxWidth: 18,
       },
       {
-        name: 'pediu mudanças',
+        name: t('ui.prReviews.changes'),
         type: 'bar',
         stack: 'reviews',
         data: rows.map(r => r.changes),
@@ -32,7 +35,7 @@ const option = computed<EChartsOption>(() => {
         barMaxWidth: 18,
       },
       {
-        name: 'comentários',
+        name: t('ui.prReviews.comments'),
         type: 'bar',
         stack: 'reviews',
         data: rows.map(r => r.total - r.approvals - r.changes),
@@ -45,5 +48,5 @@ const option = computed<EChartsOption>(() => {
 </script>
 
 <template>
-  <ChartPanel title="Reviews por dev (no período)" icon="i-lucide-eye" :option="option" tall />
+  <ChartPanel :title="t('ui.prReviews.title')" icon="i-lucide-eye" :option="option" tall />
 </template>

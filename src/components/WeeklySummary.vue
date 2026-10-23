@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useMarkdownExport } from '@/composables/useMarkdownExport'
 import { loadDaily } from '@/data'
 import { buildWeeklySummary } from '../summary'
+
+const { t } = useI18n({ useScope: 'global' })
 
 // slideover com o resumo da última semana fechada — gerado na abertura
 const open = ref(false)
@@ -26,14 +29,14 @@ function onDownload() {
 </script>
 
 <template>
-  <USlideover v-model:open="open" title="Resumo da semana" :ui="{ content: 'max-w-xl' }">
-    <UTooltip text="resumo da semana exportável">
+  <USlideover v-model:open="open" :title="t('ui.weekly.title')" :ui="{ content: 'max-w-xl' }">
+    <UTooltip :text="t('ui.weekly.tooltip')">
       <UButton
         icon="i-lucide-file-text"
         color="neutral"
         variant="ghost"
         size="sm"
-        aria-label="resumo da semana"
+        :aria-label="t('ui.weekly.aria')"
       />
     </UTooltip>
 
@@ -43,7 +46,7 @@ function onDownload() {
         class="font-mono text-xs leading-relaxed whitespace-pre-wrap"
       >{{ summary.markdown }}</pre>
       <p v-else class="text-sm text-dimmed">
-        sem dados — rode a coleta primeiro
+        {{ t('ui.weekly.empty') }}
       </p>
     </template>
 
@@ -52,14 +55,14 @@ function onDownload() {
         <div class="flex gap-2">
           <UButton
             :icon="copied ? 'i-lucide-check' : 'i-lucide-clipboard'"
-            :label="copied ? 'copiado!' : 'copiar markdown'"
+            :label="copied ? t('ui.weekly.copied') : t('ui.weekly.copy')"
             :color="copied ? 'success' : 'primary'"
             :disabled="!summary || !hasCopyPath"
             @click="onCopy"
           />
           <UButton
             icon="i-lucide-download"
-            label="baixar .md"
+            :label="t('ui.weekly.download')"
             color="neutral"
             variant="outline"
             :disabled="!summary"
@@ -69,7 +72,7 @@ function onDownload() {
         <!-- decisão da issue #129: o resumo é relatório do time inteiro — mantém
              a natureza completa e NÃO segue o workScope (como os demais filtros) -->
         <p class="text-xs text-dimmed">
-          relatório do time inteiro — ignora os filtros da sidebar, inclusive o escopo (e sempre exclui bots)
+          {{ t('ui.weekly.note') }}
         </p>
       </div>
     </template>

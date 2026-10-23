@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { filteredMonthly, filteredTotals, filters, isCustomRange, previousTotals, rangeLabel, stats } from '../data'
 import { fmtCompact } from '../format'
 import { DELTA_FLAT_PCT } from '../thresholds'
 import StatCard from './StatCard.vue'
+
+const { t } = useI18n({ useScope: 'global' })
 
 /** delta % vs janela anterior equivalente; null sem base de comparação */
 function delta(cur: number, prev: number | undefined) {
@@ -38,7 +41,7 @@ const scopeSplit = computed(() => {
 })
 
 const periodCards = computed(() => {
-  const t = filteredTotals.value
+  const cur = filteredTotals.value
   const p = previousTotals.value
   const s = scopeSplit.value
   return [
@@ -46,16 +49,16 @@ const periodCards = computed(() => {
       // workScope 'all': valor composto "X • Y" (produção • progresso); com
       // recorte ativo, o valor é do escopo. O delta usa SEMPRE o mesmo escopo
       // no numerador e no denominador (previousTotals já aplica scopeMatches).
-      value: s ? `${fmtCompact(s.prod)} • ${fmtCompact(s.progress)}` : fmtCompact(t.commits),
-      label: s ? 'em produção • em progresso' : 'commits',
+      value: s ? `${fmtCompact(s.prod)} • ${fmtCompact(s.progress)}` : fmtCompact(cur.commits),
+      label: s ? t('ui.summaryCards.commitsScope') : t('ui.summaryCards.commits'),
       icon: 'i-lucide-git-commit-horizontal',
       color: undefined,
-      delta: cardDelta(t.commits, p?.commits, true),
+      delta: cardDelta(cur.commits, p?.commits, true),
     },
-    { value: fmtCompact(t.additions), label: 'linhas +', icon: 'i-lucide-plus', color: 'text-success', delta: cardDelta(t.additions, p?.additions, false) },
-    { value: fmtCompact(t.deletions), label: 'linhas −', icon: 'i-lucide-minus', color: 'text-error', delta: cardDelta(t.deletions, p?.deletions, false) },
-    { value: String(t.authors), label: t.authors === 1 ? 'dev ativo' : 'devs ativos', icon: 'i-lucide-users', color: undefined, delta: cardDelta(t.authors, p?.authors, true) },
-    { value: String(t.repos), label: t.repos === 1 ? 'repo ativo' : 'repos ativos', icon: 'i-lucide-git-branch', color: undefined, delta: cardDelta(t.repos, p?.repos, true) },
+    { value: fmtCompact(cur.additions), label: t('ui.summaryCards.linesPlus'), icon: 'i-lucide-plus', color: 'text-success', delta: cardDelta(cur.additions, p?.additions, false) },
+    { value: fmtCompact(cur.deletions), label: t('ui.summaryCards.linesMinus'), icon: 'i-lucide-minus', color: 'text-error', delta: cardDelta(cur.deletions, p?.deletions, false) },
+    { value: String(cur.authors), label: cur.authors === 1 ? t('ui.summaryCards.devOne') : t('ui.summaryCards.devMany'), icon: 'i-lucide-users', color: undefined, delta: cardDelta(cur.authors, p?.authors, true) },
+    { value: String(cur.repos), label: cur.repos === 1 ? t('ui.summaryCards.repoOne') : t('ui.summaryCards.repoMany'), icon: 'i-lucide-git-branch', color: undefined, delta: cardDelta(cur.repos, p?.repos, true) },
   ]
 })
 
@@ -80,7 +83,7 @@ const deltaTooltip = computed(() => {
   const n = filters.rangeMonths
   if (n == null || isCustomRange())
     return undefined
-  return n === 1 ? 'vs o mês anterior' : `vs os ${n} meses anteriores`
+  return n === 1 ? t('ui.summaryCards.deltaMonth') : t('ui.summaryCards.deltaMonths', { n })
 })
 
 /** delta pronto pro StatCard — cor pela regra `judge` + tooltip da janela */
@@ -93,14 +96,14 @@ function cardDelta(cur: number, prev: number | undefined, judge: boolean) {
 
 /** totais históricos em linha discreta (contexto, sem duplicar o grid) */
 const historyLine = computed(() => {
-  const t = stats.value?.totals
-  if (!t)
+  const tot = stats.value?.totals
+  if (!tot)
     return ''
   // split histórico produção/progresso (issue #129) — só com dados pós-#119
-  const commits = 'prodCommits' in t
-    ? `${fmtCompact(t.commits)} commits (${fmtCompact(t.prodCommits)} em produção · ${fmtCompact(t.progressCommits)} em progresso)`
-    : `${fmtCompact(t.commits)} commits`
-  return `histórico total: ${commits} · ${fmtCompact(t.additions)} linhas + · ${fmtCompact(t.deletions)} linhas − · ${t.authors} devs · ${t.repos} repos`
+  const commits = 'prodCommits' in tot
+    ? t('ui.summaryCards.historySplit', { commits: fmtCompact(tot.commits), prod: fmtCompact(tot.prodCommits), progress: fmtCompact(tot.progressCommits) })
+    : t('ui.summaryCards.historyPlain', { commits: fmtCompact(tot.commits) })
+  return `${t('ui.summaryCards.historyPrefix')} ${commits} · ${t('ui.summaryCards.historyAdd', { n: fmtCompact(tot.additions) })} · ${t('ui.summaryCards.historyDel', { n: fmtCompact(tot.deletions) })} · ${t('ui.summaryCards.historyDevs', { n: tot.authors })} · ${t('ui.summaryCards.historyRepos', { n: tot.repos })}`
 })
 </script>
 
@@ -108,7 +111,7 @@ const historyLine = computed(() => {
   <div class="flex flex-col gap-3">
     <div>
       <div class="cards-label">
-        no período · {{ rangeLabel }}
+        {{ t('ui.summaryCards.period', { range: rangeLabel }) }}
       </div>
       <div class="cards-grid">
         <StatCard
