@@ -49,7 +49,7 @@ const shown = computed(() => stale.value.slice(0, 5))
       </table>
       <p class="text-dimmed text-xs mt-2.5">
         <template v-if="stale.length > shown.length">{{ t('ui.prStale.showing', { shown: shown.length, total: stale.length }) }}</template>
-        {{ t('ui.prStale.footer', { days: oldest?.ageDays }) }}
+        {{ t('ui.prStale.footerBefore') }} <b>{{ oldest?.ageDays }}d</b> {{ t('ui.prStale.footerAfter') }}
       </p>
     </template>
   </UCard>
