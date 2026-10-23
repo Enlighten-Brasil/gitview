@@ -63,6 +63,10 @@ describe('catálogos', () => {
   // byte-paridade: os valores pt-BR são a copy original extraída sem reescrita
   it('pt-BR byte-idêntico à copy original do shell', () => {
     expect(ptBR).toEqual({
+      'app.lang.aria': 'idioma',
+      'app.lang.name.enUS': 'English',
+      'app.lang.name.esES': 'Español',
+      'app.lang.name.ptBR': 'Português (Brasil)',
       'app.loading': 'carregando…',
       'app.notFound.back': 'voltar ao início',
       'app.notFound.description': 'Esse caminho não existe no gitview.',

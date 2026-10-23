@@ -10,6 +10,7 @@ import { useRoute } from 'vue-router'
 import { collectError, collecting, collectLog, collectStep, collectSucceeded, startCollect } from '@/collect'
 import AppNav from '@/components/AppNav.vue'
 import CandidatesBanner from '@/components/CandidatesBanner.vue'
+import LangSelect from '@/components/LangSelect.vue'
 import WeeklySummary from '@/components/WeeklySummary.vue'
 import { useCollectToasts } from '@/composables/useCollectToasts'
 import { rangeLabel, stats } from '@/data'
@@ -26,7 +27,7 @@ definePage({
 })
 
 const route = useRoute()
-const { t } = useI18n({ useScope: 'global' })
+const { t, locale } = useI18n({ useScope: 'global' })
 
 // feedback de conclusão/erro de qualquer coleta disparada pela UI (navbar,
 // manutenção, salvar + recoletar) — o popover/log mostra o progresso
@@ -82,7 +83,10 @@ const dataAge = computed(() => {
 </script>
 
 <template>
-  <div class="flex h-screen overflow-clip">
+  <!-- #264: chave por locale — trocar idioma remonta o shell, e os computeds
+       que formatam (fmtCompact etc., sem dep reativa de locale) e o aria-label
+       DOM-derivado do USwitch re-avaliam na hora, sem esperar reload -->
+  <div class="flex h-screen overflow-clip" :key="locale">
     <AppNav />
 
     <!-- body sem padding: cada view controla seu próprio padding/container
@@ -145,6 +149,8 @@ const dataAge = computed(() => {
                 </div>
               </template>
             </UPopover>
+            <!-- #264: seletor de idioma no fim do navbar (ponto mínimo) -->
+            <LangSelect />
           </template>
         </UDashboardNavbar>
       </template>

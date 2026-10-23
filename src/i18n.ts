@@ -82,8 +82,29 @@ function detectLocale(): Locale {
 
 type I18nInstance = Awaited<ReturnType<typeof setupI18n>>
 
+/**
+ * Carrega o chunk lazy do locale e monta as mensagens no composer — branches
+ * estáticos por locale (Codacy): chaves literais, o Vite gera um chunk por
+ * branch; o `load` injetável segue cobrindo os testes do boot. pt-BR é eager
+ * (no-op). Consumida pelo setupI18n e pelo seletor (#264), que precisa das
+ * mensagens prontas ANTES de chamar applyLocale.
+ */
+export async function loadChunk(
+  composer: I18nInstance['global'],
+  locale: Locale,
+  load: Record<string, LocaleLoader> = lazyLoaders,
+): Promise<void> {
+  if (locale === DEFAULT_LOCALE)
+    return
+  const loader = locale === 'en-US' ? load['en-US'] : load['es-ES']
+  composer.setLocaleMessage(locale, (await loader()).default)
+}
+
 /** composer global criado pelo setupI18n — null enquanto o bootstrap não roda */
 let globalComposer: I18nInstance['global'] | null = null
+
+/** instância createI18n do setupI18n — null enquanto o bootstrap não roda */
+let globalInstance: I18nInstance | null = null
 
 /**
  * Cria a instância já com as mensagens do locale resolvido (await no main.ts).
@@ -106,10 +127,7 @@ export async function setupI18n(
   })
   if (locale !== DEFAULT_LOCALE) {
     try {
-      // branches estáticos por locale (Codacy): chaves literais — o Vite gera
-      // os chunks por locale; o `load` injetável segue cobrindo os testes
-      const loader = locale === 'en-US' ? load['en-US'] : load['es-ES']
-      i18n.global.setLocaleMessage(locale, (await loader()).default)
+      await loadChunk(i18n.global, locale, load)
       applyLocale(i18n, locale)
     }
     catch (err) {
@@ -120,6 +138,7 @@ export async function setupI18n(
   // inclusive o default quando o chunk lazy falhou no catch acima
   setFormatLocale(i18n.global.locale.value)
   globalComposer = i18n.global
+  globalInstance = i18n
   return i18n
 }
 
@@ -131,6 +150,17 @@ export function getComposer(): I18nInstance['global'] {
   if (globalComposer == null)
     throw new Error('[i18n] setupI18n ainda não rodou — getComposer chamado antes do bootstrap')
   return globalComposer
+}
+
+/**
+ * instância completa do setupI18n: o `applyLocale` do slot da #264 pede o
+ * objeto i18n (não só o composer). Mesmo contrato de erro de programa do
+ * getComposer — consultar antes do bootstrap.
+ */
+export function getI18n(): I18nInstance {
+  if (globalInstance == null)
+    throw new Error('[i18n] setupI18n ainda não rodou — getI18n chamado antes do bootstrap')
+  return globalInstance
 }
 
 /**
