@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { getOrCreate } from '../collections'
 import { filteredWeekly, inPeriodMonth, isoWeekKeyBefore, nestBySum } from '../data'
 import { fmtRatio } from '../format'
@@ -21,6 +22,8 @@ import { fmtRatio } from '../format'
  */
 const MIN_WEEK_COMMITS = 3
 const BASELINE_WEEKS = 8
+
+const { t } = useI18n({ useScope: 'global' })
 
 const data = computed(() => {
   // semana → autor → commits (agregação compartilhada — issue #41)
@@ -73,7 +76,7 @@ const data = computed(() => {
     <template #header>
       <div class="flex items-center gap-2">
         <UIcon name="i-lucide-trophy" class="size-4 text-warning" />
-        <span class="text-sm font-semibold text-highlighted">Campeão da semana — maior evolução</span>
+        <span class="text-sm font-semibold text-highlighted">{{ t('chart.weekly.title') }}</span>
       </div>
     </template>
 
@@ -81,10 +84,10 @@ const data = computed(() => {
       <table class="data-table">
         <thead>
           <tr>
-            <th>semana</th><th>dev</th><th class="num">
-              vs média
+            <th>{{ t('chart.week') }}</th><th>{{ t('chart.dev') }}</th><th class="num">
+              {{ t('chart.weekly.vsAvg') }}
             </th><th class="num">
-              commits
+              {{ t('chart.commits') }}
             </th>
           </tr>
         </thead>
@@ -95,7 +98,7 @@ const data = computed(() => {
             </td>
             <td>{{ w.author }}</td>
             <td class="num font-semibold text-success">
-              {{ fmtRatio(w.ratio) }}×
+              {{ t('chart.ratio', { n: fmtRatio(w.ratio) }) }}
             </td>
             <td class="num text-muted">
               {{ w.commits }}
@@ -106,17 +109,17 @@ const data = computed(() => {
       <table class="data-table">
         <thead>
           <tr>
-            <th>vitórias (período)</th><th class="num">
+            <th>{{ t('chart.weekly.wins') }}</th><th class="num">
               <UIcon name="i-lucide-trophy" class="size-3.5 align-[-2px]" />
             </th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="t in data.titleRank" :key="t.author">
-            <td>{{ t.author }}</td>
+          <tr v-for="rank in data.titleRank" :key="rank.author">
+            <td>{{ rank.author }}</td>
             <td class="num">
               <UBadge color="warning" variant="soft">
-                {{ t.count }}
+                {{ rank.count }}
               </UBadge>
             </td>
           </tr>
@@ -124,11 +127,11 @@ const data = computed(() => {
       </table>
     </div>
     <div v-else class="py-6 text-center text-sm text-muted">
-      Nenhuma semana com {{ MIN_WEEK_COMMITS }}+ commits no período — sem campeão.
+      {{ t('chart.weekly.empty', { min: MIN_WEEK_COMMITS }) }}
     </div>
 
     <p class="text-xs text-dimmed mt-3">
-      Vitória = maior salto sobre a própria média das {{ BASELINE_WEEKS }} semanas anteriores (commits ÷ (média + 1), mínimo {{ MIN_WEEK_COMMITS }} na semana) — premia ritmo, não volume puro. A média usa as {{ BASELINE_WEEKS }} semanas calendário anteriores dentro do período filtrado (semana vazia conta 0; semanas anteriores ao início do período não contam); semanas sem nenhuma semana anterior no período ficam fora do ranking, e semanas sem candidato são puladas.
+      {{ t('chart.weekly.footnote', { baseline: BASELINE_WEEKS, min: MIN_WEEK_COMMITS }) }}
     </p>
   </UCard>
 </template>

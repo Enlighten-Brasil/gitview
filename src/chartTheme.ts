@@ -1,4 +1,5 @@
 import type { EChartsOption, LegendComponentOption, PieSeriesOption, TooltipComponentOption, YAXisComponentOption } from 'echarts'
+import { getComposer } from './i18n'
 
 /**
  * Tema ECharts alinhado ao Nuxt UI.
@@ -199,6 +200,9 @@ export interface DonutSlice {
  * divergentes (40% vs 38%). Os chamadores passam só as fatias.
  */
 export function donutBase(slices: DonutSlice[], opts: { center?: [string, string] } = {}): EChartsOption {
+  // a chave resolve NA montagem da opção (o formatter só fecha sobre o `t` já
+  // resolvido) — quem chama vive num computed, então a troca de locale reavalia
+  const { t } = getComposer()
   const pie: PieSeriesOption = {
     type: 'pie',
     radius: ['45%', '75%'],
@@ -211,7 +215,13 @@ export function donutBase(slices: DonutSlice[], opts: { center?: [string, string
   }
   return {
     color: PALETTE,
-    tooltip: tooltipBase({ trigger: 'item', formatter: '{b}: {c} commits ({d}%)' }),
+    tooltip: tooltipBase({
+      trigger: 'item',
+      formatter: (params: unknown) => {
+        const p = params as { name: string, value: number, percent: number }
+        return t('chart.donut.tooltip', { b: p.name, c: p.value, d: p.percent })
+      },
+    }),
     legend: { type: 'scroll', orient: 'vertical', right: 0, top: 'middle', textStyle: legendText() },
     series: [pie],
   }

@@ -10,6 +10,7 @@ import type { ComputedRef, MaybeRefOrGetter } from 'vue'
 import { computed, toValue } from 'vue'
 import { axisLabel, ct, heatRamp, tooltipBase } from '../chartTheme'
 import { fmtWeekdays } from '../format'
+import { getComposer } from '../i18n'
 
 /** valor de categoria de um eixo: rótulo textual ou índice numérico */
 export type HeatValue = string | number
@@ -60,6 +61,9 @@ function cellValue<T extends { commits: number }>(row: T, key: keyof T & string)
 
 export function useHeatmapMatrix<T extends { commits: number }>(config: HeatmapMatrixConfig<T>): ComputedRef<EChartsOption> {
   return computed<EChartsOption>(() => {
+    // `t` resolve aqui (na montagem da opção): o tooltip fecha sobre ele e o
+    // computed se reavalia quando o locale troca (xLabel/yLabel rodam no build)
+    const { t } = getComposer()
     const rows = toValue(config.rows)
     const valueKey = (config.valueKey ?? 'commits') as keyof T & string
 
@@ -101,7 +105,9 @@ export function useHeatmapMatrix<T extends { commits: number }>(config: HeatmapM
 
     const xLabel = config.xLabel ?? String
     const yLabel = config.yLabel ?? String
-    const formatTip = config.formatTip ?? ((x, y, v) => `${y} — ${x}: <b>${v}</b> commits`)
+    // `<b>` é marcação do tooltip ECharts e fica no código: o unplugin-vue-i18n
+    // rejeita HTML no catálogo (strictMessage) e derrubaria o `pnpm build`
+    const formatTip = config.formatTip ?? ((x, y, v) => `${t('chart.heat.tip', { y, x })} <b>${v}</b> ${t('chart.commits')}`)
 
     // visualMap: legenda completa; `visualMap: false` (perfil do dev) mantém só o
     // mapeamento de cor — a célula de meia largura não comporta a legenda vertical
@@ -154,6 +160,9 @@ export function useWeekdayHourHeatmap(params: {
   grid?: EChartsOption['grid']
   visualMap?: boolean
 }): ComputedRef<EChartsOption> {
+  // `t` p/ rótulo de eixo e tooltip — chamados na montagem da opção (o eixo x
+  // ainda dá a dependência reativa de locale ao computed)
+  const { t } = getComposer()
   return useHeatmapMatrix<WeekdayHourRow>({
     rows: params.rows,
     xKey: 'hour',
@@ -163,9 +172,13 @@ export function useWeekdayHourHeatmap(params: {
       x: Array.from({ length: 24 }, (_, h) => h),
       y: fmtWeekdays().map((_, i) => i),
     },
-    xLabel: h => `${h}h`,
+    xLabel: h => t('chart.heat.hour', { h }),
     yLabel: d => fmtWeekdays()[Number(d)],
-    formatTip: (x, y, v) => `${fmtWeekdays()[Number(y)]} ${String(x).padStart(2, '0')}h: <b>${v}</b> commits`,
+    formatTip: (x, y, v) => {
+      const weekday = fmtWeekdays()[Number(y)]
+      const hour = String(x).padStart(2, '0')
+      return `${t('chart.heat.hourTip', { weekday, hour })} <b>${v}</b> ${t('chart.commits')}`
+    },
     grid: params.grid ?? { left: 50, right: params.visualMap === false ? 20 : 60, top: 10, bottom: 30 },
     visualMap: params.visualMap,
   })

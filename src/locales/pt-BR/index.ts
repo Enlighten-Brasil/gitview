@@ -3,8 +3,9 @@
 // Chaves FLAT ('nav.sections.dashboards'): o resolver default do vue-i18n
 // v11 (resolveWithKeyValue) não expande dot-path — lookup direto por chave.
 import app from './app.json'
+import chart from './chart.json'
 import filters from './filters.json'
 import nav from './nav.json'
 import navbar from './navbar.json'
 
-export default { ...app, ...filters, ...nav, ...navbar }
+export default { ...app, ...chart, ...filters, ...nav, ...navbar }

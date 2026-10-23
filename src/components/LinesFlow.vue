@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { EChartsOption } from 'echarts'
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { axisLabel, ct, legendText, splitLine, tooltipBase } from '../chartTheme'
 import { filteredMonthly, groupBySum } from '../data'
 import { fmtCompact, fmtInt } from '../format'
@@ -8,6 +9,8 @@ import ChartPanel from './ChartPanel.vue'
 
 // fluxo de linhas (+ adicionadas / − removidas) por mês ou acumulado — "andamento" do código
 const mode = ref<'month' | 'cumulative'>('month')
+
+const { t } = useI18n({ useScope: 'global' })
 
 const option = computed<EChartsOption>(() => {
   // mês → linhas +/− (agregação compartilhada — issue #41)
@@ -26,26 +29,26 @@ const option = computed<EChartsOption>(() => {
   if (mode.value === 'month') {
     return {
       tooltip: tooltipBase({ trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (v: unknown) => fmtInt(Number(v)) }),
-      legend: { data: ['adicionadas', 'removidas', 'saldo'], textStyle: legendText() },
+      legend: { data: [t('chart.lines.added'), t('chart.lines.removed'), t('chart.lines.net')], textStyle: legendText() },
       grid: { left: 60, right: 20, top: 40, bottom: 60 },
       ...axis,
       series: [
         {
-          name: 'adicionadas',
+          name: t('chart.lines.added'),
           type: 'bar',
           itemStyle: { color: ct.success500 },
           emphasis: { focus: 'series' },
           data: adds,
         },
         {
-          name: 'removidas',
+          name: t('chart.lines.removed'),
           type: 'bar',
           itemStyle: { color: ct.error500 },
           emphasis: { focus: 'series' },
           data: dels.map(d => -d), // barras para baixo
         },
         {
-          name: 'saldo',
+          name: t('chart.lines.net'),
           type: 'line',
           smooth: true,
           symbolSize: 6,
@@ -73,12 +76,12 @@ const option = computed<EChartsOption>(() => {
 
   return {
     tooltip: tooltipBase({ trigger: 'axis', valueFormatter: (v: unknown) => fmtInt(Number(v)) }),
-    legend: { data: ['saldo acumulado', 'adicionadas acumuladas', 'removidas acumuladas'], textStyle: legendText() },
+    legend: { data: [t('chart.lines.netCum'), t('chart.lines.addedCum'), t('chart.lines.removedCum')], textStyle: legendText() },
     grid: { left: 60, right: 20, top: 40, bottom: 60 },
     ...axis,
     series: [
       {
-        name: 'adicionadas acumuladas',
+        name: t('chart.lines.addedCum'),
         type: 'line',
         smooth: true,
         symbol: 'none',
@@ -87,7 +90,7 @@ const option = computed<EChartsOption>(() => {
         data: cumAdds,
       },
       {
-        name: 'removidas acumuladas',
+        name: t('chart.lines.removedCum'),
         type: 'line',
         smooth: true,
         symbol: 'none',
@@ -96,7 +99,7 @@ const option = computed<EChartsOption>(() => {
         data: cumDels,
       },
       {
-        name: 'saldo acumulado',
+        name: t('chart.lines.netCum'),
         type: 'line',
         smooth: true,
         symbol: 'none',
@@ -112,17 +115,17 @@ const option = computed<EChartsOption>(() => {
 
 <template>
   <ChartPanel
-    :title="mode === 'month' ? 'Linhas adicionadas × removidas por mês' : 'Crescimento líquido do código (acumulado)'"
+    :title="mode === 'month' ? t('chart.lines.title') : t('chart.lines.titleCum')"
     :option="option"
     icon="i-lucide-diff"
     tall
   >
     <template #actions>
       <UButton size="xs" :color="mode === 'month' ? 'primary' : 'neutral'" :variant="mode === 'month' ? 'soft' : 'ghost'" :aria-pressed="mode === 'month'" @click="mode = 'month'">
-        por mês
+        {{ t('chart.lines.modeMonth') }}
       </UButton>
       <UButton size="xs" :color="mode === 'cumulative' ? 'primary' : 'neutral'" :variant="mode === 'cumulative' ? 'soft' : 'ghost'" :aria-pressed="mode === 'cumulative'" @click="mode = 'cumulative'">
-        acumulado
+        {{ t('chart.lines.modeCum') }}
       </UButton>
     </template>
   </ChartPanel>

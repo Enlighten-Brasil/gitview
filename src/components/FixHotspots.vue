@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import type { RiskStatus, RiskTier } from '../risk'
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { filteredTypes, fixByRepo } from '../data'
 import { statusOf } from '../risk'
 import { FIX_HOTSPOT_AMBER, FIX_HOTSPOT_MIN_COMMITS, FIX_HOTSPOT_RED } from '../thresholds'
 import RiskBar from './RiskBar.vue'
+
+const { t } = useI18n({ useScope: 'global' })
 
 interface RepoFix {
   repo: string
@@ -23,14 +26,15 @@ const rows = computed<RepoFix[]>(() => {
     .sort((a, b) => b.fixPct - a.fixPct)
 })
 
-const RISK_TIERS: RiskTier[] = [
-  { at: FIX_HOTSPOT_RED, color: 'error', label: 'quente' },
-  { at: FIX_HOTSPOT_AMBER, color: 'warning', label: 'atenção' },
-  { at: 0, color: 'success', label: 'ok' },
-]
+// tiers com o rótulo resolvido por t(): a troca de locale reavalia o badge
+const tiers = computed<RiskTier[]>(() => [
+  { at: FIX_HOTSPOT_RED, color: 'error', label: t('chart.fix.tierHot') },
+  { at: FIX_HOTSPOT_AMBER, color: 'warning', label: t('chart.risk.attention') },
+  { at: 0, color: 'success', label: t('chart.risk.ok') },
+])
 
 function riskStatus(r: RepoFix): RiskStatus {
-  return statusOf(r.fixPct, RISK_TIERS)
+  return statusOf(r.fixPct, tiers.value)
 }
 </script>
 
@@ -39,30 +43,30 @@ function riskStatus(r: RepoFix): RiskStatus {
     <template #header>
       <div class="flex items-center gap-2">
         <UIcon name="i-lucide-flame" class="size-4 text-error" />
-        <span class="text-sm font-semibold text-highlighted">Fix hotspots — % de correção por repo</span>
+        <span class="text-sm font-semibold text-highlighted">{{ t('chart.fix.title') }}</span>
       </div>
     </template>
 
     <p v-if="rows.length === 0" class="text-muted text-sm">
-      Sem dados suficientes no período filtrado.
+      {{ t('chart.noData') }}
     </p>
 
     <template v-else>
       <table class="data-table">
         <thead>
           <tr>
-            <th>repo</th>
+            <th>{{ t('chart.repo') }}</th>
             <th style="width: 34%">
-              % fix
+              {{ t('chart.fix.pctHeader') }}
             </th>
             <th class="num">
-              fix
+              {{ t('chart.fix.fixHeader') }}
             </th>
             <th class="num">
-              commits
+              {{ t('chart.commits') }}
             </th>
             <th class="num">
-              status
+              {{ t('chart.status') }}
             </th>
           </tr>
         </thead>
@@ -89,7 +93,7 @@ function riskStatus(r: RepoFix): RiskStatus {
         </tbody>
       </table>
       <p class="text-dimmed text-xs mt-2.5">
-        quente = ≥{{ Math.round(FIX_HOTSPOT_RED * 100) }}% dos commits são fix · atenção = ≥{{ Math.round(FIX_HOTSPOT_AMBER * 100) }}% · repos com &lt;{{ FIX_HOTSPOT_MIN_COMMITS }} commits no período são ignorados
+        {{ t('chart.fix.footnote', { red: Math.round(FIX_HOTSPOT_RED * 100), amber: Math.round(FIX_HOTSPOT_AMBER * 100), min: FIX_HOTSPOT_MIN_COMMITS }) }}
       </p>
     </template>
   </UCard>

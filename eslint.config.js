@@ -85,4 +85,15 @@ export default antfu(
       '@intlify/vue-i18n/no-unused-keys': 'off',
     },
   },
+  {
+    // chaves de chart.json consumidas só a partir de .ts (formatters/tooltips do
+    // ECharts: chartTheme.ts, charts/useHeatmapMatrix.ts, charts/useDevCharts.ts)
+    // — o plugin rastreia t literal em .vue/.js e não enxerga o consumo em .ts
+    // — desligado só nos chart.json, as demais chaves (estáticas em t('literal'))
+    // continuam sob a regra. Reavaliar na convenção final (#265)
+    files: ['src/locales/*/chart.json'],
+    rules: {
+      '@intlify/vue-i18n/no-unused-keys': 'off',
+    },
+  },
 )
