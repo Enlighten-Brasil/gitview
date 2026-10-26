@@ -8,13 +8,17 @@
  * degrada (mensagem/UAlert/rodapé do motor), nunca exceção.
  */
 import type { ReportSubject, ReportWindow } from '@/report'
-import { computed, onMounted, ref, watch } from 'vue'
+import type { ReportPresetId, ReportQueryState, ReportSubjectId } from '@/report-query'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMarkdownExport } from '@/composables/useMarkdownExport'
 import { loadDaily, stats } from '@/data'
 import { githubError } from '@/github'
 import { renderMarkdown } from '@/markdown'
 import { buildReport, customWindow, presetWindow, rollingWindow } from '@/report'
+import { setReportCommitsActive } from '@/report-commits-loader'
+import { reportT } from '@/report-i18n'
+import { reportQueryForStorage, reportQueryOf, sanitizeReportQuery } from '@/report-query'
 import { loadTeam, team, teamLoadError } from '@/team'
 
 definePage({
@@ -37,8 +41,9 @@ onMounted(loadDaily)
 // people= é opt-in estrita (`q.people === '1'`) e deliberada a cada visita:
 // nunca persiste no LS_KEY (strip) — o boot não pode religar sozinho
 // ---------------------------------------------------------------------------
-type SubjectId = 'org' | 'team' | 'dev'
-type PresetId = 'week-closed' | 'week-current' | '7d' | 'month-current' | '30d' | 'custom'
+type SubjectId = ReportSubjectId
+type PresetId = ReportPresetId
+type ReportState = ReportQueryState
 
 const SUBJECTS: { id: SubjectId, label: string }[] = [
   { id: 'org', label: 'Organização' },
@@ -49,16 +54,12 @@ const PRESETS: { id: PresetId, label: string }[] = [
   { id: 'week-closed', label: 'Semana fechada' },
   { id: 'week-current', label: 'Nesta semana (em curso)' },
   { id: '7d', label: 'Últimos 7 dias' },
+  { id: 'last-month', label: 'Mês fechado' },
   { id: 'month-current', label: 'Neste mês (em curso)' },
   { id: '30d', label: 'Últimos 30 dias' },
   { id: 'custom', label: 'Personalizado' },
 ]
-const DEFAULT_PRESET: PresetId = '7d'
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const LS_KEY = 'gitview-report-query'
-
-const isSubject = (v: unknown): v is SubjectId => SUBJECTS.some(s => s.id === v)
-const isPreset = (v: unknown): v is PresetId => PRESETS.some(p => p.id === v)
 
 const route = useRoute()
 const router = useRouter()
@@ -66,54 +67,18 @@ const router = useRouter()
 // ---------------------------------------------------------------------------
 // query = fonte única (sanitização: valor inválido → default, nunca crash)
 // ---------------------------------------------------------------------------
-const state = computed(() => {
-  const q = route.query
-  const subject: SubjectId = isSubject(q.subject) ? q.subject : 'org'
-  let preset: PresetId = isPreset(q.preset) ? q.preset : DEFAULT_PRESET
-  const from = typeof q.from === 'string' && DATE_RE.test(q.from) ? q.from : null
-  const to = typeof q.to === 'string' && DATE_RE.test(q.to) ? q.to : null
-  // from/to só valem em custom com janela válida — caso contrário, default
-  if (preset === 'custom' && (!from || !to || from > to))
-    preset = DEFAULT_PRESET
-  return {
-    subject,
-    team: typeof q.team === 'string' ? q.team : '',
-    dev: typeof q.dev === 'string' ? q.dev : '',
-    preset,
-    from,
-    to,
-    // sanitização estrita: só a string '1' liga (array/repetido cai no default)
-    people: q.people === '1',
-  }
-})
-type ReportState = typeof state.value
+const state = computed(() => sanitizeReportQuery(route.query))
 
-/** estado → query (defaults omitidos p/ URL limpa; from/to só em custom) */
-function queryOf(s: ReportState): Record<string, string> {
-  const q: Record<string, string> = {}
-  if (s.subject !== 'org')
-    q.subject = s.subject
-  if (s.subject === 'team' && s.team)
-    q.team = s.team
-  if (s.subject === 'dev' && s.dev)
-    q.dev = s.dev
-  if (s.preset !== DEFAULT_PRESET)
-    q.preset = s.preset
-  if (s.preset === 'custom' && s.from && s.to) {
-    q.from = s.from
-    q.to = s.to
-  }
-  if (s.people)
-    q.people = '1'
-  return q
-}
+// última seleção explícita — re-aplicada quando um sub com âncora navega sem
+// query (AppNav subLink); o path puro (rail) é o reset pro default documentado
+let lastQuery = reportQueryOf(state.value)
 
 function set(patch: Partial<ReportState>) {
-  const q = queryOf({ ...state.value, ...patch })
-  // strip do people no localStorage: a opt-in vale só a visita corrente
-  const lsQuery = { ...q }
-  delete lsQuery.people
-  localStorage.setItem(LS_KEY, new URLSearchParams(lsQuery).toString())
+  const next = { ...state.value, ...patch }
+  const q = reportQueryOf(next)
+  lastQuery = q
+  // Opt-ins sensíveis/pesados valem só pela URL da visita, nunca pelo LS.
+  localStorage.setItem(LS_KEY, new URLSearchParams(reportQueryForStorage(next)).toString())
   router.replace({ path: '/reports', query: q })
 }
 
@@ -123,19 +88,16 @@ function savedQuery(): Record<string, string> | null {
     return null
   const q: Record<string, string> = {}
   for (const [k, v] of new URLSearchParams(raw)) q[k] = v
-  // defesa em profundidade: people nunca volta do LS, mesmo se gravado à mão
-  delete q.people
-  return Object.keys(q).length ? q : null
+  // Sanitiza novamente e remove people/commits mesmo se gravados à mão.
+  const restored = reportQueryForStorage(sanitizeReportQuery(q))
+  return Object.keys(restored).length ? restored : null
 }
 
-// última seleção explícita — re-aplicada quando um sub com âncora navega sem
-// query (AppNav subLink); o path puro (rail) é o reset pro default documentado
-let lastQuery = queryOf(state.value)
 let booted = false
 
 watch(() => route.fullPath, (full, prevFull) => {
   if (Object.keys(route.query).length > 0) {
-    lastQuery = queryOf(state.value)
+    lastQuery = reportQueryOf(state.value)
     booted = true
     return
   }
@@ -151,6 +113,15 @@ watch(() => route.fullPath, (full, prevFull) => {
   if (route.hash && route.hash !== prevHash && Object.keys(lastQuery).length)
     router.replace({ path: route.path, query: lastQuery, hash: route.hash })
 }, { immediate: true })
+
+// O fetch nasce somente da query atual (inclusive F5); sair da página desliga
+// a atualização desse artefato na recoleta. Desligar nunca dispara um request.
+watch(() => state.value.commits, (enabled) => {
+  void setReportCommitsActive(enabled)
+}, { immediate: true })
+onUnmounted(() => {
+  void setReportCommitsActive(false)
+})
 
 // ---------------------------------------------------------------------------
 // assunto — time resolvido via renamedFrom; não resolvido → org + mensagem
@@ -189,6 +160,7 @@ const windowOf = computed<ReportWindow>(() => {
   switch (state.value.preset) {
     case 'week-closed': return presetWindow('last-week')
     case 'week-current': return presetWindow('this-week')
+    case 'last-month': return presetWindow('last-month')
     case 'month-current': return presetWindow('this-month')
     case '30d': return rollingWindow(30)
     case 'custom': return customWindow(state.value.from!, state.value.to!)
@@ -196,7 +168,9 @@ const windowOf = computed<ReportWindow>(() => {
   }
 })
 
-const report = computed(() => buildReport(resolved.value.subject, windowOf.value.from, windowOf.value.to, windowOf.value.inProgress, { people: state.value.people }))
+const report = computed(() => buildReport(resolved.value.subject, windowOf.value.from, windowOf.value.to, windowOf.value.inProgress, { people: state.value.people, commits: state.value.commits }))
+const exportReady = computed(() => report.value !== null && (!state.value.commits || report.value.exportReady === true))
+const appendixError = computed(() => state.value.commits ? report.value?.exportError ?? null : null)
 
 // ---------------------------------------------------------------------------
 // controles
@@ -250,6 +224,8 @@ const previewHtml = computed(() => (report.value ? renderMarkdown(report.value.m
 
 // feedback 0.46: impressão abre o diálogo NATIVO do navegador — sem toast
 function onPrint() {
+  if (!exportReady.value)
+    return
   window.print()
 }
 
@@ -263,12 +239,12 @@ function fileSlug(title: string): string {
 }
 
 function onCopy() {
-  if (report.value)
+  if (exportReady.value && report.value)
     copy(report.value.markdown)
 }
 
 function onDownload() {
-  if (report.value)
+  if (exportReady.value && report.value)
     download(report.value.markdown, `${fileSlug(report.value.title)}.md`)
 }
 </script>
@@ -285,6 +261,7 @@ function onDownload() {
           size="sm"
           color="neutral"
           :variant="state.subject === s.id ? 'solid' : 'soft'"
+          :aria-pressed="state.subject === s.id"
           @click="pickSubject(s.id)"
         />
         <USelect
@@ -313,10 +290,11 @@ function onDownload() {
         <UButton
           v-for="p in PRESETS"
           :key="p.id"
-          :label="p.label"
+          :label="p.id === 'last-month' ? reportT('report.preset.lastMonth') : p.label"
           size="sm"
           color="neutral"
           :variant="state.preset === p.id ? 'solid' : 'soft'"
+          :aria-pressed="state.preset === p.id"
           @click="pickPreset(p.id)"
         />
         <template v-if="state.preset === 'custom'">
@@ -344,6 +322,16 @@ function onDownload() {
       :description="`${githubError} para gerar o public/data/github.json (requer gh autenticado) — a seção de PRs do relatório fica de fora.`"
     />
 
+    <UAlert
+      v-if="appendixError"
+      class="no-print"
+      color="warning"
+      variant="subtle"
+      icon="i-lucide-triangle-alert"
+      :title="reportT('report.appendix.exportBlocked')"
+      :description="appendixError"
+    />
+
     <section id="relatorio" class="flex flex-col gap-3 scroll-mt-16">
       <div class="flex flex-wrap items-center justify-between gap-2 no-print">
         <h1 class="text-lg font-semibold">
@@ -351,10 +339,19 @@ function onDownload() {
         </h1>
         <div class="flex flex-wrap gap-2">
           <UButton
+            :label="reportT('report.appendix.toggle')"
+            size="sm"
+            color="neutral"
+            :variant="state.commits ? 'solid' : 'soft'"
+            :aria-pressed="state.commits"
+            @click="set({ commits: !state.commits })"
+          />
+          <UButton
             label="incluir gestão de pessoas"
             size="sm"
             color="neutral"
             :variant="state.people ? 'solid' : 'soft'"
+            :aria-pressed="state.people"
             @click="set({ people: !state.people })"
           />
           <UButton
@@ -362,6 +359,7 @@ function onDownload() {
             size="sm"
             color="neutral"
             :variant="viewMode === 'preview' ? 'solid' : 'soft'"
+            :aria-pressed="viewMode === 'preview'"
             @click="viewMode = 'preview'"
           />
           <UButton
@@ -369,6 +367,7 @@ function onDownload() {
             size="sm"
             color="neutral"
             :variant="viewMode === 'raw' ? 'solid' : 'soft'"
+            :aria-pressed="viewMode === 'raw'"
             @click="viewMode = 'raw'"
           />
           <UButton
@@ -376,14 +375,14 @@ function onDownload() {
             label="imprimir"
             color="neutral"
             variant="outline"
-            :disabled="!report"
+            :disabled="!exportReady"
             @click="onPrint"
           />
           <UButton
             :icon="copied ? 'i-lucide-check' : 'i-lucide-clipboard'"
             :label="copied ? 'copiado!' : 'copiar markdown'"
             :color="copied ? 'success' : 'primary'"
-            :disabled="!report || !hasCopyPath"
+            :disabled="!exportReady || !hasCopyPath"
             @click="onCopy"
           />
           <UButton
@@ -391,7 +390,7 @@ function onDownload() {
             label="baixar .md"
             color="neutral"
             variant="outline"
-            :disabled="!report"
+            :disabled="!exportReady"
             @click="onDownload"
           />
         </div>

@@ -60,5 +60,22 @@
   "report.attention.inactiveDevs": "- devs sem commit há {days}+ dias: {list}",
   "report.attention.inactiveRepos": "- repos sem commit há {days}+ dias: {list}",
   "report.attention.untilToday": "- (até hoje, independe do período)",
-  "report.attention.people": "- métricas de pessoas — não incluir em relatórios para fora do time"
+  "report.attention.people": "- métricas de pessoas — não incluir em relatórios para fora do time",
+  "report.heading.appendix": "## Anexo - commits por dev",
+  "report.appendix.dev": "### {author}",
+  "report.appendix.subtotal": "- **subtotal: {commits}** · +{additions}/-{deletions} · prod {prod} · progresso {progress}",
+  "report.appendix.item": "- {link} · {day} · {repo} · +{additions}/-{deletions} · {scope} · {message}",
+  "report.appendix.prod": "prod",
+  "report.appendix.progress": "progresso",
+  "report.appendix.empty": "- 0 commits reconciliados no recorte",
+  "report.appendix.error.loading": "o anexo de commits ainda está carregando",
+  "report.appendix.error.dailyLoading": "o daily.json ainda está carregando; aguarde",
+  "report.appendix.error.daily": "o anexo exige daily.json dia-exato; recolete",
+  "report.appendix.error.unavailable": "report-commits.json indisponível; recolete",
+  "report.appendix.error.source": "anexo indisponível: {error}",
+  "report.appendix.error.snapshot": "anexo bloqueado por divergência entre snapshots; recolete",
+  "report.appendix.error.reconcile": "anexo bloqueado por divergência de reconciliação: {error}",
+  "report.appendix.toggle": "incluir commits por dev",
+  "report.appendix.exportBlocked": "Anexo indisponível — exportação e impressão bloqueadas",
+  "report.preset.lastMonth": "Mês fechado"
 }

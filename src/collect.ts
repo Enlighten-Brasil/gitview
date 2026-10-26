@@ -5,19 +5,23 @@
 import { loadCommits, loadDaily, loadStats, recentCommits } from './data'
 import { loadGithub } from './github'
 import { loadReleases } from './releases'
+import { loadReportCommits, reportCommitsActive } from './report-commits-loader'
 import { useSseProgress } from './sse'
 import { loadTeam } from './team'
 
 async function reloadData() {
   recentCommits.value = null // força refetch na próxima visita ao perfil do dev
-  await Promise.all([
+  const loads = [
     loadStats(true),
     loadGithub(true),
     loadReleases(true),
     loadCommits(true),
     loadDaily(true),
     loadTeam(true),
-  ])
+  ]
+  if (reportCommitsActive.value)
+    loads.push(loadReportCommits(true))
+  await Promise.all(loads)
 }
 
 const progress = useSseProgress('/__collect', {

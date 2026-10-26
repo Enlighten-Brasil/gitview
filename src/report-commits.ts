@@ -1,4 +1,4 @@
-import type { ReportCommitRow } from './types'
+import type { DailyRow, ReportCommitRow } from './types'
 import { isProgressScope } from './types'
 
 const HASH40_RE = /^[0-9a-f]{40}$/
@@ -344,4 +344,99 @@ export function validateReportCommitsData(data: unknown, sources: ReportCommitSo
   if (sources.stats !== undefined)
     reconcileStats(rows, data.generatedAt, sources.stats, errors)
   return errors
+}
+
+// ---------------------------------------------------------------------------
+// seleção única do anexo + reconciliação contra o recorte dia-exato do daily
+// ---------------------------------------------------------------------------
+export interface ReportCommitMetrics {
+  commits: number
+  additions: number
+  deletions: number
+  prodCommits: number
+  progressCommits: number
+}
+
+export interface ReportCommitWindowOptions {
+  fromDay: string
+  toDay: string
+  includeAuthor: (author: string) => boolean
+}
+
+export interface ReportCommitSelection {
+  rows: ReportCommitRow[]
+  errors: string[]
+  totals: ReportCommitMetrics
+  byAuthor: Map<string, ReportCommitMetrics>
+  byRepo: Map<string, ReportCommitMetrics>
+}
+
+function newSelectionMetrics(): ReportCommitMetrics {
+  return { commits: 0, additions: 0, deletions: 0, prodCommits: 0, progressCommits: 0 }
+}
+
+function addSelectionRow(target: ReportCommitMetrics, row: ReportCommitRow): void {
+  target.commits++
+  target.additions += row.additions
+  target.deletions += row.deletions
+  if (row.scope)
+    target.progressCommits++
+  else
+    target.prodCommits++
+}
+
+/** Uma seleção alimenta bullets e subtotais; qualquer divergência invalida tudo. */
+export function selectReportCommitWindow(
+  rows: ReportCommitRow[],
+  dailyRows: DailyRow[],
+  options: ReportCommitWindowOptions,
+): ReportCommitSelection {
+  const include = (day: string, author: string) =>
+    day >= options.fromDay && day <= options.toDay && options.includeAuthor(author)
+  const selected = rows.filter(row => include(row.day, row.author)).sort(compareReportCommitRows)
+  const expected = new Map<string, Metrics>()
+  const totals = newSelectionMetrics()
+  const byAuthor = new Map<string, ReportCommitMetrics>()
+  const byRepo = new Map<string, ReportCommitMetrics>()
+  for (const row of selected) {
+    const key = groupKey(row.day, row.repo, row.author, row.scope)
+    const group = expected.get(key) ?? newMetrics()
+    addMetrics(group, row)
+    expected.set(key, group)
+    addSelectionRow(totals, row)
+    const author = byAuthor.get(row.author) ?? newSelectionMetrics()
+    addSelectionRow(author, row)
+    byAuthor.set(row.author, author)
+    const repo = byRepo.get(row.repo) ?? newSelectionMetrics()
+    addSelectionRow(repo, row)
+    byRepo.set(row.repo, repo)
+  }
+
+  const actual = new Map<string, Metrics>()
+  for (const row of dailyRows) {
+    if (!include(row.day, row.author))
+      continue
+    const key = groupKey(row.day, row.repo, row.author, row.scope)
+    const group = actual.get(key) ?? newMetrics()
+    group.commits += row.commits
+    group.additions += row.additions
+    group.deletions += row.deletions
+    actual.set(key, group)
+  }
+
+  const errors: string[] = []
+  const keys = [...new Set([...expected.keys(), ...actual.keys()])].sort()
+  for (const key of keys) {
+    const logMetrics = expected.get(key)
+    const dailyMetrics = actual.get(key)
+    if (!logMetrics || !dailyMetrics) {
+      errors.push(`seleção do anexo diverge do daily.json no grupo ${key}`)
+      continue
+    }
+    for (const field of ['commits', 'additions', 'deletions'] as const) {
+      if (logMetrics[field] !== dailyMetrics[field])
+        errors.push(`seleção do anexo diverge do daily.json no grupo ${key} (${field}: ${logMetrics[field]} != ${dailyMetrics[field]})`)
+    }
+  }
+  return { rows: selected, errors, totals, byAuthor, byRepo }
 }
