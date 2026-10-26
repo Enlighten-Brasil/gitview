@@ -143,6 +143,14 @@ export async function setupI18n(
 }
 
 /**
+ * composer já pronto, ou null antes do bootstrap: permite às fachadas puras
+ * de copy escolher o catálogo Node sem transformar ausência de bootstrap em erro.
+ */
+export function getComposerIfReady(): I18nInstance['global'] | null {
+  return globalComposer
+}
+
+/**
  * composer global do setupI18n, pra consumo fora de componente (rangeLabel em
  * src/filters.ts). Erro de programa: consultaram antes do bootstrap.
  */

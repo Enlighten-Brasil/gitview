@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { rangeLabel } from '../src/filters'
 import { fmtDate, setFormatLocale } from '../src/format'
-import { applyLocale, matchLocale, pickLocale, setupI18n } from '../src/i18n'
+import { applyLocale, getComposer, getComposerIfReady, matchLocale, pickLocale, setupI18n } from '../src/i18n'
 import enUS from '../src/locales/en-US'
 import esES from '../src/locales/es-ES'
 import ptBR from '../src/locales/pt-BR'
+import ptReport from '../src/locales/pt-BR/report.json'
 
 /**
  * Issue #252 — motor i18n: resolução de locale (localStorage → navigator →
@@ -63,6 +64,7 @@ describe('catálogos', () => {
   // byte-paridade: os valores pt-BR são a copy original extraída sem reescrita
   it('pt-BR byte-idêntico à copy original do shell', () => {
     expect(ptBR).toEqual({
+      ...ptReport,
       'app.lang.aria': 'idioma',
       'app.lang.name.enUS': 'English',
       'app.lang.name.esES': 'Español',
@@ -621,6 +623,13 @@ describe('catálogos', () => {
       'ui.weekly.download': 'baixar .md',
       'ui.weekly.note': 'relatório do time inteiro — ignora os filtros da sidebar, inclusive o escopo (e sempre exclui bots)',
     })
+  })
+})
+
+describe('accessor nullable do composer', () => {
+  it('retorna null antes do bootstrap sem mudar o erro do getComposer', () => {
+    expect(getComposerIfReady()).toBeNull()
+    expect(() => getComposer()).toThrow('[i18n] setupI18n ainda não rodou — getComposer chamado antes do bootstrap')
   })
 })
 
