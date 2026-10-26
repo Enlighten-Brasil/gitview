@@ -12,7 +12,7 @@ O que o dashboard mostra é dado gerado: banco e JSONs se refazem a partir dos r
 | caminho | regenerável | observação |
 |---|---|---|
 | `data/gitview.db` (+ `-wal`/`-shm`) | sim | banco recriado pelos coletores |
-| `public/data/*.json` | sim | os 7 JSONs fixos + os `graph-*.json` por repo que o frontend lê |
+| `public/data/*.json` | sim | os 8 JSONs fixos + os `graph-*.json` por repo que o frontend lê |
 | `data/repos/` | sim, mas lento | clones bare; re-clonar é a parte cara |
 | `.env` | **não** | config da máquina e o token |
 | `team.local.json` | **não** | cadastro do time |
@@ -42,6 +42,8 @@ pnpm collect:reaggregate # leve: re-agregação + PRs + time + validação
 ```
 
 O `--` antes de `--repos` é obrigatório: sem ele o pnpm não repassa a flag. Depois de `pnpm clean` rode `pnpm collect` (ou ↻) para regenerar os JSONs.
+
+Depois de atualizar uma instalação existente, `pnpm collect:reaggregate` emite o `report-commits.json` do banco SQLite atual sem `clean` nem scan completo. A etapa `collect.ts --reaggregate` não roda `git fetch` nem `git log`, não reclassifica escopos nem expurga inalcançáveis. A etapa `collect-github.ts` encadeada ainda busca PRs via GraphQL. Mantenha o fuso canônico configurado para que os valores de `day` continuem iguais aos do `daily.json`.
 
 :::warning
 Nenhuma dessas ações apaga config ou cadastro: para zerar token e time, apague `.env` e `team.local.json` à mão.

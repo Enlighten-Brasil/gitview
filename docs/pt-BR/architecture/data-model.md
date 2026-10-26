@@ -1,11 +1,11 @@
 ---
 title: Modelo de dados
-description: Os shapes dos sete JSONs de public/data/ e os invariantes que o gate do check-data exige de cada um.
+description: Os shapes dos oito JSONs de public/data/ e os invariantes que o gate do check-data exige de cada um.
 ---
 
 # Modelo de dados
 
-O frontend consome exatamente seis dos sete JSONs em `public/data/` (o `daily.json` é coletado e validado para o motor de relatórios — issue #176 — mas ainda não é lido pelo frontend), mais um `graph-<repo>.json` por repo (topologia de commits para a vista de grafo — o frontend estático carrega só o arquivo do repo visitado). O shape é contrato: quando um campo que a UI lê some, o `check-data.ts` derruba a coleta. O comportamento geral do gate está em [Coletores](./collectors.md); aqui estão as chaves e as checagens de cada arquivo.
+Os oito JSONs fixos vivem em `public/data/`. O `report-commits.json` é coletado e validado para a próxima fase de relatórios, mas ainda não é lido pelo frontend. O frontend também carrega um `graph-<repo>.json` por repo (topologia de commits para a vista de grafo — só o arquivo do repo visitado). O shape é contrato: quando um campo que a UI lê some, o `check-data.ts` derruba a coleta. O comportamento geral do gate está em [Coletores](./collectors.md); aqui estão as chaves e as checagens de cada arquivo.
 
 ## Resumo
 
@@ -13,6 +13,7 @@ O frontend consome exatamente seis dos sete JSONs em `public/data/` (o `daily.js
 |---|---|---|
 | `stats.json` | agregados: weekly/monthly/heatmap/monthlyTypes/perAuthor/perRepo/repoUrls/totals | `collect.ts` |
 | `commits.json` | 100 últimos commits por autor | `collect.ts` |
+| `report-commits.json` | histórico completo e classificado de commits para relatórios, com hash completo e dia canônico | `collect.ts` |
 | `daily.json` | agregado dia-preciso: dia × repo × autor (+ escopo), commits, linhas, flags de fim de semana/madrugada | `collect.ts` |
 | `github.json` | PRs (OPEN + MERGED da janela de 400 dias) com reviews | `collect-github.ts` |
 | `releases.json` | tags, commits por tag, não liberados, notas | `collect-releases.ts` |
@@ -20,7 +21,7 @@ O frontend consome exatamente seis dos sete JSONs em `public/data/` (o `daily.js
 | `branches.json` | inventário de branches por repo: status, ahead/behind sem merges, autores à frente | `collect-branches.ts` |
 | `graph-<repo>.json` | topologia de commits COM merges (um arquivo por repo, janela de `GITVIEW_GRAPH_WINDOW` commits) | `collect-graph.ts` |
 
-Regras comuns aos sete: objeto no topo com `generatedAt` (timestamp ISO da execução), datas de commit em UTC ISO com milissegundos. Autores já canônicos (aliases aplicados na coleta) em todo arquivo **exceto `branches.json`**, que leva e-mails crus do git (`%ae`) por design — fato puramente git; o frontend mapeia e-mail→dev via `team.json#devs[].emails`. As listas são esparsas: linhas zeradas não existem (nada de `commits: 0` de preenchimento).
+Regras comuns aos oito: objeto no topo com `generatedAt` (timestamp ISO da execução), datas de commit em UTC ISO com milissegundos. Autores já canônicos (aliases aplicados na coleta) em todo arquivo **exceto `branches.json`**, que leva e-mails crus do git (`%ae`) por design — fato puramente git; o frontend mapeia e-mail→dev via `team.json#devs[].emails`. As listas são esparsas: linhas zeradas não existem (nada de `commits: 0` de preenchimento).
 
 ## stats.json
 
@@ -50,6 +51,19 @@ Regras comuns aos sete: objeto no topo com `generatedAt` (timestamp ISO da execu
 `hash` é a forma abreviada 7-hex; `message` é o assunto do commit, limitado a 500 chars no banco. `scope` usa a mesma codificação *omit-prod* do stats.json (ausente = produção); a amostra pula commits com escopo não classificado (`NULL` no banco).
 
 **O gate exige**: datas uniformemente UTC (terminando em `Z`) e parseáveis; ordem decrescente estrita por timestamp real (a página de perfil do dev assume isso); `hash` casa `^[0-9a-f]{7}$`; `scope`, quando presente, dentro da union fechada `'integration' | 'branch'`.
+
+## report-commits.json
+
+| chave | shape | significado |
+|---|---|---|
+| `generatedAt` | UTC ISO com milissegundos | exatamente o mesmo marcador de snapshot do `stats.json#generatedAt` |
+| `commits` | `[{ hash, repo, author, date, day, message, additions, deletions, scope? }]` | histórico classificado completo para a próxima fase de relatórios |
+
+É um único artefato lazy, ainda sem loader na UI. Contém toda a população classificada por trás do `stats.json` e do `daily.json`, incluindo bots, sem janela de 400 dias, corte de 100 por autor ou shards. As linhas passam pelos mesmos skips de data inválida e escopo não classificado (`NULL`) dos agregados e reutilizam o `day` canônico deles; o watermark e as linhas legadas do banco são preservados, portanto não há uma nova promessa de igualdade com um `git log` fresco. Nomes canônicos de autores e os assuntos armazenados dos commits, limitados a 500 caracteres, são publicados com o build estático.
+
+`hash` é o SHA completo de 40 hex minúsculos e `(repo, hash)` é único. `date` é UTC ISO com milissegundos; `day` é uma data real `YYYY-MM-DD`; `additions`/`deletions` são inteiros não negativos; `scope` usa a codificação *omit-prod* e, quando presente, fica na union fechada `'integration' | 'branch'`. As linhas são ordenadas por timestamp decrescente, depois `repo` e `hash` crescentes. O contrato separado do `commits.json` continua inalterado: hashes de 7 hex e no máximo 100 commits por autor.
+
+**O gate exige** que toda linha satisfaça esse shape e essa ordenação, e reconcilia commits/additions/deletions bidirecionalmente para cada `[day, repo, author, scope]` com o `daily.json`. Também confere no `stats.json` os totais, as contagens prod/progress, as métricas por autor e os eixos `byScope` disponíveis, e as métricas por repo, para que somas globais compensadas não escondam linhas movidas, ausentes ou extras.
 
 ## daily.json
 

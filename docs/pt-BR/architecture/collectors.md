@@ -5,25 +5,25 @@ description: O que cada coletor de scripts/ lê, o que grava e como controlar os
 
 # Coletores
 
-Os coletores de `scripts/` leem os repos git e a API do GitHub e gravam os sete JSONs de `public/data/` mais um `graph-<repo>.json` por repo (topologia de commits para a vista de grafo). O `pnpm collect` roda os seis em sequência e fecha com o `check-data.ts`; coletores que percorrem repos usam pool de 4. O mapeamento de identidade é explícito: logins e e-mails resolvem para nomes canônicos via `devProfiles` no `team.local.json` (`scripts/lib/team.ts`), nunca por matching aproximado.
+Os coletores de `scripts/` leem os repos git e a API do GitHub e gravam os oito JSONs fixos de `public/data/` mais um `graph-<repo>.json` por repo (topologia de commits para a vista de grafo). O `pnpm collect` roda os seis em sequência e fecha com o `check-data.ts`; coletores que percorrem repos usam pool de 4. O mapeamento de identidade é explícito: logins e e-mails resolvem para nomes canônicos via `devProfiles` no `team.local.json` (`scripts/lib/team.ts`), nunca por matching aproximado.
 
 ## Resumo
 
 | script | saída | fonte |
 |---|---|---|
-| `collect.ts` | `stats.json` (agregados, com os eixos `byScope` prod/progress por autor) + `commits.json` (100 últimos/autor) | `git log --all --no-renames --no-merges --numstat` → SQLite incremental |
+| `collect.ts` | `stats.json` (agregados, com os eixos `byScope` prod/progress por autor) + `commits.json` (100 últimos/autor) + `report-commits.json` (histórico classificado completo) | `git log --all --no-renames --no-merges --numstat` → SQLite incremental |
 | `collect-github.ts` | `github.json` (PRs + reviews, mapa login→dev) | API GraphQL do GitHub (token no `.env` ou `gh`) |
 | `collect-branches.ts` | `branches.json` (inventário de branches: status em union fechada, ahead/behind sem merges, e-mails crus dos autores à frente, linhas +/−) | `git for-each-ref` + `git log`/`rev-list` nos clones locais |
 | `collect-graph.ts` | `graph-<repo>.json` (topologia de commits COM merges, um arquivo por repo: hash/parents 40-hex, autor canônico, data UTC ISO ms, subject, decoration de refs/tags) | `git log --all --date-order` nos clones locais (janela `GITVIEW_GRAPH_WINDOW`, default 1000) |
 | `collect-releases.ts` | `releases.json` (tags, commits por tag, não liberados, notas) | `git tag` + API REST do GitHub |
 | `collect-team.ts` | `team.json` (devs, times, candidatos sem mapeamento) | `team.local.json` + `stats.json`/`github.json` |
-| `check-data.ts` | — (só valida; exit 1 em erro) | os JSONs de `public/data/` (os 7 fixos + os `graph-*.json` presentes) |
+| `check-data.ts` | — (só valida; exit 1 em erro) | os JSONs de `public/data/` (os 8 fixos + os `graph-*.json` presentes) |
 
 ## Coleta incremental
 
 - **`collect.ts` (padrão)**: o `git log` recebe `--since=<watermark>` por repo: `MAX(date)` do banco menos 7 dias, margem que cobre commits com committer date antiga. `INSERT OR IGNORE` em `(repo, hash)` torna a sobreposição inócua.
 - **`--full`**: re-escaneia todo o histórico, ignorando o watermark. O `pnpm collect:full` roda a cadeia inteira com esta flag em `collect.ts` e `collect-github.ts` (os únicos dois que a leem).
-- **`--reaggregate`**: pula fetch e `git log`; re-aplica aliases às linhas gravadas e re-exporta os JSONs. Os eixos `byScope` derivam da coluna `scope` gravada, então este modo os repopula sem git. O `pnpm collect:reaggregate` o roda pela CLI.
+- **`--reaggregate`**: pula fetch/`git log`, classificação de escopo e expurgo de commits inalcançáveis; reaplica aliases às linhas gravadas e reexporta agregados, `daily.json`, `commits.json` e `report-commits.json` sem clean. Os eixos `byScope` derivam da coluna `scope` gravada, então este modo os repopula sem scan de git. O `git remote get-url` já existente para `stats.repoUrls` continua rodando; a emissão do relatório não adiciona chamada git. O `pnpm collect:reaggregate` o roda pela CLI.
 - **`collect-github.ts`**: refaz o fetch só dos PRs atualizados desde a última coleta (margem de 1 dia) e mescla com o arquivo anterior; MERGED já gravados são preservados, a lista fresca de OPEN é a verdade, e PRs cujo `mergedAt` ficou fora da janela expiram. `--full` ignora o cache no fetch, e o arquivo anterior segue como rede de segurança: repo que falha não sai zerado do painel.
 - **`collect-branches.ts`**: sem modo incremental — toda execução re-enumeria `refs/heads` por completo (pool de 4 com spawns assíncronos; ~25s para ~200 branches em 14 repos). Nunca faz fetch: o frescor fica atrelado ao fetch do `collect.ts` no início da cadeia, como o `stats.json`.
 - **`collect-graph.ts`**: sem modo incremental — toda execução re-percorre os últimos `GITVIEW_GRAPH_WINDOW` commits por repo (default 1000; pool de 4 com spawns assíncronos, ~1s para 14 repos) e reescreve o seu `graph-<repo>.json`. Nunca faz fetch nem toca o banco ou o `stats.json`: o frescor fica atrelado ao fetch do `collect.ts` no início da cadeia.
@@ -48,7 +48,7 @@ Falha de fetch é tolerada: o coletor avisa e usa o cache local.
 
 - **Gravação**: UTC ISO com milissegundos (`2026-10-08T18:05:13.000Z`); comparação lexicográfica e ordenação dependem desse formato.
 - **Agregação**: todo bucket (mês, dia, semana ISO, fim de semana, madrugada, heatmap) é calculado em `GITVIEW_TIMEZONE` (default `America/Sao_Paulo`) via `Intl`, nunca no relógio da máquina; nome IANA inválido cai no default com aviso. O mesmo banco produz agregados byte-idênticos em qualquer máquina, e os buckets refletem a madrugada e o fim de semana reais do time. Streaks usam aritmética calendária sobre chaves de dia, imunes a DST; desde a issue #152 a mesma aritmética também roda por eixo de escopo — `perAuthor[].byScope.{prod,progress}` porta os campos medidos da linha recalculados sobre as linhas do próprio eixo (conjuntos de dias e repos, somas, último commit).
-- **Ordem**: decidem timestamps, não strings: o `collect-releases.ts` conta commits por release comparando epochs, e o gate confere a ordem decrescente real do `commits.json`.
+- **Ordem**: decidem timestamps, não strings: o `collect-releases.ts` conta commits por release comparando epochs, e o gate confere a ordem decrescente real do `commits.json`. O `report-commits.json` usa timestamp decrescente, depois repo e hash crescentes, para manter timestamps iguais determinísticos.
 
 ## O que nunca entra nas métricas
 
@@ -62,7 +62,8 @@ Regras de insert não alcançam linhas já gravadas, nem aliases removidos rever
 
 O `pnpm check:data` roda sozinho e como último passo do `pnpm collect` e do `/__collect`. Só lê `public/data/`; erro de estrutura ou invariante derruba a coleta com exit 1.
 
-- **Estrutura**: cada arquivo existe, parseia para objeto no topo, tem `generatedAt` ISO válido e o primeiro item das listas traz os campos que o frontend lê. Invariantes por arquivo no [Modelo de dados](./data-model.md).
+- **Estrutura**: cada arquivo existe, parseia para objeto no topo e tem `generatedAt` ISO válido. As checagens das listas legadas são preservadas; toda linha do `report-commits.json` é validada quanto a hash completo, data UTC ISO, dia canônico, contadores não negativos, union de escopo, unicidade e ordem determinística. Invariantes por arquivo no [Modelo de dados](./data-model.md).
+- **Reconciliação do relatório**: commits/additions/deletions são comparados bidirecionalmente para cada grupo `[day, repo, author, scope]` com o `daily.json`, e depois com os totais, contagens prod/progress, mapas por autor/repo e eixos `byScope` disponíveis do `stats.json`. Linhas ausentes, extras ou movidas falham mesmo com somas globais compensadas.
 - **Avisos não bloqueantes** (imprimem, nunca são fatais): membro de time que também é candidato sem mapeamento; dev humano sem aliases; `lastCommit` no futuro (relógio do autor errado, quebra o watermark); merge com diff zero na amostra do `commits.json`.
 
 ## Comandos

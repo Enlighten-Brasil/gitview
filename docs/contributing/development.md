@@ -55,7 +55,7 @@ All the scripts in `package.json`:
 | `pnpm docs:dev` | docs site in dev (VitePress, `DOCS_BASE=/`) |
 | `pnpm docs:build` | docs site build; CI gate against dead links |
 | `pnpm docs:preview` | serves the built docs site |
-| `pnpm demo` | generates the synthetic fixture of the public demo (nine JSONs, fictional devs/repos) |
+| `pnpm demo` | generates the synthetic fixture of the public demo (ten JSONs: eight fixed + two demo graphs, with fictional devs/repos) |
 | `pnpm demo:shots` | regenerates the doc screenshots from the synthetic fixture |
 | `pnpm snapshot:metrics` | regression harness for the aggregations: deterministic JSON of a matrix of filter scenarios (below) |
 | `pnpm changeset` | record a change; required in PRs |
@@ -84,6 +84,7 @@ The CI (`.github/workflows/ci.yml`) runs scrub, lint, typecheck and build in the
 - `graphData.ts` + `graph/`: the commit graph (`#grafo` of `/repos/:name`) — per-repo `graph-REPO.json` loader, pure lane algorithm (`graph/lanes.ts`), lane/ref colors (`graph/palette.ts`) and the tolerant refs reader (`graph/refs.ts`).
 - `releases.ts`: `releases.json` loader and cadence metrics.
 - `urlState.ts`: filters in the query string (`?range=&from=&to=&repos=&devs=&bots=`), scoped by `route.meta.filters`.
+- `report-commits.ts`: pure shape/order validator and reconciliation core for the lazy `report-commits.json` artifact; no fetch, browser API or UI loader.
 - `report.ts` + `daily.ts`: report engine (`buildReport(subject, from, to)`, preset windows, delta, weekly-summary fallback) and the optional day-precise `daily.json` loader (issue #176); `summary.ts` is now the closed-week × organization wrapper of the engine.
 - `router/`: `guards.ts` applies the `route.meta` contract (`requiresData`, `onboarding`, `requiresServer`, `setupStep`, `section`, `filters`, `title`).
 - `pages/`: one route per file: shell `(app)/`, tabs `(dashboard)/`, `devs/[name]`, `repos/`, `prs`, `teams`, `settings/` and `setup/` (dev only), `[...path].vue` for 404.

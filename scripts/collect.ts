@@ -1,3 +1,4 @@
+import type { ReportCommitRow } from '../src/types'
 import { Buffer } from 'node:buffer'
 /**
  * Coletor de estatísticas git multi-repo.
@@ -17,6 +18,7 @@ import process from 'node:process'
 import { DatabaseSync } from 'node:sqlite'
 import { fileURLToPath } from 'node:url'
 import { getOrCreate } from '../src/collections'
+import { compareReportCommitRows } from '../src/report-commits'
 import { loadConfig, matchesGlob, resolveReposRoot } from './lib/config'
 import { getToken, NO_TOKEN_HINT } from './lib/github'
 import { initLog } from './lib/log'
@@ -568,8 +570,8 @@ async function main() {
   // -------------------------------------------------------------------------
   console.log('\nAgregando...')
   const rows = db.prepare(`
-    SELECT repo, author, email, date, subject, additions, deletions, scope FROM commits ORDER BY date ASC
-  `).all() as { repo: string, author: string, email: string, date: string, subject: string, additions: number, deletions: number, scope: string | null }[]
+    SELECT repo, hash, author, email, date, subject, additions, deletions, scope FROM commits ORDER BY date ASC
+  `).all() as { repo: string, hash: string, author: string, email: string, date: string, subject: string, additions: number, deletions: number, scope: string | null }[]
 
   const emailsByAuthor = new Map<string, Set<string>>()
   // separador das chaves de agregação: \u0001 — nome de autor/repo com '|'
@@ -582,6 +584,9 @@ async function main() {
   // relatórios de períodos rolantes (7d/30d) dia-precisos, sem aproximar por
   // semana/mês. Sai em public/data/daily.json (lazy, fora do boot como commits.json)
   const daily = new Map<string, { commits: number, additions: number, deletions: number, weekend: number, night: number }>() // day/repo/author/scope
+  // histórico completo lazy (#287): as mesmas linhas filtradas e o mesmo dia
+  // canônico do daily/stats, sem nova consulta ao banco ou chamada ao git.
+  const reportCommits: ReportCommitRow[] = []
   const monthlyTypes = new Map<string, number>() // month/repo/author/scope/type
   const heatmap = new Map<string, number>() // author/repo/month/weekday/hour/scope
   // heatmap ganha dimensão de mês pro filtro de período funcionar no frontend;
@@ -668,6 +673,18 @@ async function main() {
     if (cp.h >= 22 || cp.h < 6)
       dCur.night++
     daily.set(dKey, dCur)
+
+    reportCommits.push({
+      hash: r.hash,
+      repo: r.repo,
+      author: r.author,
+      date: r.date,
+      day: dk,
+      message: r.subject,
+      additions: r.additions,
+      deletions: r.deletions,
+      ...(scope === 'prod' ? {} : { scope }),
+    })
 
     const pa = getOrCreate(perAuthor, r.author, () => ({ commits: 0, additions: 0, deletions: 0, repos: new Set<string>(), days: new Set<string>(), last: '', axes: { prod: newAxisAcc(), progress: newAxisAcc() } }))
     pa.commits++
@@ -777,6 +794,13 @@ async function main() {
     }),
   }))
   console.log(`daily.json gerado com ${daily.size} linhas dia×repo×autor (histórico completo, lazy).`)
+
+  reportCommits.sort(compareReportCommitRows)
+  writeFileSync(join(root, 'public', 'data', 'report-commits.json'), JSON.stringify({
+    generatedAt: stats.generatedAt,
+    commits: reportCommits,
+  }))
+  console.log(`report-commits.json gerado com ${reportCommits.length} commits (histórico completo, lazy).`)
   if (skippedBadDate > 0)
     console.warn(`⚠ ${skippedBadDate}/${rows.length} linhas no banco têm data inválida e ficaram fora de TODAS as métricas — rode pnpm clean && pnpm collect se o número parecer errado`)
   if (skippedNoScope > 0)

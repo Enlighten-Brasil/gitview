@@ -91,6 +91,29 @@ export interface CommitRow {
   scope?: ProgressScope
 }
 
+/** linha do histórico completo e lazy de commits para relatórios */
+export interface ReportCommitRow {
+  /** SHA completo; diferente do hash de 7 hex do commits.json */
+  hash: string
+  repo: string
+  author: string
+  /** instante do autor em UTC ISO com milissegundos */
+  date: string
+  /** dia no fuso canônico da coleta; o consumidor não reconverte o instante */
+  day: string
+  message: string
+  additions: number
+  deletions: number
+  /** escopo de ref (omit-prod: ausente = 'prod') */
+  scope?: ProgressScope
+}
+
+export interface ReportCommitsData {
+  /** elo de snapshot: exatamente o generatedAt do stats.json */
+  generatedAt: string
+  commits: ReportCommitRow[]
+}
+
 /**
  * estados possíveis de uma review (enum PullRequestReviewState da API GraphQL
  * do GitHub) — union fechada: typo de valor não compila (issue #42)
