@@ -40,5 +40,5 @@ With the demo fixtures (`demo-api` with a `develop` integration ref, `demo-web` 
 ## Related
 
 - [Collectors](../architecture/collectors.md) — how `branches.json` is produced (full collections only).
-- [Data model](../architecture/data-model.md) — the seven JSON files.
+- [Data model](../architecture/data-model.md) — the eight fixed JSON files.
 - [Filter rules](./filters.md) — per-route filter scope.

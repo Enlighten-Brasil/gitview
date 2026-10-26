@@ -1,23 +1,24 @@
 // scripts/make-demo-data.ts — fixture sintético da demo pública (GitHub Pages)
 //
-// Gera os 9 JSONs de public/data/ com dados 100% FICTÍCIOS (devs "Ana"/"Beto",
+// Gera os 10 JSONs de public/data/ com dados 100% FICTÍCIOS (devs "Ana"/"Beto",
 // repos demo-*, commits fake) para a demo servir sem nenhum dado real do time:
-// os 7 fixos + graph-demo-api/demo-web (topologia do grafo de commits, #146).
+// os 8 fixos + graph-demo-api/demo-web (topologia do grafo de commits, #146).
 // As linhas perAuthor levam byScope derivado dos mesmos commits (#164) e os
 // graph-*.json órfãos de public/data são apagados antes da escrita (#164).
 // As datas se ancoram em "hoje" (UTC) de propósito: a demo sempre cobre o
 // período default de 12M — o custo é o fixture não ser byte-idêntico entre dias.
 // Segurança: recusa-se a sobrescrever dados existentes sem --force.
-import type { GraphCommit, GraphData } from '../src/types'
+import type { GraphCommit, GraphData, ReportCommitRow, ReportCommitsData } from '../src/types'
 import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
 import { getOrCreate } from '../src/collections'
+import { compareReportCommitRows } from '../src/report-commits'
 
 const OUT = join(process.cwd(), 'public', 'data')
 const FORCE = process.argv.includes('--force')
 
-const TARGETS = ['stats.json', 'daily.json', 'commits.json', 'github.json', 'branches.json', 'releases.json', 'team.json', 'graph-demo-api.json', 'graph-demo-web.json']
+const TARGETS = ['stats.json', 'daily.json', 'commits.json', 'report-commits.json', 'github.json', 'branches.json', 'releases.json', 'team.json', 'graph-demo-api.json', 'graph-demo-web.json']
 if (!FORCE) {
   const existing = TARGETS.filter(f => existsSync(join(OUT, f)))
   if (existing.length) {
@@ -99,7 +100,7 @@ for (let back = 89; back >= 0; back--) {
     const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - back, 9 + Math.floor(rnd() * (rnd() < 0.12 ? 15 : 10)), Math.floor(rnd() * 60)))
     let hash = ''
     do {
-      hash = Math.floor(rnd() * 0xFFFFFFF).toString(16).padStart(7, '0')
+      hash = Array.from({ length: 5 }, () => Math.floor(rnd() * 0x100000000).toString(16).padStart(8, '0')).join('')
     } while (usedHashes.has(hash))
     usedHashes.add(hash)
     const [message, type] = pick(MESSAGES)
@@ -295,10 +296,25 @@ const stats = {
 const commitsJson = {
   generatedAt,
   // amostra com a mesma codificação omit-prod do coletor real (issue #119)
-  commits: commits.slice(0, 100).map(({ hash, repo, author, date, message, additions, deletions, scope }) => ({ hash, repo, author, date, message, additions, deletions, ...(scope === 'prod' ? {} : { scope }) })),
+  commits: commits.slice(0, 100).map(({ hash, repo, author, date, message, additions, deletions, scope }) => ({ hash: hash.slice(0, 7), repo, author, date, message, additions, deletions, ...(scope === 'prod' ? {} : { scope }) })),
 }
 
 const dailyJson = { generatedAt, daily }
+const reportRows: ReportCommitRow[] = commits.map(({ hash, repo, author, date, message, additions, deletions, scope }) => ({
+  hash,
+  repo,
+  author,
+  date,
+  day: dayKey(new Date(date)),
+  message,
+  additions,
+  deletions,
+  ...(scope === 'prod' ? {} : { scope }),
+}))
+const reportCommitsJson: ReportCommitsData = {
+  generatedAt,
+  commits: reportRows.sort(compareReportCommitRows),
+}
 
 // PRs fictícios — invariantes: MERGED tem mergedAt, sem repo#number duplicado
 const day = (back: number, hour: number) => isoNoMs(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - back, hour, 12)))
@@ -524,9 +540,9 @@ mkdirSync(OUT, { recursive: true })
 // stats.json#repos". Apaga TODOS antes de gravar: os demo são regravados abaixo
 for (const f of readdirSync(OUT).filter(f => /^graph-.+\.json$/.test(f)))
   rmSync(join(OUT, f))
-for (const [name, data] of Object.entries({ 'stats.json': stats, 'daily.json': dailyJson, 'commits.json': commitsJson, 'github.json': github, 'branches.json': branches, 'releases.json': releases, 'team.json': team, 'graph-demo-api.json': graphDemoApi, 'graph-demo-web.json': graphDemoWeb }))
+for (const [name, data] of Object.entries({ 'stats.json': stats, 'daily.json': dailyJson, 'commits.json': commitsJson, 'report-commits.json': reportCommitsJson, 'github.json': github, 'branches.json': branches, 'releases.json': releases, 'team.json': team, 'graph-demo-api.json': graphDemoApi, 'graph-demo-web.json': graphDemoWeb }))
   writeFileSync(join(OUT, name), `${JSON.stringify(data, null, 2)}\n`)
 
 const demoBranches = branches.repos.reduce((n, r) => n + r.branches.length, 0)
 const demoGraphCommits = graphDemoApi.commits.length + graphDemoWeb.commits.length
-console.log(`make-demo-data: 9 arquivos gerados em ${OUT} (${commits.length} commits fictícios, ${daily.length} linhas dia×repo×autor, ${prs.length} PRs, ${demoBranches} branches, ${demoGraphCommits} commits de grafo)`)
+console.log(`make-demo-data: 10 arquivos gerados em ${OUT} (${commits.length} commits fictícios, ${daily.length} linhas dia×repo×autor, ${prs.length} PRs, ${demoBranches} branches, ${demoGraphCommits} commits de grafo)`)

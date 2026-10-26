@@ -12,7 +12,7 @@ Everything the dashboard shows is generated data: the database and the JSONs reb
 | path | regenerable | note |
 |---|---|---|
 | `data/gitview.db` (+ `-wal`/`-shm`) | yes | database recreated by the collectors |
-| `public/data/*.json` | yes | the 7 fixed JSONs + the per-repo `graph-*.json` the frontend reads |
+| `public/data/*.json` | yes | the 8 fixed JSONs + the per-repo `graph-*.json` the frontend reads |
 | `data/repos/` | yes, but slow | bare clones; re-cloning is the expensive part |
 | `.env` | **no** | machine config and the token |
 | `team.local.json` | **no** | the team roster |
@@ -42,6 +42,8 @@ pnpm collect:reaggregate # light: re-aggregation + PRs + team + validation
 ```
 
 The `--` before `--repos` is required: without it pnpm does not forward the flag. After `pnpm clean`, run `pnpm collect` (or ↻) to regenerate the JSONs.
+
+After upgrading an existing installation, `pnpm collect:reaggregate` emits `report-commits.json` from the current SQLite bank without `clean` or a full scan. It does not fetch, run `git log`, reclassify scopes or purge unreachable commits. Keep the configured canonical timezone so its `day` values continue to match `daily.json`.
 
 :::warning
 None of these actions deletes config or roster: to zero out the token and the team, delete `.env` and `team.local.json` by hand.

@@ -11,6 +11,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import { validateReportCommitsData } from '../src/report-commits'
 import { BRANCH_STATUSES, isBranchStatus, isProgressScope, isPrReviewState } from '../src/types'
 import { initLog } from './lib/log'
 
@@ -379,6 +380,11 @@ if (daily) {
     warn(dDays === st.activeDays, `daily.json: ${dDays} dias distintos != totals.activeDays (${st.activeDays}) — o dia do agregado divergiu do fuso canônico (slice de data em UTC? dayKeyOf ausente na coleta)`)
   }
 }
+
+// ── report-commits.json (8º fixo — histórico completo lazy, issue #287) ────
+const reportCommits = load('report-commits.json')
+if (reportCommits)
+  errors.push(...validateReportCommitsData(reportCommits, { daily, stats }))
 
 // ── github.json ───────────────────────────────────────────────────────────
 const github = load('github.json')
@@ -785,4 +791,4 @@ if (errors.length) {
   process.exit(1)
 }
 
-console.log('✓ check-data: stats/daily/commits/github/releases/team/branches + graph-*.json com shape e invariantes ok')
+console.log('✓ check-data: stats/daily/commits/report-commits/github/releases/team/branches + graph-*.json com shape e invariantes ok')

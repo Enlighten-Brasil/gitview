@@ -1,11 +1,11 @@
 ---
 title: Pipeline
-description: Como o gitview transforma git e a API do GitHub nos sete JSONs de public/data que o frontend estático lê.
+description: Como o gitview transforma git e a API do GitHub nos oito JSONs fixos publicados em public/data.
 ---
 
 # Pipeline
 
-O gitview produz sete JSONs em `public/data/`. O frontend lê só esses arquivos; nada do git é recalculado no navegador. `data/gitview.db` e `public/data/*` são gitignored, sempre regenerados pelos coletores.
+O gitview produz oito JSONs fixos em `public/data/`. O frontend lê só os artefatos de que precisa; nada do git é recalculado no navegador. `data/gitview.db` e `public/data/*` são gitignored, sempre regenerados pelos coletores.
 
 ```text
 git log --all --no-merges --numstat        API GraphQL do GitHub          git tag + API REST do GitHub
@@ -17,7 +17,9 @@ data/gitview.db                            public/data/github.json       public/
         │
         │  agrega (buckets em GITVIEW_TIMEZONE)
         ├──────────────────────────────► public/data/stats.json   (agregados do dashboard)
-        └──────────────────────────────► public/data/commits.json (100 últimos commits/autor)
+        ├──────────────────────────────► public/data/daily.json   (agregado dia-preciso)
+        ├──────────────────────────────► public/data/commits.json (100 últimos commits/autor)
+        └──────────────────────────────► public/data/report-commits.json (histórico classificado completo)
 
 git for-each-ref + git log/rev-list --no-merges
   (por repo, pool de 4, spawns assíncronos)
@@ -38,9 +40,9 @@ public/data/*.json ──► frontend 100% estático (Vue 3 + Vite + ECharts) �
 
 `collect.ts` roda `git log --all --no-renames --no-merges --numstat` em cada repo, normaliza os commits (autor canônico via aliases, data em UTC ISO) e insere no SQLite (`data/gitview.db`, chave `(repo, hash)`, `INSERT OR IGNORE`). É incremental por padrão: coleta de um watermark para cá com `--since`. Commits de merge ficam fora de todas as métricas; modos e regra em [Coletores](./collectors.md).
 
-### data/gitview.db → stats.json + commits.json
+### data/gitview.db → stats.json + daily.json + commits.json + report-commits.json
 
-`collect.ts` agrega o banco em `stats.json` (buckets de tempo, rollups por autor e por repo) e exporta `commits.json` com os 100 últimos commits de cada autor, mais recente primeiro. Os buckets saem de `GITVIEW_TIMEZONE`, nunca do fuso da máquina.
+Numa única passada SQLite, o `collect.ts` agrega `stats.json` e `daily.json`, exporta a amostra legada `commits.json` (hashes de 7 hex, 100 últimos commits de cada autor, mais recente primeiro) e grava o `report-commits.json` com o histórico classificado completo. O relatório usa hashes completos de 40 hex e o mesmo `day` canônico do `daily.json`, depois dos mesmos skips de data/escopo; as linhas são ordenadas por timestamp decrescente, depois repo e hash crescentes. É um artefato lazy para a próxima fase de relatórios, ainda sem loader na UI. Os buckets e as chaves de dia saem de `GITVIEW_TIMEZONE`, nunca do fuso da máquina, e a emissão do relatório não adiciona scan de git.
 
 ### API GraphQL do GitHub → github.json
 
@@ -60,7 +62,7 @@ O `collect-branches.ts` enumera `refs/heads` de cada clone (tip + data de commit
 
 ## check-data.ts: o gate
 
-Lê os sete JSONs e checa estrutura e invariantes entre arquivos. Erro derruba a coleta com exit 1; avisos nunca bloqueiam. A lista por arquivo está em [Modelo de dados](./data-model.md).
+Lê os oito JSONs fixos e checa estrutura e invariantes entre arquivos, incluindo a reconciliação bidirecional do `report-commits.json` com todos os grupos do daily e os totais/mapas do stats. Erro derruba a coleta com exit 1; avisos nunca bloqueiam. A lista por arquivo está em [Modelo de dados](./data-model.md).
 
 ## O que é dev only
 

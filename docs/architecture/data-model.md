@@ -1,11 +1,11 @@
 ---
 title: Data model
-description: The shapes of the seven JSONs in public/data/ and the invariants the check-data gate requires of each.
+description: The shapes of the eight JSONs in public/data/ and the invariants the check-data gate requires of each.
 ---
 
 # Data model
 
-The frontend consumes exactly six of the seven JSONs in `public/data/` (`daily.json` is collected and validated for the reports engine — issue #176 — but not read by the frontend yet), plus one `graph-<repo>.json` per repo (commit topology for the graph view — the static frontend loads only the file of the repo being visited). The shape is a contract: when a field the UI reads disappears, `check-data.ts` fails the collection. The gate's general behavior is in [Collectors](./collectors.md); here are the keys and the checks of each file.
+The eight fixed JSONs live in `public/data/`. `report-commits.json` is collected and validated for the next reports phase but is not read by the frontend yet. The frontend also loads one `graph-<repo>.json` per repo (commit topology for the graph view — only the file of the repo being visited). The shape is a contract: when a field the UI reads disappears, `check-data.ts` fails the collection. The gate's general behavior is in [Collectors](./collectors.md); here are the keys and the checks of each file.
 
 ## Summary
 
@@ -13,6 +13,7 @@ The frontend consumes exactly six of the seven JSONs in `public/data/` (`daily.j
 |---|---|---|
 | `stats.json` | aggregates: weekly/monthly/heatmap/monthlyTypes/perAuthor/perRepo/repoUrls/totals | `collect.ts` |
 | `commits.json` | last 100 commits per author | `collect.ts` |
+| `report-commits.json` | complete classified commit history for reports, with full hashes and canonical day | `collect.ts` |
 | `daily.json` | day-precise aggregate: day × repo × author (+ scope), commits, lines, weekend/night flags | `collect.ts` |
 | `github.json` | PRs (OPEN + MERGED from the 400-day window) with reviews | `collect-github.ts` |
 | `releases.json` | tags, commits per tag, unreleased, notes | `collect-releases.ts` |
@@ -20,7 +21,7 @@ The frontend consumes exactly six of the seven JSONs in `public/data/` (`daily.j
 | `branches.json` | branch inventory per repo: status, ahead/behind without merges, authors ahead | `collect-branches.ts` |
 | `graph-<repo>.json` | commit topology WITH merges (one file per repo, window of `GITVIEW_GRAPH_WINDOW` commits) | `collect-graph.ts` |
 
-Rules common to all seven: top-level object with `generatedAt` (ISO timestamp of the run), commit dates in UTC ISO with milliseconds. Authors are already canonical (aliases applied at collection) in every file **except `branches.json`**, which carries raw git e-mails (`%ae`) by design — pure git fact; the frontend maps e-mail→dev via `team.json#devs[].emails`. Lists are sparse: zero rows do not exist (no `commits: 0` filler).
+Rules common to all eight: top-level object with `generatedAt` (ISO timestamp of the run), commit dates in UTC ISO with milliseconds. Authors are already canonical (aliases applied at collection) in every file **except `branches.json`**, which carries raw git e-mails (`%ae`) by design — pure git fact; the frontend maps e-mail→dev via `team.json#devs[].emails`. Lists are sparse: zero rows do not exist (no `commits: 0` filler).
 
 ## stats.json
 
@@ -50,6 +51,19 @@ Rules common to all seven: top-level object with `generatedAt` (ISO timestamp of
 `hash` is the abbreviated 7-hex form; `message` is the commit subject, limited to 500 chars in the database. `scope` uses the same *omit-prod* encoding as stats.json (absent = production); the sample skips commits with unclassified scope (`NULL` in the database).
 
 **The gate requires**: dates uniformly UTC (ending in `Z`) and parseable; strict descending order by real timestamp (the dev profile page assumes this); `hash` matches `^[0-9a-f]{7}$`; `scope`, when present, inside the closed union `'integration' | 'branch'`.
+
+## report-commits.json
+
+| key | shape | meaning |
+|---|---|---|
+| `generatedAt` | UTC ISO with milliseconds | exactly the same snapshot marker as `stats.json#generatedAt` |
+| `commits` | `[{ hash, repo, author, date, day, message, additions, deletions, scope? }]` | complete classified history for the next reports phase |
+
+This is one lazy artifact with no UI loader yet. It contains the full classified population behind `stats.json` and `daily.json`, including bots, with no 400-day window, 100-per-author cutoff or shards. Rows pass the same invalid-date and unclassified-scope (`NULL`) skips as the aggregates and reuse their canonical `day`; the existing watermark and legacy database rows are preserved, so this is not a new promise of equality with a fresh `git log`. Canonical author names and complete subjects are published with the static build.
+
+`hash` is the full 40-lowercase-hex SHA and `(repo, hash)` is unique. `date` is UTC ISO with milliseconds; `day` is a real `YYYY-MM-DD` date; `additions`/`deletions` are non-negative integers; `scope` uses *omit-prod* encoding and, when present, is inside the closed union `'integration' | 'branch'`. Rows are sorted by timestamp descending, then `repo` and `hash` ascending. The separate `commits.json` contract remains unchanged: 7-hex hashes and at most 100 commits per author.
+
+**The gate requires** every row to satisfy that shape and ordering, then reconciles commits/additions/deletions bidirectionally for each `[day, repo, author, scope]` against `daily.json`. It also checks `stats.json` totals, prod/progress counts, per-author metrics and available `byScope` axes, and per-repo metrics, so compensated global sums cannot hide moved, missing or extra rows.
 
 ## daily.json
 
