@@ -6,9 +6,15 @@ const collect = readFileSync(new URL('../src/collect.ts', import.meta.url), 'utf
 const css = readFileSync(new URL('../src/main.css', import.meta.url), 'utf8')
 
 function functionBody(name: string): string {
-  const match = page.match(new RegExp(`function ${name}\\([^)]*\\) \\{([\\s\\S]*?)\\n\\}`))
-  expect(match, `função ${name} encontrada`).not.toBeNull()
-  return match?.[1] ?? ''
+  const marker = `function ${name}(`
+  const start = page.indexOf(marker)
+  expect(start, `função ${name} encontrada`).toBeGreaterThanOrEqual(0)
+  const signatureEnd = page.indexOf(') {', start + marker.length)
+  expect(signatureEnd, `assinatura ${name} encontrada`).toBeGreaterThan(start)
+  const bodyStart = signatureEnd + 3
+  const end = page.indexOf('\n}', bodyStart)
+  expect(end, `corpo ${name} encontrado`).toBeGreaterThan(bodyStart)
+  return page.slice(bodyStart, end)
 }
 
 describe('página /reports — integração do anexo', () => {
