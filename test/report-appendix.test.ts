@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { daily, dailyError, dailyGeneratedAt, dailyLoading } from '../src/daily'
 import { stats } from '../src/data'
 import { github } from '../src/github'
-import { renderMarkdown } from '../src/markdown'
+import { mdText, renderMarkdown } from '../src/markdown'
 import { releases } from '../src/releases'
 import { buildReport, customWindow, presetWindow } from '../src/report'
 import { compareReportCommitRows } from '../src/report-commits'
@@ -247,6 +247,11 @@ describe('buildReport com anexo reconciliado', () => {
     const html = renderMarkdown(result.markdown)
 
     expect(result.exportReady).toBe(true)
+    expect(result.title).toContain(` · ${author} —`)
+    expect(result.markdown.split('\n')[0]).toBe(`# ${mdText(result.title)}`)
+    const renderedTitle = renderMarkdown(result.markdown.split('\n')[0])
+    expect(renderedTitle).toContain('Ana &lt;img&gt; **admin**')
+    expect(renderedTitle).not.toContain('\\')
     expect(result.markdown).toContain('### Ana \\<img\\> \\*\\*admin\\*\\*')
     expect(result.markdown).toContain('demo-\\<api\\>')
     expect(result.markdown).toContain('feat: \\<script\\>alert(1)\\</script\\> ## injetado \\[x\\](javascript:alert(1)) \\&lt;')
@@ -259,7 +264,12 @@ describe('buildReport com anexo reconciliado', () => {
   it('escapa também o nome do time no título e nas linhas do resumo', () => {
     seed(BASE_ROWS, 'Time <script> **x**')
     const result = build({ kind: 'team', team: 'Time <script> **x**' })!
+    const h1 = result.markdown.split('\n')[0]
 
+    expect(result.title).toContain(' · Time <script> **x** —')
+    expect(h1).toBe(`# ${mdText(result.title)}`)
+    expect(renderMarkdown(h1)).toContain('Time &lt;script&gt; **x**')
+    expect(renderMarkdown(h1)).not.toContain('\\')
     expect(result.markdown).toContain('Time \\<script\\> \\*\\*x\\*\\*')
     expect(renderMarkdown(result.markdown)).not.toContain('<script')
   })

@@ -1,4 +1,4 @@
-import type { DailyRow, ReportCommitRow } from '../src/types'
+import type { DailyRow, ReportCommitRow, Stats } from '../src/types'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { selectReportCommitWindow } from '../src/report-commits'
 
@@ -60,6 +60,58 @@ describe('loader lazy de report-commits', () => {
     expect(fetchMock).toHaveBeenCalledWith(`${import.meta.env.BASE_URL}data/report-commits.json`)
     expect(module.reportCommits.value).toEqual(EMPTY)
     expect(module.reportCommitsError.value).toBeNull()
+  })
+
+  it('recupera o anexo com módulos reais após ON → OFF → recoleta OFF → ON', async () => {
+    const fresh = { generatedAt: '2026-10-26T12:00:00.001Z', commits: [] }
+    const fetchMock = vi.fn()
+      .mockImplementationOnce(async () => jsonResponse(EMPTY))
+      .mockImplementationOnce(async () => jsonResponse(fresh))
+    vi.stubGlobal('fetch', fetchMock)
+    vi.resetModules()
+    const loader = await import('../src/report-commits-loader')
+    const { buildReport } = await import('../src/report')
+    const { stats } = await import('../src/data')
+    const { daily, dailyGeneratedAt } = await import('../src/daily')
+    const emptyStats = (generatedAt: string): Stats => ({
+      generatedAt,
+      repos: [],
+      authors: [],
+      totals: { commits: 0, prodCommits: 0, progressCommits: 0, additions: 0, deletions: 0, activeDays: 0, repos: 0, authors: 0 },
+      perRepo: [],
+      perAuthor: [],
+      weekly: [],
+      monthly: [],
+      heatmap: [],
+    })
+    const build = () => buildReport(
+      { kind: 'org' },
+      new Date(2026, 9, 26),
+      new Date(2026, 9, 26, 23, 59, 59, 999),
+      false,
+      { commits: true },
+    )!
+
+    stats.value = emptyStats(GENERATED_AT)
+    daily.value = []
+    dailyGeneratedAt.value = GENERATED_AT
+    await loader.setReportCommitsActive(true)
+    expect(build().exportReady).toBe(true)
+
+    await loader.setReportCommitsActive(false)
+    stats.value = emptyStats(fresh.generatedAt)
+    dailyGeneratedAt.value = fresh.generatedAt
+    expect(loader.reportCommitsActive.value).toBe(false)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    await loader.setReportCommitsActive(true)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(loader.reportCommits.value).toEqual(fresh)
+    expect(build().exportReady).toBe(true)
+    expect(fetchMock.mock.calls.map(call => call[0])).toEqual([
+      `${import.meta.env.BASE_URL}data/report-commits.json`,
+      `${import.meta.env.BASE_URL}data/report-commits.json`,
+    ])
   })
 
   it('expõe loading e faz cache-bust somente no force explícito', async () => {
@@ -139,6 +191,28 @@ describe('loader lazy de report-commits', () => {
 
     const oldRequest = module.setReportCommitsActive(true)
     const newRequest = module.loadReportCommits(true)
+    expect(pending).toHaveLength(2)
+    const fresh = { generatedAt: '2026-10-26T12:00:00.001Z', commits: [] }
+    pending[1](jsonResponse(fresh))
+    await newRequest
+    pending[0](jsonResponse(EMPTY))
+    await oldRequest
+
+    expect(module.reportCommits.value).toEqual(fresh)
+    expect(module.reportCommitsError.value).toBeNull()
+    expect(module.reportCommitsLoading.value).toBe(false)
+  })
+
+  it('invalida a resposta em voo ao desativar e refaz o fetch ao reativar', async () => {
+    const pending: Array<(value: ReturnType<typeof jsonResponse>) => void> = []
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<ReturnType<typeof jsonResponse>>((resolve) => {
+      pending.push(resolve)
+    })))
+    const module = await freshModule()
+
+    const oldRequest = module.setReportCommitsActive(true)
+    await module.setReportCommitsActive(false)
+    const newRequest = module.setReportCommitsActive(true)
     expect(pending).toHaveLength(2)
     const fresh = { generatedAt: '2026-10-26T12:00:00.001Z', commits: [] }
     pending[1](jsonResponse(fresh))

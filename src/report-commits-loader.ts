@@ -68,5 +68,15 @@ export function loadReportCommits(force = false): Promise<void> {
 /** Controla se uma recoleta pode atualizar este artefato lazy. */
 export function setReportCommitsActive(active: boolean): Promise<void> {
   reportCommitsActive.value = active
-  return active ? loadReportCommits() : Promise.resolve()
+  if (active)
+    return loadReportCommits()
+
+  // Um snapshot ou resposta da visita anterior não pode atravessar uma
+  // recoleta feita com o anexo OFF: reativar sempre inicia uma geração nova.
+  requestVersion++
+  inFlight = null
+  reportCommits.value = null
+  reportCommitsLoading.value = false
+  reportCommitsError.value = null
+  return Promise.resolve()
 }

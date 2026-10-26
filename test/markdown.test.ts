@@ -20,6 +20,16 @@ describe('mdLink', () => {
       .toBe('[abc\\[123\\]](https://github.com/example/repo/commit/abcdef0?a=1&b=2)')
   })
 
+  it('preserva colchetes e todos os escapes no round-trip pelo preview', () => {
+    const label = 'abc[123] \\ `code` *x* _y_ <img src=x> &'
+    const html = renderMarkdown(mdLink(label, 'https://example.com/commit/abcdef0?a=1&b=2'))
+
+    expect(html).toBe('<p><a href="https://example.com/commit/abcdef0?a=1&amp;b=2" target="_blank" rel="noopener noreferrer">abc[123] \\ `code` *x* _y_ &lt;img src=x&gt; &amp;</a></p>')
+    expect(html).not.toContain('<img')
+    expect(html).not.toContain('<strong>')
+    expect(html).not.toContain('<em>')
+  })
+
   it.each([
     'javascript:alert(1)',
     'data:text/html,<script>alert(1)</script>',

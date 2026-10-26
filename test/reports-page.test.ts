@@ -26,6 +26,17 @@ describe('página /reports — integração do anexo', () => {
     expect(page).not.toContain('people: q.people')
   })
 
+  it('limpa a última query no set mesmo quando os defaults geram um objeto vazio', () => {
+    const body = functionBody('set')
+    expect(body).toContain('const q = reportQueryOf(next)')
+    expect(body).toContain('lastQuery = q')
+    expect(body.indexOf('lastQuery = q')).toBeLessThan(body.indexOf('router.replace'))
+    // A restauração legítima por preferência neutra e por âncora permanece.
+    expect(page).toContain('const saved = savedQuery()')
+    expect(page).toContain('query: saved')
+    expect(page).toContain('query: lastQuery')
+  })
+
   it('expõe o preset last-month e o conecta ao motor já existente', () => {
     expect(page).toContain('id: \'last-month\'')
     expect(page).toContain('case \'last-month\': return presetWindow(\'last-month\')')
@@ -55,5 +66,23 @@ describe('página /reports — integração do anexo', () => {
     expect(css).toContain('.report-md h3')
     expect(css).toMatch(/\.report-md h3[\s\S]*break-after:\s*avoid/)
     expect(css).toMatch(/\.report-md li[\s\S]*break-inside:\s*avoid/)
+  })
+
+  it('expõe o estado dos toggles para tecnologia assistiva', () => {
+    for (const binding of [
+      'state.commits',
+      'state.people',
+      'viewMode === \'preview\'',
+      'viewMode === \'raw\'',
+      'state.subject === s.id',
+      'state.preset === p.id',
+    ])
+      expect(page).toContain(`:aria-pressed="${binding}"`)
+  })
+
+  it('dá affordance aos links e quebra textos longos no preview e na impressão', () => {
+    expect(css).toMatch(/\.report-md\s*\{[^}]*overflow-wrap:\s*anywhere/)
+    expect(css).toMatch(/\.report-md a\s*\{[^}]*color:\s*var\(--ui-primary\)/)
+    expect(css).toMatch(/\.report-md a\s*\{[^}]*text-decoration:\s*underline/)
   })
 })

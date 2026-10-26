@@ -43,8 +43,7 @@ function escapeHtml(s: string): string {
 const TOKEN_RE = /\uE000(\d+)\uE001/g
 
 /** inline non-greedy com borda de palavra — `repo#42_x` e `snake_case` intactos */
-function inline(s: string, allowLinks = true): string {
-  const tokens: string[] = []
+function inline(s: string, allowLinks = true, tokens: string[] = []): string {
   const stash = (html: string): string => {
     const index = tokens.push(html) - 1
     return `\uE000${index}\uE001`
@@ -55,7 +54,7 @@ function inline(s: string, allowLinks = true): string {
       const safeHref = safeHttpsHref(href)
       if (!safeHref)
         return _match
-      return stash(`<a href="${escapeHtml(safeHref)}" target="_blank" rel="noopener noreferrer">${inline(label, false)}</a>`)
+      return stash(`<a href="${escapeHtml(safeHref)}" target="_blank" rel="noopener noreferrer">${inline(label, false, tokens)}</a>`)
     })
   }
   return escapeHtml(source)

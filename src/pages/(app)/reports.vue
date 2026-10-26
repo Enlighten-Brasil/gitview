@@ -69,9 +69,14 @@ const router = useRouter()
 // ---------------------------------------------------------------------------
 const state = computed(() => sanitizeReportQuery(route.query))
 
+// última seleção explícita — re-aplicada quando um sub com âncora navega sem
+// query (AppNav subLink); o path puro (rail) é o reset pro default documentado
+let lastQuery = reportQueryOf(state.value)
+
 function set(patch: Partial<ReportState>) {
   const next = { ...state.value, ...patch }
   const q = reportQueryOf(next)
+  lastQuery = q
   // Opt-ins sensíveis/pesados valem só pela URL da visita, nunca pelo LS.
   localStorage.setItem(LS_KEY, new URLSearchParams(reportQueryForStorage(next)).toString())
   router.replace({ path: '/reports', query: q })
@@ -88,9 +93,6 @@ function savedQuery(): Record<string, string> | null {
   return Object.keys(restored).length ? restored : null
 }
 
-// última seleção explícita — re-aplicada quando um sub com âncora navega sem
-// query (AppNav subLink); o path puro (rail) é o reset pro default documentado
-let lastQuery = reportQueryOf(state.value)
 let booted = false
 
 watch(() => route.fullPath, (full, prevFull) => {
@@ -259,6 +261,7 @@ function onDownload() {
           size="sm"
           color="neutral"
           :variant="state.subject === s.id ? 'solid' : 'soft'"
+          :aria-pressed="state.subject === s.id"
           @click="pickSubject(s.id)"
         />
         <USelect
@@ -291,6 +294,7 @@ function onDownload() {
           size="sm"
           color="neutral"
           :variant="state.preset === p.id ? 'solid' : 'soft'"
+          :aria-pressed="state.preset === p.id"
           @click="pickPreset(p.id)"
         />
         <template v-if="state.preset === 'custom'">
@@ -339,6 +343,7 @@ function onDownload() {
             size="sm"
             color="neutral"
             :variant="state.commits ? 'solid' : 'soft'"
+            :aria-pressed="state.commits"
             @click="set({ commits: !state.commits })"
           />
           <UButton
@@ -346,6 +351,7 @@ function onDownload() {
             size="sm"
             color="neutral"
             :variant="state.people ? 'solid' : 'soft'"
+            :aria-pressed="state.people"
             @click="set({ people: !state.people })"
           />
           <UButton
@@ -353,6 +359,7 @@ function onDownload() {
             size="sm"
             color="neutral"
             :variant="viewMode === 'preview' ? 'solid' : 'soft'"
+            :aria-pressed="viewMode === 'preview'"
             @click="viewMode = 'preview'"
           />
           <UButton
@@ -360,6 +367,7 @@ function onDownload() {
             size="sm"
             color="neutral"
             :variant="viewMode === 'raw' ? 'solid' : 'soft'"
+            :aria-pressed="viewMode === 'raw'"
             @click="viewMode = 'raw'"
           />
           <UButton

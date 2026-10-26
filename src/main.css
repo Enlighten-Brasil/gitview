@@ -107,6 +107,17 @@ body {
 .report-md {
   font-size: 13px;
   line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.report-md a {
+  color: var(--ui-primary);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.report-md a:hover {
+  color: var(--ui-text-highlighted);
 }
 
 .report-md h1 {

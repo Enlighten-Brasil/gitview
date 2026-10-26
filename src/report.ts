@@ -309,7 +309,7 @@ function subjectNames(subject: ReportSubject): Set<string> | null {
 }
 
 function subjectInfix(subject: ReportSubject): string {
-  return subject.kind === 'org' ? '' : ` · ${mdText(subject.kind === 'team' ? subject.team : subject.dev)}`
+  return subject.kind === 'org' ? '' : ` · ${subject.kind === 'team' ? subject.team : subject.dev}`
 }
 
 interface CommitAppendix {
@@ -478,7 +478,7 @@ export function buildReport(subject: ReportSubject, from: Date, to: Date, inProg
   // -------------------------------------------------------------------------
   // cabeçalho
   // -------------------------------------------------------------------------
-  out.push(`# ${title}`)
+  out.push(`# ${mdText(title)}`)
   out.push(reportT('report.generatedAt', { date: fmtDateTime(s.generatedAt) }))
   if (inProgress)
     out.push(reportT('report.inProgress'))
