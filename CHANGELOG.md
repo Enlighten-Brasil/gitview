@@ -1,5 +1,12 @@
 # gitview
 
+## 0.72.0
+
+### Minor Changes
+
+- 03e85f0: Internacionaliza o motor de relatórios Markdown em pt-BR, en-US e es-ES, com fachada de copy compatível com browser e Node e goldens de regressão da base 6009b4f.
+- 8d4089e: Adiciona o `report-commits.json` lazy com o histórico classificado completo para relatórios, emitido na mesma passada dos agregados e reconciliado pelo `check:data`, sem alterar o contrato legado do `commits.json`.
+
 ## 0.71.2
 
 ### Patch Changes
