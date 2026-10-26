@@ -149,6 +149,17 @@ describe('presetWindow / rollingWindow / customWindow (now injetado)', () => {
     expect(tm.inProgress).toBe(true)
   })
 
+  it('last-month fecha fevereiro e atravessa a virada de ano sem vazar dias', () => {
+    const february = presetWindow('last-month', new Date(2026, 2, 10, 12))
+    expect(february.from).toEqual(new Date(2026, 1, 1))
+    expect(february.to).toEqual(new Date(2026, 1, 28, 23, 59, 59, 999))
+
+    const year = presetWindow('last-month', new Date(2026, 0, 10, 12))
+    expect(year.from).toEqual(new Date(2025, 11, 1))
+    expect(year.to).toEqual(new Date(2025, 11, 31, 23, 59, 59, 999))
+    expect(year.inProgress).toBe(false)
+  })
+
   it('rolantes são completas (delta habilitado) e a personalizada marca em curso só se termina hoje', () => {
     const r7 = rollingWindow(7, NOW)
     expect(r7.from).toEqual(new Date(2026, 9, 9))

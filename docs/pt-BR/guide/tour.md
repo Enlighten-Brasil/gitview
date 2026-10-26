@@ -119,6 +119,16 @@ Os mesmos painéis da Visão geral, com a seleção de devs travada nos membros 
 
 Painéis: cards de resumo, commits por semana, **Dev × mês (comparação)** e tipos de commit; com dados do GitHub, os cards de PR, **PRs abertos — mais antigos primeiro** e **Cycle time mediano por repo (criação → merge, corte por dia)**; e **Fora do horário**. Chips de membros abrem `/devs/:name`; time renomeado redireciona a partir da URL antiga; nome desconhecido mostra **Time não encontrado** com **Times disponíveis:**.
 
+## Relatórios (`/reports`): um relatório reproduzível da org, do time ou do dev
+
+A página monta o mesmo markdown para organização, time e dev. Os períodos incluem últimos 7/30 dias, semana fechada ou em curso, **Mês fechado** (`preset=last-month`, o mês civil anterior completo), mês em curso e intervalo personalizado por dia. A URL é a fonte da verdade: assunto, janela e opt-ins sobrevivem ao F5 e ao compartilhamento. Preferências neutras podem ser lembradas localmente, mas `people=1` e `commits=1` nunca voltam do localStorage. São independentes, somente o valor exato `1` os ativa e ambos ficam OFF por padrão.
+
+**Incluir commits por dev** (`commits=1`) acrescenta ao final a seção `## Anexo - commits por dev`. O `report-commits.json` só é baixado sob demanda enquanto o opt-in está ativo; o relatório default e o resumo semanal não carregam nem emitem esse anexo. Cada dev com commits no recorte exato de dia/assunto recebe um H3, subtotal de commits/+linhas/−linhas/prod/progresso e todos os bullets de commits, sem paginação nem teto de 100. Bots ficam de fora. Os bullets preservam o assunto original e trazem dia canônico `YYYY-MM-DD`, repo, escopo e diff; o hash curto linka com o hash completo para o commit quando o repo tem URL HTTPS válida. Markdown cru, preview, cópia, download e impressão usam exatamente esse conteúdo.
+
+O anexo é tudo ou nada. Carregamento, erro de HTTP/rede/shape, snapshots com `generatedAt` diferentes ou qualquer divergência de reconciliação log↔daily↔stats suprimem o anexo inteiro e bloqueiam copiar, baixar e a ação de imprimir; falha nunca vira zero nem lista parcial. Um recorte vazio, íntegro e reconciliado é válido e exportável. A recoleta atualiza o artefato lazy com cache-bust somente enquanto o anexo está ativo.
+
+**Aviso de compartilhamento:** o `report-commits.json` estático disponibiliza autores e assuntos do histórico completo a qualquer pessoa que possa baixar os dados publicados, mesmo com o opt-in OFF. A URL carrega só as escolhas do relatório, mas os exports incluem autores e assuntos do recorte; publique e compartilhe somente com a audiência pretendida. O resumo executivo permanece compacto, o anexo opcional traz as evidências de commits e o resumo semanal continua uma exportação separada da semana fechada.
+
 ## Resumo semanal: a exportação pronta para a reunião
 
 Botão no navbar (tooltip **resumo da semana exportável**), não uma rota. Abre o slideover **Resumo da semana** com o markdown da última semana ISO fechada (seg–dom) contra a anterior: `## Commits`, `## Pull requests`, `## Releases`, `## Atenção`. Saídas: **copiar markdown** (o botão vira **copiado!**) e **baixar .md** (grava `resumo-<weekKey>.md`). O relatório é do time inteiro para a reunião semanal, por isso ignora os filtros da sidebar e sempre exclui bots.

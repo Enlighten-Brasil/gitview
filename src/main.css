@@ -121,6 +121,14 @@ body {
   margin: 1rem 0 0.35rem;
 }
 
+.report-md h3 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0.85rem 0 0.3rem;
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
 .report-md p {
   margin: 0.25rem 0;
 }
@@ -133,6 +141,8 @@ body {
 
 .report-md li {
   margin: 0.15rem 0;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 /* impressão (Ctrl+P → PDF do navegador): só o relatório na página */
@@ -149,5 +159,10 @@ body {
 
   body {
     background: none;
+  }
+
+  .report-md h3 + ul > li:first-child {
+    break-after: avoid;
+    page-break-after: avoid;
   }
 }

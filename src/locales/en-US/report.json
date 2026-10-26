@@ -60,5 +60,22 @@
   "report.attention.inactiveDevs": "- devs with no commits for {days}+ days: {list}",
   "report.attention.inactiveRepos": "- repos with no commits for {days}+ days: {list}",
   "report.attention.untilToday": "- (up to today, independent of the period)",
-  "report.attention.people": "- people metrics — do not include in reports outside the team"
+  "report.attention.people": "- people metrics — do not include in reports outside the team",
+  "report.heading.appendix": "## Appendix - commits by dev",
+  "report.appendix.dev": "### {author}",
+  "report.appendix.subtotal": "- **subtotal: {commits}** · +{additions}/-{deletions} · prod {prod} · in progress {progress}",
+  "report.appendix.item": "- {link} · {day} · {repo} · +{additions}/-{deletions} · {scope} · {message}",
+  "report.appendix.prod": "prod",
+  "report.appendix.progress": "in progress",
+  "report.appendix.empty": "- 0 reconciled commits in the selection",
+  "report.appendix.error.loading": "the commits appendix is still loading",
+  "report.appendix.error.dailyLoading": "daily.json is still loading; please wait",
+  "report.appendix.error.daily": "the appendix requires day-exact daily.json; recollect",
+  "report.appendix.error.unavailable": "report-commits.json unavailable; recollect",
+  "report.appendix.error.source": "appendix unavailable: {error}",
+  "report.appendix.error.snapshot": "appendix blocked by divergent snapshots; recollect",
+  "report.appendix.error.reconcile": "appendix blocked by a reconciliation mismatch: {error}",
+  "report.appendix.toggle": "include commits by dev",
+  "report.appendix.exportBlocked": "Appendix unavailable — export and print blocked",
+  "report.preset.lastMonth": "Last month"
 }

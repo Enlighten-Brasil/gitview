@@ -12,12 +12,15 @@
  * o wrapper do preset "semana fechada × organização" — direção única de
  * import: este módulo NUNCA importa ./summary.
  */
-import type { DailyRow, MergedPr, PullRequest } from './types'
-import { daily } from './daily'
+import type { DailyRow, MergedPr, PullRequest, Stats } from './types'
+import { daily, dailyError, dailyGeneratedAt, dailyLoading } from './daily'
 import { isBot, isoWeekKey, isoWeekMonday, stats } from './data'
 import { daysSince, fmtDate, fmtDateTime, fmtDay, fmtDuration, median } from './format'
 import { ghIsBot, ghName, github } from './github'
+import { mdLink, mdText } from './markdown'
 import { releases } from './releases'
+import { selectReportCommitWindow, validateReportCommitsData } from './report-commits'
+import { reportCommits, reportCommitsError, reportCommitsLoading } from './report-commits-loader'
 import { reportPlural, reportT } from './report-i18n'
 import { displayPct } from './risk'
 import { team } from './team'
@@ -46,6 +49,9 @@ export interface ReportResult {
   to: Date
   /** H1 do markdown sem o `#` — título curto da UI/filename (onda 3) */
   title: string
+  /** Presentes somente com o opt-in commits; o artefato default não muda de shape. */
+  exportReady?: boolean
+  exportError?: string | null
 }
 
 export type ReportPreset = 'last-week' | 'this-week' | 'last-month' | 'this-month'
@@ -303,13 +309,100 @@ function subjectNames(subject: ReportSubject): Set<string> | null {
 }
 
 function subjectInfix(subject: ReportSubject): string {
-  return subject.kind === 'org' ? '' : ` · ${subject.kind === 'team' ? subject.team : subject.dev}`
+  return subject.kind === 'org' ? '' : ` · ${mdText(subject.kind === 'team' ? subject.team : subject.dev)}`
+}
+
+interface CommitAppendix {
+  lines: string[]
+  error: string | null
+}
+
+/**
+ * O anexo é todo ou nada: o resumo continua disponível, mas nenhuma linha do
+ * anexo é emitida antes de snapshot, shape, reconciliação global e recorte
+ * dia-exato passarem. Bots entram na validação global e saem da seleção.
+ */
+function buildCommitAppendix(s: Stats, from: Date, to: Date, inSubject: (name: string) => boolean): CommitAppendix {
+  if (reportCommitsLoading.value)
+    return { lines: [], error: reportT('report.appendix.error.loading') }
+  if (dailyLoading.value)
+    return { lines: [], error: reportT('report.appendix.error.dailyLoading') }
+  if (reportCommitsError.value)
+    return { lines: [], error: reportT('report.appendix.error.source', { error: reportCommitsError.value }) }
+  const data = reportCommits.value
+  if (!data)
+    return { lines: [], error: reportT('report.appendix.error.unavailable') }
+  if (!daily.value) {
+    return {
+      lines: [],
+      error: dailyError.value
+        ? reportT('report.appendix.error.source', { error: dailyError.value })
+        : reportT('report.appendix.error.daily'),
+    }
+  }
+  if (dailyError.value)
+    return { lines: [], error: reportT('report.appendix.error.source', { error: dailyError.value }) }
+  if (data.generatedAt !== s.generatedAt || dailyGeneratedAt.value !== s.generatedAt)
+    return { lines: [], error: reportT('report.appendix.error.snapshot') }
+
+  const errors = validateReportCommitsData(data, {
+    daily: { generatedAt: dailyGeneratedAt.value, daily: daily.value },
+    stats: s,
+  })
+  const selection = selectReportCommitWindow(data.commits, daily.value, {
+    fromDay: dayKey(from),
+    toDay: dayKey(to),
+    includeAuthor: author => !isBot(author) && inSubject(author),
+  })
+  errors.push(...selection.errors)
+  if (errors.length)
+    return { lines: [], error: reportT('report.appendix.error.reconcile', { error: errors[0] }) }
+
+  const lines = [reportT('report.heading.appendix')]
+  if (!selection.rows.length) {
+    lines.push(reportT('report.appendix.empty'))
+    return { lines, error: null }
+  }
+
+  const rowsByAuthor = new Map<string, typeof selection.rows>()
+  for (const row of selection.rows) {
+    const authorRows = rowsByAuthor.get(row.author) ?? []
+    authorRows.push(row)
+    rowsByAuthor.set(row.author, authorRows)
+  }
+  const authors = [...selection.byAuthor.entries()]
+    .sort((a, b) => b[1].commits - a[1].commits || a[0].localeCompare(b[0]))
+  for (const [author, metrics] of authors) {
+    lines.push('')
+    lines.push(reportT('report.appendix.dev', { author: mdText(author) }))
+    lines.push(reportT('report.appendix.subtotal', {
+      commits: reportPlural('report.commits', metrics.commits),
+      additions: metrics.additions,
+      deletions: metrics.deletions,
+      prod: metrics.prodCommits,
+      progress: metrics.progressCommits,
+    }))
+    for (const row of rowsByAuthor.get(author) ?? []) {
+      const repoUrl = s.repoUrls?.[row.repo]?.replace(/\/+$/, '') ?? ''
+      const link = mdLink(row.hash.slice(0, 7), repoUrl ? `${repoUrl}/commit/${row.hash}` : '')
+      lines.push(reportT('report.appendix.item', {
+        link,
+        day: row.day,
+        repo: mdText(row.repo),
+        additions: row.additions,
+        deletions: row.deletions,
+        scope: reportT(row.scope ? 'report.appendix.progress' : 'report.appendix.prod'),
+        message: mdText(row.message),
+      }))
+    }
+  }
+  return { lines, error: null }
 }
 
 // ---------------------------------------------------------------------------
 // buildReport
 // ---------------------------------------------------------------------------
-export function buildReport(subject: ReportSubject, from: Date, to: Date, inProgressHint?: boolean, opts?: { people?: boolean }): ReportResult | null {
+export function buildReport(subject: ReportSubject, from: Date, to: Date, inProgressHint?: boolean, opts?: { people?: boolean, commits?: boolean }): ReportResult | null {
   const s = stats.value
   if (!s)
     return null
@@ -419,7 +512,7 @@ export function buildReport(subject: ReportSubject, from: Date, to: Date, inProg
   if (subject.kind === 'dev') {
     // assunto dev mantém o formato atual do bloco de commits
     if (topDevs.length)
-      out.push(reportT('report.commits.topDevs', { list: topDevs.slice(0, 5).map(([name, a]) => `${name} (${a.commits})`).join(', ') }))
+      out.push(reportT('report.commits.topDevs', { list: topDevs.slice(0, 5).map(([name, a]) => `${mdText(name)} (${a.commits})`).join(', ') }))
   }
   else {
     // uma linha por dev (issue #184): união das duas janelas (quem sumiu
@@ -438,7 +531,7 @@ export function buildReport(subject: ReportSubject, from: Date, to: Date, inProg
         parts.push(reportPlural('report.prMerged', pm))
         parts.push(reportPlural('report.review', rv))
       }
-      out.push(`- ${d.name}: ${parts.join(' · ')}`)
+      out.push(`- ${mdText(d.name)}: ${parts.join(' · ')}`)
     }
     if (subject.kind === 'org') {
       // bloco de times (issue #185) — só assunto org: uma linha por time na
@@ -464,7 +557,7 @@ export function buildReport(subject: ReportSubject, from: Date, to: Date, inProg
         return `${commitText}${prsDegraded ? '' : ` · ${reportPlural('report.prMerged', teamPrs)}`}`
       }
       for (const t of teamList)
-        out.push(`- ${t.name}: ${teamCounts(n => t.members.includes(n))}`)
+        out.push(`- ${mdText(t.name)}: ${teamCounts(n => t.members.includes(n))}`)
       out.push(reportT('report.commits.noTeam', { counts: teamCounts(n => !inAnyTeam(n)) }))
       // ponytail: rodapé fixo (texto congelado da spec, sem contagem dinâmica)
       // — upgrade = contar os devs em >1 time se o texto variável voltar a ser pedido
@@ -472,7 +565,7 @@ export function buildReport(subject: ReportSubject, from: Date, to: Date, inProg
     }
   }
   if (topRepos.length) {
-    out.push(reportT('report.commits.topRepos', { list: topRepos.slice(0, 5).map(([repo, n]) => `${repo} (${n})`).join(', ') }))
+    out.push(reportT('report.commits.topRepos', { list: topRepos.slice(0, 5).map(([repo, n]) => `${mdText(repo)} (${n})`).join(', ') }))
   }
   if (agg.hasDaily) {
     // linhas +/− com a quebra prod/progresso na MESMA linha nova (byte-compare
@@ -513,7 +606,7 @@ export function buildReport(subject: ReportSubject, from: Date, to: Date, inProg
         duration: fmtDuration(cycle),
       }))
       const staleList = stale.length
-        ? `: ${stale.slice(0, 3).map(x => reportT('report.prs.staleItem', { repo: x.pr.repo, number: x.pr.number, age: x.age })).join(', ')}${stale.length > 3 ? '…' : ''}`
+        ? `: ${stale.slice(0, 3).map(x => reportT('report.prs.staleItem', { repo: mdText(x.pr.repo), number: x.pr.number, age: x.age })).join(', ')}${stale.length > 3 ? '…' : ''}`
         : ''
       out.push(reportT('report.prs.openStale', {
         open: reportPlural('report.openNow', open.length),
@@ -544,7 +637,7 @@ export function buildReport(subject: ReportSubject, from: Date, to: Date, inProg
         }
         const topReviewers = [...reviews.entries()].sort((a, b) => b[1] - a[1])
         if (topReviewers.length) {
-          out.push(reportT('report.prs.topReviewers', { list: topReviewers.slice(0, 5).map(([name, n]) => `${name} (${n})`).join(', ') }))
+          out.push(reportT('report.prs.topReviewers', { list: topReviewers.slice(0, 5).map(([name, n]) => `${mdText(name)} (${n})`).join(', ') }))
         }
       }
       out.push('')
@@ -561,8 +654,8 @@ export function buildReport(subject: ReportSubject, from: Date, to: Date, inProg
     if (windowTags.length) {
       for (const t of windowTags.sort((a, b) => a.date.localeCompare(b.date))) {
         out.push(reportT('report.releases.item', {
-          repo: t.repo,
-          tag: t.tag,
+          repo: mdText(t.repo),
+          tag: mdText(t.tag),
           date: fmtDay(new Date(t.date)),
           commits: reportPlural('report.commits', t.commits),
         }))
@@ -572,7 +665,7 @@ export function buildReport(subject: ReportSubject, from: Date, to: Date, inProg
       out.push(reportT('report.releases.none', { window: windowLabel(from, to) }))
     }
     if (unreleased.length) {
-      out.push(reportT('report.releases.unreleased', { list: unreleased.slice(0, 5).map(r => `${r.repo} (${r.unreleased})`).join(', ') }))
+      out.push(reportT('report.releases.unreleased', { list: unreleased.slice(0, 5).map(r => `${mdText(r.repo)} (${r.unreleased})`).join(', ') }))
     }
     out.push('')
   }
@@ -602,17 +695,17 @@ export function buildReport(subject: ReportSubject, from: Date, to: Date, inProg
     if (people) {
       for (const a of offHours) {
         out.push(reportT('report.attention.offHours', {
-          author: a.author,
+          author: mdText(a.author),
           pct: Math.round(a.pct * 100),
           window: windowLabel(from, to),
         }))
       }
       if (inactiveDevs.length) {
-        out.push(reportT('report.attention.inactiveDevs', { days: DEV_STALE_DAYS, list: inactiveDevs.map(a => a.author).join(', ') }))
+        out.push(reportT('report.attention.inactiveDevs', { days: DEV_STALE_DAYS, list: inactiveDevs.map(a => mdText(a.author)).join(', ') }))
       }
     }
     if (inactiveRepos.length) {
-      out.push(reportT('report.attention.inactiveRepos', { days: REPO_STALE_DAYS, list: inactiveRepos.map(r => r.repo).join(', ') }))
+      out.push(reportT('report.attention.inactiveRepos', { days: REPO_STALE_DAYS, list: inactiveRepos.map(r => mdText(r.repo)).join(', ') }))
     }
     // janela fixa "até hoje" rotulada no rodapé (convenção do AGENTS.md)
     out.push(reportT('report.attention.untilToday'))
@@ -621,6 +714,15 @@ export function buildReport(subject: ReportSubject, from: Date, to: Date, inProg
       out.push(reportT('report.attention.people'))
     }
     out.push('')
+  }
+
+  if (opts?.commits === true) {
+    const appendix = buildCommitAppendix(s, from, to, inSubject)
+    if (appendix.error)
+      return { markdown: out.join('\n'), from, to, title, exportReady: false, exportError: appendix.error }
+    out.push(...appendix.lines)
+    out.push('')
+    return { markdown: out.join('\n'), from, to, title, exportReady: true, exportError: null }
   }
 
   return { markdown: out.join('\n'), from, to, title }
