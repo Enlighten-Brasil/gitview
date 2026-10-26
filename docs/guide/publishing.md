@@ -9,7 +9,7 @@ description: Generate the dist with pnpm build, serve it with an SPA fallback, a
 
 ## What goes into the build
 
-The dashboard reads only the JSONs in `public/data/`: the 8 fixed ones — `stats.json`, `daily.json`, `commits.json`, `report-commits.json`, `github.json`, `branches.json`, `releases.json`, `team.json` — plus one `graph-<repo>.json` per repository for the commit graph. Nothing is recalculated from git in the browser. New data means a new build: run `pnpm collect` before publishing. `report-commits.json` is lazy and has no UI consumer yet, but it is still published in full: canonical author names and complete commit subjects become publicly readable with the static artifact. Lazy loading is not access control.
+The dashboard reads only the JSONs in `public/data/`: the 8 fixed ones — `stats.json`, `daily.json`, `commits.json`, `report-commits.json`, `github.json`, `branches.json`, `releases.json`, `team.json` — plus one `graph-<repo>.json` per repository for the commit graph. Nothing is recalculated from git in the browser. New data means a new build: run `pnpm collect` before publishing. `report-commits.json` is lazy and has no UI consumer yet, but it is still published in full: canonical author names and stored commit subjects (limited to 500 characters) become publicly readable with the static artifact. Lazy loading is not access control.
 
 ## What doesn't exist in the static build
 

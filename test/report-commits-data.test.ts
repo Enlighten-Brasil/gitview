@@ -248,6 +248,52 @@ describe('reconciliação do report-commits', () => {
     expect(validateReportCommitsData(report, { daily, stats }).join('\n')).toMatch(/stats\.repos/)
   })
 
+  const malformedStatsCases: [string, (stats: Record<string, unknown>) => void, RegExp][] = [
+    ['stats.totals nulo', (stats) => { stats.totals = null }, /stats\.json\.totals: esperado objeto/],
+    ['stats.totals.commits nulo', (stats) => {
+      ;(stats.totals as Record<string, unknown>).commits = null
+    }, /stats\.json\.totals\.commits.*diverge/],
+    ['stats.perAuthor nulo', (stats) => { stats.perAuthor = null }, /stats\.json\.perAuthor: esperado lista/],
+    ['linha de stats.perAuthor nula', (stats) => {
+      ;(stats.perAuthor as unknown[])[0] = null
+    }, /stats\.json\.perAuthor\[0\]: esperado objeto/],
+    ['stats.perAuthor[].commits nulo', (stats) => {
+      ;(stats.perAuthor as Record<string, unknown>[])[0].commits = null
+    }, /stats\.json\.perAuthor\[Ana\]\.commits.*diverge/],
+    ['stats.perAuthor[].byScope nulo', (stats) => {
+      ;(stats.perAuthor as Record<string, unknown>[])[0].byScope = null
+    }, /stats\.json\.perAuthor\[Ana\]\.byScope: esperado objeto/],
+    ['stats.perAuthor[].byScope.prod nulo', (stats) => {
+      const byScope = (stats.perAuthor as Record<string, unknown>[])[0].byScope as Record<string, unknown>
+      byScope.prod = null
+    }, /stats\.json\.perAuthor\[Ana\]\.byScope\.prod: esperado objeto/],
+    ['stats.perAuthor[].byScope.prod.commits nulo', (stats) => {
+      const byScope = (stats.perAuthor as Record<string, unknown>[])[0].byScope as Record<string, unknown>
+      ;(byScope.prod as Record<string, unknown>).commits = null
+    }, /stats\.json\.perAuthor\[Ana\]\.byScope\.prod\.commits.*diverge/],
+    ['métrica nula num eixo byScope vazio', (stats) => {
+      const byScope = (stats.perAuthor as Record<string, unknown>[])[1].byScope as Record<string, unknown>
+      ;(byScope.progress as Record<string, unknown>).commits = null
+    }, /stats\.json\.perAuthor\[Beto\]\.byScope\.progress\.commits.*esperado 0, veio null/],
+    ['stats.perRepo nulo', (stats) => { stats.perRepo = null }, /stats\.json\.perRepo: esperado lista/],
+    ['linha de stats.perRepo nula', (stats) => {
+      ;(stats.perRepo as unknown[])[0] = null
+    }, /stats\.json\.perRepo\[0\]: esperado objeto/],
+    ['stats.perRepo[].commits nulo', (stats) => {
+      ;(stats.perRepo as Record<string, unknown>[])[0].commits = null
+    }, /stats\.json\.perRepo\[demo-api\]\.commits.*diverge/],
+  ]
+
+  it.each(malformedStatsCases)('rejeita %s sem crash nem falso zero', (_name, mutate, expected) => {
+    const { report, daily, stats } = fixture()
+    mutate(stats as unknown as Record<string, unknown>)
+    let errors: string[] = []
+    expect(() => {
+      errors = validateReportCommitsData(report, { daily, stats })
+    }).not.toThrow()
+    expect(errors.join('\n')).toMatch(expected)
+  })
+
   it('falha fechado com fontes de reconciliação malformadas', () => {
     const { report } = fixture()
     expect(validateReportCommitsData(report, { daily: null, stats: null }).join('\n')).toMatch(/daily\.json/)

@@ -42,7 +42,7 @@ public/data/*.json ──► 100% static frontend (Vue 3 + Vite + ECharts): read
 
 ### data/gitview.db → stats.json + daily.json + commits.json + report-commits.json
 
-In one SQLite pass, `collect.ts` aggregates `stats.json` and `daily.json`, exports the legacy `commits.json` sample (7-hex hashes, last 100 commits of each author, newest first) and writes `report-commits.json` with the complete classified history. The report uses full 40-hex hashes and the same canonical `day` as `daily.json`, after the same date/scope skips; rows are ordered by timestamp descending, then repo and hash ascending. It is a lazy artifact for the next reports phase, with no UI loader yet. The buckets and day keys come from `GITVIEW_TIMEZONE`, never from the machine's timezone, and report emission adds no git scan.
+`collect.ts` aggregates `stats.json` and `daily.json` and writes `report-commits.json` with the complete classified history in one SQLite pass. The report uses full 40-hex hashes and the same canonical `day` as `daily.json`, after the same date/scope skips; rows are ordered by timestamp descending, then repo and hash ascending. It is a lazy artifact for the next reports phase, with no UI loader yet. The legacy `commits.json` sample (7-hex hashes, last 100 commits of each author, newest first) uses a second query. The buckets and day keys come from `GITVIEW_TIMEZONE`, never from the machine's timezone, and report emission adds no git scan.
 
 ### GitHub GraphQL API → github.json
 

@@ -9,7 +9,7 @@ description: Como gerar o dist com pnpm build, servir com fallback de SPA e mant
 
 ## O que entra no build
 
-O dashboard lê só os JSONs de `public/data/`: os 8 fixos — `stats.json`, `daily.json`, `commits.json`, `report-commits.json`, `github.json`, `branches.json`, `releases.json`, `team.json` — mais um `graph-<repo>.json` por repositório para o grafo de commits. Nada é recalculado do git no navegador. Dados novos pedem build novo: rode `pnpm collect` antes de publicar. O `report-commits.json` é lazy e ainda não tem consumidor na UI, mas mesmo assim é publicado por completo: nomes canônicos de autores e assuntos integrais dos commits ficam publicamente legíveis no artefato estático. Carga lazy não é controle de acesso.
+O dashboard lê só os JSONs de `public/data/`: os 8 fixos — `stats.json`, `daily.json`, `commits.json`, `report-commits.json`, `github.json`, `branches.json`, `releases.json`, `team.json` — mais um `graph-<repo>.json` por repositório para o grafo de commits. Nada é recalculado do git no navegador. Dados novos pedem build novo: rode `pnpm collect` antes de publicar. O `report-commits.json` é lazy e ainda não tem consumidor na UI, mas mesmo assim é publicado por completo: nomes canônicos de autores e assuntos armazenados dos commits (limitados a 500 caracteres) ficam publicamente legíveis no artefato estático. Carga lazy não é controle de acesso.
 
 ## O que não existe no build estático
 

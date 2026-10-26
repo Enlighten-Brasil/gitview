@@ -43,7 +43,7 @@ pnpm collect:reaggregate # leve: re-agregação + PRs + time + validação
 
 O `--` antes de `--repos` é obrigatório: sem ele o pnpm não repassa a flag. Depois de `pnpm clean` rode `pnpm collect` (ou ↻) para regenerar os JSONs.
 
-Depois de atualizar uma instalação existente, `pnpm collect:reaggregate` emite o `report-commits.json` do banco SQLite atual sem `clean` nem scan completo. Ele não faz fetch, não roda `git log`, não reclassifica escopos nem expurga inalcançáveis. Mantenha o fuso canônico configurado para que os valores de `day` continuem iguais aos do `daily.json`.
+Depois de atualizar uma instalação existente, `pnpm collect:reaggregate` emite o `report-commits.json` do banco SQLite atual sem `clean` nem scan completo. A etapa `collect.ts --reaggregate` não roda `git fetch` nem `git log`, não reclassifica escopos nem expurga inalcançáveis. A etapa `collect-github.ts` encadeada ainda busca PRs via GraphQL. Mantenha o fuso canônico configurado para que os valores de `day` continuem iguais aos do `daily.json`.
 
 :::warning
 Nenhuma dessas ações apaga config ou cadastro: para zerar token e time, apague `.env` e `team.local.json` à mão.

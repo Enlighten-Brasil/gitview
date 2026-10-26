@@ -42,7 +42,7 @@ public/data/*.json ──► frontend 100% estático (Vue 3 + Vite + ECharts) �
 
 ### data/gitview.db → stats.json + daily.json + commits.json + report-commits.json
 
-Numa única passada SQLite, o `collect.ts` agrega `stats.json` e `daily.json`, exporta a amostra legada `commits.json` (hashes de 7 hex, 100 últimos commits de cada autor, mais recente primeiro) e grava o `report-commits.json` com o histórico classificado completo. O relatório usa hashes completos de 40 hex e o mesmo `day` canônico do `daily.json`, depois dos mesmos skips de data/escopo; as linhas são ordenadas por timestamp decrescente, depois repo e hash crescentes. É um artefato lazy para a próxima fase de relatórios, ainda sem loader na UI. Os buckets e as chaves de dia saem de `GITVIEW_TIMEZONE`, nunca do fuso da máquina, e a emissão do relatório não adiciona scan de git.
+O `collect.ts` agrega `stats.json` e `daily.json` e grava o `report-commits.json` com o histórico classificado completo numa única passada SQLite. O relatório usa hashes completos de 40 hex e o mesmo `day` canônico do `daily.json`, depois dos mesmos skips de data/escopo; as linhas são ordenadas por timestamp decrescente, depois repo e hash crescentes. É um artefato lazy para a próxima fase de relatórios, ainda sem loader na UI. A amostra legada `commits.json` (hashes de 7 hex, 100 últimos commits de cada autor, mais recente primeiro) usa uma segunda consulta. Os buckets e as chaves de dia saem de `GITVIEW_TIMEZONE`, nunca do fuso da máquina, e a emissão do relatório não adiciona scan de git.
 
 ### API GraphQL do GitHub → github.json
 

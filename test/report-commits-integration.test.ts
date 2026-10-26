@@ -159,7 +159,7 @@ describe('integração do histórico completo de commits', () => {
 
   it('reagrega 101 commits sem perder o antigo nem alterar o corte de 100 por autor', () => {
     const project = makeProject()
-    const reposRoot = join(project, 'repos')
+    const reposRoot = join(project, 'data', 'repos')
     mkdirSync(join(reposRoot, 'demo-api', '.git'), { recursive: true })
     mkdirSync(join(project, 'data'), { recursive: true })
     const db = new DatabaseSync(join(project, 'data', 'gitview.db'))

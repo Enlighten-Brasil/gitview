@@ -43,7 +43,7 @@ pnpm collect:reaggregate # light: re-aggregation + PRs + team + validation
 
 The `--` before `--repos` is required: without it pnpm does not forward the flag. After `pnpm clean`, run `pnpm collect` (or ↻) to regenerate the JSONs.
 
-After upgrading an existing installation, `pnpm collect:reaggregate` emits `report-commits.json` from the current SQLite bank without `clean` or a full scan. It does not fetch, run `git log`, reclassify scopes or purge unreachable commits. Keep the configured canonical timezone so its `day` values continue to match `daily.json`.
+After upgrading an existing installation, `pnpm collect:reaggregate` emits `report-commits.json` from the current SQLite bank without `clean` or a full scan. Its `collect.ts --reaggregate` step does not run `git fetch` or `git log`, reclassify scopes or purge unreachable commits. The chained `collect-github.ts` step still fetches PRs through GraphQL. Keep the configured canonical timezone so its `day` values continue to match `daily.json`.
 
 :::warning
 None of these actions deletes config or roster: to zero out the token and the team, delete `.env` and `team.local.json` by hand.
