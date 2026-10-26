@@ -18,6 +18,7 @@ import { isBot, isoWeekKey, isoWeekMonday, stats } from './data'
 import { daysSince, fmtDate, fmtDateTime, fmtDay, fmtDuration, median } from './format'
 import { ghIsBot, ghName, github } from './github'
 import { releases } from './releases'
+import { reportPlural, reportT } from './report-i18n'
 import { displayPct } from './risk'
 import { team } from './team'
 import {
@@ -134,12 +135,13 @@ function isFullMonth(from: Date, to: Date): boolean {
  */
 function windowLabel(from: Date, to: Date): string {
   if (isClosedIsoWeek(from, to))
-    return 'na semana'
+    return reportT('report.window.week')
   if (isFullMonth(from, to))
-    return 'no mês'
+    return reportT('report.window.month')
   if (isMidnight(from) && isMidnight(new Date(to.getTime() + 1)))
-    return 'no período'
-  return `nos ${Math.round((to.getTime() + 1 - from.getTime()) / DAY_MS)} dias`
+    return reportT('report.window.period')
+  const days = Math.round((to.getTime() + 1 - from.getTime()) / DAY_MS)
+  return reportPlural('report.window.rolling', days)
 }
 
 interface DeltaWindow {
@@ -159,19 +161,20 @@ function deltaWindow(from: Date, to: Date): DeltaWindow {
   if (isClosedIsoWeek(from, to)) {
     const prevFrom = new Date(from)
     prevFrom.setDate(prevFrom.getDate() - 7)
-    return { from: prevFrom, to: new Date(from.getTime() - 1), label: 'vs semana anterior' }
+    return { from: prevFrom, to: new Date(from.getTime() - 1), label: reportT('report.delta.week') }
   }
   if (isFullMonth(from, to)) {
     return {
       from: new Date(from.getFullYear(), from.getMonth() - 1, 1),
       to: new Date(from.getTime() - 1),
-      label: 'vs mês anterior',
+      label: reportT('report.delta.month'),
     }
   }
   const days = Math.round((to.getTime() + 1 - from.getTime()) / DAY_MS)
   const prevFrom = new Date(from.getTime() - days * DAY_MS)
   const prevTo = new Date(from.getTime() - 1)
-  return { from: prevFrom, to: prevTo, label: `vs ${days} dias anteriores (${fmtDay(prevFrom)}–${fmtDay(prevTo)})` }
+  const label = reportPlural('report.delta.rolling', days, { from: fmtDay(prevFrom), to: fmtDay(prevTo) })
+  return { from: prevFrom, to: prevTo, label }
 }
 
 /** delta % com rótulo; base 0 → sem delta (padrão do resumo semanal) */
@@ -179,7 +182,8 @@ function deltaLine(cur: number, prev: number, label: string): string {
   if (!prev)
     return ''
   const pct = Math.round(((cur - prev) / prev) * 100)
-  return ` (${pct >= 0 ? '+' : ''}${pct}% ${label})`
+  const signedPct = `${pct >= 0 ? '+' : ''}${pct}`
+  return reportT('report.delta.suffix', { pct: signedPct, label })
 }
 
 /** delta absoluto em commits (+N/−N, sinal unicode −) — por dev, % seria enganoso (1→5 = +400%) */
@@ -319,8 +323,12 @@ export function buildReport(subject: ReportSubject, from: Date, to: Date, inProg
   const inProgress = inProgressHint ?? to.getTime() >= new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
   const closedWeek = isClosedIsoWeek(from, to)
   const fullMonth = isFullMonth(from, to)
-  const title = `Resumo${closedWeek ? ' da semana' : fullMonth ? ' do mês' : ''}${subjectInfix(subject)}`
-    + ` — ${fmtDay(from)} a ${fmtDate(to)}${closedWeek ? ` (${isoWeekKey(from)})` : ''}`
+  const titleValues = { subject: subjectInfix(subject), from: fmtDay(from), to: fmtDate(to) }
+  const title = closedWeek
+    ? reportT('report.title.week', { ...titleValues, weekKey: isoWeekKey(from) })
+    : fullMonth
+      ? reportT('report.title.month', titleValues)
+      : reportT('report.title.default', titleValues)
   const dw = deltaWindow(from, to)
   const prev = inProgress ? null : commitAgg(inSubject, dw.from, dw.to)
   const delta = (cur: number, prevValue: number) => (inProgress ? '' : deltaLine(cur, prevValue, dw.label))
@@ -378,9 +386,9 @@ export function buildReport(subject: ReportSubject, from: Date, to: Date, inProg
   // cabeçalho
   // -------------------------------------------------------------------------
   out.push(`# ${title}`)
-  out.push(`_dados do gitview gerados em ${fmtDateTime(s.generatedAt)}_`)
+  out.push(reportT('report.generatedAt', { date: fmtDateTime(s.generatedAt) }))
   if (inProgress)
-    out.push('_janela em curso — sem comparativo_')
+    out.push(reportT('report.inProgress'))
   out.push('')
 
   // -------------------------------------------------------------------------
@@ -388,25 +396,30 @@ export function buildReport(subject: ReportSubject, from: Date, to: Date, inProg
   // omissão do motor: sem delta em curso ou base 0, PRs/cycle fora quando
   // degradado, singular/plural como as linhas existentes
   // -------------------------------------------------------------------------
-  const opening = [`${agg.total} ${agg.total === 1 ? 'commit' : 'commits'}${delta(agg.total, prev?.total ?? 0)}`]
+  const opening = [`${reportPlural('report.commits', agg.total)}${delta(agg.total, prev?.total ?? 0)}`]
   if (!prsDegraded) {
-    opening.push(`${merged.length} ${merged.length === 1 ? 'PR mergeado' : 'PRs mergeados'}${delta(merged.length, prevMerged)}`)
-    opening.push(`cycle time ${fmtDuration(cycle)}`)
+    opening.push(`${reportPlural('report.prMerged', merged.length)}${delta(merged.length, prevMerged)}`)
+    opening.push(reportT('report.opening.cycle', { duration: fmtDuration(cycle) }))
   }
   if (relInScope)
-    opening.push(`${windowTags.length} ${windowTags.length === 1 ? 'release' : 'releases'}`)
+    opening.push(reportPlural('report.release', windowTags.length))
   out.push(opening.join(' · '))
   out.push('')
 
   // -------------------------------------------------------------------------
   // commits
   // -------------------------------------------------------------------------
-  out.push('## Commits')
-  out.push(`- **${agg.total} ${agg.total === 1 ? 'commit' : 'commits'}**${delta(agg.total, prev?.total ?? 0)}, ${agg.byAuthor.size} ${agg.byAuthor.size === 1 ? 'dev ativo' : 'devs ativos'}, ${agg.byRepo.size} ${agg.byRepo.size === 1 ? 'repo ativo' : 'repos ativos'}`)
+  out.push(reportT('report.heading.commits'))
+  out.push(reportT('report.commits.summary', {
+    commits: reportPlural('report.commits', agg.total),
+    delta: delta(agg.total, prev?.total ?? 0),
+    devs: reportPlural('report.devActive', agg.byAuthor.size),
+    repos: reportPlural('report.repoActive', agg.byRepo.size),
+  }))
   if (subject.kind === 'dev') {
     // assunto dev mantém o formato atual do bloco de commits
     if (topDevs.length)
-      out.push(`- top devs: ${topDevs.slice(0, 5).map(([name, a]) => `${name} (${a.commits})`).join(', ')}`)
+      out.push(reportT('report.commits.topDevs', { list: topDevs.slice(0, 5).map(([name, a]) => `${name} (${a.commits})`).join(', ') }))
   }
   else {
     // uma linha por dev (issue #184): união das duas janelas (quem sumiu
@@ -417,13 +430,13 @@ export function buildReport(subject: ReportSubject, from: Date, to: Date, inProg
       .map(name => ({ name, commits: agg.byAuthor.get(name)?.commits ?? 0, before: prev?.byAuthor.get(name)?.commits ?? 0 }))
       .sort((a, b) => b.commits - a.commits || a.name.localeCompare(b.name))
     for (const d of devRows) {
-      const parts = [`${d.commits} ${d.commits === 1 ? 'commit' : 'commits'} (${inProgress ? '—' : devDelta(d.commits, d.before)})`]
+      const parts = [`${reportPlural('report.commits', d.commits)} (${inProgress ? '—' : devDelta(d.commits, d.before)})`]
       if (!prsDegraded) {
         // PRs/reviews absolutos; omitidos só quando degradado (vazio ≠ zero)
         const pm = mergedByDev.get(d.name) ?? 0
         const rv = reviewsByDev.get(d.name) ?? 0
-        parts.push(`${pm} ${pm === 1 ? 'PR mergeado' : 'PRs mergeados'}`)
-        parts.push(`${rv} ${rv === 1 ? 'review' : 'reviews'}`)
+        parts.push(reportPlural('report.prMerged', pm))
+        parts.push(reportPlural('report.review', rv))
       }
       out.push(`- ${d.name}: ${parts.join(' · ')}`)
     }
@@ -447,26 +460,32 @@ export function buildReport(subject: ReportSubject, from: Date, to: Date, inProg
           if (inTeam(ghName(pr.author)))
             teamPrs++
         }
-        return `${commits} ${commits === 1 ? 'commit' : 'commits'}${prsDegraded ? '' : ` · ${teamPrs} ${teamPrs === 1 ? 'PR mergeado' : 'PRs mergeados'}`}`
+        const commitText = reportPlural('report.commits', commits)
+        return `${commitText}${prsDegraded ? '' : ` · ${reportPlural('report.prMerged', teamPrs)}`}`
       }
       for (const t of teamList)
         out.push(`- ${t.name}: ${teamCounts(n => t.members.includes(n))}`)
-      out.push(`- sem time: ${teamCounts(n => !inAnyTeam(n))}`)
+      out.push(reportT('report.commits.noTeam', { counts: teamCounts(n => !inAnyTeam(n)) }))
       // ponytail: rodapé fixo (texto congelado da spec, sem contagem dinâmica)
       // — upgrade = contar os devs em >1 time se o texto variável voltar a ser pedido
-      out.push('- times podem sobrepor (um dev pode estar em mais de um time) — a soma das linhas excede o total da org')
+      out.push(reportT('report.commits.teamOverlap'))
     }
   }
   if (topRepos.length) {
-    out.push(`- repos mais ativos: ${topRepos.slice(0, 5).map(([repo, n]) => `${repo} (${n})`).join(', ')}`)
+    out.push(reportT('report.commits.topRepos', { list: topRepos.slice(0, 5).map(([repo, n]) => `${repo} (${n})`).join(', ') }))
   }
   if (agg.hasDaily) {
     // linhas +/− com a quebra prod/progresso na MESMA linha nova (byte-compare
     // old vs new: único delta de conteúdo aceito no artefato semanal)
-    out.push(`- diff: +${agg.additions}/-${agg.deletions} (prod ${agg.prodCommits} · progresso ${agg.progressCommits} commits)`)
+    out.push(reportT('report.commits.diff', {
+      additions: agg.additions,
+      deletions: agg.deletions,
+      prod: agg.prodCommits,
+      progress: agg.progressCommits,
+    }))
   }
   else {
-    out.push('- sem daily.json — recolete para precisão diária')
+    out.push(reportT('report.commits.noDaily'))
   }
   out.push('')
 
@@ -474,9 +493,9 @@ export function buildReport(subject: ReportSubject, from: Date, to: Date, inProg
   // pull requests
   // -------------------------------------------------------------------------
   if (prs.length) {
-    out.push('## Pull requests')
+    out.push(reportT('report.heading.prs'))
     if (prsDegraded) {
-      out.push('- sem dados de PRs nesta janela')
+      out.push(reportT('report.prs.noData'))
       out.push('')
     }
     else {
@@ -488,15 +507,28 @@ export function buildReport(subject: ReportSubject, from: Date, to: Date, inProg
         .filter(x => x.age >= PR_STALE_DAYS)
         .sort((a, b) => b.age - a.age)
 
-      out.push(`- **${merged.length} ${merged.length === 1 ? 'mergeado' : 'mergeados'}**${delta(merged.length, prevMerged)}, cycle time mediano (janela do relatório) ${fmtDuration(cycle)}`)
-      out.push(`- ${open.length} ${open.length === 1 ? 'aberto agora' : 'abertos agora'}, **${stale.length} ${stale.length === 1 ? 'parado' : 'parados'} há ${PR_STALE_DAYS}+ dias**${stale.length ? `: ${stale.slice(0, 3).map(x => `${x.pr.repo}#${x.pr.number} (${x.age}d)`).join(', ')}${stale.length > 3 ? '…' : ''}` : ''}`)
-      out.push(`- ${noReviewPct}% mergeados sem review${noReview.length ? ` (${noReview.length} ${noReview.length === 1 ? 'PR' : 'PRs'})` : ''}`)
+      out.push(reportT('report.prs.merged', {
+        merged: reportPlural('report.merged', merged.length),
+        delta: delta(merged.length, prevMerged),
+        duration: fmtDuration(cycle),
+      }))
+      const staleList = stale.length
+        ? `: ${stale.slice(0, 3).map(x => reportT('report.prs.staleItem', { repo: x.pr.repo, number: x.pr.number, age: x.age })).join(', ')}${stale.length > 3 ? '…' : ''}`
+        : ''
+      out.push(reportT('report.prs.openStale', {
+        open: reportPlural('report.openNow', open.length),
+        stale: reportPlural('report.stale', stale.length),
+        days: PR_STALE_DAYS,
+        list: staleList,
+      }))
+      const noReviewDetail = noReview.length ? ` (${reportPlural('report.pr', noReview.length)})` : ''
+      out.push(reportT('report.prs.noReview', { pct: noReviewPct, detail: noReviewDetail }))
       if (subject.kind === 'dev') {
         // assunto dev: sem ranking de reviewers — a métrica do dev é o que ele revisou
         const reviewsMade = prs
           .filter(pr => isMergedPr(pr) && inRange(pr.mergedAt, from, to) && !ghIsBot(pr.author))
           .reduce((n, pr) => n + pr.reviews.filter(r => ghName(r.author) === subject.dev && r.author !== pr.author && !ghIsBot(r.author)).length, 0)
-        out.push(`- reviews feitas: ${reviewsMade}`)
+        out.push(reportT('report.prs.reviewsMade', { count: reviewsMade }))
       }
       else {
         // top reviewers = reviews RECEBIDAS nos PRs do assunto (semântica da
@@ -512,7 +544,7 @@ export function buildReport(subject: ReportSubject, from: Date, to: Date, inProg
         }
         const topReviewers = [...reviews.entries()].sort((a, b) => b[1] - a[1])
         if (topReviewers.length) {
-          out.push(`- top reviewers: ${topReviewers.slice(0, 5).map(([name, n]) => `${name} (${n})`).join(', ')}`)
+          out.push(reportT('report.prs.topReviewers', { list: topReviewers.slice(0, 5).map(([name, n]) => `${name} (${n})`).join(', ') }))
         }
       }
       out.push('')
@@ -525,17 +557,22 @@ export function buildReport(subject: ReportSubject, from: Date, to: Date, inProg
   if (relInScope) {
     // ponytail: releases não têm dimensão de autor (RepoReleases = repo/tags/
     // unreleased) — upgrade = tags dos repos onde o dev tem commits no período
-    out.push('## Releases')
+    out.push(reportT('report.heading.releases'))
     if (windowTags.length) {
       for (const t of windowTags.sort((a, b) => a.date.localeCompare(b.date))) {
-        out.push(`- ${t.repo} **${t.tag}** (${fmtDay(new Date(t.date))}, ${t.commits} ${t.commits === 1 ? 'commit' : 'commits'})`)
+        out.push(reportT('report.releases.item', {
+          repo: t.repo,
+          tag: t.tag,
+          date: fmtDay(new Date(t.date)),
+          commits: reportPlural('report.commits', t.commits),
+        }))
       }
     }
     else {
-      out.push(`- nenhuma release ${windowLabel(from, to)}`)
+      out.push(reportT('report.releases.none', { window: windowLabel(from, to) }))
     }
     if (unreleased.length) {
-      out.push(`- commits não liberados: ${unreleased.slice(0, 5).map(r => `${r.repo} (${r.unreleased})`).join(', ')}`)
+      out.push(reportT('report.releases.unreleased', { list: unreleased.slice(0, 5).map(r => `${r.repo} (${r.unreleased})`).join(', ') }))
     }
     out.push('')
   }
@@ -561,23 +598,27 @@ export function buildReport(subject: ReportSubject, from: Date, to: Date, inProg
   const people = opts?.people === true
 
   if ((people && (offHours.length || inactiveDevs.length)) || inactiveRepos.length) {
-    out.push('## Atenção')
+    out.push(reportT('report.heading.attention'))
     if (people) {
       for (const a of offHours) {
-        out.push(`- ${a.author}: ${Math.round(a.pct * 100)}% dos commits fora do horário ${windowLabel(from, to)} (fds/madrugada)`)
+        out.push(reportT('report.attention.offHours', {
+          author: a.author,
+          pct: Math.round(a.pct * 100),
+          window: windowLabel(from, to),
+        }))
       }
       if (inactiveDevs.length) {
-        out.push(`- devs sem commit há ${DEV_STALE_DAYS}+ dias: ${inactiveDevs.map(a => a.author).join(', ')}`)
+        out.push(reportT('report.attention.inactiveDevs', { days: DEV_STALE_DAYS, list: inactiveDevs.map(a => a.author).join(', ') }))
       }
     }
     if (inactiveRepos.length) {
-      out.push(`- repos sem commit há ${REPO_STALE_DAYS}+ dias: ${inactiveRepos.map(r => r.repo).join(', ')}`)
+      out.push(reportT('report.attention.inactiveRepos', { days: REPO_STALE_DAYS, list: inactiveRepos.map(r => r.repo).join(', ') }))
     }
     // janela fixa "até hoje" rotulada no rodapé (convenção do AGENTS.md)
-    out.push('- (até hoje, independe do período)')
+    out.push(reportT('report.attention.untilToday'))
     if (people) {
       // rodapé fixo da opt-in (rótulo congelado da spec #187)
-      out.push('- métricas de pessoas — não incluir em relatórios para fora do time')
+      out.push(reportT('report.attention.people'))
     }
     out.push('')
   }

@@ -108,6 +108,15 @@ export default antfu(
     },
   },
   {
+    // chaves de report.json consumidas pela fachada report-i18n.ts, inclusive
+    // variantes .one/.other resolvidas por Intl.PluralRules. O plugin não
+    // rastreia essa fachada .ts; o escopo fica restrito a este namespace.
+    files: ['src/locales/*/report.json'],
+    rules: {
+      '@intlify/vue-i18n/no-unused-keys': 'off',
+    },
+  },
+  {
     // chaves de team.json sem rastreio do plugin: a regra casa t('literal') em
     // .vue/.js — os toasts/confirmações/hint chamam t() no composable .ts
     // (src/composables/useTeamDrafts.ts) e os plurais (PR/login/e-mail) resolvem

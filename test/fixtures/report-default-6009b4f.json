@@ -1,0 +1,6 @@
+{
+  "markdown": "# Resumo — 09/10 a 15/10/2026\n_dados do gitview gerados em 15/10/2026, 09:00:00_\n\n4 commits (+0% vs 7 dias anteriores (02/10–08/10)) · 2 PRs mergeados (+0% vs 7 dias anteriores (02/10–08/10)) · cycle time 3,0d · 0 releases\n\n## Commits\n- **4 commits** (+0% vs 7 dias anteriores (02/10–08/10)), 1 dev ativo, 1 repo ativo\n- Ana: 4 commits (+1) · 0 PRs mergeados · 1 review\n- Beto: 0 commits (−1) · 2 PRs mergeados · 0 reviews\n- Plataforma: 4 commits · 0 PRs mergeados\n- Suporte: 0 commits · 0 PRs mergeados\n- sem time: 0 commits · 2 PRs mergeados\n- times podem sobrepor (um dev pode estar em mais de um time) — a soma das linhas excede o total da org\n- repos mais ativos: demo-api (4)\n- diff: +6/-1 (prod 4 · progresso 0 commits)\n\n## Pull requests\n- **2 mergeados** (+0% vs 7 dias anteriores (02/10–08/10)), cycle time mediano (janela do relatório) 3,0d\n- 1 aberto agora, **1 parado há 14+ dias**: demo-api#5 (25d)\n- 50% mergeados sem review (1 PR)\n- top reviewers: Ana (1)\n\n## Releases\n- nenhuma release nos 7 dias\n- commits não liberados: demo-api (5)\n\n## Atenção\n- repos sem commit há 30+ dias: demo-web\n- (até hoje, independe do período)\n",
+  "from": "2026-10-09T03:00:00.000Z",
+  "to": "2026-10-15T15:00:00.000Z",
+  "title": "Resumo — 09/10 a 15/10/2026"
+}
