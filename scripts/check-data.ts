@@ -344,6 +344,10 @@ else {
 const daily = load('daily.json')
 if (daily) {
   genAt(daily, 'daily.json')
+  // vínculo de snapshot do anexo (#288): os três JSONs do anexo saem da mesma
+  // coleta com o MESMO generatedAt — divergência bloqueia exportação/impressão
+  if (stats && daily.generatedAt !== stats.generatedAt)
+    errors.push(`daily.json.generatedAt (${JSON.stringify(daily.generatedAt)}) != stats.json.generatedAt (${JSON.stringify(stats.generatedAt)})`)
   listShape(daily, 'daily', ['day', 'repo', 'author', 'commits', 'additions', 'deletions', 'weekend', 'night'], 'daily.json')
   scopeUnion(daily.daily, 'daily.json.daily')
   const drows = (isArr(daily.daily) ? daily.daily : []) as Record<string, unknown>[]
