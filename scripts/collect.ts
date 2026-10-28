@@ -786,8 +786,10 @@ async function main() {
   // histórico completo (~145 linhas/mês ≈ +19 KB/ano; reavaliar perto de ~2 MB) — o
   // delta da onda 2 (relatórios) depende literalmente do histórico inteiro.
   // Sem sort: a ordem de inserção vem do ORDER BY date ASC do banco (determinística)
+  // generatedAt COMPARTILHADO com stats.json: é o vínculo de snapshot do anexo de
+  // relatórios (#288) — carimbo próprio aqui divergia e bloqueava a exportação
   writeFileSync(join(root, 'public', 'data', 'daily.json'), JSON.stringify({
-    generatedAt: new Date().toISOString(),
+    generatedAt: stats.generatedAt,
     daily: [...daily.entries()].map(([k, v]) => {
       const [day, repo, author, scope] = k.split(KEY_SEP)
       return { day, repo, author, ...(scope === 'prod' ? {} : { scope }), commits: v.commits, additions: v.additions, deletions: v.deletions, weekend: v.weekend, night: v.night }
