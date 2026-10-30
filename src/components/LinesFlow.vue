@@ -29,7 +29,7 @@ const option = computed<EChartsOption>(() => {
   if (mode.value === 'month') {
     return {
       tooltip: tooltipBase({ trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (v: unknown) => fmtInt(Number(v)) }),
-      legend: { data: [t('chart.lines.added'), t('chart.lines.removed'), t('chart.lines.net')], textStyle: legendText() },
+      legend: { data: [t('chart.lines.added'), t('chart.lines.removed'), t('chart.lines.net')], top: 0, textStyle: legendText() },
       grid: { left: 60, right: 20, top: 40, bottom: 60 },
       ...axis,
       series: [
@@ -76,7 +76,7 @@ const option = computed<EChartsOption>(() => {
 
   return {
     tooltip: tooltipBase({ trigger: 'axis', valueFormatter: (v: unknown) => fmtInt(Number(v)) }),
-    legend: { data: [t('chart.lines.netCum'), t('chart.lines.addedCum'), t('chart.lines.removedCum')], textStyle: legendText() },
+    legend: { data: [t('chart.lines.netCum'), t('chart.lines.addedCum'), t('chart.lines.removedCum')], top: 0, textStyle: legendText() },
     grid: { left: 60, right: 20, top: 40, bottom: 60 },
     ...axis,
     series: [

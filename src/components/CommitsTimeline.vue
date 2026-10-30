@@ -62,8 +62,9 @@ const option = computed<EChartsOption>(() => {
   return {
     color: PALETTE,
     tooltip: tooltipBase({ trigger: 'axis', axisPointer: { type: 'shadow' } }),
-    // perfil do dev: autor único, legenda dispensável
-    legend: props.author ? undefined : { type: 'scroll', textStyle: legendText() },
+    // perfil do dev: autor único, legenda dispensável; `top` explícito — o
+    // default do ECharts é BASE e a legenda caía sobre o slider do dataZoom
+    legend: props.author ? undefined : { type: 'scroll', top: 0, textStyle: legendText() },
     grid: { left: 50, right: 20, top: props.author ? 20 : 40, bottom: 60 },
     xAxis: { type: 'category', data: periods, axisLabel: axisLabel() },
     yAxis: { type: 'value', axisLabel: axisLabel(), splitLine: splitLine() },
