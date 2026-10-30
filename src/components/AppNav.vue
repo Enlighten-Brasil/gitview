@@ -62,6 +62,40 @@ const CONTEXT_KEY = 'gitview:contextCollapsed'
 const contextCollapsed = ref(localStorage.getItem(CONTEXT_KEY) === '1')
 watch(contextCollapsed, v => localStorage.setItem(CONTEXT_KEY, v ? '1' : '0'))
 
+// largura do painel contextual — redimensionável por arraste (handle na borda)
+// ou teclado (setas), persistida em localStorage
+const CONTEXT_W_KEY = 'gitview:contextW'
+const CONTEXT_W_MIN = 220
+const CONTEXT_W_MAX = 520
+function clampContextW(w: number): number {
+  return Math.min(CONTEXT_W_MAX, Math.max(CONTEXT_W_MIN, w))
+}
+const contextW = ref(clampContextW(Number(localStorage.getItem(CONTEXT_W_KEY)) || 280))
+watch(contextW, v => localStorage.setItem(CONTEXT_W_KEY, String(v)))
+
+let resizing = false
+let resizeStartX = 0
+let resizeStartW = 0
+function onResizeStart(e: PointerEvent) {
+  resizing = true
+  resizeStartX = e.clientX
+  resizeStartW = contextW.value
+  e.currentTarget.setPointerCapture(e.pointerId)
+}
+function onResizeMove(e: PointerEvent) {
+  if (resizing)
+    contextW.value = clampContextW(resizeStartW + (e.clientX - resizeStartX))
+}
+function onResizeEnd(e: PointerEvent) {
+  if (!resizing)
+    return
+  resizing = false
+  e.currentTarget.releasePointerCapture(e.pointerId)
+}
+function nudgeContextW(dx: number) {
+  contextW.value = clampContextW(contextW.value + dx)
+}
+
 function subLink(s: { to?: string, hash?: string }) {
   if (s.to)
     return { path: s.to }
@@ -126,7 +160,7 @@ const showPanel = computed(() => {
     </nav>
 
     <!-- painel contextual -->
-    <aside v-if="showPanel" class="context" :aria-label="t('nav.aria.section')">
+    <aside v-if="showPanel" class="context" :style="{ width: `${contextW}px` }" :aria-label="t('nav.aria.section')">
       <header class="context-header">
         <h2 class="context-title">
           {{ section ? t(section.label) : '' }}
@@ -160,9 +194,27 @@ const showPanel = computed(() => {
       </template>
     </aside>
 
+    <!-- handle de redimensionamento (arraste ou setas) — borda do painel -->
+    <div
+      v-if="showPanel"
+      class="resize-handle"
+      role="separator"
+      aria-orientation="vertical"
+      :aria-label="t('nav.aria.resize')"
+      :aria-valuemin="CONTEXT_W_MIN"
+      :aria-valuemax="CONTEXT_W_MAX"
+      :aria-valuenow="contextW"
+      tabindex="0"
+      @pointerdown="onResizeStart"
+      @pointermove="onResizeMove"
+      @pointerup="onResizeEnd"
+      @keydown.left.prevent="nudgeContextW(-16)"
+      @keydown.right.prevent="nudgeContextW(16)"
+    />
+
     <!-- botão flutuante pra reabrir quando recolhido -->
     <UButton
-      v-else-if="section && (visibleSubs.length > 0 || filtersScope !== 'none')"
+      v-if="!showPanel && section && (visibleSubs.length > 0 || filtersScope !== 'none')"
       icon="i-lucide-chevrons-right"
       color="neutral"
       variant="soft"
@@ -228,7 +280,6 @@ const showPanel = computed(() => {
 }
 
 .context {
-  width: var(--context-w, 232px);
   flex-shrink: 0;
   overflow-y: auto;
   padding: 12px;
@@ -236,6 +287,19 @@ const showPanel = computed(() => {
   background: var(--ui-bg);
   display: flex;
   flex-direction: column;
+}
+.resize-handle {
+  width: 5px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  touch-action: none;
+  background: transparent;
+  transition: background .15s;
+}
+.resize-handle:hover,
+.resize-handle:focus-visible {
+  background: color-mix(in oklab, var(--ui-primary) 35%, transparent);
+  outline: none;
 }
 .context-header {
   display: flex;
@@ -268,6 +332,5 @@ const showPanel = computed(() => {
 @media (max-width: 640px) {
   .rail-label { display: none; }
   .rail { width: 48px; }
-  .context { width: 200px; }
 }
 </style>

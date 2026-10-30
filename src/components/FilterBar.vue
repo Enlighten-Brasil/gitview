@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import type { WorkScope } from '@/data'
+import type { QuickRange } from '@/date'
 import type { FilterScope } from '@/router/meta'
-import { computed, watch } from 'vue'
+import { parseDate } from '@internationalized/date'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import {
   filters,
   isCustomRange,
+  rangeLabel,
   resetSelection,
   setAuthors,
   setCustomRange,
@@ -16,14 +19,14 @@ import {
   setWorkScope,
   stats,
   toggleAuthor,
-  toggleCustomRange,
   toggleRepo,
   toggleTeam,
 } from '@/data'
+import { QUICK_RANGES, quickRange } from '@/date'
 import { loadTeam, team } from '@/team'
 
 const route = useRoute()
-const { t } = useI18n({ useScope: 'global' })
+const { t, locale } = useI18n({ useScope: 'global' })
 
 // escopo por rota (route.meta.filters): período vale em todas as rotas de
 // dados; repos no escopo 'full' e no 'team'; devs/bots só no 'full' — no 'team'
@@ -83,14 +86,64 @@ function chipLabel(months: number | null): string {
   return t(key)
 }
 
-/** datas do range custom (inputs) — escrita sempre pelas ações de @/data (issue #39) */
-function setDateFrom(v: string | null) {
-  setCustomRange(v, filters.dateTo)
-}
-function setDateTo(v: string | null) {
-  setCustomRange(filters.dateFrom, v)
+/**
+ * Atalhos de período curto — materializados como range custom (from/to) para
+ * reaproveitar URL/cutoff/predicados. `quickActive` é derivado (compara as
+ * datas com a janela do atalho HOJE), então não dessincroniza com a URL.
+ */
+const quickKeys: Record<QuickRange, string> = {
+  d7: 'filters.chip.7d',
+  thisWeek: 'filters.chip.thisWeek',
+  lastWeek: 'filters.chip.lastWeek',
 }
 
+function applyQuick(kind: QuickRange) {
+  const r = quickRange(kind)
+  setCustomRange(r.from, r.to)
+}
+
+const quickActive = computed<QuickRange | null>(() => {
+  if (!isCustomRange())
+    return null
+  for (const k of QUICK_RANGES) {
+    const r = quickRange(k)
+    if (filters.dateFrom === r.from && filters.dateTo === r.to)
+      return k
+  }
+  return null
+})
+
+// calendário do range custom (UPopover + UCalendar): draft local — só range
+// completo (start+end) aplica; reabrir ressincroniza com as datas atuais
+interface CalRange { start?: { toString: () => string }, end?: { toString: () => string } }
+const customOpen = ref(false)
+const calDraft = ref<CalRange | null>(null)
+const calPlaceholder = computed(() => filters.dateFrom ? parseDate(filters.dateFrom) : undefined)
+
+watch(customOpen, (open) => {
+  if (open) {
+    calDraft.value = {
+      start: filters.dateFrom ? parseDate(filters.dateFrom) : undefined,
+      end: filters.dateTo ? parseDate(filters.dateTo) : undefined,
+    }
+  }
+})
+
+function onCalRange(v: CalRange | null) {
+  calDraft.value = v
+  const from = v?.start?.toString()
+  const to = v?.end?.toString()
+  if (from && to) {
+    setCustomRange(from, to)
+    customOpen.value = false
+  }
+}
+
+function clearCustom() {
+  setCustomRange(null, null)
+  calDraft.value = null
+  customOpen.value = false
+}
 const visibleAuthors = computed(() =>
   (stats.value?.authors ?? []).filter(a => filters.showBots || !a.bot),
 )
@@ -139,6 +192,19 @@ function clearList(list: ListKey) {
         <span class="filter-label">{{ t('filters.period') }}</span>
         <div class="flex flex-wrap gap-1.5">
           <UButton
+            v-for="k in QUICK_RANGES"
+            :key="k"
+            size="xs"
+            :color="quickActive === k ? 'primary' : 'neutral'"
+            :variant="quickActive === k ? 'soft' : 'outline'"
+            :aria-pressed="quickActive === k"
+            @click="applyQuick(k)"
+          >
+            {{ t(quickKeys[k]) }}
+          </UButton>
+        </div>
+        <div class="flex flex-wrap gap-1.5">
+          <UButton
             v-for="r in ranges"
             :key="String(r)"
             size="xs"
@@ -149,25 +215,40 @@ function clearList(list: ListKey) {
           >
             {{ chipLabel(r) }}
           </UButton>
-          <UButton
-            size="xs"
-            icon="i-lucide-calendar-range"
-            :color="isCustomRange() ? 'primary' : 'neutral'"
-            :variant="isCustomRange() ? 'soft' : 'outline'"
-            :aria-pressed="isCustomRange()"
-            @click="toggleCustomRange"
-          >
-            {{ t('filters.custom') }}
-          </UButton>
-        </div>
-        <div v-if="isCustomRange()" class="flex items-end gap-1.5">
-          <UFormField :label="t('filters.from')" :ui="{ label: 'sr-only' }" class="flex-1">
-            <UInput :model-value="filters.dateFrom" type="date" size="xs" class="w-full" @update:model-value="setDateFrom" />
-          </UFormField>
-          <UIcon name="i-lucide-arrow-right" class="size-3.5 text-dimmed shrink-0 mb-1.5" />
-          <UFormField :label="t('filters.to')" :ui="{ label: 'sr-only' }" class="flex-1">
-            <UInput :model-value="filters.dateTo" type="date" size="xs" class="w-full" @update:model-value="setDateTo" />
-          </UFormField>
+          <UPopover v-model:open="customOpen" :ui="{ content: 'w-auto p-3' }">
+            <UButton
+              size="xs"
+              icon="i-lucide-calendar-range"
+              :color="isCustomRange() && !quickActive ? 'primary' : 'neutral'"
+              :variant="isCustomRange() && !quickActive ? 'soft' : 'outline'"
+              :aria-pressed="isCustomRange()"
+            >
+              {{ t('filters.custom') }}
+            </UButton>
+            <template #content>
+              <div class="flex flex-col gap-2">
+                <UCalendar
+                  :model-value="calDraft"
+                  range
+                  :week-starts-on="1"
+                  :locale="locale"
+                  :placeholder="calPlaceholder"
+                  @update:model-value="onCalRange"
+                />
+                <div class="flex items-center gap-2">
+                  <UButton
+                    size="xs"
+                    color="neutral"
+                    variant="ghost"
+                    icon="i-lucide-x"
+                    :label="t('filters.range.clear')"
+                    @click="clearCustom"
+                  />
+                  <span class="ml-auto text-xs text-dimmed">{{ rangeLabel }}</span>
+                </div>
+              </div>
+            </template>
+          </UPopover>
         </div>
       </template>
       <USwitch v-if="showBots" :model-value="filters.showBots" :label="t('filters.bots')" size="sm" class="mt-1" @update:model-value="setShowBots" />

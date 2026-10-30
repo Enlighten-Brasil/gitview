@@ -97,15 +97,29 @@ function toMonthKey(periodKey: string): string {
 }
 
 /**
- * chave de período (YYYY-MM | YYYY-Www) dentro da janela filtrada —
- * corte por MÊS (agregações mensais/semanais). Semana pertence ao mês da
- * sua segunda-feira (via toMonthKey), para o corte mensal valer também
- * para as vistas semanais.
+ * chave de período (YYYY-MM | YYYY-Www) dentro da janela filtrada.
+ *
+ * Semana (YYYY-Www):
+ * - range customizado: corte PRECISO por semana — a semana entra se [seg..dom]
+ *   intersectar [from..to]. Buckets inteiros, nunca semana pela metade; é o
+ *   que torna os atalhos "esta semana"/"semana passada" exatos.
+ * - preset mensal: corte por MÊS (mês da segunda-feira ≥ mês do cutoff) —
+ *   convenção documentada, preservada.
+ *
+ * Mês/dia (YYYY-MM | YYYY-MM-DD): comparação por mês (agregações mensais
+ * nunca cortam ao meio).
  */
 export function inPeriodMonth(periodKey: string): boolean {
-  const key = toMonthKey(periodKey)
-  // range customizado: compara mês a mês com from/to
+  const monday = isoWeekMonday(periodKey)
   if (isCustomRange()) {
+    if (monday) {
+      // comparação em DIA-calendário (strings YYYY-MM-DD) — sem atrito de fuso
+      // entre as pontas UTC da semana e as datas locais do range
+      const mondayStr = monday.toISOString().slice(0, 10)
+      const sundayStr = new Date(monday.getTime() + 6 * 864e5).toISOString().slice(0, 10)
+      return (!filters.dateFrom || sundayStr >= filters.dateFrom) && (!filters.dateTo || mondayStr <= filters.dateTo)
+    }
+    const key = periodKey.slice(0, 7)
     if (filters.dateFrom && key < filters.dateFrom.slice(0, 7))
       return false
     if (filters.dateTo && key > filters.dateTo.slice(0, 7))
@@ -116,6 +130,7 @@ export function inPeriodMonth(periodKey: string): boolean {
   if (!cut)
     return true
   // key é o mês do período (semana → mês da segunda) — compara pelo começo do período
+  const key = monday ? toMonthKey(periodKey) : periodKey.slice(0, 7)
   return key >= `${cut.getFullYear()}-${String(cut.getMonth() + 1).padStart(2, '0')}`
 }
 

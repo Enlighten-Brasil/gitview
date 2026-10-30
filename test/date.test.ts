@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isoWeekKey, isoWeekKeyBefore, isoWeekMonday } from '../src/date'
+import { isoWeekKey, isoWeekKeyBefore, isoWeekMonday, quickRange } from '../src/date'
 
 /** Semente da infra de testes (issue #248) — semana ISO é aritmética pura. */
 describe('isoWeekKey', () => {
@@ -33,5 +33,21 @@ describe('isoWeekKeyBefore', () => {
 
   it('propaga a chave inválida como null', () => {
     expect(isoWeekKeyBefore('bogus', 1)).toBeNull()
+  })
+})
+describe('quickRange', () => {
+  // sexta 2026-10-30 (UTC) — janelas em aritmética UTC, coerente com isoWeekKey
+  const NOW = new Date(Date.UTC(2026, 9, 30))
+
+  it('d7 cobre hoje-6..hoje', () => {
+    expect(quickRange('d7', NOW)).toEqual({ from: '2026-10-24', to: '2026-10-30' })
+  })
+
+  it('thisWeek = seg..dom da semana ISO atual (2026-W44)', () => {
+    expect(quickRange('thisWeek', NOW)).toEqual({ from: '2026-10-26', to: '2026-11-01' })
+  })
+
+  it('lastWeek = seg..dom da semana ISO anterior (2026-W43)', () => {
+    expect(quickRange('lastWeek', NOW)).toEqual({ from: '2026-10-19', to: '2026-10-25' })
   })
 })

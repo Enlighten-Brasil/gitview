@@ -52,3 +52,36 @@ export function lastNWeekKeys(n: number): string[] {
   }
   return [...new Set(keys)]
 }
+
+/**
+ * Atalhos de período curto da sidebar (7 dias · semana atual · semana
+ * passada) — materializados como range custom (from/to) para reaproveitar a
+ * URL, o cutoff e os predicados. Janela em aritmética UTC (componentes de
+ * data), coerente com isoWeekKey/lastNWeekKeys — as janelas fixas já operam
+ * assim.
+ */
+export type QuickRange = 'd7' | 'thisWeek' | 'lastWeek'
+
+export const QUICK_RANGES: readonly QuickRange[] = ['d7', 'thisWeek', 'lastWeek']
+
+/** YYYY-MM-DD a partir dos componentes UTC de uma data */
+function ymd(d: Date): string {
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+}
+
+/** janela {from, to} (YYYY-MM-DD) de um atalho — 'd7' = hoje-6..hoje; semanas = seg..dom */
+export function quickRange(kind: QuickRange, now: Date = new Date()): { from: string, to: string } {
+  if (kind === 'd7') {
+    const from = new Date(now)
+    from.setUTCDate(from.getUTCDate() - 6)
+    return { from: ymd(from), to: ymd(now) }
+  }
+  const key = isoWeekKey(now)
+  const base = kind === 'lastWeek' ? isoWeekKeyBefore(key, 1) : key
+  const monday = base ? isoWeekMonday(base) : null
+  if (!monday) // não deve acontecer — isoWeekKey sempre gera chave válida
+    return { from: ymd(now), to: ymd(now) }
+  const sunday = new Date(monday)
+  sunday.setUTCDate(monday.getUTCDate() + 6)
+  return { from: ymd(monday), to: ymd(sunday) }
+}

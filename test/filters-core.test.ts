@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { quickRange } from '../src/date'
 import { authorSelected, cutoff, filters, inPeriodDay, inPeriodMonth, isCustomRange, isWorkScope, repoSelected, WORK_SCOPES } from '../src/filters-core'
 
 /**
@@ -101,15 +102,31 @@ describe('inPeriodMonth', () => {
     expect(inPeriodMonth('2026-W06')).toBe(false) // seg 02/02/2026 → fevereiro
   })
 
-  it('range customizado compara mês a mês com from/to', () => {
+  it('range customizado: meses por mês; semanas por INTERSECTAR (buckets inteiros)', () => {
     filters.dateFrom = '2026-02-01'
     filters.dateTo = '2026-05-31'
     expect(inPeriodMonth('2026-01')).toBe(false)
     expect(inPeriodMonth('2026-02')).toBe(true)
     expect(inPeriodMonth('2026-05')).toBe(true)
     expect(inPeriodMonth('2026-06')).toBe(false)
-    expect(inPeriodMonth('2026-W06')).toBe(true) // seg 02/02 → fevereiro
-    expect(inPeriodMonth('2026-W05')).toBe(false) // seg 26/01 → janeiro
+    // semana entra se [seg..dom] intersectar [from..to] — nunca pela metade
+    expect(inPeriodMonth('2026-W05')).toBe(true) // seg 26/01..dom 01/02 — encosta no from
+    expect(inPeriodMonth('2026-W06')).toBe(true) // seg 02/02..dom 08/02
+    expect(inPeriodMonth('2026-W22')).toBe(true) // seg 25/05..dom 31/05 — encosta no to
+    expect(inPeriodMonth('2026-W04')).toBe(false) // seg 19/01..dom 25/01 — termina antes
+    expect(inPeriodMonth('2026-W23')).toBe(false) // seg 01/06..dom 07/06 — começa depois
+  })
+
+  it('atalho "esta semana" é exato: só a semana atual entra (mês continua por mês)', () => {
+    const w = quickRange('thisWeek', new Date(Date.UTC(2026, 9, 30))) // 2026-W44
+    filters.dateFrom = w.from
+    filters.dateTo = w.to
+    expect(inPeriodMonth('2026-W44')).toBe(true)
+    expect(inPeriodMonth('2026-W43')).toBe(false)
+    expect(inPeriodMonth('2026-W45')).toBe(false)
+    expect(inPeriodMonth('2026-10')).toBe(true)
+    expect(inPeriodMonth('2026-11')).toBe(true) // novembro tem 1 dia da janela
+    expect(inPeriodMonth('2026-09')).toBe(false)
   })
 })
 

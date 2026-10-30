@@ -49,6 +49,7 @@
   },
   "dependencies": {
     "@iconify-json/lucide": "^1.2.140",
+    "@internationalized/date": "3.12.4",
     "@nuxt/ui": "^4.11.3",
     "echarts": "^6.1.0",
     "petite-vue-i18n": "11.4.16",
