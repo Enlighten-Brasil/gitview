@@ -80,10 +80,17 @@ function exportPng() {
         </span>
       </div>
     </template>
+    <!-- faixa opcional acima/abaixo do gráfico (ex.: KPIs do fluxo de PRs) -->
+    <div v-if="$slots.pre" class="px-2 pb-2">
+      <slot name="pre" />
+    </div>
     <VChart v-if="!isEmpty" ref="vchart" :option="option" :class="tall ? 'chart-tall' : 'chart'" autoresize />
     <!-- empty state: sem dados o gráfico vazio parecia "carregando" pra sempre -->
     <div v-else :class="tall ? 'chart-tall' : 'chart'" class="flex items-center justify-center text-muted text-sm">
       {{ emptyText ?? t('chart.empty') }}
+    </div>
+    <div v-if="$slots.footer" class="px-2 pt-1">
+      <slot name="footer" />
     </div>
   </UCard>
 </template>
