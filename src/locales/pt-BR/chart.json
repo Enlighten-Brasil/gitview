@@ -112,5 +112,6 @@
   "chart.graph.clippedOne": "· {n} aresta tracejada com seta: pai fora da janela — a história continua mais antigo",
   "chart.graph.clippedMany": "· {n} arestas tracejadas com seta: pais fora da janela — a história continua mais antigo",
   "chart.graph.tipMeta": "{author} · {date}",
-  "chart.graph.tipRefs": "({refs})"
+  "chart.graph.tipRefs": "({refs})",
+  "chart.typeMix.title": "Tipos de commit no período"
 }

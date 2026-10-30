@@ -112,5 +112,6 @@
   "chart.graph.clippedOne": "· {n} arista punteada con flecha: padre fuera de la ventana — la historia continúa más antigua",
   "chart.graph.clippedMany": "· {n} aristas punteadas con flechas: padres fuera de la ventana — la historia continúa más antigua",
   "chart.graph.tipMeta": "{author} · {date}",
-  "chart.graph.tipRefs": "({refs})"
+  "chart.graph.tipRefs": "({refs})",
+  "chart.typeMix.title": "Tipos de commit en el período"
 }

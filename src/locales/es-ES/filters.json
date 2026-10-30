@@ -29,5 +29,9 @@
   "filters.range.lastMonth": "último mes",
   "filters.range.lastN": "últimos {n} meses",
   "filters.range.customStart": "inicio",
-  "filters.range.customEnd": "hoy"
+  "filters.range.customEnd": "hoy",
+  "filters.chip.7d": "7 días",
+  "filters.chip.thisWeek": "esta semana",
+  "filters.chip.lastWeek": "semana pasada",
+  "filters.range.clear": "limpiar intervalo"
 }

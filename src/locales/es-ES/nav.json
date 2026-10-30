@@ -38,5 +38,6 @@
   "nav.subs.reports.report": "Informe",
   "nav.subs.settings.general": "General",
   "nav.subs.settings.repos": "Repositorios",
-  "nav.subs.settings.account": "Cuenta de GitHub"
+  "nav.subs.settings.account": "Cuenta de GitHub",
+  "nav.aria.resize": "redimensionar panel de filtros"
 }

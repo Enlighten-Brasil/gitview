@@ -112,5 +112,6 @@
   "chart.graph.clippedOne": "· {n} dashed edge with arrow: parent outside the window — the history continues older",
   "chart.graph.clippedMany": "· {n} dashed edges with arrows: parents outside the window — the history continues older",
   "chart.graph.tipMeta": "{author} · {date}",
-  "chart.graph.tipRefs": "({refs})"
+  "chart.graph.tipRefs": "({refs})",
+  "chart.typeMix.title": "Commit types in the period"
 }
