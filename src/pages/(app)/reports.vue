@@ -9,6 +9,7 @@
  */
 import type { ReportSubject, ReportWindow } from '@/report'
 import type { ReportPresetId, ReportQueryState, ReportSubjectId } from '@/report-query'
+import { useToast } from '@nuxt/ui/composables'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMarkdownExport } from '@/composables/useMarkdownExport'
@@ -18,6 +19,7 @@ import { renderMarkdown } from '@/markdown'
 import { buildReport, customWindow, presetWindow, rollingWindow } from '@/report'
 import { setReportCommitsActive } from '@/report-commits-loader'
 import { reportT } from '@/report-i18n'
+import { buildReportPdf } from '@/report-pdf'
 import { reportQueryForStorage, reportQueryOf, sanitizeReportQuery } from '@/report-query'
 import { loadTeam, team, teamLoadError } from '@/team'
 
@@ -222,11 +224,33 @@ const { copied, hasCopyPath, copy, download } = useMarkdownExport('relatório')
 const viewMode = ref<'preview' | 'raw'>('preview')
 const previewHtml = computed(() => (report.value ? renderMarkdown(report.value.markdown) : ''))
 
-// feedback 0.46: impressão abre o diálogo NATIVO do navegador — sem toast
-function onPrint() {
-  if (!exportReady.value)
+// feedback 0.46: exportação em PDF NATIVO (jsPDF em chunk próprio, carregado
+// só aqui) — substitui a impressão pelo navegador, que não paginava direito
+// nem acompanhava o anexo de commits. Toast de sucesso/erro no padrão 0.46.
+const exporting = ref(false)
+const toast = useToast()
+
+async function onPdf() {
+  if (!exportReady.value || !report.value || exporting.value)
     return
-  window.print()
+  exporting.value = true
+  try {
+    const { data } = await buildReportPdf(report.value.markdown, { title: report.value.title })
+    const filename = `${fileSlug(report.value.title)}.pdf`
+    const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.add({ title: reportT('report.pdf.done'), description: filename, color: 'success' })
+  }
+  catch (err) {
+    toast.add({ title: reportT('report.pdf.error'), description: String((err as Error)?.message ?? err), color: 'error' })
+  }
+  finally {
+    exporting.value = false
+  }
 }
 
 function fileSlug(title: string): string {
@@ -371,12 +395,12 @@ function onDownload() {
             @click="viewMode = 'raw'"
           />
           <UButton
-            icon="i-lucide-printer"
-            label="imprimir"
-            color="neutral"
+            icon="i-lucide-file-down"
+            :label="exporting ? reportT('report.pdf.generating') : reportT('report.pdf.button')"
+            color="primary"
             variant="outline"
-            :disabled="!exportReady"
-            @click="onPrint"
+            :disabled="!exportReady || exporting"
+            @click="onPdf"
           />
           <UButton
             :icon="copied ? 'i-lucide-check' : 'i-lucide-clipboard'"

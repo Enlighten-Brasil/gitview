@@ -11,7 +11,8 @@ export function mdText(value: string): string {
     .replace(/[\\`*_[\]<>&]/g, '\\$&')
 }
 
-function safeHttpsHref(value: string): string | null {
+/** URL https normalizada e segura; vira null quando inválida (usada pelo emissor e pelo parser do PDF). */
+export function safeHttpsHref(value: string): string | null {
   const hasControl = Array.from(value).some((char) => {
     const code = char.codePointAt(0) ?? 0
     return code <= 0x1F || code === 0x7F

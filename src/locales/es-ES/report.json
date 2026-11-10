@@ -77,5 +77,10 @@
   "report.appendix.error.reconcile": "anexo bloqueado por divergencia de reconciliación: {error}",
   "report.appendix.toggle": "incluir commits por dev",
   "report.appendix.exportBlocked": "Anexo no disponible — exportación e impresión bloqueadas",
-  "report.preset.lastMonth": "Mes cerrado"
+  "report.preset.lastMonth": "Mes cerrado",
+  "report.pdf.button": "descargar .pdf",
+  "report.pdf.generating": "generando…",
+  "report.pdf.done": "PDF generado",
+  "report.pdf.error": "Error al generar el PDF",
+  "report.pdf.footer.page": "Página {page} de {pages}"
 }

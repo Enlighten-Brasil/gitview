@@ -77,5 +77,10 @@
   "report.appendix.error.reconcile": "appendix blocked by a reconciliation mismatch: {error}",
   "report.appendix.toggle": "include commits by dev",
   "report.appendix.exportBlocked": "Appendix unavailable — export and print blocked",
-  "report.preset.lastMonth": "Last month"
+  "report.preset.lastMonth": "Last month",
+  "report.pdf.button": "download .pdf",
+  "report.pdf.generating": "generating…",
+  "report.pdf.done": "PDF generated",
+  "report.pdf.error": "Failed to generate the PDF",
+  "report.pdf.footer.page": "Page {page} of {pages}"
 }

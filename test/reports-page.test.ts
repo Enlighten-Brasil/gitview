@@ -50,11 +50,18 @@ describe('página /reports — integração do anexo', () => {
     expect(page).toContain('{ people: state.value.people, commits: state.value.commits }')
   })
 
-  it('guarda copiar, download e impressão pela mesma exportReady', () => {
+  it('guarda copiar, download e PDF pela mesma exportReady', () => {
     expect(page).toContain('const exportReady = computed')
-    for (const name of ['onCopy', 'onDownload', 'onPrint'])
+    for (const name of ['onCopy', 'onDownload', 'onPdf'])
       expect(functionBody(name), name).toContain('exportReady.value')
     expect(page.match(/:disabled="!exportReady/g)).toHaveLength(3)
+  })
+
+  it('exporta PDF nativo pelo markdown do relatório (não pela impressão)', () => {
+    expect(page).toContain('buildReportPdf(report.value.markdown')
+    expect(page).toContain('reportT(\'report.pdf.done\')')
+    expect(page).toContain('reportT(\'report.pdf.error\')')
+    expect(page).not.toContain('window.print()')
   })
 
   it('recoleta o artefato lazy com cache-bust somente quando ativo', () => {
