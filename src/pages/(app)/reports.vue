@@ -53,10 +53,10 @@ const SUBJECTS: { id: SubjectId, label: string }[] = [
 ]
 const PRESETS: { id: PresetId, label: string }[] = [
   { id: 'week-closed', label: 'Semana fechada' },
-  { id: 'week-current', label: 'Nesta semana (em curso)' },
+  { id: 'week-current', label: 'Nesta semana' },
   { id: '7d', label: 'Últimos 7 dias' },
   { id: 'last-month', label: 'Mês fechado' },
-  { id: 'month-current', label: 'Neste mês (em curso)' },
+  { id: 'month-current', label: 'Neste mês' },
   { id: '30d', label: 'Últimos 30 dias' },
   { id: 'custom', label: 'Personalizado' },
 ]
@@ -256,9 +256,11 @@ function onDownload() {
 
 <template>
   <div class="max-w-[1320px] w-full mx-auto px-5 py-6 flex flex-col gap-4">
-    <section id="assunto" class="flex flex-col gap-3 scroll-mt-16 no-print">
+    <!-- montagem do relatório: quem, quando e o que incluir — um bloco só,
+         com a coluna de rótulos alinhada (a barra de ações ficou no documento) -->
+    <section id="assunto" class="flex flex-col gap-2.5 rounded-lg border border-default p-4 scroll-mt-16 no-print">
       <div class="flex flex-wrap items-center gap-2">
-        <span class="text-sm text-dimmed">assunto</span>
+        <span class="w-16 shrink-0 text-sm text-dimmed">assunto</span>
         <UButton
           v-for="s in SUBJECTS"
           :key="s.id"
@@ -291,7 +293,7 @@ function onDownload() {
         />
       </div>
       <div class="flex flex-wrap items-center gap-2">
-        <span class="text-sm text-dimmed">período</span>
+        <span class="w-16 shrink-0 text-sm text-dimmed">período</span>
         <UButton
           v-for="p in PRESETS"
           :key="p.id"
@@ -307,6 +309,20 @@ function onDownload() {
           <span class="text-dimmed">→</span>
           <UInput v-model="customTo" type="date" size="sm" aria-label="fim do período" @change="applyCustom" />
         </template>
+      </div>
+      <!-- opt-ins de conteúdo: configuração do relatório (checkboxes), não ação -->
+      <div class="flex flex-wrap items-center gap-4">
+        <span class="w-16 shrink-0 text-sm text-dimmed">incluir</span>
+        <UCheckbox
+          :model-value="state.commits"
+          :label="reportT('report.appendix.toggle')"
+          @update:model-value="v => set({ commits: v === true })"
+        />
+        <UCheckbox
+          :model-value="state.people"
+          label="gestão de pessoas"
+          @update:model-value="v => set({ people: v === true })"
+        />
       </div>
     </section>
 
@@ -338,80 +354,68 @@ function onDownload() {
     />
 
     <section id="relatorio" class="flex flex-col gap-3 scroll-mt-16">
-      <div class="flex flex-wrap items-center justify-between gap-2 no-print">
-        <h1 class="text-lg font-semibold">
-          {{ report?.title ?? 'Relatório' }}
-        </h1>
-        <div class="flex flex-wrap gap-2">
-          <UButton
-            :label="reportT('report.appendix.toggle')"
-            size="sm"
-            color="neutral"
-            :variant="state.commits ? 'solid' : 'soft'"
-            :aria-pressed="state.commits"
-            @click="set({ commits: !state.commits })"
-          />
-          <UButton
-            label="incluir gestão de pessoas"
-            size="sm"
-            color="neutral"
-            :variant="state.people ? 'solid' : 'soft'"
-            :aria-pressed="state.people"
-            @click="set({ people: !state.people })"
-          />
-          <UButton
-            label="preview"
-            size="sm"
-            color="neutral"
-            :variant="viewMode === 'preview' ? 'solid' : 'soft'"
-            :aria-pressed="viewMode === 'preview'"
-            @click="viewMode = 'preview'"
-          />
-          <UButton
-            label="markdown cru"
-            size="sm"
-            color="neutral"
-            :variant="viewMode === 'raw' ? 'solid' : 'soft'"
-            :aria-pressed="viewMode === 'raw'"
-            @click="viewMode = 'raw'"
-          />
-          <UButton
-            icon="i-lucide-file-down"
-            :label="exporting ? reportT('report.pdf.generating') : reportT('report.pdf.button')"
-            color="primary"
-            variant="outline"
-            :disabled="!exportReady || exporting"
-            @click="onPdf"
-          />
-          <UButton
-            :icon="copied ? 'i-lucide-check' : 'i-lucide-clipboard'"
-            :label="copied ? 'copiado!' : 'copiar markdown'"
-            :color="copied ? 'success' : 'primary'"
-            :disabled="!exportReady || !hasCopyPath"
-            @click="onCopy"
-          />
-          <UButton
-            icon="i-lucide-download"
-            label="baixar .md"
-            color="neutral"
-            variant="outline"
-            :disabled="!exportReady"
-            @click="onDownload"
-          />
+      <!-- cartão do documento: visualização à esquerda, exportação à direita
+           (um só botão sólido por tela — o PDF é a entrega) -->
+      <div class="rounded-lg border border-default">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-default px-3 py-2 no-print">
+          <div class="flex gap-1">
+            <UButton
+              label="preview"
+              size="sm"
+              :color="viewMode === 'preview' ? 'primary' : 'neutral'"
+              :variant="viewMode === 'preview' ? 'soft' : 'ghost'"
+              :aria-pressed="viewMode === 'preview'"
+              @click="viewMode = 'preview'"
+            />
+            <UButton
+              label="markdown cru"
+              size="sm"
+              :color="viewMode === 'raw' ? 'primary' : 'neutral'"
+              :variant="viewMode === 'raw' ? 'soft' : 'ghost'"
+              :aria-pressed="viewMode === 'raw'"
+              @click="viewMode = 'raw'"
+            />
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <UButton
+              :icon="copied ? 'i-lucide-check' : 'i-lucide-clipboard'"
+              :label="copied ? 'copiado!' : 'copiar markdown'"
+              :color="copied ? 'success' : 'neutral'"
+              variant="soft"
+              :disabled="!exportReady || !hasCopyPath"
+              @click="onCopy"
+            />
+            <UButton
+              icon="i-lucide-download"
+              label="baixar .md"
+              color="neutral"
+              variant="soft"
+              :disabled="!exportReady"
+              @click="onDownload"
+            />
+            <UButton
+              icon="i-lucide-file-down"
+              :label="exporting ? reportT('report.pdf.generating') : reportT('report.pdf.button')"
+              color="primary"
+              variant="solid"
+              :disabled="!exportReady || exporting"
+              @click="onPdf"
+            />
+          </div>
         </div>
+        <pre
+          v-if="report && viewMode === 'raw'"
+          class="p-5 font-mono text-xs leading-relaxed whitespace-pre-wrap"
+        >{{ report.markdown }}</pre>
+        <div
+          v-else-if="report"
+          class="report-md p-5"
+          v-html="previewHtml"
+        />
+        <p v-else class="p-5 text-sm text-dimmed">
+          sem dados — rode a coleta primeiro
+        </p>
       </div>
-      <pre
-        v-if="report && viewMode === 'raw'"
-        class="font-mono text-xs leading-relaxed whitespace-pre-wrap rounded-lg border border-default p-4"
-      >{{ report.markdown }}</pre>
-      <div
-        v-else-if="report"
-        class="report-md rounded-lg border border-default p-4"
-        v-html="previewHtml"
-      />
-      <p v-else class="text-sm text-dimmed">
-        sem dados — rode a coleta primeiro
-      </p>
       <!-- decisão da issue #177: o relatório é dia-preciso e ignorado pelos
            filtros da sidebar (como o resumo semanal, issue #129) -->
       <p class="text-xs text-dimmed no-print">

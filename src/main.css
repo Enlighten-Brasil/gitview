@@ -106,7 +106,7 @@ body {
 /* ---------- relatório: preview renderizado + impressão (issue #186) ---------- */
 .report-md {
   font-size: 13px;
-  line-height: 1.65;
+  line-height: 1.7;
   overflow-wrap: anywhere;
 }
 
@@ -120,38 +120,50 @@ body {
   color: var(--ui-text-highlighted);
 }
 
+/* título do documento: é o H1 do artefato (viaja no .md e no PDF nativo) */
 .report-md h1 {
-  font-size: 1.15rem;
+  font-size: 1.35rem;
   font-weight: 600;
-  margin-bottom: 0.4rem;
+  letter-spacing: -0.01em;
+  color: var(--ui-text-highlighted);
+  margin-bottom: 0.55rem;
 }
 
+/* seções ganham régua fina sob o título (mesma linguagem do PDF nativo) */
 .report-md h2 {
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   font-weight: 600;
-  margin: 1rem 0 0.35rem;
+  color: var(--ui-text-highlighted);
+  margin: 1.6rem 0 0.5rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--ui-border-muted);
 }
 
 .report-md h3 {
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   font-weight: 600;
-  margin: 0.85rem 0 0.3rem;
+  margin: 1.15rem 0 0.35rem;
   break-after: avoid;
   page-break-after: avoid;
 }
 
 .report-md p {
-  margin: 0.25rem 0;
+  margin: 0.45rem 0;
+}
+
+/* linhas de metadado (gerado em…, janela em curso) — o dialeto as emite em _ênfase_ */
+.report-md em {
+  color: var(--ui-text-dimmed);
 }
 
 .report-md ul {
   list-style: disc;
-  margin: 0.25rem 0 0.5rem;
-  padding-left: 1.25rem;
+  margin: 0.45rem 0 0.8rem;
+  padding-left: 1.35rem;
 }
 
 .report-md li {
-  margin: 0.15rem 0;
+  margin: 0.35rem 0;
   break-inside: avoid;
   page-break-inside: avoid;
 }

@@ -75,7 +75,7 @@
   "report.appendix.error.source": "anexo indisponível: {error}",
   "report.appendix.error.snapshot": "anexo bloqueado por divergência entre snapshots; recolete",
   "report.appendix.error.reconcile": "anexo bloqueado por divergência de reconciliação: {error}",
-  "report.appendix.toggle": "incluir commits por dev",
+  "report.appendix.toggle": "commits por dev",
   "report.appendix.exportBlocked": "Anexo indisponível — exportação e impressão bloqueadas",
   "report.preset.lastMonth": "Mês fechado",
   "report.pdf.button": "baixar .pdf",

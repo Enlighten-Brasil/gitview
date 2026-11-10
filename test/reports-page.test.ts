@@ -89,14 +89,15 @@ describe('página /reports — integração do anexo', () => {
 
   it('expõe o estado dos toggles para tecnologia assistiva', () => {
     for (const binding of [
-      'state.commits',
-      'state.people',
       'viewMode === \'preview\'',
       'viewMode === \'raw\'',
       'state.subject === s.id',
       'state.preset === p.id',
     ])
       expect(page).toContain(`:aria-pressed="${binding}"`)
+    // opt-ins de conteúdo são checkboxes nativos (configuração, não ação)
+    for (const binding of ['state.commits', 'state.people'])
+      expect(page).toContain(`:model-value="${binding}"`)
   })
 
   it('dá affordance aos links e quebra textos longos no preview e na impressão', () => {
