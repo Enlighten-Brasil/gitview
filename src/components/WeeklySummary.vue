@@ -2,7 +2,9 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useMarkdownExport } from '@/composables/useMarkdownExport'
+import { usePdfExport } from '@/composables/usePdfExport'
 import { loadDaily } from '@/data'
+import { reportT } from '@/report-i18n'
 import { buildWeeklySummary } from '../summary'
 
 const { t } = useI18n({ useScope: 'global' })
@@ -14,8 +16,10 @@ const summary = computed(() => (open.value ? buildWeeklySummary() : null))
 // daily.json opcional: sem ele o resumo cai no fallback semanal (issue #192)
 onMounted(loadDaily)
 
-// copiar/baixar moram na composable compartilhada com /reports (issue #177)
+// copiar/baixar moram na composable compartilhada com /reports (issue #177);
+// o PDF nativo também (composable usePdfExport, mesma exportação das duas telas)
 const { copied, hasCopyPath, copy, download } = useMarkdownExport('resumo')
+const { exporting, exportPdf } = usePdfExport()
 
 function onCopy() {
   if (summary.value)
@@ -25,6 +29,14 @@ function onCopy() {
 function onDownload() {
   if (summary.value)
     download(summary.value.markdown, `resumo-${summary.value.weekKey}.md`)
+}
+
+function onPdf() {
+  if (!summary.value)
+    return
+  // título = H1 do próprio markdown (rodapé + propriedades do documento)
+  const title = summary.value.markdown.match(/^# (.*)$/m)?.[1] ?? t('ui.weekly.title')
+  void exportPdf(summary.value.markdown, { title, filename: `resumo-${summary.value.weekKey}.pdf` })
 }
 </script>
 
@@ -52,7 +64,15 @@ function onDownload() {
 
     <template #footer>
       <div class="flex flex-col gap-1.5 w-full">
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2">
+          <UButton
+            icon="i-lucide-file-down"
+            :label="exporting ? reportT('report.pdf.generating') : reportT('report.pdf.button')"
+            color="primary"
+            variant="outline"
+            :disabled="!summary || exporting"
+            @click="onPdf"
+          />
           <UButton
             :icon="copied ? 'i-lucide-check' : 'i-lucide-clipboard'"
             :label="copied ? t('ui.weekly.copied') : t('ui.weekly.copy')"

@@ -58,10 +58,22 @@ describe('página /reports — integração do anexo', () => {
   })
 
   it('exporta PDF nativo pelo markdown do relatório (não pela impressão)', () => {
-    expect(page).toContain('buildReportPdf(report.value.markdown')
-    expect(page).toContain('reportT(\'report.pdf.done\')')
-    expect(page).toContain('reportT(\'report.pdf.error\')')
+    expect(page).toContain('usePdfExport')
+    expect(page).toContain('exportPdf(report.value.markdown')
     expect(page).not.toContain('window.print()')
+    // toasts e o gerador vivem na composable compartilhada
+    const composable = readFileSync(new URL('../src/composables/usePdfExport.ts', import.meta.url), 'utf8')
+    expect(composable).toContain('buildReportPdf(')
+    expect(composable).toContain('reportT(\'report.pdf.done\')')
+    expect(composable).toContain('reportT(\'report.pdf.error\')')
+  })
+
+  it('resumo semanal exporta o mesmo PDF (composable compartilhada)', () => {
+    const summary = readFileSync(new URL('../src/components/WeeklySummary.vue', import.meta.url), 'utf8')
+    expect(summary).toContain('usePdfExport')
+    expect(summary).toContain('exportPdf(summary.value.markdown')
+    expect(summary).toContain('resumo-$' + '{summary.value.weekKey}.pdf')
+    expect(summary).toContain('reportT(\'report.pdf.button\')')
   })
 
   it('recoleta o artefato lazy com cache-bust somente quando ativo', () => {

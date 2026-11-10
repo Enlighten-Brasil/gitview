@@ -35,7 +35,7 @@ Nada para copiar ou editar antes: o `.env` é criado a partir do `.env.example` 
 - **Times** (`/teams`, `/teams/<nome>`): agrupe devs por time e abra o dashboard do time, com período e repos filtráveis.
 - **Saúde** (`/health`): trabalho fora do horário, fix hotspots, gargalo de review, inatividade e bus factor.
 - **Relatórios** (`/reports`): relatório exportável em markdown da organização, de um time ou de um dev em seis presets de período — copie ou baixe o .md; a URL reproduz o relatório. O preview é renderizado (markdown cru num toggle) e o botão .pdf exporta um PDF nativo: A4 tipografado com paginação real, réguas de seção, links de commit clicáveis e rodapé "Página X de Y" — anexos grandes fluem por páginas em vez do diálogo de impressão do navegador.
-- **Resumo semanal**: markdown da última semana ISO fechada contra a anterior, pronto para colar na reunião.
+- **Resumo semanal**: markdown da última semana ISO fechada contra a anterior, pronto para colar na reunião; o slideover também exporta o .pdf nativo como no `/reports`.
 
 ## Coletar e publicar
 

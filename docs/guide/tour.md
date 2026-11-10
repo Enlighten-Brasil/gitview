@@ -131,7 +131,7 @@ The appendix is all or nothing. Loading, HTTP/network/shape errors, different `g
 
 ## Weekly summary: the meeting-ready export
 
-A button in the navbar (tooltip **resumo da semana exportável** ("exportable week summary")), not a route. It opens the **Resumo da semana** ("Week summary") slideover with the markdown of the last closed ISO week (Mon–Sun) against the previous one: `## Commits`, `## Pull requests`, `## Releases`, `## Atenção`. Outputs: **copiar markdown** ("copy markdown") (the button becomes **copiado!** ("copied!")) and **baixar .md** ("download .md") (writes `resumo-<weekKey>.md`). The report is for the whole team in the weekly meeting, which is why it ignores the sidebar filters and always excludes bots.
+A button in the navbar (tooltip **resumo da semana exportável** ("exportable week summary")), not a route. It opens the **Resumo da semana** ("Week summary") slideover with the markdown of the last closed ISO week (Mon–Sun) against the previous one: `## Commits`, `## Pull requests`, `## Releases`, `## Atenção`. Outputs: **baixar .pdf** ("download .pdf") — the same native PDF as `/reports` (typed A4, real pagination, "Page X of Y" footer, written to `resumo-<weekKey>.pdf`), **copiar markdown** ("copy markdown") (the button becomes **copiado!** ("copied!")) and **baixar .md** ("download .md") (writes `resumo-<weekKey>.md`). The report is for the whole team in the weekly meeting, which is why it ignores the sidebar filters and always excludes bots.
 
 ## Static build
 

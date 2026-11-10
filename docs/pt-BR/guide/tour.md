@@ -131,7 +131,7 @@ O anexo é tudo ou nada. Carregamento, erro de HTTP/rede/shape, snapshots com `g
 
 ## Resumo semanal: a exportação pronta para a reunião
 
-Botão no navbar (tooltip **resumo da semana exportável**), não uma rota. Abre o slideover **Resumo da semana** com o markdown da última semana ISO fechada (seg–dom) contra a anterior: `## Commits`, `## Pull requests`, `## Releases`, `## Atenção`. Saídas: **copiar markdown** (o botão vira **copiado!**) e **baixar .md** (grava `resumo-<weekKey>.md`). O relatório é do time inteiro para a reunião semanal, por isso ignora os filtros da sidebar e sempre exclui bots.
+Botão no navbar (tooltip **resumo da semana exportável**), não uma rota. Abre o slideover **Resumo da semana** com o markdown da última semana ISO fechada (seg–dom) contra a anterior: `## Commits`, `## Pull requests`, `## Releases`, `## Atenção`. Saídas: **baixar .pdf** (o mesmo PDF nativo do `/reports` — A4 tipografado, paginação real, rodapé "Página X de Y"; grava `resumo-<weekKey>.pdf`), **copiar markdown** (o botão vira **copiado!**) e **baixar .md** (grava `resumo-<weekKey>.md`). O relatório é do time inteiro para a reunião semanal, por isso ignora os filtros da sidebar e sempre exclui bots.
 
 ## Build estático
 

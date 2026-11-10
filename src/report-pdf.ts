@@ -491,7 +491,8 @@ function emitLine(page: PdfPage, line: PdfSpan[], baseline: number, m: BlockMetr
 // render — jsPDF (import dinâmico: o chunk só carrega na exportação)
 // ---------------------------------------------------------------------------
 export interface ReportPdf {
-  data: Uint8Array
+  /** bytes do PDF (buffer exato — pronto para o Blob do download) */
+  data: Uint8Array<ArrayBuffer>
   pages: number
 }
 
