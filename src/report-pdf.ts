@@ -34,12 +34,18 @@ export interface PdfSpan {
   style: PdfStyle
   /** URL https validada — ausente = texto comum */
   href?: string
+  /** sobrescrita de composição usada pelo layout (linha de metadado, anexo) */
+  tone?: PdfTone
+  /** sobrescrita de corpo em pt (linha de metadado menor que a mensagem) */
+  size?: number
 }
 
 export type PdfBlock
   = | { kind: 'heading', level: 1 | 2 | 3, spans: PdfSpan[] }
     | { kind: 'paragraph', spans: PdfSpan[] }
     | { kind: 'bullet', spans: PdfSpan[] }
+    /** entrada do anexo: metadados (hash · dia · repo · diff · escopo) + mensagem */
+    | { kind: 'commitEntry', hash: PdfSpan[], meta: PdfSpan[], message: PdfSpan[] }
 
 /** medida de texto em pt para o estilo dado (injetada: jsPDF no render, fake no teste) */
 export interface MeasureFn {
@@ -279,12 +285,32 @@ export function parseInlineSpans(src: string, allowLinks = true): PdfSpan[] {
   return out
 }
 
+/**
+ * Entrada do anexo (emissão `report.appendix.item`, idêntica nos 3 locales):
+ * `- {link|hash} · {day} · {repo} · +{a}/-{d} · {scope} · {message}`. Os
+ * campos de metadado têm formato fechado (data/diff) ou não contêm '·', então
+ * o início da mensagem é inequívoco mesmo com '·' dentro dela. Formato fora do
+ * padrão degrada para bullet comum (o PDF nunca perde linha).
+ */
+const COMMIT_ENTRY
+  = /^(\[[^\]\n]*\]\(https:\/\/[^\s)]+\)|[^\s·]+) · (\d{4}-\d{2}-\d{2}) · ([^·]+) · (\+\d+\/-\d+) · ([^·]+) · ([\s\S]+)$/
+
 /** markdown do dialeto → blocos (mesma gramática do renderMarkdown) */
 export function parseReportBlocks(markdown: string): PdfBlock[] {
   const blocks: PdfBlock[] = []
   for (const line of markdown.split('\n')) {
     const bullet = /^- (.*)/.exec(line)
     if (bullet) {
+      const entry = COMMIT_ENTRY.exec(bullet[1])
+      if (entry) {
+        blocks.push({
+          kind: 'commitEntry',
+          hash: parseInlineSpans(entry[1]),
+          meta: parseInlineSpans(`${entry[2]} · ${entry[3]} · ${entry[4]} · ${entry[5]}`),
+          message: parseInlineSpans(entry[6]),
+        })
+        continue
+      }
       blocks.push({ kind: 'bullet', spans: parseInlineSpans(bullet[1]) })
       continue
     }
@@ -358,7 +384,7 @@ export function wrapSpans(spans: PdfSpan[], maxWidth: number, measure: MeasureFn
         spansOfLine.push({ text: ' '.repeat(word.spacesBefore), style: word.spaceStyle })
       for (const part of word.parts) {
         const last = spansOfLine[spansOfLine.length - 1]
-        if (last && last.style === part.style && last.href === part.href)
+        if (last && last.style === part.style && last.href === part.href && last.tone === part.tone && last.size === part.size)
           last.text += part.text
         else
           spansOfLine.push({ ...part })
@@ -372,8 +398,22 @@ export function wrapSpans(spans: PdfSpan[], maxWidth: number, measure: MeasureFn
   for (const word of wordsOf(spans)) {
     const gap = line.length ? word.spacesBefore * measure(' ', word.spaceStyle) : 0
     const w = word.parts.reduce((total, part) => total + measure(part.text, part.style), 0)
-    if (line.length && width + gap + w > maxWidth)
-      flushLine()
+    if (line.length && width + gap + w > maxWidth) {
+      // palavra curta (o "9" de "9 devs ativos") nunca termina linha: desce
+      // junto com a palavra atual quando as duas cabem na linha seguinte
+      const last = line[line.length - 1]
+      const lastText = last.parts.map(part => part.text).join('')
+      const lastW = last.parts.reduce((total, part) => total + measure(part.text, part.style), 0)
+      if (line.length >= 2 && lastText.length <= 2 && lastW + gap + w <= maxWidth) {
+        line.pop()
+        flushLine()
+        line.push({ ...last, spacesBefore: 0 })
+        width = lastW
+      }
+      else {
+        flushLine()
+      }
+    }
     width += (line.length ? gap : 0) + w
     line.push(word)
   }
@@ -395,17 +435,50 @@ interface BlockMetrics {
   rule?: 'title' | 'section'
 }
 
-function metricsFor(block: PdfBlock): BlockMetrics {
+/** variante de parágrafo: metadado (ênfase) · abertura (ata) · corpo */
+type ParagraphVariant = 'body' | 'lead' | 'meta'
+
+function metricsFor(block: PdfBlock, paragraph: ParagraphVariant = 'body'): BlockMetrics {
   if (block.kind === 'heading') {
     if (block.level === 1)
-      return { size: 15, leading: 20, before: 0, after: 12, indent: 0, keepWithNext: true, rule: 'title' }
+      return { size: 15, leading: 20, before: 0, after: 15, indent: 0, keepWithNext: true, rule: 'title' }
     if (block.level === 2)
-      return { size: 12.5, leading: 16, before: 15, after: 7, indent: 0, keepWithNext: true, rule: 'section' }
-    return { size: 10.5, leading: 14, before: 10, after: 4, indent: 0, keepWithNext: true }
+      return { size: 12.5, leading: 16, before: 17, after: 8, indent: 0, keepWithNext: true, rule: 'section' }
+    return { size: 10.5, leading: 14, before: 11, after: 4, indent: 0, keepWithNext: true }
   }
+  if (block.kind === 'commitEntry')
+    return { size: 10, leading: 12.8, before: 0, after: 5, indent: 13, keepWithNext: false }
   if (block.kind === 'bullet')
-    return { size: 10, leading: 13.2, before: 0, after: 2.5, indent: 13, keepWithNext: false }
-  return { size: 10, leading: 13.6, before: 0, after: 5, indent: 0, keepWithNext: false }
+    return { size: 10, leading: 13.4, before: 0, after: 4, indent: 13, keepWithNext: false }
+  if (paragraph === 'meta')
+    return { size: 9.5, leading: 12.5, before: 0, after: 5, indent: 0, keepWithNext: false }
+  if (paragraph === 'lead')
+    return { size: 11, leading: 15, before: 3, after: 11, indent: 0, keepWithNext: false }
+  return { size: 10, leading: 13.6, before: 0, after: 6, indent: 0, keepWithNext: false }
+}
+
+/**
+ * Variante por bloco: linhas inteiramente em _ênfase_ são metadados
+ * (gerado em…, janela em curso) e o primeiro parágrafo comum após o H1 é a
+ * abertura (ata) — ambos ganham corpo/ritmo próprios.
+ */
+function variantOf(blocks: PdfBlock[]): ParagraphVariant[] {
+  let leadPending = false
+  return blocks.map((block) => {
+    if (block.kind === 'heading') {
+      leadPending = block.level === 1
+      return 'body'
+    }
+    if (block.kind !== 'paragraph')
+      return 'body'
+    if (block.spans.length > 0 && block.spans.every(span => span.style === 'italic'))
+      return 'meta'
+    if (leadPending) {
+      leadPending = false
+      return 'lead'
+    }
+    return 'body'
+  })
 }
 
 /**
@@ -429,14 +502,29 @@ export function layoutReport(blocks: PdfBlock[], measure: MeasureFn, cfg: Layout
     used = false
   }
 
+  const variants = variantOf(blocks)
   blocks.forEach((block, index) => {
-    const m = metricsFor(block)
-    const lines = wrapSpans(block.spans, contentWidth - m.indent, measure)
+    const m = metricsFor(block, variants[index])
+    // linhas do bloco: a entrada do anexo vira metadado (menor, discreto) em
+    // cima + mensagem em corpo — o bullet único de 6 campos virava parede
+    let lines: PdfSpan[][]
+    if (block.kind === 'commitEntry') {
+      const meta: PdfSpan[] = block.hash.map(span => ({ ...span, size: 9, tone: span.href ? 'link' : 'muted' }))
+      meta.push({ text: ` · ${block.meta.map(span => span.text).join('')}`, style: 'normal', size: 9, tone: 'muted' })
+      lines = [meta, ...wrapSpans(block.message, contentWidth - m.indent, measure)]
+    }
+    else if (variants[index] === 'meta') {
+      lines = wrapSpans(block.spans, contentWidth - m.indent, measure)
+        .map(line => line.map(span => ({ ...span, tone: 'muted' as PdfTone })))
+    }
+    else {
+      lines = wrapSpans(block.spans, contentWidth - m.indent, measure)
+    }
     const height = lines.length * m.leading
     const before = used ? m.before : 0
     // keep-with-next: título + a primeira linha do bloco seguinte na mesma página
     const next = blocks[index + 1]
-    const keep = m.keepWithNext && next ? metricsFor(next).leading : 0
+    const keep = m.keepWithNext && next ? metricsFor(next, variants[index + 1]).leading : 0
 
     if (used && y + before + height + m.after + keep > pageBottom)
       newPage()
@@ -449,9 +537,9 @@ export function layoutReport(blocks: PdfBlock[], measure: MeasureFn, cfg: Layout
       emitLine(page, line, baseline, m, measure, cfg)
       y += m.leading
     }
-    if (block.kind === 'bullet' && baselines.length) {
+    if ((block.kind === 'bullet' || block.kind === 'commitEntry') && baselines.length) {
       // bullet '•' na margem (glifo WinAnsi medido: 0x95)
-      page.runs.push({ text: '\u2022', style: 'normal', size: m.size, tone: 'ink', x: cfg.marginX, y: baselines[0] })
+      page.runs.push({ text: '\u2022', style: 'normal', size: m.size, tone: 'muted', x: cfg.marginX, y: baselines[0] })
     }
     if (m.rule && baselines.length) {
       const ruleY = baselines[baselines.length - 1] + (m.rule === 'title' ? 5.5 : 4.5)
@@ -461,7 +549,7 @@ export function layoutReport(blocks: PdfBlock[], measure: MeasureFn, cfg: Layout
         x2: cfg.pageWidth - cfg.marginX,
         y2: ruleY,
         tone: m.rule === 'title' ? 'ruleStrong' : 'rule',
-        width: m.rule === 'title' ? 1 : 0.6,
+        width: m.rule === 'title' ? 1 : 0.8,
       })
     }
     y += m.after
@@ -477,8 +565,8 @@ function emitLine(page: PdfPage, line: PdfSpan[], baseline: number, m: BlockMetr
     page.runs.push({
       text: span.text,
       style: span.style,
-      size: m.size,
-      tone: span.href ? 'link' : 'ink',
+      size: span.size ?? m.size,
+      tone: span.tone ?? (span.href ? 'link' : 'ink'),
       x,
       y: baseline,
       href: span.href,
@@ -500,7 +588,7 @@ const TONE_RGB: Record<PdfTone, [number, number, number]> = {
   ink: [39, 39, 42],
   muted: [113, 113, 122],
   link: [29, 78, 216],
-  rule: [209, 209, 214],
+  rule: [188, 188, 196],
   ruleStrong: [161, 161, 170],
 }
 

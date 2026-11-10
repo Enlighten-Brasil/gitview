@@ -59,6 +59,20 @@ describe('parseInlineSpans — dialeto congelado', () => {
     expect(parseInlineSpans('caminho C:\\\\temp')).toEqual([{ text: 'caminho C:\\temp', style: 'normal' }])
   })
 
+  it('reconhece a entrada do anexo como metadados + mensagem (inclusive com · na mensagem)', () => {
+    const [entry, fallback] = parseReportBlocks([
+      '- [abc1234](https://github.com/x/y/commit/abc) · 2026-11-09 · repo-alpha · +88/-12 · prod · fix: usa · no meio da mensagem',
+      '- top repos: alpha (3), beta (2)',
+    ].join('\n'))
+    expect(entry.kind).toBe('commitEntry')
+    if (entry.kind !== 'commitEntry')
+      throw new Error(`tipo inesperado: ${entry.kind}`)
+    expect(entry.hash).toEqual([{ text: 'abc1234', style: 'normal', href: 'https://github.com/x/y/commit/abc' }])
+    expect(entry.meta.map(span => span.text).join('')).toBe('2026-11-09 · repo-alpha · +88/-12 · prod')
+    expect(entry.message.map(span => span.text).join('')).toBe('fix: usa · no meio da mensagem')
+    expect(fallback.kind).toBe('bullet')
+  })
+
   it('link https vira span com href (label com estilo); destino inválido é texto', () => {
     expect(parseInlineSpans('[abc1234](https://github.com/x/y/commit/abc) · dia')).toEqual([
       { text: 'abc1234', style: 'normal', href: 'https://github.com/x/y/commit/abc' },
@@ -116,6 +130,12 @@ describe('wrapSpans', () => {
       { text: 'cd', style: 'normal' },
     ])
   })
+
+  it('não deixa palavra curta órfã no fim da linha', () => {
+    // "aaa bbb c | dd" seria o greedy clássico; o "c" desce com o "dd"
+    const lines = wrapSpans(plain('aaa bbb c dd'), 9, measure)
+    expect(lines.map(line => line.map(span => span.text).join(''))).toEqual(['aaa bbb', 'c dd'])
+  })
 })
 
 describe('layoutReport — paginação', () => {
@@ -153,6 +173,30 @@ describe('layoutReport — paginação', () => {
     const tones = pages.flatMap(p => p.rules.map(r => r.tone))
     expect(tones).toContain('ruleStrong')
     expect(tones).toContain('rule')
+  })
+
+  it('compõe a entrada do anexo em duas linhas: metadado discreto + mensagem', () => {
+    const blocks = parseReportBlocks('- [abc1234](https://x.com/a) · 2026-11-09 · repo-a · +88/-12 · prod · fix: mensagem da entrada')
+    const runs = layoutReport(blocks, measure)[0].runs.filter(run => run.text !== '\u2022')
+    const metaRuns = runs.filter(run => run.size === 9)
+    const messageRuns = runs.filter(run => run.size === 10)
+    expect(metaRuns.map(run => run.text).join('')).toBe('abc1234 · 2026-11-09 · repo-a · +88/-12 · prod')
+    expect(messageRuns.map(run => run.text).join('')).toBe('fix: mensagem da entrada')
+    expect(metaRuns.every(run => run.tone === 'muted' || run.tone === 'link')).toBe(true)
+    // metadado acima da mensagem
+    expect(metaRuns[0].y).toBeLessThan(messageRuns[0].y)
+  })
+
+  it('metadado em ênfase e abertura ganham corpo próprios', () => {
+    const blocks = parseReportBlocks('# T\n\n_dados gerados em 01/01/2026_\n\nabertura da ata\n\ncorpo comum')
+    const runs = layoutReport(blocks, measure)[0].runs
+    const meta = runs.find(run => run.text.includes('dados'))
+    expect(meta?.tone).toBe('muted')
+    expect(meta?.size).toBe(9.5)
+    const lead = runs.find(run => run.text.includes('abertura'))
+    expect(lead?.size).toBe(11)
+    const body = runs.find(run => run.text.includes('corpo'))
+    expect(body?.size).toBe(10)
   })
 })
 
